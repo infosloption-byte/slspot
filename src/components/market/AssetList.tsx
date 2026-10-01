@@ -1,5 +1,5 @@
 import { Search, Star, X } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { marketAssets, type MarketAsset } from '../../data/mockMarket'
 import { formatPercent, formatPrice } from '../../lib/format'
 
@@ -16,6 +16,8 @@ const categories = ['All', 'Crypto', 'FX', 'Fav'] as const
 export function AssetList({ open, selected, onSelect, onClose }: AssetListProps) {
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState<(typeof categories)[number]>('All')
+  const searchInputRef = useRef<HTMLInputElement>(null)
+  const previousOpenRef = useRef(false)
   const [favorites, setFavorites] = useState<string[]>(() => {
     try {
       const stored = window.localStorage.getItem(favoriteStorageKey)
@@ -32,6 +34,14 @@ export function AssetList({ open, selected, onSelect, onClose }: AssetListProps)
 
   useEffect(() => {
     if (!open) return
+
+    if (!previousOpenRef.current) {
+      setQuery('')
+      setCategory('All')
+      requestAnimationFrame(() => searchInputRef.current?.focus())
+    }
+    previousOpenRef.current = true
+
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') onClose()
     }
@@ -43,6 +53,10 @@ export function AssetList({ open, selected, onSelect, onClose }: AssetListProps)
       window.removeEventListener('keydown', handleKeyDown)
     }
   }, [open, onClose])
+
+  useEffect(() => {
+    if (!open) previousOpenRef.current = false
+  }, [open])
 
   const filteredAssets = useMemo(() => {
     const normalized = query.trim().toLowerCase()
@@ -89,6 +103,7 @@ export function AssetList({ open, selected, onSelect, onClose }: AssetListProps)
       <div className="market-search">
         <Search size={15} aria-hidden="true" />
         <input
+          ref={searchInputRef}
           aria-label="Search assets"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
