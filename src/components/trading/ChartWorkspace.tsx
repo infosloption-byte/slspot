@@ -1,4 +1,4 @@
-import { CandlestickChart, ChevronDown, Crosshair, Maximize2, MoreHorizontal, Settings2 } from 'lucide-react'
+import { CandlestickChart, ChevronDown, Crosshair, Maximize2, MoreHorizontal, Search, Settings2 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { CandlestickSeries, ColorType, CrosshairMode, createChart, type IChartApi } from 'lightweight-charts'
 import type { MarketAsset } from '../../data/mockMarket'
@@ -6,7 +6,7 @@ import { generateMockCandles } from '../../data/mockCandles'
 import { formatPercent, formatPrice } from '../../lib/format'
 import { IconButton } from '../ui/IconButton'
 
-type ChartWorkspaceProps = { asset: MarketAsset }
+type ChartWorkspaceProps = { asset: MarketAsset; onOpenMarkets: () => void }
 const timeframes = ['1m', '5m', '15m', '30m', '1H', '4H', '1D']
 
 function ChartCanvas({ asset, timeframe, crosshairEnabled }: { asset: MarketAsset; timeframe: string; crosshairEnabled: boolean }) {
@@ -49,7 +49,7 @@ function ChartCanvas({ asset, timeframe, crosshairEnabled }: { asset: MarketAsse
   return <div className="chart-canvas-shell"><div ref={containerRef} className="chart-canvas" role="img" aria-label={asset.symbol + ' candlestick market chart'} /><div className="chart-attribution">Demo OHLC</div></div>
 }
 
-export function ChartWorkspace({ asset }: ChartWorkspaceProps) {
+export function ChartWorkspace({ asset, onOpenMarkets }: ChartWorkspaceProps) {
   const [timeframe, setTimeframe] = useState('5m')
   const [crosshairEnabled, setCrosshairEnabled] = useState(true)
   const workspaceRef = useRef<HTMLElement>(null)
@@ -64,32 +64,25 @@ export function ChartWorkspace({ asset }: ChartWorkspaceProps) {
 
   return (
     <section ref={workspaceRef} className="chart-workspace panel">
-      <div className="chart-toolbar">
-        <div className="chart-asset-title">
+      <div className="simple-chart-toolbar">
+        <button className="market-trigger" type="button" onClick={onOpenMarkets} aria-label="Choose market" title="Choose market">
           <span className={'asset-icon asset-icon--' + asset.accent} aria-hidden="true">{asset.symbol.slice(0, 1)}</span>
-          <div><strong>{asset.symbol}</strong><span>{asset.name}</span></div>
-          <div className="chart-asset-meta"><strong>{price}</strong><span className={changeClass}>{formatPercent(asset.change)} 24h</span></div>
-        </div>
+          <span className="market-trigger__copy"><strong>{asset.symbol}</strong><small>{asset.name}</small></span>
+          <span className="market-trigger__price"><strong>{price}</strong><small className={changeClass}>{formatPercent(asset.change)} 24h</small></span>
+          <ChevronDown size={14} />
+        </button>
         <div className="chart-timeframes" aria-label="Chart timeframe">
           {timeframes.map((value) => <button className={timeframe === value ? 'timeframe timeframe--active' : 'timeframe'} key={value} onClick={() => setTimeframe(value)} type="button" aria-pressed={timeframe === value}>{value}</button>)}
         </div>
         <div className="chart-tools" aria-label="Chart controls">
-          <button className="chart-tool-button chart-tool-button--type" type="button" title="Chart type"><CandlestickChart size={15} /><span>Candles</span><ChevronDown size={12} /></button>
           <IconButton label={crosshairEnabled ? 'Disable crosshair' : 'Enable crosshair'} active={crosshairEnabled} className="chart-tool-icon" onClick={() => setCrosshairEnabled((value) => !value)}><Crosshair size={15} /></IconButton>
           <IconButton label="Chart settings" className="chart-tool-icon"><Settings2 size={15} /></IconButton>
           <IconButton label="Fullscreen chart" className="chart-tool-icon" onClick={handleFullscreen}><Maximize2 size={15} /></IconButton>
           <IconButton label="More chart options" className="chart-tool-icon"><MoreHorizontal size={15} /></IconButton>
         </div>
       </div>
-      <div className="indicator-strip">
-        <span className="indicator-chip"><b>EMA 20</b><small>Preview</small></span>
-        <span className="indicator-chip"><b>RSI 14</b><small>Preview</small></span>
-        <span className="indicator-chip"><b>VOL</b><small>Preview</small></span>
-        <span className="indicator-strip__spacer" />
-        <span className="indicator-market-status"><i className="live-dot" /> Demo feed</span>
-      </div>
       <div className="chart-stage"><ChartCanvas asset={asset} timeframe={timeframe} crosshairEnabled={crosshairEnabled} /><div className="chart-price-tag"><span>{price}</span><small>{formatPercent(asset.change)}</small></div></div>
-      <div className="chart-bottom-status"><span><i className="live-dot" /> Simulated market</span><span>{timeframe}</span><span>Demo OHLC</span><span className="chart-bottom-status__spacer" /><span className="chart-help-text">Scroll to zoom · drag to pan</span></div>
+      <div className="chart-bottom-status"><span><i className="live-dot" /> Demo market</span><span>{timeframe}</span><span className="chart-bottom-status__spacer" /><span className="chart-help-text">Scroll to zoom · drag to pan</span></div>
     </section>
   )
 }
