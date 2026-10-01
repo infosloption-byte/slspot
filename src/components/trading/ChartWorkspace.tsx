@@ -1,6 +1,6 @@
 import { CandlestickChart, ChevronDown, Maximize2, MoreHorizontal, Settings2 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { CandlestickSeries, CrosshairMode, createChart, type IChartApi, type UTCTimestamp } from 'lightweight-charts'
+import { CandlestickSeries, ColorType, CrosshairMode, createChart, type IChartApi } from 'lightweight-charts'
 import type { MarketAsset } from '../../data/mockMarket'
 import { generateMockCandles } from '../../data/mockCandles'
 import { formatPrice } from '../../lib/format'
@@ -27,7 +27,7 @@ function ChartCanvas({ asset, timeframe }: { asset: MarketAsset; timeframe: stri
       width: container.clientWidth,
       height: container.clientHeight,
       layout: {
-        background: { type: 'solid', color: 'transparent' },
+        background: { type: ColorType.Solid, color: 'transparent' },
         textColor: '#536770',
         attributionLogo: false,
       },
