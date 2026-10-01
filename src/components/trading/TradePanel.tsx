@@ -66,8 +66,8 @@ export function TradePanel({ asset }: TradePanelProps) {
         </div>
         <div className="trade-dock__payout"><span>Potential return</span><strong>+${estimatedPayout.toFixed(2)}</strong><small>82% demo rate · ${totalReturn.toFixed(2)} total</small></div>
         <div className="trade-dock__actions" aria-label="Trade direction">
-          <button className="trade-dock__action trade-dock__action--up" type="button" onClick={() => requestPreview('UP')} disabled={stage === 'confirming' || Boolean(validate())}><TrendingUp size={18} /><span>UP</span><small>Higher</small></button>
-          <button className="trade-dock__action trade-dock__action--down" type="button" onClick={() => requestPreview('DOWN')} disabled={stage === 'confirming' || Boolean(validate())}><TrendingDown size={18} /><span>DOWN</span><small>Lower</small></button>
+          <button className="trade-dock__action trade-dock__action--up" type="button" onClick={() => requestPreview('UP')} disabled={stage === 'confirming'}><TrendingUp size={18} /><span>UP</span><small>Higher</small></button>
+          <button className="trade-dock__action trade-dock__action--down" type="button" onClick={() => requestPreview('DOWN')} disabled={stage === 'confirming'}><TrendingDown size={18} /><span>DOWN</span><small>Lower</small></button>
         </div>
         <div className="trade-dock__caption"><span>{asset.symbol}</span><span><i className="live-dot" /> Demo pricing</span></div>
       </section>
