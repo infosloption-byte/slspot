@@ -188,19 +188,119 @@ function PortfolioPage() {
   )
 }
 
+
+
+const walletTransactions = [
+  { id: 'W-102', label: 'Demo balance credit', type: 'Deposit', amount: '+$500.00', status: 'Completed', time: 'Today, 09:42', positive: true },
+  { id: 'W-101', label: 'Demo withdrawal', type: 'Withdrawal', amount: '-$120.00', status: 'Pending', time: 'Yesterday, 18:20', positive: false },
+  { id: 'W-099', label: 'Trading fee', type: 'Fee', amount: '-$2.40', status: 'Completed', time: 'Yesterday, 16:05', positive: false },
+  { id: 'W-097', label: 'Demo balance credit', type: 'Deposit', amount: '+$750.00', status: 'Completed', time: 'Sep 29, 11:14', positive: true },
+]
+
+const tradeHistory = [
+  { id: 'SL-4809', symbol: 'SOL/USD', side: 'UP', amount: '$50.00', result: 'Won', pnl: '+$41.00', time: '2 min ago', positive: true },
+  { id: 'SL-4802', symbol: 'BTC/USD', side: 'DOWN', amount: '$25.00', result: 'Lost', pnl: '-$25.00', time: '8 min ago', positive: false },
+  { id: 'SL-4796', symbol: 'EUR/USD', side: 'UP', amount: '$100.00', result: 'Won', pnl: '+$82.00', time: '14 min ago', positive: true },
+  { id: 'SL-4788', symbol: 'ETH/USD', side: 'UP', amount: '$75.00', result: 'Won', pnl: '+$61.50', time: '22 min ago', positive: true },
+  { id: 'SL-4771', symbol: 'BTC/USD', side: 'UP', amount: '$40.00', result: 'Lost', pnl: '-$40.00', time: '41 min ago', positive: false },
+]
+
+function PageHeader({ eyebrow, title, description, action = 'Open trading room' }: { eyebrow: string; title: string; description: string; action?: string }) {
+  return <header className="workspace-page__header"><div><div className="eyebrow">{eyebrow}</div><h1>{title}</h1><p>{description}</p></div><Link className="workspace-page__action" to="/app/trading"><BarChart3 size={15} /> {action} <ArrowUpRight size={14} /></Link></header>
+}
+
+function WalletPage() {
+  return <div className="workspace-page"><PageHeader eyebrow="Funds" title="Wallet" description="Track your demo balance, funding activity and account ledger." action="Back to trading" />
+    <div className="dashboard-stats">
+      {[
+        ['Available balance','$12,480.65','Demo balance',WalletCards],
+        ['Available to trade','$11,240.65','90.1% liquid',DollarSign],
+        ['Pending','$120.00','Withdrawal',Clock3],
+        ['This month','+$1,284.40','Net activity',TrendingUp],
+      ].map(([label,value,note,Icon]) => <section className="dashboard-stat panel" key={String(label)}><div className="dashboard-stat__top"><span>{label}</span><span className="dashboard-stat__icon"><Icon size={15} /></span></div><strong>{value}</strong><small className={label === 'Pending' ? 'text-negative' : label === 'This month' ? 'text-positive' : ''}>{note}</small></section>)}
+    </div>
+    <section className="dashboard-card panel"><div className="dashboard-card__header"><div><span className="eyebrow">Ledger</span><h2>Wallet activity</h2></div><span className="status-pill status-pill--pending">DEMO DATA</span></div>
+      <div className="data-table"><div className="data-table__row data-table__row--header"><span>Activity</span><span>Type</span><span>Amount</span><span>Status</span><span>Time</span></div>
+      {walletTransactions.map(item => <div className="data-table__row" key={item.id}><div><strong>{item.label}</strong><small>{item.id}</small></div><span>{item.type}</span><strong className={item.positive ? 'text-positive' : 'text-negative'}>{item.amount}</strong><span className={item.status === 'Pending' ? 'status-pill status-pill--pending' : 'status-pill status-pill--positive'}>{item.status}</span><small>{item.time}</small></div>)}</div>
+      <div className="dashboard-note"><WalletCards size={14} /> Deposits, withdrawals and balance changes will become server-authoritative when the wallet API is connected.</div>
+    </section>
+  </div>
+}
+
+function HistoryPage() {
+  return <div className="workspace-page"><PageHeader eyebrow="Records" title="Trade history" description="Review completed demo trades, outcomes and settlement details." />
+    <div className="history-toolbar panel"><div className="history-filter"><span>Period</span>{['All time','Today','7 days'].map((item,i)=><button key={item} type="button" className={i === 0 ? 'filter-chip filter-chip--active' : 'filter-chip'}>{item}</button>)}</div><span className="status-pill status-pill--pending">DEMO RECORDS</span></div>
+    <section className="dashboard-card panel"><div className="data-table"><div className="data-table__row data-table__row--header"><span>Trade</span><span>Side</span><span>Amount</span><span>Result</span><span>P&amp;L</span></div>{tradeHistory.map(item => <div className="data-table__row" key={item.id}><div><strong>{item.symbol}</strong><small>{item.id} · {item.time}</small></div><span className={item.side === 'UP' ? 'side-label side-label--up' : 'side-label side-label--down'}>{item.side}</span><span>{item.amount}</span><span className={item.positive ? 'status-pill status-pill--positive' : 'status-pill status-pill--negative'}>{item.result}</span><strong className={item.positive ? 'text-positive' : 'text-negative'}>{item.pnl}</strong></div>)}</div></section>
+  </div>
+}
+
+function AlertsPage() {
+  const alerts = [
+    ['TR','Trade settled','SOL/USD UP position settled with a +$41.00 demo return.','2 min ago',true],
+    ['MK','Market movement','BTC/USD moved +1.82% in the current demo session.','18 min ago',true],
+    ['SE','Security reminder','Two-factor authentication is not enabled on this demo account.','1 hr ago',false],
+    ['SY','System update','Realtime notifications will be enabled with the server integration.','Yesterday',false],
+  ]
+  return <div className="workspace-page"><PageHeader eyebrow="Activity" title="Notifications" description="Trade, market and security events appear here in chronological order." />
+    <div className="notification-layout"><section className="dashboard-card panel"><div className="dashboard-card__header"><div><span className="eyebrow">Inbox</span><h2>Recent activity</h2></div><span className="status-pill status-pill--pending">2 UNREAD</span></div>
+      <div className="notification-list">{alerts.map(([icon,title,copy,time,unread]) => <div className={unread ? 'notification-item notification-item--unread' : 'notification-item'} key={String(title)}><span className="notification-item__icon">{icon}</span><div><strong>{title}</strong><p>{copy}</p><small>{time}</small></div><span className="notification-dot" /></div>)}</div>
+    </section><aside className="dashboard-card panel"><div className="dashboard-card__header"><div><span className="eyebrow">Preferences</span><h2>Alert channels</h2></div></div>
+      {['Trade results','Price movement','Security events','Product updates'].map((label,index)=><div className="setting-row" key={label}><div><strong>{label}</strong><small>{index === 3 ? 'Occasional product news' : 'Demo notifications'}</small></div><span className={index === 2 ? 'toggle toggle--on' : 'toggle'}><span /></span></div>)}
+    </aside></div>
+  </div>
+}
+
+function SecurityPage() {
+  return <div className="workspace-page"><PageHeader eyebrow="Account protection" title="Security" description="Manage sign-in protection, active sessions and security events." action="Account overview" />
+    <div className="security-banner panel"><span className="security-banner__icon"><WalletCards size={17} /></span><div><strong>Demo security profile</strong><p>Authentication is not connected yet. These controls preview the production security experience.</p></div><span className="status-pill status-pill--pending">NOT CONNECTED</span></div>
+    <div className="settings-grid"><section className="dashboard-card panel"><div className="dashboard-card__header"><div><span className="eyebrow">Sign-in</span><h2>Authentication</h2></div></div>
+      {[
+        ['Two-factor authentication','Add a second step to protect account access.','Enable 2FA'],
+        ['Password','Last changed 18 days ago.','Change'],
+      ].map(([title,copy,action])=><div className="setting-row" key={title}><div><strong>{title}</strong><small>{copy}</small></div><button type="button" className="setting-button">{action}</button></div>)}
+      <div className="setting-row"><div><strong>Login alerts</strong><small>Notify when a new device signs in.</small></div><span className="toggle toggle--on"><span /></span></div>
+    </section><section className="dashboard-card panel"><div className="dashboard-card__header"><div><span className="eyebrow">Sessions</span><h2>Active devices</h2></div></div>
+      <div className="session-item"><span className="session-item__icon"><BarChart3 size={15} /></span><div><strong>Current browser</strong><small>Windows · Chrome · Active now</small></div><span className="status-pill status-pill--positive">CURRENT</span></div>
+      <div className="session-item"><span className="session-item__icon"><Clock3 size={15} /></span><div><strong>Demo mobile session</strong><small>Mobile browser · 2 days ago</small></div><button type="button" className="setting-button setting-button--danger">Revoke</button></div>
+    </section></div>
+  </div>
+}
+
+function AccountPage() {
+  return <div className="workspace-page"><PageHeader eyebrow="Preferences" title="Account" description="Manage your profile and workspace preferences." action="Back to trading" />
+    <div className="account-layout"><section className="dashboard-card panel"><div className="dashboard-card__header"><div><span className="eyebrow">Profile</span><h2>Personal details</h2></div></div>
+      <div className="profile-card"><span className="profile-avatar">DT</span><div><strong>Demo Trader</strong><small>demo@slspot.local</small></div><span className="status-pill status-pill--positive">VERIFIED DEMO</span></div>
+      <div className="form-grid"><label><span>Display name</span><input defaultValue="Demo Trader" /></label><label><span>Email</span><input defaultValue="demo@slspot.local" type="email" /></label><label><span>Timezone</span><select defaultValue="Asia/Colombo"><option>Asia/Colombo</option><option>UTC</option><option>Europe/London</option></select></label><label><span>Currency</span><select defaultValue="USD"><option>USD</option><option>EUR</option><option>GBP</option></select></label></div>
+      <button type="button" className="setting-button setting-button--primary">Save changes</button>
+    </section><aside className="dashboard-card panel"><div className="dashboard-card__header"><div><span className="eyebrow">Preferences</span><h2>Workspace</h2></div></div>
+      {['Compact trading layout','Price movement alerts','Sound effects'].map((label,index)=><div className="setting-row" key={label}><div><strong>{label}</strong><small>{index === 0 ? 'Use dense panels and tables.' : 'Demo preference.'}</small></div><span className={index < 2 ? 'toggle toggle--on' : 'toggle'}><span /></span></div>)}
+      <div className="dashboard-note"><Clock3 size={14} /> Changes are visual only until account preferences are connected to the API.</div>
+    </aside></div>
+  </div>
+}
+
+function SupportPage() {
+  const faqs = [
+    ['How do I place a trade?','Open the Trading Room, choose an asset, set the duration and amount, then review the confirmation before submitting.'],
+    ['Where can I see open positions?','Open positions and recent activity are available in the bottom activity panel of the Trading Room.'],
+    ['Are the displayed balances real?','No. This frontend milestone uses demo values only. Real balances will come from the authenticated wallet service.'],
+    ['When will deposits be available?','Funding flows will be added with the wallet and payment backend integration.'],
+  ]
+  return <div className="workspace-page"><PageHeader eyebrow="Help center" title="Support" description="Find quick answers about the current trading workspace." />
+    <div className="support-layout"><section className="dashboard-card panel"><div className="dashboard-card__header"><div><span className="eyebrow">Common questions</span><h2>Getting started</h2></div></div>
+      <div className="faq-list">{faqs.map(([question,answer])=><details key={question}><summary>{question}<ArrowUpRight size={13} /></summary><p>{answer}</p></details>)}</div>
+    </section><aside className="dashboard-card panel support-contact"><div className="dashboard-card__header"><div><span className="eyebrow">Need help?</span><h2>Contact support</h2></div></div><p>Support messaging will be connected after the account and realtime services are available.</p><button type="button" className="setting-button setting-button--primary">Start conversation</button><div className="dashboard-note"><Clock3 size={14} /> Typical response target: under 1 business day.</div></aside></div>
+  </div>
+}
+
 export function WorkspacePage(props: WorkspacePageProps) {
   if (props.title === 'Dashboard') return <DashboardPage />
   if (props.title === 'Performance') return <PortfolioPage />
   if (props.title === 'Wallet') return <WalletPage />
   if (props.title === 'Trade history') return <HistoryPage />
-  if (props.title === 'Notifications') return <NotificationsPage />
+  if (props.title === 'Notifications') return <AlertsPage />
   if (props.title === 'Security') return <SecurityPage />
   if (props.title === 'Account') return <AccountPage />
   if (props.title === 'Support') return <SupportPage />
-  return (
-    <div className="workspace-page">
-      <header className="workspace-page__header"><div><div className="eyebrow">{props.eyebrow}</div><h1>{props.title}</h1><p>{props.description}</p></div><Link className="workspace-page__action" to="/app/trading"><BarChart3 size={15} /> Open trading room <ArrowUpRight size={14} /></Link></header>
-      <div className="workspace-page__grid"><section className="workspace-card"><div className="workspace-card__icon"><BarChart3 size={17} /></div><div><strong>Frontend V1 foundation</strong><span>This route is part of the application shell and ready for its data-backed feature set.</span></div></section><section className="workspace-card"><div className="workspace-card__icon"><Clock3 size={17} /></div><div><strong>Server data not connected</strong><span>Financial values remain non-authoritative until the API, authentication, and ledger layers exist.</span></div></section></div>
-    </div>
-  )
+  return <div className="workspace-page"><PageHeader eyebrow={props.eyebrow} title={props.title} description={props.description} /></div>
 }
