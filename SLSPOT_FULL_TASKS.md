@@ -151,36 +151,36 @@ Create reusable primitives:
 
 ## 3.1 Public routes
 
-- [ ] `/`
-- [ ] `/login`
-- [ ] `/register`
-- [ ] `/forgot-password`
-- [ ] `/reset-password`
-- [ ] `/verify-email`
-- [ ] `/2fa`
+- [x] `/`
+- [x] `/login`
+- [x] `/register`
+- [x] `/forgot-password`
+- [x] `/reset-password`
+- [x] `/verify-email`
+- [x] `/2fa`
 
 ## 3.2 Authenticated routes
 
-- [ ] `/app`
-- [ ] `/app/trading`
-- [ ] `/app/dashboard`
-- [ ] `/app/portfolio`
-- [ ] `/app/wallet`
-- [ ] `/app/history`
-- [ ] `/app/alerts`
-- [ ] `/app/account`
-- [ ] `/app/security`
-- [ ] `/app/support`
+- [x] `/app`
+- [x] `/app/trading`
+- [x] `/app/dashboard`
+- [x] `/app/portfolio`
+- [x] `/app/wallet`
+- [x] `/app/history`
+- [x] `/app/alerts`
+- [x] `/app/account`
+- [x] `/app/security`
+- [x] `/app/support`
 
 ## 3.3 Route behavior
 
-- [ ] Active navigation state.
+- [x] Active navigation state.
 - [ ] Not-found page.
 - [ ] Unauthorized state.
 - [ ] Forbidden state.
 - [ ] Loading route state.
 - [ ] Protected route boundary.
-- [ ] Redirect rules.
+- [x] Redirect rules.
 
 ---
 
@@ -195,7 +195,7 @@ Create reusable primitives:
 - [x] Order panel.
 - [x] Bottom panel.
 - [x] Responsive base.
-- [ ] Convert navigation buttons to real routes.
+- [x] Convert navigation buttons to real routes.
 - [ ] Add mobile navigation behavior.
 - [ ] Add keyboard shortcuts.
 - [ ] Add global loading state.
@@ -205,12 +205,12 @@ Create reusable primitives:
 
 - [x] Mock asset list.
 - [x] Asset selection.
-- [ ] Search.
-- [ ] Favorites.
-- [ ] Favorite persistence.
+- [x] Search.
+- [x] Favorites.
+- [x] Favorite persistence.
 - [ ] Categories.
-- [ ] Crypto filter.
-- [ ] FX filter.
+- [x] Crypto filter.
+- [x] FX filter.
 - [ ] Stocks filter.
 - [ ] Commodities filter.
 - [ ] Indices filter.
@@ -222,26 +222,26 @@ Create reusable primitives:
 - [ ] Market status.
 - [ ] Mobile asset picker.
 - [ ] Loading state.
-- [ ] Empty state.
+- [x] Empty state.
 - [ ] Error state.
 
 ## 4.3 Chart
 
-- [ ] Add Lightweight Charts.
-- [ ] Replace SVG sample chart.
-- [ ] Candlestick series.
-- [ ] OHLC data model.
+- [x] Add Lightweight Charts.
+- [x] Replace SVG sample chart.
+- [x] Candlestick series.
+- [x] OHLC data model.
 - [ ] Timeframe switching.
-- [ ] 1m.
-- [ ] 5m.
-- [ ] 15m.
-- [ ] 30m.
-- [ ] 1H.
-- [ ] 4H.
-- [ ] 1D.
-- [ ] Crosshair.
-- [ ] Zoom.
-- [ ] Pan.
+- [x] 1m.
+- [x] 5m.
+- [x] 15m.
+- [x] 30m.
+- [x] 1H.
+- [x] 4H.
+- [x] 1D.
+- [x] Crosshair.
+- [x] Zoom.
+- [x] Pan.
 - [ ] Volume.
 - [ ] Fullscreen.
 - [ ] Chart settings.
@@ -313,7 +313,7 @@ Architecture:
 - [ ] Min/max enforcement from server configuration.
 - [ ] Decimal rules.
 - [ ] Currency display.
-- [ ] Invalid amount state.
+- [x] Invalid amount state.
 
 ## 5.3 Duration UX
 
@@ -340,13 +340,13 @@ Architecture:
 
 ## 5.5 Submission safety
 
-- [ ] Disable duplicate submission.
+- [x] Disable duplicate submission.
 - [ ] Client request ID.
 - [ ] Server idempotency key.
-- [ ] Pending state.
+- [x] Pending state.
 - [ ] Retry policy.
-- [ ] Error recovery.
-- [ ] Confirmation UI.
+- [x] Error recovery.
+- [x] Confirmation UI.
 
 ---
 

@@ -55,3 +55,8 @@ npm run build
 - Account & security
 - Support
 - Admin workspace (separate application boundary later)
+
+
+## Frontend V1 progress
+
+The current frontend now has real application routes, functional watchlist search/category/favorites, a candlestick chart powered by Lightweight Charts, and a validated demo-order confirmation flow. Real authentication, market data, financial execution, wallet authority, and server-backed state remain intentionally pending.
