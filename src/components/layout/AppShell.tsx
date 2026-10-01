@@ -8,8 +8,13 @@ import { BottomPanel } from './BottomPanel'
 import { marketAssets } from '../../data/mockMarket'
 
 export function AppShell() {
-  const [selectedSymbol, setSelectedSymbol] = useState(marketAssets[0].symbol)
-  const selectedAsset = marketAssets.find((asset) => asset.symbol === selectedSymbol) ?? marketAssets[0]
+  const initialAsset = marketAssets[0]
+  if (!initialAsset) {
+    throw new Error('Market asset list is empty')
+  }
+
+  const [selectedSymbol, setSelectedSymbol] = useState(initialAsset.symbol)
+  const selectedAsset = marketAssets.find((asset) => asset.symbol === selectedSymbol) ?? initialAsset
 
   return (
     <div className="app-shell">
