@@ -1,5 +1,5 @@
 import { CheckCircle2, ChevronDown, Minus, Plus, ShieldAlert, Timer, TrendingDown, TrendingUp, X } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { MarketAsset } from '../../data/mockMarket'
 
 type TradePanelProps = { asset: MarketAsset }
@@ -25,6 +25,7 @@ export function TradePanel({ asset }: TradePanelProps) {
   const [direction, setDirection] = useState<PreviewDirection | null>(null)
   const [stage, setStage] = useState<OrderStage>('draft')
   const [error, setError] = useState('')
+  const durationRef = useRef<HTMLDivElement>(null)
   const estimatedPayout = amount * PAYOUT_RATE
   const totalReturn = amount + estimatedPayout
 
@@ -34,6 +35,29 @@ export function TradePanel({ asset }: TradePanelProps) {
     if (amount > BALANCE) return 'Stake exceeds the current demo balance.'
     return ''
   }
+
+  useEffect(() => {
+    if (!durationOpen && stage !== 'confirming' && !error) return
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return
+      if (durationOpen) setDurationOpen(false)
+      if (stage === 'confirming') resetOrder()
+      if (error) setError('')
+    }
+    const handlePointerDown = (event: PointerEvent) => {
+      if (durationOpen && durationRef.current && !durationRef.current.contains(event.target as Node)) {
+        setDurationOpen(false)
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    document.addEventListener('pointerdown', handlePointerDown)
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+      document.removeEventListener('pointerdown', handlePointerDown)
+    }
+  }, [durationOpen, stage, error])
 
   const resetOrder = () => { setDirection(null); setStage('draft'); setError('') }
   const requestPreview = (nextDirection: PreviewDirection) => {
@@ -59,9 +83,9 @@ export function TradePanel({ asset }: TradePanelProps) {
           <label>Stake</label>
           <div className="trade-dock__stepper"><button type="button" onClick={() => adjustAmount(-10)} aria-label="Decrease stake"><Minus size={14} /></button><div><span>$</span><input value={amount} onChange={(event) => { setAmount(Number(event.target.value) || 0); resetOrder() }} type="number" inputMode="decimal" min={MIN_AMOUNT} max={MAX_AMOUNT} aria-label="Stake amount" /></div><button type="button" onClick={() => adjustAmount(10)} aria-label="Increase stake"><Plus size={14} /></button></div>
         </div>
-        <div className="trade-dock__field trade-dock__field--duration">
+        <div className="trade-dock__field trade-dock__field--duration" ref={durationRef}>
           <label>Duration</label>
-          <button className="trade-dock__select" type="button" onClick={() => setDurationOpen((open) => !open)} aria-expanded={durationOpen}><Timer size={14} /><strong>{formatDuration(duration)}</strong><ChevronDown size={13} /></button>
+          <button className="trade-dock__select" type="button" onClick={() => setDurationOpen((open) => !open)} aria-expanded={durationOpen} aria-haspopup="dialog" aria-label={"Duration " + formatDuration(duration)}><Timer size={14} /><strong>{formatDuration(duration)}</strong><ChevronDown size={13} /></button>
           {durationOpen && <div className="duration-popover" role="dialog" aria-label="Choose duration"><div className="duration-popover__header"><span>Expiry</span><button type="button" onClick={() => setDurationOpen(false)} aria-label="Close duration selector"><X size={13} /></button></div><div className="duration-popover__grid">{durations.map((value) => <button key={value} className={duration === value ? 'duration-option duration-option--active' : 'duration-option'} type="button" onClick={() => chooseDuration(value)}>{formatDuration(value)}</button>)}</div></div>}
         </div>
         <div className="trade-dock__payout"><span>Potential return</span><strong>+${estimatedPayout.toFixed(2)}</strong><small>82% demo rate · ${totalReturn.toFixed(2)} total</small></div>
