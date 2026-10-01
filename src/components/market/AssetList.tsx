@@ -1,4 +1,4 @@
-import { Search, Star, SlidersHorizontal } from 'lucide-react'
+import { Search, Star } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { marketAssets, type MarketAsset } from '../../data/mockMarket'
 import { formatPercent, formatPrice } from '../../lib/format'
@@ -62,9 +62,7 @@ export function AssetList({ selected, onSelect }: AssetListProps) {
             <span className="asset-count">{marketAssets.length}</span>
           </div>
         </div>
-        <button className="quiet-button" type="button" aria-label="Market filters" title="Market filters">
-          <SlidersHorizontal size={15} />
-        </button>
+        <span className="asset-panel__status"><span className="live-dot" /> Demo feed</span>
       </div>
 
       <label className="market-search">
