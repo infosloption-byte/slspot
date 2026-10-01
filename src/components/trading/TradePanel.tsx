@@ -42,7 +42,10 @@ export function TradePanel({ asset }: TradePanelProps) {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return
       if (durationOpen) setDurationOpen(false)
-      if (stage === 'confirming') resetOrder()
+      if (stage === 'confirming') {
+        setDirection(null)
+        setStage('draft')
+      }
       if (error) setError('')
     }
     const handlePointerDown = (event: PointerEvent) => {
