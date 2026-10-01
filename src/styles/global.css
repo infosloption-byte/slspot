@@ -1022,3 +1022,267 @@ h2 { margin: 0; font-size: 15px; letter-spacing: -0.02em; }
   .trade-dock__balance { align-items:flex-start; flex-direction:column; gap:2px; }
   .trade-dock__actions .trade-dock__action { min-height:60px; }
 }
+
+/* Compact trading polish + responsive audit */
+.trading-room .chart-workspace {
+  border-color: rgba(196,229,240,.10);
+  box-shadow: 0 14px 42px rgba(0,0,0,.18);
+}
+.simple-chart-toolbar {
+  min-height: 60px;
+  padding: 8px 10px;
+  gap: 9px;
+  background: linear-gradient(180deg, rgba(18,35,44,.72), rgba(13,27,36,.4));
+}
+.market-trigger {
+  min-width: 0;
+  max-width: 300px;
+  flex: 0 1 300px;
+  min-height: 42px;
+  border-color: rgba(196,229,240,.10);
+  background: rgba(255,255,255,.025);
+}
+.market-trigger:focus-visible,
+.trade-dock__select:focus-visible,
+.trade-dock__stepper:focus-within {
+  border-color: rgba(85,219,203,.28);
+}
+.simple-chart-toolbar .chart-timeframes {
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.simple-chart-toolbar .chart-timeframes::-webkit-scrollbar { display:none; }
+.simple-chart-toolbar .timeframe {
+  flex: 0 0 auto;
+  min-width: 36px;
+  padding-inline: 7px;
+}
+.simple-chart-toolbar .chart-tools { gap: 2px; }
+.trading-room .chart-bottom-status {
+  background: rgba(5,11,16,.16);
+}
+.trade-dock {
+  overflow: visible;
+  min-height: 80px;
+  border-color: rgba(196,229,240,.10);
+  box-shadow: 0 12px 36px rgba(0,0,0,.16);
+}
+.trade-dock__balance {
+  padding-inline: 2px;
+}
+.trade-dock__balance strong,
+.trade-dock__payout strong {
+  letter-spacing: -.015em;
+}
+.trade-dock__payout small {
+  white-space:normal;
+  line-height:1.35;
+}
+.trade-dock__action {
+  transition: transform 140ms ease, border-color 140ms ease, background 140ms ease;
+}
+.trade-dock__action:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+.bottom-panel--collapsed {
+  background: linear-gradient(180deg, rgba(13,27,36,.92), rgba(9,19,26,.92));
+}
+.bottom-panel--collapsed .bottom-panel__tabs {
+  min-height: 44px;
+}
+.activity-toggle {
+  border-color: rgba(196,229,240,.10);
+}
+.duration-popover {
+  max-width: calc(100vw - 24px);
+}
+
+@media (max-width: 1100px) {
+  .trading-room {
+    grid-template-rows: minmax(450px, 1fr) auto auto;
+  }
+  .trade-dock {
+    grid-template-columns: 145px minmax(155px, 1fr) 150px minmax(210px, 1.1fr) minmax(210px, 1.15fr);
+  }
+}
+
+@media (max-width: 900px) {
+  .sidebar {
+    width: 64px;
+    padding-inline: 9px;
+  }
+  .topbar {
+    padding-inline: 12px;
+  }
+  .simple-chart-toolbar {
+    flex-wrap: wrap;
+    min-height: 94px;
+    gap: 6px;
+    padding: 8px 9px 7px;
+  }
+  .market-trigger {
+    flex: 1 1 210px;
+    max-width: 260px;
+  }
+  .simple-chart-toolbar .chart-tools {
+    margin-left: auto;
+  }
+  .simple-chart-toolbar .chart-timeframes {
+    order: 3;
+    flex: 1 0 100%;
+    padding-top: 1px;
+    border-top: 1px solid rgba(196,229,240,.06);
+  }
+  .trade-dock {
+    grid-template-columns: minmax(0,1fr) minmax(0,1fr) minmax(0,1.08fr);
+    gap: 8px;
+    padding: 9px 10px;
+  }
+  .trade-dock__balance {
+    grid-column: 1 / -1;
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    gap:10px;
+  }
+  .trade-dock__actions {
+    grid-column: 1 / -1;
+  }
+  .trade-dock__caption {
+    display:none;
+  }
+}
+
+@media (max-width: 760px) {
+  .topbar {
+    height: 62px;
+  }
+  .trading-room {
+    min-height: unset;
+    grid-template-rows: 360px auto auto;
+    padding: 6px;
+    gap: 7px;
+  }
+  .trading-room .chart-workspace {
+    min-height: 360px;
+  }
+  .trade-dock {
+    grid-template-columns: minmax(0,1fr) minmax(0,1fr);
+  }
+  .trade-dock__balance,
+  .trade-dock__payout,
+  .trade-dock__actions {
+    grid-column: 1 / -1;
+  }
+  .trade-dock__payout {
+    display:grid;
+    grid-template-columns:1fr auto;
+    align-items:center;
+    gap:2px 10px;
+  }
+  .trade-dock__payout > span {
+    margin:0;
+    align-self:end;
+  }
+  .trade-dock__payout strong {
+    grid-row:1 / span 2;
+    grid-column:2;
+    font-size:15px;
+  }
+  .trade-dock__payout small {
+    grid-column:1;
+  }
+  .trade-modal {
+    padding:14px;
+  }
+  .market-picker {
+    padding:8px;
+  }
+}
+
+@media (max-width: 600px) {
+  .topbar {
+    gap: 6px;
+    padding-inline: 8px;
+  }
+  .trading-room .chart-workspace {
+    border-radius: 12px;
+  }
+  .simple-chart-toolbar {
+    min-height: 90px;
+  }
+  .market-trigger {
+    flex: 1 1 calc(100% - 92px);
+    max-width:none;
+  }
+  .market-trigger__copy small {
+    max-width: 120px;
+  }
+  .simple-chart-toolbar .chart-timeframes {
+    padding-bottom:1px;
+  }
+  .trade-dock {
+    border-radius:12px;
+  }
+  .trade-dock__stepper,
+  .trade-dock__select {
+    min-height:40px;
+  }
+  .trade-dock__action {
+    min-height:62px;
+  }
+  .bottom-panel--collapsed .bottom-panel__tabs {
+    padding-inline:7px;
+  }
+  .bottom-tab {
+    height:42px;
+  }
+}
+
+@media (max-width: 420px) {
+  .trading-room {
+    grid-template-rows: 330px auto auto;
+  }
+  .trading-room .chart-workspace {
+    min-height:330px;
+  }
+  .simple-chart-toolbar {
+    min-height:84px;
+  }
+  .market-trigger__price,
+  .market-trigger__copy small {
+    display:none;
+  }
+  .market-trigger {
+    grid-template-columns:30px minmax(0,1fr) 14px;
+    padding-inline:8px;
+  }
+  .simple-chart-toolbar .chart-tools .chart-tool-icon:nth-child(2),
+  .simple-chart-toolbar .chart-tools .chart-tool-icon:nth-child(4) {
+    display:none;
+  }
+  .simple-chart-toolbar .chart-tool-icon {
+    width:30px;
+    min-width:30px;
+    height:30px;
+  }
+  .trade-dock {
+    padding:8px;
+    gap:7px;
+  }
+  .trade-dock__balance {
+    align-items:flex-start;
+    flex-direction:column;
+    gap:2px;
+  }
+  .trade-dock__payout {
+    min-height:58px;
+  }
+  .duration-popover {
+    left:auto;
+    right:0;
+    width:min(220px, calc(100vw - 24px));
+  }
+}
