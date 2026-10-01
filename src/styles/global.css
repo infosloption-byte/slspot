@@ -219,11 +219,25 @@ h2 { margin: 0; font-size: 15px; letter-spacing: -0.02em; }
 }
 
 
-.chart-stage { min-height: 330px; }
-.chart-canvas-shell { position: absolute; inset: 0; }
-.chart-canvas { position: absolute; inset: 0; }
-.chart-attribution { position: absolute; left: 12px; bottom: 7px; z-index: 2; color: var(--muted-2); font-size: 8px; pointer-events: auto; }
-.chart-attribution a { color: var(--muted); }
-.chart-attribution a:hover { color: var(--cyan); }
-.chart-price-tag { z-index: 3; }
-.chart-tool-crosshair { width: 16px; height: 16px; display: grid; place-items: center; font-size: 16px; line-height: 1; }
+.trade-instrument { margin: 0 14px 12px; display: flex; align-items: center; gap: 9px; padding: 10px; border: 1px solid var(--line); border-radius: 11px; background: rgba(255,255,255,.018); }
+.trade-instrument__icon { width: 29px; height: 29px; display: grid; place-items: center; border-radius: 9px; color: var(--cyan); background: rgba(85,219,203,.08); border: 1px solid rgba(85,219,203,.14); font-size: 10px; font-weight: 800; }
+.trade-instrument strong, .trade-instrument span, .trade-instrument small { display: block; }
+.trade-instrument strong { font-size: 11px; }
+.trade-instrument span { color: var(--muted); font-size: 8px; margin-top: 2px; }
+.trade-instrument small { margin-left: auto; color: var(--text); font-size: 10px; }
+.trade-validation { margin: -2px 14px 12px; display: flex; gap: 7px; align-items: flex-start; padding: 9px 10px; border-radius: 9px; font-size: 9px; line-height: 1.45; }
+.trade-validation--error { color: var(--red); border: 1px solid rgba(240,107,120,.18); background: rgba(240,107,120,.05); }
+.trade-confirmation { margin: 0 14px 12px; padding: 11px; border-radius: 11px; border: 1px solid rgba(85,219,203,.16); background: rgba(85,219,203,.05); }
+.trade-confirmation > div:first-child { display: grid; gap: 3px; }
+.trade-confirmation span { color: var(--muted); font-size: 9px; }
+.trade-confirmation strong { color: var(--text); font-size: 11px; }
+.trade-confirmation small { color: var(--muted-2); font-size: 8px; }
+.trade-confirmation__actions { display: flex; gap: 6px; margin-top: 10px; }
+.confirmation-button { min-height: 29px; border-radius: 8px; border: 1px solid var(--line); padding: 0 8px; display: inline-flex; align-items: center; justify-content: center; gap: 5px; font-size: 9px; }
+.confirmation-button--ghost { color: var(--muted); background: rgba(255,255,255,.025); }
+.confirmation-button--primary { flex: 1; color: #032a26; border-color: transparent; background: var(--cyan); font-weight: 800; }
+.trade-confirmation--success { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 9px; color: var(--green); border-color: rgba(82,217,139,.16); background: rgba(82,217,139,.045); }
+.trade-confirmation--success strong, .trade-confirmation--success span { display: block; }
+.trade-confirmation--success strong { color: var(--green); }
+.trade-confirmation--success span { margin-top: 3px; line-height: 1.4; }
+.trade-action:disabled { opacity: .45; cursor: not-allowed; }

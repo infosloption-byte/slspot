@@ -22,7 +22,7 @@ export function AppShell() {
             <ChartWorkspace asset={selectedAsset} />
             <BottomPanel />
           </div>
-          <TradePanel />
+          <TradePanel asset={selectedAsset} />
         </main>
       </div>
     </div>
