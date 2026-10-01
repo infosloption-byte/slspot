@@ -2,6 +2,7 @@ import {
   BarChart3,
   Bell,
   CircleDollarSign,
+  LifeBuoy,
   Gauge,
   LayoutDashboard,
   Settings2,
@@ -68,7 +69,7 @@ export function Sidebar() {
           to="/app/support"
           title="Support"
         >
-          <CircleDollarSign size={14} />
+          <LifeBuoy size={14} />
           <span>Support</span>
         </NavLink>
       </nav>
