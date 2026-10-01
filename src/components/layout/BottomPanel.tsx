@@ -1,4 +1,4 @@
-import { ArrowDownToLine, ArrowUpRight, Clock3, History, WalletCards, X } from 'lucide-react'
+import { ArrowDownToLine, ArrowUpRight, ChevronDown, ChevronUp, Clock3, History, WalletCards, X } from 'lucide-react'
 import { useMemo, useState } from 'react'
 
 type TabId = 'open' | 'history' | 'wallet'
@@ -56,7 +56,9 @@ const tabs: { id: TabId; label: string; icon: typeof Clock3 }[] = [
   { id: 'wallet', label: 'Wallet activity', icon: WalletCards },
 ]
 
-export function BottomPanel({ selectedSymbol }: { selectedSymbol: string }) {
+type BottomPanelProps = { selectedSymbol: string; collapsed: boolean; onToggle: () => void }
+
+export function BottomPanel({ selectedSymbol, collapsed, onToggle }: BottomPanelProps) {
   const [active, setActive] = useState<TabId>('open')
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
@@ -83,8 +85,13 @@ export function BottomPanel({ selectedSymbol }: { selectedSymbol: string }) {
           )
         })}
         <div className="bottom-panel__spacer" />
-        <button className="bottom-link" type="button" title="Export current tab"><ArrowDownToLine size={13} /><span>Export</span></button>
+        {!collapsed && <button className="bottom-link" type="button" title="Export current tab"><ArrowDownToLine size={13} /><span>Export</span></button>}
+        <button className="activity-toggle" type="button" onClick={onToggle} aria-expanded={!collapsed} aria-label={collapsed ? 'Open activity panel' : 'Collapse activity panel'} title={collapsed ? 'Open activity' : 'Collapse activity'}>
+          {collapsed ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+          <span>{collapsed ? 'Activity' : 'Hide'}</span>
+        </button>
       </div>
+      {!collapsed && (
 
       {active === 'open' && (
         <div className="positions-table">
@@ -129,7 +136,8 @@ export function BottomPanel({ selectedSymbol }: { selectedSymbol: string }) {
         </div>
       )}
 
-      {selectedPosition && (
+      )}
+      {!collapsed && selectedPosition && (
         <div className="position-detail">
           <div><span>Selected position</span><strong>#{selectedPosition.id} · {selectedPosition.symbol}</strong></div>
           <div className="position-detail__metrics"><span>Entry <b>{selectedPosition.entry}</b></span><span>Mark <b>{selectedPosition.mark}</b></span><span>Remaining <b>{selectedPosition.duration}</b></span><span className={selectedPosition.positive ? 'text-positive' : 'text-negative'}>P&amp;L <b>{selectedPosition.pnl}</b></span></div>
