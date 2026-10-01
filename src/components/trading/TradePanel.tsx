@@ -21,6 +21,8 @@ export function TradePanel({ asset }: TradePanelProps) {
   const [direction, setDirection] = useState<PreviewDirection | null>(null)
   const [stage, setStage] = useState<OrderStage>('draft')
   const [error, setError] = useState('')
+  const payoutRate = 0.82
+  const estimatedPayout = amount * payoutRate
 
   const validate = () => {
     if (!Number.isFinite(amount) || amount < MIN_AMOUNT || amount > MAX_AMOUNT) {
@@ -145,11 +147,18 @@ export function TradePanel({ asset }: TradePanelProps) {
           <button type="button" onClick={() => adjustDuration(5)} aria-label="Increase duration"><Plus size={15} /></button>
         </div>
       </div>
+      <div className="duration-presets" aria-label="Duration presets">
+        {[15, 30, 60, 300].map((value) => (
+          <button key={value} className={duration === value ? 'preset preset--active' : 'preset'} type="button" onClick={() => { setDuration(value); resetOrder() }}>
+            {value < 60 ? value + 's' : value / 60 + 'm'}
+          </button>
+        ))}
+      </div>
 
       <div className="payout-box">
         <span>Indicative payout</span>
-        <strong>+82%</strong>
-        <small>Preview only. Server will provide authoritative pricing and limits.</small>
+        <strong>+82% <span className="payout-box__amount">+${estimatedPayout.toFixed(2)}</span></strong>
+        <small>Estimated return at the demo rate. Server will provide authoritative pricing and limits.</small>
       </div>
 
       {error && (
@@ -193,7 +202,7 @@ export function TradePanel({ asset }: TradePanelProps) {
           className="trade-action trade-action--up"
           type="button"
           onClick={() => requestPreview('UP')}
-          disabled={stage === 'confirming'}
+          disabled={stage === 'confirming' || Boolean(validate())}
         >
           <span><TrendingUp size={19} /> UP</span>
           <small>Higher</small>
@@ -202,7 +211,7 @@ export function TradePanel({ asset }: TradePanelProps) {
           className="trade-action trade-action--down"
           type="button"
           onClick={() => requestPreview('DOWN')}
-          disabled={stage === 'confirming'}
+          disabled={stage === 'confirming' || Boolean(validate())}
         >
           <span><TrendingDown size={19} /> DOWN</span>
           <small>Lower</small>
