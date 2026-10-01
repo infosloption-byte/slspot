@@ -1,17 +1,19 @@
-import { Search, Star } from 'lucide-react'
+import { Search, Star, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { marketAssets, type MarketAsset } from '../../data/mockMarket'
 import { formatPercent, formatPrice } from '../../lib/format'
 
 type AssetListProps = {
+  open: boolean
   selected: string
   onSelect: (asset: MarketAsset) => void
+  onClose: () => void
 }
 
 const favoriteStorageKey = 'slspot.watchlist.favorites'
 const categories = ['All', 'Crypto', 'FX', 'Fav'] as const
 
-export function AssetList({ selected, onSelect }: AssetListProps) {
+export function AssetList({ open, selected, onSelect, onClose }: AssetListProps) {
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState<(typeof categories)[number]>('All')
   const [favorites, setFavorites] = useState<string[]>(() => {
@@ -27,6 +29,20 @@ export function AssetList({ selected, onSelect }: AssetListProps) {
   useEffect(() => {
     window.localStorage.setItem(favoriteStorageKey, JSON.stringify(favorites))
   }, [favorites])
+
+  useEffect(() => {
+    if (!open) return
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose()
+    }
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    window.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.body.style.overflow = previousOverflow
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [open, onClose])
 
   const filteredAssets = useMemo(() => {
     const normalized = query.trim().toLowerCase()
@@ -52,17 +68,22 @@ export function AssetList({ selected, onSelect }: AssetListProps) {
     ))
   }
 
+  if (!open) return null
+
   return (
-    <section className="asset-panel panel">
+    <div className="market-picker" role="dialog" aria-modal="true" aria-label="Choose a market" onMouseDown={(event) => {
+      if (event.target === event.currentTarget) onClose()
+    }}>
+      <section className="asset-panel panel market-picker__panel">
       <div className="panel__header panel__header--stacked asset-panel__header">
         <div>
           <div className="eyebrow">Markets</div>
           <div className="asset-panel__title-row">
-            <h2>Watchlist</h2>
+            <h2>Choose a market</h2>
             <span className="asset-count">{marketAssets.length}</span>
           </div>
         </div>
-        <span className="asset-panel__status"><span className="live-dot" /> Demo feed</span>
+        <button className="quiet-button" type="button" aria-label="Close market picker" title="Close" onClick={onClose}><X size={16} /></button>
       </div>
 
       <div className="market-search">
@@ -164,9 +185,10 @@ export function AssetList({ selected, onSelect }: AssetListProps) {
       </div>
 
       <div className="panel__footer-note">
-        <span>{filteredAssets.length} shown · demo market data</span>
-        <span className="asset-footer-status"><span className="muted-dot" /> Simulated</span>
+        <span>Click a market to switch the chart</span>
+        <span className="asset-footer-status"><span className="muted-dot" /> Demo feed</span>
       </div>
     </section>
+    </div>
   )
 }
