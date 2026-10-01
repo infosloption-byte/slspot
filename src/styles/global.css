@@ -613,3 +613,49 @@ h2 { margin: 0; font-size: 15px; letter-spacing: -0.02em; }
   .payout-box__rows { grid-template-columns:1fr 1fr; }
   .payout-box__rows div:last-child { grid-column:1 / -1; }
 }
+
+
+/* Trading activity panel refinement */
+.bottom-panel { min-height:185px; display:flex; flex-direction:column; }
+.bottom-panel__tabs { flex:0 0 auto; overflow-x:auto; scrollbar-width:none; }
+.bottom-panel__tabs::-webkit-scrollbar { display:none; }
+.bottom-tab { flex:0 0 auto; }
+.bottom-tab--active { font-weight:700; }
+.bottom-link { padding:7px 9px; border-radius:7px; }
+.bottom-link:hover { color:var(--text); background:rgba(255,255,255,.035); }
+.positions-table,.activity-table { min-height:135px; }
+.position-row { transition:120ms ease; }
+.position-row:not(.position-row--header) { border:1px solid transparent; }
+.position-row:not(.position-row--header):hover { background:rgba(255,255,255,.025); border-color:rgba(255,255,255,.035); }
+.position-row--selected { background:rgba(85,219,203,.045); border-color:rgba(85,219,203,.12) !important; }
+.position-row > span { min-width:0; }
+.position-row > span:nth-child(3), .position-row > span:nth-child(4), .position-row > span:nth-child(5), .position-row > span:nth-child(6) { font-variant-numeric:tabular-nums; }
+.row-action--icon { width:28px; height:28px; justify-content:center; border:1px solid transparent; border-radius:7px; }
+.row-action--icon:hover { color:var(--cyan); background:rgba(85,219,203,.06); border-color:rgba(85,219,203,.12); }
+.activity-empty { min-height:132px; display:grid; place-items:center; align-content:center; gap:5px; padding:20px; color:var(--muted-2); text-align:center; }
+.activity-empty svg { color:var(--muted); margin-bottom:2px; }
+.activity-empty strong { color:var(--text); font-size:10px; }
+.activity-empty span { max-width:260px; font-size:8px; line-height:1.45; }
+.position-detail { grid-template-columns:auto minmax(0,1fr) auto; }
+.position-detail__metrics { display:grid; grid-template-columns:repeat(4,auto); gap:12px; align-items:center; }
+.position-detail__metrics > span { color:var(--muted); font-size:8px; }
+.position-detail__metrics b { display:block; color:var(--text); margin-top:2px; font-size:9px; font-weight:700; font-variant-numeric:tabular-nums; }
+.position-detail .icon-button { width:30px; height:30px; }
+.tab-count { font-variant-numeric:tabular-nums; }
+@media (max-width:980px) {
+  .position-detail { grid-template-columns:1fr auto; }
+  .position-detail__metrics { grid-column:1 / -1; grid-template-columns:repeat(4,1fr); gap:8px; }
+}
+@media (max-width:760px) {
+  .bottom-panel { min-height:175px; }
+  .bottom-tab { padding-inline:8px; font-size:9px; }
+  .bottom-link { padding-inline:7px; }
+  .position-row { min-width:560px; }
+  .position-detail__metrics { grid-template-columns:repeat(2,1fr); }
+  .position-detail__copy { grid-column:1 / -1; }
+}
+@media (max-width:460px) {
+  .bottom-tab span:first-of-type { display:none; }
+  .position-detail__metrics { grid-template-columns:1fr 1fr; }
+  .position-detail { padding:9px; }
+}
