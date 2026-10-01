@@ -25,7 +25,7 @@ export function AppShell() {
           <AssetList selected={selectedSymbol} onSelect={(asset) => setSelectedSymbol(asset.symbol)} />
           <div className="center-column">
             <ChartWorkspace asset={selectedAsset} />
-            <BottomPanel />
+            <BottomPanel selectedSymbol={selectedSymbol} />
           </div>
           <TradePanel asset={selectedAsset} />
         </main>
