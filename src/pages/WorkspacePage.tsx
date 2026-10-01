@@ -1,4 +1,4 @@
-import { ArrowDownToLine, ArrowUpRight, BarChart3, Bell, Check, ChevronRight, Clock3, DollarSign, LockKeyhole, Mail, PieChart, Plus, ShieldCheck, Smartphone, TrendingUp, UserRound, WalletCards } from 'lucide-react'
+import { ArrowUpRight, BarChart3, Bell, Check, Clock3, DollarSign, PieChart, ShieldCheck, Smartphone, TrendingUp, WalletCards } from 'lucide-react'
 import { Link } from 'react-router'
 
 type WorkspacePageProps = {
