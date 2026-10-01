@@ -1,4 +1,4 @@
-import { CandlestickChart, ChevronDown, Crosshair, Maximize2, MoreHorizontal, Search, Settings2 } from 'lucide-react'
+import { ChevronDown, Crosshair, Maximize2, MoreHorizontal, Settings2 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { CandlestickSeries, ColorType, CrosshairMode, createChart, type IChartApi } from 'lightweight-charts'
 import type { MarketAsset } from '../../data/mockMarket'
