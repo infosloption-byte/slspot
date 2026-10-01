@@ -1,5 +1,5 @@
 import { ArrowDownToLine, ArrowUpRight, Clock3, History, WalletCards, X } from 'lucide-react'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 
 type TabId = 'open' | 'history' | 'wallet'
 
@@ -56,82 +56,84 @@ const tabs: { id: TabId; label: string; icon: typeof Clock3 }[] = [
   { id: 'wallet', label: 'Wallet activity', icon: WalletCards },
 ]
 
-export function BottomPanel() {
+export function BottomPanel({ selectedSymbol }: { selectedSymbol: string }) {
   const [active, setActive] = useState<TabId>('open')
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
-  const closeDetails = () => setSelectedId(null)
+  const visiblePositions = useMemo(() => positions.filter((position) => position.symbol === selectedSymbol), [selectedSymbol])
+  const selectedPosition = positions.find((position) => position.id === selectedId)
+  const visibleHistory = useMemo(() => history.filter((item) => item.symbol === selectedSymbol), [selectedSymbol])
+
+  const changeTab = (tab: TabId) => {
+    setActive(tab)
+    setSelectedId(null)
+  }
 
   return (
     <section className="bottom-panel panel">
       <div className="bottom-panel__tabs">
-        {tabs.map(({ id, label, icon: Icon }) => (
-          <button className={active === id ? 'bottom-tab bottom-tab--active' : 'bottom-tab'} key={id} onClick={() => { setActive(id); closeDetails() }} type="button">
-            <Icon size={15} />
-            {label}
-            {id === 'open' && <span className="tab-count">{positions.length}</span>}
-          </button>
-        ))}
+        {tabs.map(({ id, label, icon: Icon }) => {
+          const count = id === 'open' ? visiblePositions.length : id === 'history' ? visibleHistory.length : wallet.length
+          return (
+            <button className={active === id ? 'bottom-tab bottom-tab--active' : 'bottom-tab'} key={id} onClick={() => changeTab(id)} type="button">
+              <Icon size={14} />
+              <span>{label}</span>
+              <span className="tab-count">{count}</span>
+            </button>
+          )
+        })}
         <div className="bottom-panel__spacer" />
-        <button className="bottom-link" type="button" title="Export current tab">
-          <ArrowDownToLine size={14} /> Export
-        </button>
+        <button className="bottom-link" type="button" title="Export current tab"><ArrowDownToLine size={13} /><span>Export</span></button>
       </div>
 
       {active === 'open' && (
         <div className="positions-table">
-          <div className="position-row position-row--header">
-            <span>Instrument</span><span>Side</span><span>Entry</span><span>Mark</span><span>Duration</span><span>P&amp;L</span><span />
-          </div>
-          {positions.map((position) => (
-            <div className="position-row" key={position.id}>
-              <span><strong>{position.symbol}</strong><small>Position #{position.id}</small></span>
-              <span className={position.side === 'UP' ? 'side-pill side-pill--up' : 'side-pill side-pill--down'}>{position.side}</span>
-              <span>{position.entry}</span><span>{position.mark}</span><span>{position.duration}</span>
-              <span className={position.positive ? 'text-positive' : 'text-negative'}>{position.pnl}</span>
-              <button className="row-action" type="button" title={'View position ' + position.id} onClick={() => setSelectedId(position.id)}>
-                <ArrowUpRight size={14} /> Details
-              </button>
+          {visiblePositions.length === 0 ? (
+            <div className="activity-empty">
+              <Clock3 size={18} />
+              <strong>No open position for {selectedSymbol}</strong>
+              <span>Place a demo order from the panel to see it here.</span>
             </div>
-          ))}
+          ) : (
+            <>
+              <div className="position-row position-row--header"><span>Instrument</span><span>Side</span><span>Entry</span><span>Mark</span><span>Time</span><span>P&amp;L</span><span /></div>
+              {visiblePositions.map((position) => (
+                <div className={selectedId === position.id ? 'position-row position-row--selected' : 'position-row'} key={position.id}>
+                  <span><strong>{position.symbol}</strong><small>#{position.id}</small></span>
+                  <span className={position.side === 'UP' ? 'side-pill side-pill--up' : 'side-pill side-pill--down'}>{position.side}</span>
+                  <span>{position.entry}</span><span>{position.mark}</span><span>{position.duration}</span>
+                  <span className={position.positive ? 'text-positive' : 'text-negative'}>{position.pnl}</span>
+                  <button className="row-action row-action--icon" type="button" title={'View position ' + position.id} aria-label={'View position ' + position.id} onClick={() => setSelectedId(position.id)}><ArrowUpRight size={14} /></button>
+                </div>
+              ))}
+            </>
+          )}
         </div>
       )}
 
       {active === 'history' && (
         <div className="activity-table">
-          <div className="activity-row activity-row--header"><span>Trade</span><span>Amount</span><span>Result</span><span>P&amp;L</span><span>Time</span></div>
-          {history.map((item) => (
-            <div className="activity-row" key={item.id}>
-              <span><strong>{item.symbol}</strong><small>{item.side} · #{item.id}</small></span>
-              <span>{item.amount}</span>
-              <span className={item.result === 'Won' ? 'status-pill status-pill--positive' : 'status-pill status-pill--negative'}>{item.result}</span>
-              <span className={item.result === 'Won' ? 'text-positive' : 'text-negative'}>{item.pnl}</span>
-              <span>{item.time}</span>
-            </div>
-          ))}
+          {visibleHistory.length === 0 ? <div className="activity-empty"><History size={18} /><strong>No trade history for {selectedSymbol}</strong><span>Completed demo trades for this market will appear here.</span></div> : (
+            <>
+              <div className="activity-row activity-row--header"><span>Trade</span><span>Side</span><span>Amount</span><span>Result</span><span>Time</span></div>
+              {visibleHistory.map((item) => <div className="activity-row" key={item.id}><span><strong>{item.symbol}</strong><small>#{item.id}</small></span><span className={item.side === 'UP' ? 'text-positive' : 'text-negative'}>{item.side}</span><span>{item.amount}</span><span className={item.result === 'Won' ? 'status-pill status-pill--positive' : 'status-pill status-pill--negative'}>{item.result}</span><span>{item.time}</span></div>)}
+            </>
+          )}
         </div>
       )}
 
       {active === 'wallet' && (
         <div className="activity-table">
           <div className="activity-row activity-row--header"><span>Activity</span><span>Type</span><span>Amount</span><span>Status</span><span>Time</span></div>
-          {wallet.map((item) => (
-            <div className="activity-row" key={item.id}>
-              <span><strong>{item.label}</strong><small>#{item.id}</small></span>
-              <span>{item.type}</span>
-              <span className={item.amount.startsWith('+') ? 'text-positive' : item.type === 'Fee' ? 'text-negative' : 'text-negative'}>{item.amount}</span>
-              <span className={item.status === 'Completed' ? 'status-pill status-pill--positive' : 'status-pill status-pill--pending'}>{item.status}</span>
-              <span>{item.time}</span>
-            </div>
-          ))}
+          {wallet.map((item) => <div className="activity-row" key={item.id}><span><strong>{item.label}</strong><small>#{item.id}</small></span><span>{item.type}</span><span className={item.amount.startsWith('+') ? 'text-positive' : 'text-negative'}>{item.amount}</span><span className={item.status === 'Completed' ? 'status-pill status-pill--positive' : 'status-pill status-pill--pending'}>{item.status}</span><span>{item.time}</span></div>)}
         </div>
       )}
 
-      {selectedId && (
+      {selectedPosition && (
         <div className="position-detail">
-          <div><span>Selected position</span><strong>#{selectedId}</strong></div>
-          <span className="position-detail__copy">Live position details are demo-only until server market data is connected.</span>
-          <button className="icon-button" type="button" title="Close details" aria-label="Close details" onClick={closeDetails}><X size={15} /></button>
+          <div><span>Selected position</span><strong>#{selectedPosition.id} · {selectedPosition.symbol}</strong></div>
+          <div className="position-detail__metrics"><span>Entry <b>{selectedPosition.entry}</b></span><span>Mark <b>{selectedPosition.mark}</b></span><span>Remaining <b>{selectedPosition.duration}</b></span><span className={selectedPosition.positive ? 'text-positive' : 'text-negative'}>P&amp;L <b>{selectedPosition.pnl}</b></span></div>
+          <button className="icon-button" type="button" title="Close details" aria-label="Close details" onClick={() => setSelectedId(null)}><X size={15} /></button>
         </div>
       )}
     </section>
