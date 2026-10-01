@@ -1,39 +1,125 @@
-import { CandlestickChart, ChevronDown, Crosshair, Maximize2, MoreHorizontal, Settings2 } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { CandlestickChart, ChevronDown, Maximize2, MoreHorizontal, Settings2 } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { CandlestickSeries, CrosshairMode, createChart, type IChartApi, type UTCTimestamp } from 'lightweight-charts'
 import type { MarketAsset } from '../../data/mockMarket'
+import { generateMockCandles } from '../../data/mockCandles'
 import { formatPrice } from '../../lib/format'
-
-const chartPoints = [
-  0.32, 0.38, 0.34, 0.44, 0.42, 0.48, 0.41, 0.52, 0.50, 0.59, 0.54, 0.66,
-  0.61, 0.58, 0.64, 0.71, 0.67, 0.76, 0.72, 0.8, 0.77, 0.86, 0.83, 0.92,
-]
-
-const timeLabels = ['08:00', '10:00', '12:00', '14:00', '16:00', '18:00']
-
-function makePolyline(points: number[], width: number, height: number): string {
-  return points
-    .map((point, index) => {
-      const x = (index / (points.length - 1)) * width
-      const y = (1 - point) * (height - 24) + 12
-      return `${x.toFixed(1)},${y.toFixed(1)}`
-    })
-    .join(' ')
-}
 
 type ChartWorkspaceProps = {
   asset: MarketAsset
 }
 
+const timeframes = ['1m', '5m', '15m', '30m', '1H', '4H', '1D']
+
+function ChartCanvas({ asset, timeframe }: { asset: MarketAsset; timeframe: string }) {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const chartRef = useRef<IChartApi | null>(null)
+
+  const candles = useMemo(() => generateMockCandles(asset, timeframe), [asset, timeframe])
+
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) {
+      return
+    }
+
+    const chart = createChart(container, {
+      width: container.clientWidth,
+      height: container.clientHeight,
+      layout: {
+        background: { type: 'solid', color: 'transparent' },
+        textColor: '#536770',
+        attributionLogo: false,
+      },
+      grid: {
+        vertLines: { color: 'rgba(255,255,255,.035)' },
+        horzLines: { color: 'rgba(255,255,255,.035)' },
+      },
+      crosshair: {
+        mode: CrosshairMode.Normal,
+        vertLine: { color: 'rgba(85,219,203,.28)', width: 1 },
+        horzLine: { color: 'rgba(85,219,203,.18)', width: 1 },
+      },
+      rightPriceScale: {
+        borderColor: 'rgba(196,229,240,.08)',
+        scaleMargins: { top: 0.08, bottom: 0.1 },
+      },
+      timeScale: {
+        borderColor: 'rgba(196,229,240,.08)',
+        timeVisible: true,
+        secondsVisible: false,
+        rightOffset: 5,
+      },
+      handleScale: {
+        axisPressedMouseMove: true,
+        mouseWheel: true,
+        pinch: true,
+      },
+      handleScroll: {
+        mouseWheel: true,
+        pressedMouseMove: true,
+        horzTouchDrag: true,
+        vertTouchDrag: true,
+      },
+    })
+
+    const series = chart.addSeries(CandlestickSeries, {
+      upColor: '#52d98b',
+      downColor: '#f06b78',
+      borderVisible: false,
+      wickUpColor: '#52d98b',
+      wickDownColor: '#f06b78',
+    })
+
+    series.setData(candles)
+    series.createPriceLine({
+      price: asset.price,
+      color: '#55dbcb',
+      lineWidth: 1,
+      lineStyle: 2,
+      axisLabelVisible: true,
+      title: 'Last',
+    })
+
+    chart.timeScale().fitContent()
+    chartRef.current = chart
+
+    const resizeObserver = new ResizeObserver((entries) => {
+      const rect = entries[0]?.contentRect
+      if (!rect) {
+        return
+      }
+      chart.applyOptions({ width: Math.floor(rect.width), height: Math.floor(rect.height) })
+    })
+
+    resizeObserver.observe(container)
+
+    return () => {
+      resizeObserver.disconnect()
+      chartRef.current = null
+      chart.remove()
+    }
+  }, [asset, candles])
+
+  return (
+    <div className="chart-canvas-shell">
+      <div ref={containerRef} className="chart-canvas" role="img" aria-label={asset.symbol + ' candlestick market chart'} />
+      <div className="chart-attribution">
+        Charting by <a href="https://www.tradingview.com/" target="_blank" rel="noreferrer">TradingView</a>
+      </div>
+    </div>
+  )
+}
+
 export function ChartWorkspace({ asset }: ChartWorkspaceProps) {
   const [timeframe, setTimeframe] = useState('5m')
-  const polyline = useMemo(() => makePolyline(chartPoints, 880, 390), [])
   const price = formatPrice(asset.price, asset.price < 10 ? 5 : 2)
 
   return (
     <section className="chart-workspace panel">
       <div className="chart-toolbar">
         <div className="chart-asset-title">
-          <span className="asset-icon asset-icon--btc">{asset.symbol.slice(0, 1)}</span>
+          <span className={'asset-icon asset-icon--' + asset.accent}>{asset.symbol.slice(0, 1)}</span>
           <div>
             <strong>{asset.symbol}</strong>
             <span>{asset.name}</span>
@@ -41,64 +127,49 @@ export function ChartWorkspace({ asset }: ChartWorkspaceProps) {
         </div>
 
         <div className="chart-timeframes" aria-label="Chart timeframe">
-          {['1m', '5m', '15m', '1H', '4H', '1D'].map((value) => (
-            <button className={timeframe === value ? 'timeframe timeframe--active' : 'timeframe'} key={value} onClick={() => setTimeframe(value)} type="button">
+          {timeframes.map((value) => (
+            <button
+              className={timeframe === value ? 'timeframe timeframe--active' : 'timeframe'}
+              key={value}
+              onClick={() => setTimeframe(value)}
+              type="button"
+              aria-pressed={timeframe === value}
+            >
               {value}
             </button>
           ))}
         </div>
 
         <div className="chart-tools">
-          <button className="chart-tool-button" type="button"><CandlestickChart size={16} /> <span>Candles</span> <ChevronDown size={13} /></button>
-          <button className="chart-tool-button" type="button"><Crosshair size={16} /></button>
-          <button className="chart-tool-button" type="button"><Settings2 size={16} /></button>
-          <button className="chart-tool-button" type="button"><Maximize2 size={16} /></button>
-          <button className="chart-tool-button" type="button"><MoreHorizontal size={16} /></button>
+          <button className="chart-tool-button" type="button" title="Candlestick chart">
+            <CandlestickChart size={16} />
+            <span>Candles</span>
+            <ChevronDown size={13} />
+          </button>
+          <button className="chart-tool-button" type="button" title="Crosshair">
+            <span className="chart-tool-crosshair" aria-hidden="true">+</span>
+          </button>
+          <button className="chart-tool-button" type="button" title="Chart settings"><Settings2 size={16} /></button>
+          <button className="chart-tool-button" type="button" title="Fullscreen"><Maximize2 size={16} /></button>
+          <button className="chart-tool-button" type="button" title="More chart options"><MoreHorizontal size={16} /></button>
         </div>
       </div>
 
       <div className="indicator-strip">
-        <span>EMA 20 <b>112,934</b></span>
-        <span>RSI 14 <b>63.4</b></span>
-        <span>VOL <b>48.2M</b></span>
+        <span>EMA 20 <b>Preview</b></span>
+        <span>RSI 14 <b>Preview</b></span>
+        <span>VOL <b>Preview</b></span>
       </div>
 
       <div className="chart-stage">
-        <div className="chart-grid chart-grid--vertical" />
-        <div className="chart-grid chart-grid--horizontal" />
-        <div className="chart-axis chart-axis--price">
-          <span>{formatPrice(asset.price * 1.007)}</span>
-          <span>{formatPrice(asset.price)}</span>
-          <span>{formatPrice(asset.price * 0.993)}</span>
-        </div>
-
-        <svg className="chart-svg" viewBox="0 0 880 390" role="img" aria-label={`${asset.symbol} sample market chart`} preserveAspectRatio="none">
-          <defs>
-            <linearGradient id="area-fill" x1="0" x2="0" y1="0" y2="1">
-              <stop offset="0%" stopColor="rgba(85, 219, 203, .20)" />
-              <stop offset="100%" stopColor="rgba(85, 219, 203, 0)" />
-            </linearGradient>
-          </defs>
-          <polyline points={`${polyline} 880,390 0,390`} fill="url(#area-fill)" stroke="none" />
-          <polyline points={polyline} fill="none" stroke="#55dbcB" strokeWidth="2.4" vectorEffect="non-scaling-stroke" />
-          <line x1="0" y1="78" x2="880" y2="78" stroke="rgba(255,255,255,.08)" strokeDasharray="4 6" vectorEffect="non-scaling-stroke" />
-          <line x1="0" y1="277" x2="880" y2="277" stroke="rgba(255,255,255,.08)" strokeDasharray="4 6" vectorEffect="non-scaling-stroke" />
-          <circle cx="846" cy="62" r="4.5" fill="#f7b955" />
-        </svg>
-
+        <ChartCanvas asset={asset} timeframe={timeframe} />
         <div className="chart-price-tag">{price}</div>
-        <div className="chart-crosshair vertical" />
-        <div className="chart-crosshair horizontal" />
-
-        <div className="chart-axis chart-axis--time">
-          {timeLabels.map((label) => <span key={label}>{label}</span>)}
-        </div>
       </div>
 
       <div className="chart-bottom-status">
-        <span><i className="live-dot" /> Streaming</span>
-        <span>UTC+05:30</span>
-        <span>Grid: clean</span>
+        <span><i className="live-dot" /> Demo stream</span>
+        <span>{timeframe}</span>
+        <span>Mock OHLC</span>
       </div>
     </section>
   )
