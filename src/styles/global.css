@@ -241,3 +241,27 @@ h2 { margin: 0; font-size: 15px; letter-spacing: -0.02em; }
 .trade-confirmation--success strong { color: var(--green); }
 .trade-confirmation--success span { margin-top: 3px; line-height: 1.4; }
 .trade-action:disabled { opacity: .45; cursor: not-allowed; }
+
+.activity-table { padding: 8px 9px 10px; overflow-x: auto; }
+.activity-row { min-width: 640px; display: grid; grid-template-columns: 1.5fr .8fr .8fr .8fr .9fr; align-items: center; gap: 10px; padding: 9px 7px; border-radius: 9px; font-size: 9px; color: var(--muted); }
+.activity-row:not(.activity-row--header):hover { background: rgba(255,255,255,.02); }
+.activity-row--header { color: var(--muted-2); font-size: 8px; text-transform: uppercase; letter-spacing: .08em; }
+.activity-row strong, .activity-row small { display: block; }
+.activity-row strong { color: var(--text); font-size: 10px; }
+.activity-row small { color: var(--muted-2); font-size: 8px; margin-top: 2px; }
+.status-pill { display: inline-flex; width: fit-content; padding: 4px 7px; border-radius: 6px; font-size: 8px; font-weight: 800; }
+.status-pill--positive { color: var(--green); background: rgba(82,217,139,.07); }
+.status-pill--negative { color: var(--red); background: rgba(240,107,120,.07); }
+.status-pill--pending { color: var(--amber); background: rgba(247,185,85,.07); }
+.position-detail { margin: 0 14px 10px; padding: 9px 10px; display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; border: 1px solid rgba(85,219,203,.14); border-radius: 9px; background: rgba(85,219,203,.035); }
+.position-detail span, .position-detail strong { display: block; }
+.position-detail span:first-child { color: var(--muted); font-size: 8px; }
+.position-detail strong { font-size: 10px; margin-top: 2px; }
+.position-detail__copy { color: var(--muted-2); font-size: 8px; }
+.duration-presets { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; margin-top: 6px; padding: 0 14px 14px; }
+.payout-box__amount { display: inline; color: var(--text); font-size: 11px; margin-left: 4px; }
+@media (max-width: 760px) {
+  .activity-row { min-width: 560px; }
+  .position-detail { grid-template-columns: 1fr auto; }
+  .position-detail__copy { grid-column: 1 / -1; }
+}
