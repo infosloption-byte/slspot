@@ -65,7 +65,7 @@ export function AssetList({ selected, onSelect }: AssetListProps) {
         <span className="asset-panel__status"><span className="live-dot" /> Demo feed</span>
       </div>
 
-      <label className="market-search">
+      <div className="market-search">
         <Search size={15} aria-hidden="true" />
         <input
           aria-label="Search assets"
@@ -86,7 +86,7 @@ export function AssetList({ selected, onSelect }: AssetListProps) {
             ×
           </button>
         ) : null}
-      </label>
+      </div>
 
       <div className="market-filter-row" aria-label="Market category">
         {categories.map((value) => {
