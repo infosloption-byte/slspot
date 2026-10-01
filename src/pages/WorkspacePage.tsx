@@ -1,4 +1,4 @@
-import { ArrowDownToLine, ArrowUpRight, Bell, Check, ChevronRight, Clock3, BarChart3, DollarSign, LockKeyhole, Mail, PieChart, Plus, ShieldCheck, Smartphone, TrendingUp, UserRound, WalletCards } from 'lucide-react'
+import { ArrowDownToLine, ArrowUpRight, BarChart3, Bell, Check, ChevronRight, Clock3, DollarSign, LockKeyhole, Mail, PieChart, Plus, ShieldCheck, Smartphone, TrendingUp, UserRound, WalletCards } from 'lucide-react'
 import { Link } from 'react-router'
 
 type WorkspacePageProps = {
@@ -33,21 +33,18 @@ const holdings = [
   { symbol: 'Cash', name: 'Available balance', value: '$1,660.05', allocation: 13, change: 'Liquid', positive: true },
 ]
 
-function StatCard({ label, value, change, positive, icon: Icon }: typeof stats[number]) {
-  return (
-    <section className="dashboard-stat panel">
-      <div className="dashboard-stat__top"><span>{label}</span><span className="dashboard-stat__icon"><Icon size={15} /></span></div>
-      <strong>{value}</strong>
-      <small className={positive ? 'text-positive' : 'text-negative'}>{change}</small>
-    </section>
-  )
-}
-
-
 const walletActivity = [
   { label: 'Demo balance credit', type: 'Deposit', amount: '+$500.00', status: 'Completed', time: 'Today, 09:42', positive: true },
   { label: 'Demo withdrawal', type: 'Withdrawal', amount: '-$120.00', status: 'Pending', time: 'Yesterday, 18:20', positive: false },
   { label: 'Trading fee', type: 'Fee', amount: '-$2.40', status: 'Completed', time: 'Yesterday, 16:05', positive: false },
+]
+
+const tradeHistory = [
+  { id: 'SL-4809', symbol: 'SOL/USD', side: 'UP', amount: '$50.00', result: 'Won', pnl: '+$41.00', time: '2 min ago', positive: true },
+  { id: 'SL-4802', symbol: 'BTC/USD', side: 'DOWN', amount: '$25.00', result: 'Lost', pnl: '-$25.00', time: '8 min ago', positive: false },
+  { id: 'SL-4796', symbol: 'EUR/USD', side: 'UP', amount: '$100.00', result: 'Won', pnl: '+$82.00', time: '14 min ago', positive: true },
+  { id: 'SL-4788', symbol: 'ETH/USD', side: 'UP', amount: '$75.00', result: 'Won', pnl: '+$61.50', time: '22 min ago', positive: true },
+  { id: 'SL-4771', symbol: 'BTC/USD', side: 'UP', amount: '$40.00', result: 'Lost', pnl: '-$40.00', time: '41 min ago', positive: false },
 ]
 
 const notifications = [
@@ -62,234 +59,108 @@ const sessions = [
   { device: 'Chrome on Windows', location: 'Previous browser session', lastSeen: 'Yesterday, 18:42', icon: Smartphone, current: false },
 ]
 
-function WorkspaceHeader({ eyebrow, title, description, action = 'Open trading room' }: { eyebrow: string; title: string; description: string; action?: string }) {
+function StatCard({ label, value, change, positive, icon: Icon }: typeof stats[number]) {
   return (
-    <header className="workspace-page__header">
-      <div><div className="eyebrow">{eyebrow}</div><h1>{title}</h1><p>{description}</p></div>
-      <Link className="workspace-page__action" to="/app/trading"><BarChart3 size={15} /> {action} <ArrowUpRight size={14} /></Link>
-    </header>
+    <section className="dashboard-stat panel">
+      <div className="dashboard-stat__top"><span>{label}</span><span className="dashboard-stat__icon"><Icon size={15} /></span></div>
+      <strong>{value}</strong>
+      <small className={positive ? 'text-positive' : 'text-negative'}>{change}</small>
+    </section>
   )
 }
-
-function WalletPage() {
-  return <div className="workspace-page">
-    <WorkspaceHeader eyebrow="Funds" title="Wallet" description="Manage your demo balance and review wallet activity. Live deposits and withdrawals will be server-authoritative." action="Back to trading" />
-    <div className="wallet-summary">
-      <section className="dashboard-card panel wallet-balance"><span>Available demo balance</span><strong>$12,480.65</strong><small>Updated from the demo ledger · not real funds</small><div><button type="button"><Plus size={14} /> Add funds</button><button type="button" className="wallet-secondary"><ArrowDownToLine size={14} /> Withdraw</button></div></section>
-      <section className="dashboard-card panel"><div className="dashboard-card__header"><div><span className="eyebrow">Breakdown</span><h2>Balance overview</h2></div><WalletCards size={16} className="dashboard-muted-icon" /></div><div className="wallet-breakdown"><span><small>Trading balance</small><strong>$10,820.60</strong></span><span><small>Reserved exposure</small><strong>$1,240.00</strong></span><span><small>Available cash</small><strong>$420.05</strong></span></div></section>
-    </div>
-    <section className="dashboard-card panel"><div className="dashboard-card__header"><div><span className="eyebrow">Ledger</span><h2>Wallet activity</h2></div><span className="demo-badge">Demo data</span></div><div className="activity-table wallet-activity"><div className="activity-row activity-row--header"><span>Activity</span><span>Type</span><span>Amount</span><span>Status</span><span>Time</span></div>{walletActivity.map((item) => <div className="activity-row" key={item.label}><span><strong>{item.label}</strong></span><span>{item.type}</span><span className={item.positive ? 'text-positive' : 'text-negative'}>{item.amount}</span><span><b className={item.status === 'Pending' ? 'status-pill status-pill--pending' : 'status-pill status-pill--positive'}>{item.status}</b></span><span>{item.time}</span></div>)}</div></section>
-  </div>
-}
-
-function HistoryPage() {
-  return <div className="workspace-page">
-    <WorkspaceHeader eyebrow="Records" title="Trade history" description="Review completed demo trades, outcomes and settlement records." />
-    <div className="history-toolbar panel"><div className="history-filter active">All trades</div><div className="history-filter">Won</div><div className="history-filter">Lost</div><span className="history-toolbar__spacer" /><span className="demo-badge">Demo ledger</span></div>
-    <section className="dashboard-card panel"><div className="activity-table history-activity"><div className="activity-row activity-row--header"><span>Trade</span><span>Side</span><span>Amount</span><span>Result</span><span>Time</span></div>{[['SOL/USD','UP','$50.00','+$41.00','Won','2 min ago'],['BTC/USD','DOWN','$25.00','-$25.00','Lost','8 min ago'],['EUR/USD','UP','$100.00','+$82.00','Won','14 min ago'],['ETH/USD','UP','$75.00','+$61.50','Won','22 min ago']].map(([symbol,side,amount,pnl,result,time]) => <div className="activity-row" key={symbol + time}><span><strong>{symbol}</strong><small>{amount}</small></span><span className={side === 'UP' ? 'text-positive' : 'text-negative'}>{side}</span><span>{amount}</span><span className={result === 'Won' ? 'status-pill status-pill--positive' : 'status-pill status-pill--negative'}>{pnl}</span><span>{time}</span></div>)}</div></section>
-  </div>
-}
-
-function NotificationsPage() {
-  return <div className="workspace-page">
-    <WorkspaceHeader eyebrow="Activity" title="Notifications" description="Trade, security and system events will be delivered through the realtime notification service." />
-    <section className="notification-list panel">{notifications.map(({ title, copy, time, icon: Icon, unread }) => <article className={unread ? 'notification notification--unread' : 'notification'} key={title}><span className="notification__icon"><Icon size={15} /></span><div><strong>{title}</strong><p>{copy}</p><small>{time}</small></div>{unread && <span className="notification__dot" />}</article>)}</section>
-  </div>
-}
-
-function SecurityPage() {
-  return <div className="workspace-page">
-    <WorkspaceHeader eyebrow="Account protection" title="Security" description="Review account protection settings, active sessions and authentication controls." />
-    <div className="settings-grid">
-      <section className="settings-card panel"><div className="settings-card__header"><span className="settings-icon"><LockKeyhole size={16} /></span><div><strong>Password</strong><small>Last changed 30 days ago</small></div><ChevronRight size={15} /></div><button type="button" className="settings-button">Change password</button></section>
-      <section className="settings-card panel"><div className="settings-card__header"><span className="settings-icon"><ShieldCheck size={16} /></span><div><strong>Two-factor authentication</strong><small>Not configured in demo mode</small></div><span className="status-pill status-pill--pending">Off</span></div><button type="button" className="settings-button">Configure 2FA</button></section>
-    </div>
-    <section className="dashboard-card panel"><div className="dashboard-card__header"><div><span className="eyebrow">Sessions</span><h2>Active devices</h2></div><span className="demo-badge">Demo account</span></div><div className="session-list">{sessions.map((session) => <div className="session-row" key={session.device + session.lastSeen}><span className="settings-icon"><session.icon size={15} /></span><div><strong>{session.device}</strong><small>{session.location} · {session.lastSeen}</small></div>{session.current ? <span className="status-pill status-pill--positive">Current</span> : <button className="session-revoke" type="button">Revoke</button>}</div>)}</div></section>
-  </div>
-}
-
-function AccountPage() {
-  return <div className="workspace-page">
-    <WorkspaceHeader eyebrow="Preferences" title="Account" description="Manage your profile and application preferences. Changes will be persisted by the account API later." />
-    <div className="settings-grid settings-grid--account">
-      <section className="dashboard-card panel profile-card"><span className="profile-avatar"><UserRound size={23} /></span><div><span className="eyebrow">Profile</span><h2>Demo Trader</h2><p>demo@slspot.local</p></div><span className="demo-badge">Demo</span></section>
-      <section className="dashboard-card panel"><div className="dashboard-card__header"><div><span className="eyebrow">Preferences</span><h2>Trading defaults</h2></div></div><div className="preference-row"><span>Default market</span><strong>BTC/USD</strong><ChevronRight size={14} /></div><div className="preference-row"><span>Default duration</span><strong>60 seconds</strong><ChevronRight size={14} /></div><div className="preference-row"><span>Notifications</span><strong>Enabled</strong><ChevronRight size={14} /></div></section>
-    </div>
-  </div>
-}
-
-function SupportPage() {
-  return <div className="workspace-page">
-    <WorkspaceHeader eyebrow="Help center" title="Support" description="Find answers about the demo terminal or prepare a support request for the production service." />
-    <div className="support-grid"><section className="dashboard-card panel"><div className="dashboard-card__header"><div><span className="eyebrow">Common questions</span><h2>Quick help</h2></div></div>{['How do demo trades settle?','Where can I review my trade history?','How will live deposits work?','How do I secure my account?'].map((q) => <div className="support-question" key={q}><span>{q}</span><ChevronRight size={14} /></div>)}</section><section className="dashboard-card panel support-contact"><span className="settings-icon"><Mail size={17} /></span><h2>Contact support</h2><p>Production support conversations will be connected to the authenticated support service.</p><button type="button" className="workspace-page__action"><Mail size={14} /> Start a request</button></section></div>
-  </div>
-}
-
-function DashboardPage() {
-  return (
-    <div className="workspace-page">
-      <header className="workspace-page__header">
-        <div><div className="eyebrow">Overview</div><h1>Dashboard</h1><p>Your demo trading activity, performance and market snapshot in one place.</p></div>
-        <Link className="workspace-page__action" to="/app/trading"><BarChart3 size={15} /> Open trading room <ArrowUpRight size={14} /></Link>
-      </header>
-
-      <div className="dashboard-stats">{stats.map((stat) => <StatCard key={stat.label} {...stat} />)}</div>
-
-      <div className="dashboard-grid">
-        <section className="dashboard-card dashboard-card--performance panel">
-          <div className="dashboard-card__header"><div><span className="eyebrow">Performance</span><h2>Weekly P&amp;L</h2></div><span className="dashboard-card__value">+$284.40</span></div>
-          <div className="performance-chart" aria-label="Demo weekly performance chart">
-            <div className="performance-chart__grid"><span /><span /><span /><span /></div>
-            <div className="performance-bars">{performance.map((item) => <div className="performance-bar-wrap" key={item.day}><div className="performance-bar" style={{ height: item.value + '%' }} /><small>{item.day}</small></div>)}</div>
-          </div>
-        </section>
-
-        <section className="dashboard-card panel">
-          <div className="dashboard-card__header"><div><span className="eyebrow">Activity</span><h2>Recent trades</h2></div><Link to="/app/history" className="dashboard-link">View all <ArrowUpRight size={13} /></Link></div>
-          <div className="recent-trades">{recentTrades.map((trade) => <div className="recent-trade" key={trade.symbol + trade.time}><span className="recent-trade__icon">{trade.symbol.slice(0, 1)}</span><div><strong>{trade.symbol}</strong><small>{trade.side} · {trade.amount}</small></div><span className={trade.positive ? 'text-positive' : 'text-negative'}>{trade.result}<small>{trade.time}</small></span></div>)}</div>
-        </section>
-      </div>
-
-      <div className="dashboard-grid dashboard-grid--bottom">
-        <section className="dashboard-card panel">
-          <div className="dashboard-card__header"><div><span className="eyebrow">Markets</span><h2>Market snapshot</h2></div><Link to="/app/trading" className="dashboard-link">Trade <ArrowUpRight size={13} /></Link></div>
-          <div className="market-snapshot">{['BTC/USD','ETH/USD','SOL/USD','EUR/USD'].map((symbol, i) => <div className="market-snapshot__row" key={symbol}><strong>{symbol}</strong><span>{['113,842.12','4,216.44','246.18','1.17482'][i]}</span><span className={i === 1 ? 'text-negative' : 'text-positive'}>{['+1.82%','-0.37%','+3.21%','+0.18%'][i]}</span></div>)}</div>
-        </section>
-        <section className="dashboard-card panel">
-          <div className="dashboard-card__header"><div><span className="eyebrow">Risk</span><h2>Exposure</h2></div><PieChart size={16} className="dashboard-muted-icon" /></div>
-          <div className="exposure-meter"><div className="exposure-meter__track"><span style={{ width: '38%' }} /></div><div><strong>38%</strong><small>of demo balance allocated</small></div></div>
-          <div className="dashboard-note"><Clock3 size={14} /> Two positions currently open. Values are demo-only.</div>
-        </section>
-      </div>
-    </div>
-  )
-}
-
-function PortfolioPage() {
-  return (
-    <div className="workspace-page">
-      <header className="workspace-page__header">
-        <div><div className="eyebrow">Analytics</div><h1>Performance</h1><p>Review demo allocation, returns and position composition.</p></div>
-        <Link className="workspace-page__action" to="/app/trading"><BarChart3 size={15} /> Open trading room <ArrowUpRight size={14} /></Link>
-      </header>
-      <div className="dashboard-stats">{stats.slice(0, 3).map((stat) => <StatCard key={stat.label} {...stat} />)}</div>
-      <div className="portfolio-layout">
-        <section className="dashboard-card panel">
-          <div className="dashboard-card__header"><div><span className="eyebrow">Allocation</span><h2>Portfolio composition</h2></div></div>
-          <div className="holdings-list">{holdings.map((item) => <div className="holding" key={item.symbol}><span className="holding__icon">{item.symbol.slice(0,1)}</span><div className="holding__identity"><strong>{item.symbol}</strong><small>{item.name}</small></div><div className="holding__allocation"><span><b>{item.allocation}%</b><small>{item.value}</small></span><div className="allocation-track"><span style={{ width: item.allocation * 2.2 + '%' }} /></div></div><span className={item.positive ? 'text-positive' : 'text-negative'}>{item.change}</span></div>)}</div>
-        </section>
-        <section className="dashboard-card panel">
-          <div className="dashboard-card__header"><div><span className="eyebrow">Returns</span><h2>Performance summary</h2></div><TrendingUp size={16} className="dashboard-muted-icon" /></div>
-          <div className="return-summary"><div><span>7 day return</span><strong className="text-positive">+4.82%</strong></div><div><span>Average trade</span><strong>+$23.70</strong></div><div><span>Best trade</span><strong className="text-positive">+$82.00</strong></div><div><span>Worst trade</span><strong className="text-negative">-$25.00</strong></div></div>
-          <div className="dashboard-note"><ArrowUpRight size={14} /> Demo calculations will be replaced by server-authoritative portfolio metrics.</div>
-        </section>
-      </div>
-    </div>
-  )
-}
-
-
-
-const walletTransactions = [
-  { id: 'W-102', label: 'Demo balance credit', type: 'Deposit', amount: '+$500.00', status: 'Completed', time: 'Today, 09:42', positive: true },
-  { id: 'W-101', label: 'Demo withdrawal', type: 'Withdrawal', amount: '-$120.00', status: 'Pending', time: 'Yesterday, 18:20', positive: false },
-  { id: 'W-099', label: 'Trading fee', type: 'Fee', amount: '-$2.40', status: 'Completed', time: 'Yesterday, 16:05', positive: false },
-  { id: 'W-097', label: 'Demo balance credit', type: 'Deposit', amount: '+$750.00', status: 'Completed', time: 'Sep 29, 11:14', positive: true },
-]
-
-const tradeHistory = [
-  { id: 'SL-4809', symbol: 'SOL/USD', side: 'UP', amount: '$50.00', result: 'Won', pnl: '+$41.00', time: '2 min ago', positive: true },
-  { id: 'SL-4802', symbol: 'BTC/USD', side: 'DOWN', amount: '$25.00', result: 'Lost', pnl: '-$25.00', time: '8 min ago', positive: false },
-  { id: 'SL-4796', symbol: 'EUR/USD', side: 'UP', amount: '$100.00', result: 'Won', pnl: '+$82.00', time: '14 min ago', positive: true },
-  { id: 'SL-4788', symbol: 'ETH/USD', side: 'UP', amount: '$75.00', result: 'Won', pnl: '+$61.50', time: '22 min ago', positive: true },
-  { id: 'SL-4771', symbol: 'BTC/USD', side: 'UP', amount: '$40.00', result: 'Lost', pnl: '-$40.00', time: '41 min ago', positive: false },
-]
 
 function PageHeader({ eyebrow, title, description, action = 'Open trading room' }: { eyebrow: string; title: string; description: string; action?: string }) {
   return <header className="workspace-page__header"><div><div className="eyebrow">{eyebrow}</div><h1>{title}</h1><p>{description}</p></div><Link className="workspace-page__action" to="/app/trading"><BarChart3 size={15} /> {action} <ArrowUpRight size={14} /></Link></header>
 }
 
-function WalletPage() {
-  return <div className="workspace-page"><PageHeader eyebrow="Funds" title="Wallet" description="Track your demo balance, funding activity and account ledger." action="Back to trading" />
-    <div className="dashboard-stats">
-      {[
-        ['Available balance','$12,480.65','Demo balance',WalletCards],
-        ['Available to trade','$11,240.65','90.1% liquid',DollarSign],
-        ['Pending','$120.00','Withdrawal',Clock3],
-        ['This month','+$1,284.40','Net activity',TrendingUp],
-      ].map(([label,value,note,Icon]) => <section className="dashboard-stat panel" key={String(label)}><div className="dashboard-stat__top"><span>{label}</span><span className="dashboard-stat__icon"><Icon size={15} /></span></div><strong>{value}</strong><small className={label === 'Pending' ? 'text-negative' : label === 'This month' ? 'text-positive' : ''}>{note}</small></section>)}
+function DashboardPage() {
+  return <div className="workspace-page">
+    <PageHeader eyebrow="Overview" title="Dashboard" description="Your demo trading activity, performance and market snapshot in one place." />
+    <div className="dashboard-stats">{stats.map((stat) => <StatCard key={stat.label} {...stat} />)}</div>
+    <div className="dashboard-grid">
+      <section className="dashboard-card dashboard-card--performance panel">
+        <div className="dashboard-card__header"><div><span className="eyebrow">Performance</span><h2>Weekly P&amp;L</h2></div><span className="dashboard-card__value">+$284.40</span></div>
+        <div className="performance-chart" aria-label="Demo weekly performance chart"><div className="performance-chart__grid"><span /><span /><span /><span /></div><div className="performance-bars">{performance.map((item) => <div className="performance-bar-wrap" key={item.day}><div className="performance-bar" style={{ height: item.value + '%' }} /><small>{item.day}</small></div>)}</div></div>
+      </section>
+      <section className="dashboard-card panel">
+        <div className="dashboard-card__header"><div><span className="eyebrow">Activity</span><h2>Recent trades</h2></div><Link to="/app/history" className="dashboard-link">View all <ArrowUpRight size={13} /></Link></div>
+        <div className="recent-trades">{recentTrades.map((trade) => <div className="recent-trade" key={trade.symbol + trade.time}><span className="recent-trade__icon">{trade.symbol.slice(0, 1)}</span><div><strong>{trade.symbol}</strong><small>{trade.side} · {trade.amount}</small></div><span className={trade.positive ? 'text-positive' : 'text-negative'}>{trade.result}<small>{trade.time}</small></span></div>)}</div>
+      </section>
     </div>
-    <section className="dashboard-card panel"><div className="dashboard-card__header"><div><span className="eyebrow">Ledger</span><h2>Wallet activity</h2></div><span className="status-pill status-pill--pending">DEMO DATA</span></div>
-      <div className="data-table"><div className="data-table__row data-table__row--header"><span>Activity</span><span>Type</span><span>Amount</span><span>Status</span><span>Time</span></div>
-      {walletTransactions.map(item => <div className="data-table__row" key={item.id}><div><strong>{item.label}</strong><small>{item.id}</small></div><span>{item.type}</span><strong className={item.positive ? 'text-positive' : 'text-negative'}>{item.amount}</strong><span className={item.status === 'Pending' ? 'status-pill status-pill--pending' : 'status-pill status-pill--positive'}>{item.status}</span><small>{item.time}</small></div>)}</div>
-      <div className="dashboard-note"><WalletCards size={14} /> Deposits, withdrawals and balance changes will become server-authoritative when the wallet API is connected.</div>
-    </section>
+    <div className="dashboard-grid dashboard-grid--bottom">
+      <section className="dashboard-card panel"><div className="dashboard-card__header"><div><span className="eyebrow">Markets</span><h2>Market snapshot</h2></div><Link to="/app/trading" className="dashboard-link">Trade <ArrowUpRight size={13} /></Link></div><div className="market-snapshot">{['BTC/USD','ETH/USD','SOL/USD','EUR/USD'].map((symbol, i) => <div className="market-snapshot__row" key={symbol}><strong>{symbol}</strong><span>{['113,842.12','4,216.44','246.18','1.17482'][i]}</span><span className={i === 1 ? 'text-negative' : 'text-positive'}>{['+1.82%','-0.37%','+3.21%','+0.18%'][i]}</span></div>)}</div></section>
+      <section className="dashboard-card panel"><div className="dashboard-card__header"><div><span className="eyebrow">Risk</span><h2>Exposure</h2></div><PieChart size={16} className="dashboard-muted-icon" /></div><div className="exposure-meter"><div className="exposure-meter__track"><span style={{ width: '38%' }} /></div><div><strong>38%</strong><small>of demo balance allocated</small></div></div><div className="dashboard-note"><Clock3 size={14} /> Two positions currently open. Values are demo-only.</div></section>
+    </div>
+  </div>
+}
+
+function PortfolioPage() {
+  return <div className="workspace-page">
+    <PageHeader eyebrow="Analytics" title="Performance" description="Review demo allocation, returns and position composition." />
+    <div className="dashboard-stats">{stats.slice(0, 3).map((stat) => <StatCard key={stat.label} {...stat} />)}</div>
+    <div className="portfolio-layout">
+      <section className="dashboard-card panel"><div className="dashboard-card__header"><div><span className="eyebrow">Allocation</span><h2>Portfolio composition</h2></div></div><div className="holdings-list">{holdings.map((item) => <div className="holding" key={item.symbol}><span className="holding__icon">{item.symbol.slice(0,1)}</span><div className="holding__identity"><strong>{item.symbol}</strong><small>{item.name}</small></div><div className="holding__allocation"><span><b>{item.allocation}%</b><small>{item.value}</small></span><div className="allocation-track"><span style={{ width: item.allocation * 2.2 + '%' }} /></div></div><span className={item.positive ? 'text-positive' : 'text-negative'}>{item.change}</span></div>)}</div></section>
+      <section className="dashboard-card panel"><div className="dashboard-card__header"><div><span className="eyebrow">Returns</span><h2>Performance summary</h2></div><TrendingUp size={16} className="dashboard-muted-icon" /></div><div className="return-summary"><div><span>7 day return</span><strong className="text-positive">+4.82%</strong></div><div><span>Average trade</span><strong>+$23.70</strong></div><div><span>Best trade</span><strong className="text-positive">+$82.00</strong></div><div><span>Worst trade</span><strong className="text-negative">-$25.00</strong></div></div><div className="dashboard-note"><ArrowUpRight size={14} /> Demo calculations will be replaced by server-authoritative portfolio metrics.</div></section>
+    </div>
+  </div>
+}
+
+function WalletPage() {
+  const summary = [
+    { label: 'Available balance', value: '$12,480.65', note: 'Demo balance', Icon: WalletCards, tone: '' },
+    { label: 'Available to trade', value: '$11,240.65', note: '90.1% liquid', Icon: DollarSign, tone: '' },
+    { label: 'Pending', value: '$120.00', note: 'Withdrawal', Icon: Clock3, tone: 'text-negative' },
+    { label: 'This month', value: '+$1,284.40', note: 'Net activity', Icon: TrendingUp, tone: 'text-positive' },
+  ] as const
+
+  return <div className="workspace-page">
+    <PageHeader eyebrow="Funds" title="Wallet" description="Track your demo balance, funding activity and account ledger." action="Back to trading" />
+    <div className="dashboard-stats">{summary.map(({ label, value, note, Icon, tone }) => <section className="dashboard-stat panel" key={label}><div className="dashboard-stat__top"><span>{label}</span><span className="dashboard-stat__icon"><Icon size={15} /></span></div><strong>{value}</strong><small className={tone}>{note}</small></section>)}</div>
+    <section className="dashboard-card panel"><div className="dashboard-card__header"><div><span className="eyebrow">Ledger</span><h2>Wallet activity</h2></div><span className="status-pill status-pill--pending">DEMO DATA</span></div><div className="data-table"><div className="data-table__row data-table__row--header"><span>Activity</span><span>Type</span><span>Amount</span><span>Status</span><span>Time</span></div>{walletActivity.map((item) => <div className="data-table__row" key={item.label}><div><strong>{item.label}</strong><small>{item.type}</small></div><span>{item.type}</span><strong className={item.positive ? 'text-positive' : 'text-negative'}>{item.amount}</strong><span className={item.status === 'Pending' ? 'status-pill status-pill--pending' : 'status-pill status-pill--positive'}>{item.status}</span><small>{item.time}</small></div>)}</div><div className="dashboard-note"><WalletCards size={14} /> Deposits, withdrawals and balance changes will become server-authoritative when the wallet API is connected.</div></section>
   </div>
 }
 
 function HistoryPage() {
-  return <div className="workspace-page"><PageHeader eyebrow="Records" title="Trade history" description="Review completed demo trades, outcomes and settlement details." />
-    <div className="history-toolbar panel"><div className="history-filter"><span>Period</span>{['All time','Today','7 days'].map((item,i)=><button key={item} type="button" className={i === 0 ? 'filter-chip filter-chip--active' : 'filter-chip'}>{item}</button>)}</div><span className="status-pill status-pill--pending">DEMO RECORDS</span></div>
-    <section className="dashboard-card panel"><div className="data-table"><div className="data-table__row data-table__row--header"><span>Trade</span><span>Side</span><span>Amount</span><span>Result</span><span>P&amp;L</span></div>{tradeHistory.map(item => <div className="data-table__row" key={item.id}><div><strong>{item.symbol}</strong><small>{item.id} · {item.time}</small></div><span className={item.side === 'UP' ? 'side-label side-label--up' : 'side-label side-label--down'}>{item.side}</span><span>{item.amount}</span><span className={item.positive ? 'status-pill status-pill--positive' : 'status-pill status-pill--negative'}>{item.result}</span><strong className={item.positive ? 'text-positive' : 'text-negative'}>{item.pnl}</strong></div>)}</div></section>
+  return <div className="workspace-page">
+    <PageHeader eyebrow="Records" title="Trade history" description="Review completed demo trades, outcomes and settlement details." />
+    <div className="history-toolbar panel"><div className="history-filter"><span>Period</span><button type="button" className="filter-chip filter-chip--active">All time</button><button type="button" className="filter-chip">Today</button><button type="button" className="filter-chip">7 days</button></div><span className="status-pill status-pill--pending">DEMO RECORDS</span></div>
+    <section className="dashboard-card panel"><div className="data-table"><div className="data-table__row data-table__row--header"><span>Trade</span><span>Side</span><span>Amount</span><span>Result</span><span>P&amp;L</span></div>{tradeHistory.map((item) => <div className="data-table__row" key={item.id}><div><strong>{item.symbol}</strong><small>{item.id} · {item.time}</small></div><span className={item.side === 'UP' ? 'side-label side-label--up' : 'side-label side-label--down'}>{item.side}</span><span>{item.amount}</span><span className={item.positive ? 'status-pill status-pill--positive' : 'status-pill status-pill--negative'}>{item.result}</span><strong className={item.positive ? 'text-positive' : 'text-negative'}>{item.pnl}</strong></div>)}</div></section>
   </div>
 }
 
-function AlertsPage() {
-  const alerts = [
-    ['TR','Trade settled','SOL/USD UP position settled with a +$41.00 demo return.','2 min ago',true],
-    ['MK','Market movement','BTC/USD moved +1.82% in the current demo session.','18 min ago',true],
-    ['SE','Security reminder','Two-factor authentication is not enabled on this demo account.','1 hr ago',false],
-    ['SY','System update','Realtime notifications will be enabled with the server integration.','Yesterday',false],
-  ]
-  return <div className="workspace-page"><PageHeader eyebrow="Activity" title="Notifications" description="Trade, market and security events appear here in chronological order." />
-    <div className="notification-layout"><section className="dashboard-card panel"><div className="dashboard-card__header"><div><span className="eyebrow">Inbox</span><h2>Recent activity</h2></div><span className="status-pill status-pill--pending">2 UNREAD</span></div>
-      <div className="notification-list">{alerts.map(([icon,title,copy,time,unread]) => <div className={unread ? 'notification-item notification-item--unread' : 'notification-item'} key={String(title)}><span className="notification-item__icon">{icon}</span><div><strong>{title}</strong><p>{copy}</p><small>{time}</small></div><span className="notification-dot" /></div>)}</div>
-    </section><aside className="dashboard-card panel"><div className="dashboard-card__header"><div><span className="eyebrow">Preferences</span><h2>Alert channels</h2></div></div>
-      {['Trade results','Price movement','Security events','Product updates'].map((label,index)=><div className="setting-row" key={label}><div><strong>{label}</strong><small>{index === 3 ? 'Occasional product news' : 'Demo notifications'}</small></div><span className={index === 2 ? 'toggle toggle--on' : 'toggle'}><span /></span></div>)}
-    </aside></div>
+function NotificationsPage() {
+  return <div className="workspace-page">
+    <PageHeader eyebrow="Activity" title="Notifications" description="Trade, market and security events appear here in chronological order." />
+    <div className="notification-layout"><section className="dashboard-card panel"><div className="dashboard-card__header"><div><span className="eyebrow">Inbox</span><h2>Recent activity</h2></div><span className="status-pill status-pill--pending">2 UNREAD</span></div><div className="notification-list">{notifications.map(({ title, copy, time, icon: Icon, unread }) => <article className={unread ? 'notification-item notification-item--unread' : 'notification-item'} key={title}><span className="notification-item__icon"><Icon size={14} /></span><div><strong>{title}</strong><p>{copy}</p><small>{time}</small></div><span className="notification-dot" /></article>)}</div></section><aside className="dashboard-card panel"><div className="dashboard-card__header"><div><span className="eyebrow">Preferences</span><h2>Alert channels</h2></div></div>{['Trade results','Price movement','Security events','Product updates'].map((label, index) => <div className="setting-row" key={label}><div><strong>{label}</strong><small>{index === 3 ? 'Occasional product news' : 'Demo notifications'}</small></div><span className={index === 2 ? 'toggle toggle--on' : 'toggle'}><span /></span></div>)}</aside></div>
   </div>
 }
 
 function SecurityPage() {
-  return <div className="workspace-page"><PageHeader eyebrow="Account protection" title="Security" description="Manage sign-in protection, active sessions and security events." action="Account overview" />
+  return <div className="workspace-page">
+    <PageHeader eyebrow="Account protection" title="Security" description="Manage sign-in protection, active sessions and security events." action="Account overview" />
     <div className="security-banner panel"><span className="security-banner__icon"><WalletCards size={17} /></span><div><strong>Demo security profile</strong><p>Authentication is not connected yet. These controls preview the production security experience.</p></div><span className="status-pill status-pill--pending">NOT CONNECTED</span></div>
-    <div className="settings-grid"><section className="dashboard-card panel"><div className="dashboard-card__header"><div><span className="eyebrow">Sign-in</span><h2>Authentication</h2></div></div>
-      {[
-        ['Two-factor authentication','Add a second step to protect account access.','Enable 2FA'],
-        ['Password','Last changed 18 days ago.','Change'],
-      ].map(([title,copy,action])=><div className="setting-row" key={title}><div><strong>{title}</strong><small>{copy}</small></div><button type="button" className="setting-button">{action}</button></div>)}
-      <div className="setting-row"><div><strong>Login alerts</strong><small>Notify when a new device signs in.</small></div><span className="toggle toggle--on"><span /></span></div>
-    </section><section className="dashboard-card panel"><div className="dashboard-card__header"><div><span className="eyebrow">Sessions</span><h2>Active devices</h2></div></div>
-      <div className="session-item"><span className="session-item__icon"><BarChart3 size={15} /></span><div><strong>Current browser</strong><small>Windows · Chrome · Active now</small></div><span className="status-pill status-pill--positive">CURRENT</span></div>
-      <div className="session-item"><span className="session-item__icon"><Clock3 size={15} /></span><div><strong>Demo mobile session</strong><small>Mobile browser · 2 days ago</small></div><button type="button" className="setting-button setting-button--danger">Revoke</button></div>
-    </section></div>
+    <div className="settings-grid"><section className="dashboard-card panel"><div className="dashboard-card__header"><div><span className="eyebrow">Sign-in</span><h2>Authentication</h2></div></div><div className="setting-row"><div><strong>Two-factor authentication</strong><small>Add a second step to protect account access.</small></div><button type="button" className="setting-button">Enable 2FA</button></div><div className="setting-row"><div><strong>Password</strong><small>Last changed 18 days ago.</small></div><button type="button" className="setting-button">Change</button></div><div className="setting-row"><div><strong>Login alerts</strong><small>Notify when a new device signs in.</small></div><span className="toggle toggle--on"><span /></span></div></section><section className="dashboard-card panel"><div className="dashboard-card__header"><div><span className="eyebrow">Sessions</span><h2>Active devices</h2></div></div>{sessions.map((session) => { const Icon = session.icon; return <div className="session-item" key={session.device + session.lastSeen}><span className="session-item__icon"><Icon size={15} /></span><div><strong>{session.device}</strong><small>{session.location} · {session.lastSeen}</small></div>{session.current ? <span className="status-pill status-pill--positive">CURRENT</span> : <button type="button" className="setting-button setting-button--danger">Revoke</button>}</div> })}</section></div>
   </div>
 }
 
 function AccountPage() {
-  return <div className="workspace-page"><PageHeader eyebrow="Preferences" title="Account" description="Manage your profile and workspace preferences." action="Back to trading" />
-    <div className="account-layout"><section className="dashboard-card panel"><div className="dashboard-card__header"><div><span className="eyebrow">Profile</span><h2>Personal details</h2></div></div>
-      <div className="profile-card"><span className="profile-avatar">DT</span><div><strong>Demo Trader</strong><small>demo@slspot.local</small></div><span className="status-pill status-pill--positive">VERIFIED DEMO</span></div>
-      <div className="form-grid"><label><span>Display name</span><input defaultValue="Demo Trader" /></label><label><span>Email</span><input defaultValue="demo@slspot.local" type="email" /></label><label><span>Timezone</span><select defaultValue="Asia/Colombo"><option>Asia/Colombo</option><option>UTC</option><option>Europe/London</option></select></label><label><span>Currency</span><select defaultValue="USD"><option>USD</option><option>EUR</option><option>GBP</option></select></label></div>
-      <button type="button" className="setting-button setting-button--primary">Save changes</button>
-    </section><aside className="dashboard-card panel"><div className="dashboard-card__header"><div><span className="eyebrow">Preferences</span><h2>Workspace</h2></div></div>
-      {['Compact trading layout','Price movement alerts','Sound effects'].map((label,index)=><div className="setting-row" key={label}><div><strong>{label}</strong><small>{index === 0 ? 'Use dense panels and tables.' : 'Demo preference.'}</small></div><span className={index < 2 ? 'toggle toggle--on' : 'toggle'}><span /></span></div>)}
-      <div className="dashboard-note"><Clock3 size={14} /> Changes are visual only until account preferences are connected to the API.</div>
-    </aside></div>
+  return <div className="workspace-page">
+    <PageHeader eyebrow="Preferences" title="Account" description="Manage your profile and workspace preferences." action="Back to trading" />
+    <div className="account-layout"><section className="dashboard-card panel"><div className="dashboard-card__header"><div><span className="eyebrow">Profile</span><h2>Personal details</h2></div></div><div className="profile-card"><span className="profile-avatar">DT</span><div><strong>Demo Trader</strong><small>demo@slspot.local</small></div><span className="status-pill status-pill--positive">VERIFIED DEMO</span></div><div className="form-grid"><label><span>Display name</span><input defaultValue="Demo Trader" /></label><label><span>Email</span><input defaultValue="demo@slspot.local" type="email" /></label><label><span>Timezone</span><select defaultValue="Asia/Colombo"><option>Asia/Colombo</option><option>UTC</option><option>Europe/London</option></select></label><label><span>Currency</span><select defaultValue="USD"><option>USD</option><option>EUR</option><option>GBP</option></select></label></div><button type="button" className="setting-button setting-button--primary">Save changes</button></section><aside className="dashboard-card panel"><div className="dashboard-card__header"><div><span className="eyebrow">Preferences</span><h2>Workspace</h2></div></div>{['Compact trading layout','Price movement alerts','Sound effects'].map((label, index) => <div className="setting-row" key={label}><div><strong>{label}</strong><small>{index === 0 ? 'Use dense panels and tables.' : 'Demo preference.'}</small></div><span className={index < 2 ? 'toggle toggle--on' : 'toggle'}><span /></span></div>)}<div className="dashboard-note"><Clock3 size={14} /> Changes are visual only until account preferences are connected to the API.</div></aside></div>
   </div>
 }
 
 function SupportPage() {
   const faqs = [
-    ['How do I place a trade?','Open the Trading Room, choose an asset, set the duration and amount, then review the confirmation before submitting.'],
-    ['Where can I see open positions?','Open positions and recent activity are available in the bottom activity panel of the Trading Room.'],
-    ['Are the displayed balances real?','No. This frontend milestone uses demo values only. Real balances will come from the authenticated wallet service.'],
-    ['When will deposits be available?','Funding flows will be added with the wallet and payment backend integration.'],
+    ['How do I place a trade?', 'Open the Trading Room, choose an asset, set the duration and amount, then review the confirmation before submitting.'],
+    ['Where can I see open positions?', 'Open positions and recent activity are available in the bottom activity panel of the Trading Room.'],
+    ['Are the displayed balances real?', 'No. This frontend milestone uses demo values only. Real balances will come from the authenticated wallet service.'],
+    ['When will deposits be available?', 'Funding flows will be added with the wallet and payment backend integration.'],
   ]
-  return <div className="workspace-page"><PageHeader eyebrow="Help center" title="Support" description="Find quick answers about the current trading workspace." />
-    <div className="support-layout"><section className="dashboard-card panel"><div className="dashboard-card__header"><div><span className="eyebrow">Common questions</span><h2>Getting started</h2></div></div>
-      <div className="faq-list">{faqs.map(([question,answer])=><details key={question}><summary>{question}<ArrowUpRight size={13} /></summary><p>{answer}</p></details>)}</div>
-    </section><aside className="dashboard-card panel support-contact"><div className="dashboard-card__header"><div><span className="eyebrow">Need help?</span><h2>Contact support</h2></div></div><p>Support messaging will be connected after the account and realtime services are available.</p><button type="button" className="setting-button setting-button--primary">Start conversation</button><div className="dashboard-note"><Clock3 size={14} /> Typical response target: under 1 business day.</div></aside></div>
+
+  return <div className="workspace-page">
+    <PageHeader eyebrow="Help center" title="Support" description="Find quick answers about the current trading workspace." />
+    <div className="support-layout"><section className="dashboard-card panel"><div className="dashboard-card__header"><div><span className="eyebrow">Common questions</span><h2>Getting started</h2></div></div><div className="faq-list">{faqs.map(([question, answer]) => <details key={question}><summary>{question}<ArrowUpRight size={13} /></summary><p>{answer}</p></details>)}</div></section><aside className="dashboard-card panel support-contact"><div className="dashboard-card__header"><div><span className="eyebrow">Need help?</span><h2>Contact support</h2></div></div><p>Support messaging will be connected after the account and realtime services are available.</p><button type="button" className="setting-button setting-button--primary">Start conversation</button><div className="dashboard-note"><Clock3 size={14} /> Typical response target: under 1 business day.</div></aside></div>
   </div>
 }
 
@@ -298,7 +169,7 @@ export function WorkspacePage(props: WorkspacePageProps) {
   if (props.title === 'Performance') return <PortfolioPage />
   if (props.title === 'Wallet') return <WalletPage />
   if (props.title === 'Trade history') return <HistoryPage />
-  if (props.title === 'Notifications') return <AlertsPage />
+  if (props.title === 'Notifications') return <NotificationsPage />
   if (props.title === 'Security') return <SecurityPage />
   if (props.title === 'Account') return <AccountPage />
   if (props.title === 'Support') return <SupportPage />
