@@ -1,7 +1,6 @@
-import { CheckCircle2, Minus, Plus, ShieldAlert, Timer, TrendingDown, TrendingUp, X } from 'lucide-react'
+import { CheckCircle2, ChevronDown, Minus, Plus, ShieldAlert, Timer, TrendingDown, TrendingUp, X } from 'lucide-react'
 import { useState } from 'react'
 import type { MarketAsset } from '../../data/mockMarket'
-import { formatPrice } from '../../lib/format'
 
 type TradePanelProps = { asset: MarketAsset }
 type PreviewDirection = 'UP' | 'DOWN'
@@ -13,10 +12,16 @@ const MIN_DURATION = 5
 const MAX_DURATION = 3600
 const BALANCE = 12480.65
 const PAYOUT_RATE = 0.82
+const durations = [15, 30, 60, 300]
+
+function formatDuration(value: number) {
+  return value < 60 ? value + 's' : value / 60 + 'm'
+}
 
 export function TradePanel({ asset }: TradePanelProps) {
   const [amount, setAmount] = useState(50)
   const [duration, setDuration] = useState(60)
+  const [durationOpen, setDurationOpen] = useState(false)
   const [direction, setDirection] = useState<PreviewDirection | null>(null)
   const [stage, setStage] = useState<OrderStage>('draft')
   const [error, setError] = useState('')
@@ -24,9 +29,9 @@ export function TradePanel({ asset }: TradePanelProps) {
   const totalReturn = amount + estimatedPayout
 
   const validate = () => {
-    if (!Number.isFinite(amount) || amount < MIN_AMOUNT || amount > MAX_AMOUNT) return 'Amount must be between $1 and $100,000.'
+    if (!Number.isFinite(amount) || amount < MIN_AMOUNT || amount > MAX_AMOUNT) return 'Stake must be between $1 and $100,000.'
     if (!Number.isInteger(duration) || duration < MIN_DURATION || duration > MAX_DURATION) return 'Duration must be between 5 seconds and 60 minutes.'
-    if (amount > BALANCE) return 'Amount exceeds the current demo balance.'
+    if (amount > BALANCE) return 'Stake exceeds the current demo balance.'
     return ''
   }
 
@@ -37,43 +42,41 @@ export function TradePanel({ asset }: TradePanelProps) {
     setError(''); setDirection(nextDirection); setStage('confirming')
   }
   const confirmPreview = () => { if (direction) setStage('previewed') }
-  const adjustAmount = (delta: number) => { setAmount((current) => Math.max(MIN_AMOUNT, Math.min(MAX_AMOUNT, current + delta))); if (stage !== 'draft') resetOrder() }
-  const adjustDuration = (delta: number) => { setDuration((current) => Math.max(MIN_DURATION, Math.min(MAX_DURATION, current + delta))); if (stage !== 'draft') resetOrder() }
-  const chooseAmount = (value: number) => { setAmount(value); if (stage !== 'draft') resetOrder() }
-  const chooseDuration = (value: number) => { setDuration(value); if (stage !== 'draft') resetOrder() }
+  const adjustAmount = (delta: number) => {
+    setAmount((current) => Math.max(MIN_AMOUNT, Math.min(MAX_AMOUNT, current + delta)))
+    if (stage !== 'draft') resetOrder()
+  }
+  const chooseDuration = (value: number) => {
+    setDuration(value); setDurationOpen(false)
+    if (stage !== 'draft') resetOrder()
+  }
 
   return (
-    <aside className="trade-panel panel">
-      <div className="panel__header trade-panel__header"><div><div className="eyebrow">Execute</div><h2>Order panel</h2></div><span className="demo-badge">Demo</span></div>
-      <div className="trade-instrument">
-        <span className={'trade-instrument__icon asset-icon--' + asset.accent}>{asset.symbol.slice(0, 1)}</span>
-        <div><strong>{asset.symbol}</strong><span>{asset.name}</span></div>
-        <small>{formatPrice(asset.price, asset.price < 10 ? 5 : 2)}</small>
-      </div>
-      <div className="trade-balance-card">
-        <div><span>Trading balance</span><strong>$12,480.65</strong><small>Available demo funds</small></div>
-        <button type="button" onClick={() => setError('Balance top-up will be connected after the wallet backend exists.')}>Top up</button>
-      </div>
-      <div className="trade-field">
-        <div className="trade-field__label"><span>Stake amount</span><small>USD</small></div>
-        <div className="stepper"><button type="button" onClick={() => adjustAmount(-10)} aria-label="Decrease amount"><Minus size={15} /></button><div className="stepper__value"><span>$</span><input value={amount} onChange={(event) => { setAmount(Number(event.target.value) || 0); resetOrder() }} inputMode="decimal" type="number" aria-label="Trade amount" min={MIN_AMOUNT} max={MAX_AMOUNT} /><small>stake</small></div><button type="button" onClick={() => adjustAmount(10)} aria-label="Increase amount"><Plus size={15} /></button></div>
-        <div className="trade-presets" aria-label="Stake presets">{[10, 25, 50, 100].map((value) => <button key={value} className={amount === value ? 'preset preset--active' : 'preset'} onClick={() => chooseAmount(value)} type="button">${value}</button>)}</div>
-      </div>
-      <div className="trade-field trade-field--duration">
-        <div className="trade-field__label"><span>Duration</span><small>Expiry</small></div>
-        <div className="duration-control"><button type="button" onClick={() => adjustDuration(-5)} aria-label="Decrease duration"><Minus size={15} /></button><div><Timer size={15} /><strong>{duration < 60 ? duration + 's' : duration / 60 + 'm'}</strong></div><button type="button" onClick={() => adjustDuration(5)} aria-label="Increase duration"><Plus size={15} /></button></div>
-      </div>
-      <div className="duration-presets" aria-label="Duration presets">{[15, 30, 60, 300].map((value) => <button key={value} className={duration === value ? 'preset preset--active' : 'preset'} type="button" onClick={() => chooseDuration(value)}>{value < 60 ? value + 's' : value / 60 + 'm'}</button>)}</div>
-      <div className="payout-box">
-        <div className="payout-box__head"><span>Indicative payout</span><strong>82%</strong></div>
-        <div className="payout-box__rows"><div><span>Stake</span><b>${amount.toFixed(2)}</b></div><div><span>Potential profit</span><b className="text-positive">+${estimatedPayout.toFixed(2)}</b></div><div><span>Total return</span><b>${totalReturn.toFixed(2)}</b></div></div>
-        <small>Demo estimate. Production pricing and limits will come from the server.</small>
-      </div>
-      {error && <div className="trade-validation trade-validation--error" role="alert"><ShieldAlert size={14} /><span>{error}</span></div>}
-      {stage === 'confirming' && direction && <div className="trade-confirmation"><div><span>Review before preview</span><strong>{direction} · {asset.symbol}</strong><small>${amount.toFixed(2)} stake · {duration < 60 ? duration + ' seconds' : duration / 60 + ' minutes'} · 82% payout</small></div><div className="trade-confirmation__actions"><button type="button" className="confirmation-button confirmation-button--ghost" onClick={resetOrder}><X size={14} /> Cancel</button><button type="button" className="confirmation-button confirmation-button--primary" onClick={confirmPreview}><CheckCircle2 size={14} /> Confirm preview</button></div></div>}
-      {stage === 'previewed' && direction && <div className="trade-confirmation trade-confirmation--success" role="status"><CheckCircle2 size={17} /><div><strong>Demo preview ready</strong><span>No trade was submitted. Server confirmation will be required in production.</span></div><button type="button" className="confirmation-button confirmation-button--ghost" onClick={resetOrder}>Reset</button></div>}
-      <div className="trade-actions" aria-label="Trade direction"><button className="trade-action trade-action--up" type="button" onClick={() => requestPreview('UP')} disabled={stage === 'confirming' || Boolean(validate())}><span><TrendingUp size={18} /> UP</span><small>Higher at expiry</small></button><button className="trade-action trade-action--down" type="button" onClick={() => requestPreview('DOWN')} disabled={stage === 'confirming' || Boolean(validate())}><span><TrendingDown size={18} /> DOWN</span><small>Lower at expiry</small></button></div>
-      <div className="risk-note"><ShieldAlert size={15} /><span>Demo interface only. Real orders require authenticated server validation.</span></div>
-    </aside>
+    <>
+      <section className="trade-dock panel" aria-label="Trade controls">
+        <div className="trade-dock__balance"><span>Demo balance</span><strong>$12,480.65</strong></div>
+        <div className="trade-dock__field">
+          <label>Stake</label>
+          <div className="trade-dock__stepper"><button type="button" onClick={() => adjustAmount(-10)} aria-label="Decrease stake"><Minus size={14} /></button><div><span>$</span><input value={amount} onChange={(event) => { setAmount(Number(event.target.value) || 0); resetOrder() }} type="number" inputMode="decimal" min={MIN_AMOUNT} max={MAX_AMOUNT} aria-label="Stake amount" /></div><button type="button" onClick={() => adjustAmount(10)} aria-label="Increase stake"><Plus size={14} /></button></div>
+        </div>
+        <div className="trade-dock__field trade-dock__field--duration">
+          <label>Duration</label>
+          <button className="trade-dock__select" type="button" onClick={() => setDurationOpen((open) => !open)} aria-expanded={durationOpen}><Timer size={14} /><strong>{formatDuration(duration)}</strong><ChevronDown size={13} /></button>
+          {durationOpen && <div className="duration-popover" role="dialog" aria-label="Choose duration"><div className="duration-popover__header"><span>Expiry</span><button type="button" onClick={() => setDurationOpen(false)} aria-label="Close duration selector"><X size={13} /></button></div><div className="duration-popover__grid">{durations.map((value) => <button key={value} className={duration === value ? 'duration-option duration-option--active' : 'duration-option'} type="button" onClick={() => chooseDuration(value)}>{formatDuration(value)}</button>)}</div></div>}
+        </div>
+        <div className="trade-dock__payout"><span>Potential return</span><strong>+${estimatedPayout.toFixed(2)}</strong><small>82% demo rate · ${totalReturn.toFixed(2)} total</small></div>
+        <div className="trade-dock__actions" aria-label="Trade direction">
+          <button className="trade-dock__action trade-dock__action--up" type="button" onClick={() => requestPreview('UP')} disabled={stage === 'confirming' || Boolean(validate())}><TrendingUp size={18} /><span>UP</span><small>Higher</small></button>
+          <button className="trade-dock__action trade-dock__action--down" type="button" onClick={() => requestPreview('DOWN')} disabled={stage === 'confirming' || Boolean(validate())}><TrendingDown size={18} /><span>DOWN</span><small>Lower</small></button>
+        </div>
+        <div className="trade-dock__caption"><span>{asset.symbol}</span><span><i className="live-dot" /> Demo pricing</span></div>
+      </section>
+
+      {error && <div className="trade-modal-backdrop"><div className="trade-modal trade-modal--error" role="alertdialog" aria-modal="true"><div className="trade-modal__icon"><ShieldAlert size={18} /></div><div><span>Check your trade</span><strong>{error}</strong></div><button className="icon-button" type="button" onClick={() => setError('')} aria-label="Close error"><X size={15} /></button></div></div>}
+
+      {stage === 'confirming' && direction && <div className="trade-modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) resetOrder() }}><div className="trade-modal" role="dialog" aria-modal="true" aria-label="Confirm demo trade"><div className="trade-modal__header"><div><span>Review trade</span><strong>{direction} · {asset.symbol}</strong></div><button className="icon-button" type="button" onClick={resetOrder} aria-label="Cancel"><X size={15} /></button></div><div className="trade-modal__summary"><div><span>Stake</span><strong>${amount.toFixed(2)}</strong></div><div><span>Duration</span><strong>{formatDuration(duration)}</strong></div><div><span>Payout</span><strong>82%</strong></div><div><span>Potential return</span><strong>+${estimatedPayout.toFixed(2)}</strong></div></div><p>This is a demo preview. No real order will be submitted.</p><div className="trade-modal__actions"><button type="button" className="confirmation-button confirmation-button--ghost" onClick={resetOrder}>Cancel</button><button type="button" className="confirmation-button confirmation-button--primary" onClick={confirmPreview}><CheckCircle2 size={14} /> Confirm preview</button></div></div></div>}
+
+      {stage === 'previewed' && direction && <div className="trade-modal-backdrop"><div className="trade-modal trade-modal--success" role="status"><div className="trade-modal__icon"><CheckCircle2 size={18} /></div><div><span>Demo preview ready</span><strong>{direction} · {asset.symbol}</strong><p>No trade was submitted. Production orders will require server confirmation.</p></div><button className="confirmation-button confirmation-button--primary" type="button" onClick={resetOrder}>Done</button></div></div>}
+    </>
   )
 }
