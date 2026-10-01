@@ -1,4 +1,4 @@
-import { ArrowDownRight, ArrowUpRight, BarChart3, Clock3, DollarSign, PieChart, TrendingUp, WalletCards } from 'lucide-react'
+import { ArrowUpRight, BarChart3, Clock3, DollarSign, PieChart, TrendingUp, WalletCards } from 'lucide-react'
 import { Link } from 'react-router'
 
 type WorkspacePageProps = {
