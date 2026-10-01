@@ -231,7 +231,7 @@ Create reusable primitives:
 - [x] Replace SVG sample chart.
 - [x] Candlestick series.
 - [x] OHLC data model.
-- [ ] Timeframe switching.
+- [x] Timeframe switching.
 - [x] 1m.
 - [x] 5m.
 - [x] 15m.
@@ -293,23 +293,23 @@ Architecture:
 
 ## 5.1 Fields
 
-- [ ] Instrument.
-- [ ] Direction.
-- [ ] Amount.
-- [ ] Duration.
+- [x] Instrument.
+- [x] Direction.
+- [x] Amount.
+- [x] Duration.
 - [ ] Expiry.
-- [ ] Available balance.
-- [ ] Minimum amount.
-- [ ] Maximum amount.
-- [ ] Potential return.
+- [x] Available balance.
+- [x] Minimum amount.
+- [x] Maximum amount.
+- [x] Potential return.
 - [ ] Fees where applicable.
-- [ ] Risk disclosure.
+- [x] Risk disclosure.
 
 ## 5.2 Amount UX
 
 - [x] Stepper.
 - [x] Presets.
-- [ ] Validation.
+- [x] Validation.
 - [ ] Min/max enforcement from server configuration.
 - [ ] Decimal rules.
 - [ ] Currency display.
@@ -326,8 +326,8 @@ Architecture:
 
 ## 5.4 Trade states
 
-- [ ] Draft.
-- [ ] Confirming.
+- [x] Draft.
+- [x] Confirming.
 - [ ] Pending.
 - [ ] Accepted.
 - [ ] Open.
@@ -343,7 +343,7 @@ Architecture:
 - [x] Disable duplicate submission.
 - [ ] Client request ID.
 - [ ] Server idempotency key.
-- [x] Pending state.
+- [ ] Pending state.
 - [ ] Retry policy.
 - [x] Error recovery.
 - [x] Confirmation UI.

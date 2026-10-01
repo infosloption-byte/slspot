@@ -15,6 +15,7 @@ export default function App() {
       <Route path="/verify-email" element={<AccessPage title="Verify your email" eyebrow="Verification" description="Email verification will become active with the authentication service." />} />
       <Route path="/2fa" element={<AccessPage title="Two-factor verification" eyebrow="2FA" description="Two-factor challenges will be server-driven once authentication is connected." />} />
 
+      <Route path="/app" element={<Navigate to="/app/trading" replace />} />
       <Route path="/app/trading" element={<AppShell />} />
       <Route path="/app/dashboard" element={<WorkspacePage title="Dashboard" eyebrow="Overview" description="Portfolio, trading activity, and market summaries will appear here." />} />
       <Route path="/app/portfolio" element={<WorkspacePage title="Performance" eyebrow="Analytics" description="Performance metrics and trading analytics will be connected after the server data layer is introduced." />} />
