@@ -265,3 +265,65 @@ h2 { margin: 0; font-size: 15px; letter-spacing: -0.02em; }
   .position-detail { grid-template-columns: 1fr auto; }
   .position-detail__copy { grid-column: 1 / -1; }
 }
+
+.workspace-page { padding: 28px; max-width: 1500px; margin: 0 auto; }
+.workspace-page__header { display:flex; align-items:flex-end; justify-content:space-between; gap:20px; margin-bottom:22px; }
+.workspace-page__header h1 { margin:0; font-size:28px; letter-spacing:-.04em; }
+.workspace-page__header p { margin:7px 0 0; color:var(--muted); font-size:12px; max-width:650px; }
+.workspace-page__action { display:inline-flex; align-items:center; gap:7px; min-height:38px; padding:0 12px; border:1px solid rgba(85,219,203,.18); border-radius:10px; color:var(--cyan); background:rgba(85,219,203,.06); text-decoration:none; font-size:10px; font-weight:700; }
+.dashboard-stats { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:12px; }
+.dashboard-stat { padding:15px; }
+.dashboard-stat__top { display:flex; justify-content:space-between; align-items:center; color:var(--muted); font-size:9px; text-transform:uppercase; letter-spacing:.08em; }
+.dashboard-stat__icon { width:28px; height:28px; display:grid; place-items:center; border-radius:8px; color:var(--cyan); background:rgba(85,219,203,.07); }
+.dashboard-stat > strong { display:block; margin:13px 0 5px; font-size:20px; letter-spacing:-.03em; }
+.dashboard-stat > small { font-size:9px; font-weight:700; }
+.dashboard-grid { display:grid; grid-template-columns:1.35fr 1fr; gap:12px; margin-bottom:12px; }
+.dashboard-grid--bottom { grid-template-columns:1fr 1fr; }
+.dashboard-card { padding:15px; min-width:0; }
+.dashboard-card__header { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:14px; }
+.dashboard-card__header h2 { margin:0; font-size:14px; }
+.dashboard-card__value { font-size:16px; color:var(--green); font-weight:800; }
+.dashboard-link { display:inline-flex; align-items:center; gap:4px; color:var(--muted); font-size:9px; text-decoration:none; }
+.performance-chart { height:205px; position:relative; display:flex; }
+.performance-chart__grid { position:absolute; inset:8px 0 28px; display:flex; flex-direction:column; justify-content:space-between; }
+.performance-chart__grid span { border-top:1px dashed rgba(255,255,255,.055); }
+.performance-bars { position:relative; z-index:1; width:100%; display:flex; align-items:flex-end; justify-content:space-around; gap:12px; padding:12px 12px 0; }
+.performance-bar-wrap { height:100%; flex:1; display:flex; flex-direction:column; justify-content:flex-end; align-items:center; gap:7px; }
+.performance-bar { width:min(38px,65%); min-height:12px; border-radius:7px 7px 3px 3px; background:linear-gradient(180deg,var(--cyan),rgba(85,219,203,.22)); box-shadow:0 0 18px rgba(85,219,203,.08); }
+.performance-bar-wrap small { color:var(--muted-2); font-size:8px; }
+.recent-trades { display:grid; gap:2px; }
+.recent-trade { display:grid; grid-template-columns:30px 1fr auto; align-items:center; gap:9px; padding:8px 6px; border-radius:9px; }
+.recent-trade:hover { background:rgba(255,255,255,.02); }
+.recent-trade__icon,.holding__icon { width:29px; height:29px; display:grid; place-items:center; border-radius:8px; background:rgba(255,255,255,.035); border:1px solid var(--line); font-size:9px; font-weight:800; color:var(--cyan); }
+.recent-trade strong,.recent-trade small,.recent-trade > span:last-child small { display:block; }
+.recent-trade strong { font-size:10px; }
+.recent-trade small { color:var(--muted-2); font-size:8px; margin-top:2px; }
+.recent-trade > span:last-child { text-align:right; font-size:10px; font-weight:700; }
+.market-snapshot { display:grid; }
+.market-snapshot__row { display:grid; grid-template-columns:1fr 1fr auto; padding:10px 6px; border-bottom:1px solid rgba(255,255,255,.035); font-size:9px; }
+.market-snapshot__row strong { font-size:10px; }
+.market-snapshot__row span:nth-child(2) { color:var(--text); }
+.exposure-meter { display:grid; gap:14px; padding:8px 2px 16px; }
+.exposure-meter__track,.allocation-track { height:7px; border-radius:999px; background:rgba(255,255,255,.05); overflow:hidden; }
+.exposure-meter__track span,.allocation-track span { display:block; height:100%; border-radius:inherit; background:linear-gradient(90deg,var(--cyan),rgba(85,219,203,.45)); }
+.exposure-meter > div:last-child { display:flex; align-items:baseline; gap:7px; }
+.exposure-meter strong { font-size:24px; }
+.exposure-meter small { color:var(--muted); font-size:9px; }
+.dashboard-note { display:flex; align-items:center; gap:7px; padding:10px; border:1px solid var(--line); border-radius:9px; color:var(--muted-2); font-size:8px; line-height:1.4; }
+.dashboard-muted-icon { color:var(--muted); }
+.portfolio-layout { display:grid; grid-template-columns:1.35fr 1fr; gap:12px; }
+.holdings-list { display:grid; }
+.holding { display:grid; grid-template-columns:29px 1.2fr 1.4fr auto; align-items:center; gap:10px; padding:11px 5px; border-bottom:1px solid rgba(255,255,255,.035); }
+.holding__identity strong,.holding__identity small { display:block; }
+.holding__identity strong { font-size:10px; }
+.holding__identity small { color:var(--muted); font-size:8px; margin-top:2px; }
+.holding__allocation span { display:flex; justify-content:space-between; margin-bottom:5px; }
+.holding__allocation b { font-size:9px; }
+.holding__allocation small { color:var(--muted); font-size:8px; }
+.return-summary { display:grid; grid-template-columns:1fr 1fr; gap:1px; margin-bottom:15px; border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+.return-summary > div { padding:13px; background:rgba(255,255,255,.018); }
+.return-summary span,.return-summary strong { display:block; }
+.return-summary span { color:var(--muted); font-size:8px; }
+.return-summary strong { margin-top:5px; font-size:15px; }
+@media(max-width:900px){.dashboard-stats{grid-template-columns:1fr 1fr}.dashboard-grid,.dashboard-grid--bottom,.portfolio-layout{grid-template-columns:1fr}}
+@media(max-width:600px){.workspace-page{padding:16px}.workspace-page__header{align-items:flex-start; flex-direction:column}.workspace-page__header h1{font-size:23px}.dashboard-stats{grid-template-columns:1fr 1fr}.dashboard-stat > strong{font-size:16px}.holding{grid-template-columns:29px 1fr auto}.holding__allocation{grid-column:2 / -1}.performance-chart{height:170px}}
