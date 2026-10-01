@@ -1,6 +1,5 @@
 import { Bell, ChevronDown, Command, Search, Sparkles, Wallet } from 'lucide-react'
 import { Link } from 'react-router'
-import { IconButton } from '../ui/IconButton'
 
 export function TopBar() {
   return (
@@ -18,11 +17,7 @@ export function TopBar() {
         <span>Demo market online</span>
       </div>
 
-      <Link className="topbar__icon-link" to="/app/alerts">
-        <IconButton label="Notifications">
-          <Bell size={17} />
-        </IconButton>
-      </Link>
+      <Link className="topbar__icon-link" to="/app/alerts" aria-label="Notifications" title="Notifications"><Bell size={17} /></Link>
 
       <Link className="wallet-chip" to="/app/wallet" aria-label="Open wallet">
         <span className="wallet-chip__icon"><Wallet size={15} /></span>
