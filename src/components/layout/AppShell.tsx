@@ -14,6 +14,9 @@ export function AppShell() {
   }
 
   const [selectedSymbol, setSelectedSymbol] = useState(initialAsset.symbol)
+  const [marketPickerOpen, setMarketPickerOpen] = useState(false)
+  const [activityOpen, setActivityOpen] = useState(false)
+
   const selectedAsset = marketAssets.find((asset) => asset.symbol === selectedSymbol) ?? initialAsset
 
   return (
@@ -21,14 +24,25 @@ export function AppShell() {
       <Sidebar />
       <div className="app-main">
         <TopBar />
-        <main className="trading-layout">
-          <AssetList selected={selectedSymbol} onSelect={(asset) => setSelectedSymbol(asset.symbol)} />
-          <div className="center-column">
-            <ChartWorkspace asset={selectedAsset} />
-            <BottomPanel selectedSymbol={selectedSymbol} />
-          </div>
+        <main className="trading-room">
+          <ChartWorkspace asset={selectedAsset} onOpenMarkets={() => setMarketPickerOpen(true)} />
           <TradePanel asset={selectedAsset} />
+          <BottomPanel
+            selectedSymbol={selectedSymbol}
+            collapsed={!activityOpen}
+            onToggle={() => setActivityOpen((current) => !current)}
+          />
         </main>
+
+        <AssetList
+          open={marketPickerOpen}
+          selected={selectedSymbol}
+          onSelect={(asset) => {
+            setSelectedSymbol(asset.symbol)
+            setMarketPickerOpen(false)
+          }}
+          onClose={() => setMarketPickerOpen(false)}
+        />
       </div>
     </div>
   )
