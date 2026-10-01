@@ -9,14 +9,16 @@ type AssetListProps = {
 }
 
 const favoriteStorageKey = 'slspot.watchlist.favorites'
+const categories = ['All', 'Crypto', 'FX', 'Fav'] as const
 
 export function AssetList({ selected, onSelect }: AssetListProps) {
   const [query, setQuery] = useState('')
-  const [category, setCategory] = useState('All')
+  const [category, setCategory] = useState<(typeof categories)[number]>('All')
   const [favorites, setFavorites] = useState<string[]>(() => {
     try {
       const stored = window.localStorage.getItem(favoriteStorageKey)
-      return stored ? JSON.parse(stored) : []
+      const parsed = stored ? JSON.parse(stored) : []
+      return Array.isArray(parsed) ? parsed.filter((value): value is string => typeof value === 'string') : []
     } catch {
       return []
     }
@@ -30,7 +32,9 @@ export function AssetList({ selected, onSelect }: AssetListProps) {
     const normalized = query.trim().toLowerCase()
 
     return marketAssets.filter((asset) => {
-      const matchesCategory = category === 'All' || (category === 'Fav' ? favorites.includes(asset.symbol) : asset.category === category)
+      const matchesCategory =
+        category === 'All' ||
+        (category === 'Fav' ? favorites.includes(asset.symbol) : asset.category === category)
       const matchesQuery =
         normalized.length === 0 ||
         asset.symbol.toLowerCase().includes(normalized) ||
@@ -50,10 +54,13 @@ export function AssetList({ selected, onSelect }: AssetListProps) {
 
   return (
     <section className="asset-panel panel">
-      <div className="panel__header panel__header--stacked">
+      <div className="panel__header panel__header--stacked asset-panel__header">
         <div>
           <div className="eyebrow">Markets</div>
-          <h2>Watchlist</h2>
+          <div className="asset-panel__title-row">
+            <h2>Watchlist</h2>
+            <span className="asset-count">{marketAssets.length}</span>
+          </div>
         </div>
         <button className="quiet-button" type="button" aria-label="Market filters" title="Market filters">
           <SlidersHorizontal size={15} />
@@ -61,36 +68,57 @@ export function AssetList({ selected, onSelect }: AssetListProps) {
       </div>
 
       <label className="market-search">
-        <Search size={15} />
+        <Search size={15} aria-hidden="true" />
         <input
           aria-label="Search assets"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
-          placeholder="Find asset"
+          placeholder="Search markets"
           autoComplete="off"
           spellCheck={false}
         />
+        {query.length > 0 ? (
+          <button
+            className="market-search__clear"
+            type="button"
+            aria-label="Clear market search"
+            title="Clear search"
+            onClick={() => setQuery('')}
+          >
+            ×
+          </button>
+        ) : null}
       </label>
 
       <div className="market-filter-row" aria-label="Market category">
-        {['All', 'Crypto', 'FX', 'Fav'].map((value) => (
-          <button
-            className={category === value ? 'filter-pill filter-pill--active' : 'filter-pill'}
-            key={value}
-            onClick={() => setCategory(value)}
-            type="button"
-            aria-pressed={category === value}
-          >
-            {value === 'Fav' ? '★ Fav' : value}
-          </button>
-        ))}
+        {categories.map((value) => {
+          const count = value === 'All'
+            ? marketAssets.length
+            : value === 'Fav'
+              ? favorites.length
+              : marketAssets.filter((asset) => asset.category === value).length
+
+          return (
+            <button
+              className={category === value ? 'filter-pill filter-pill--active' : 'filter-pill'}
+              key={value}
+              onClick={() => setCategory(value)}
+              type="button"
+              aria-pressed={category === value}
+            >
+              <span>{value === 'Fav' ? '★' : value}</span>
+              <small>{count}</small>
+            </button>
+          )
+        })}
       </div>
 
-      <div className="asset-list">
+      <div className="asset-list" aria-label="Available markets">
         {filteredAssets.length === 0 ? (
           <div className="asset-list__empty">
-            <strong>No matching assets</strong>
-            <span>Try another symbol, name, or filter.</span>
+            <span className="asset-list__empty-icon">⌕</span>
+            <strong>{category === 'Fav' && favorites.length === 0 ? 'No favorites yet' : 'No matching markets'}</strong>
+            <span>{category === 'Fav' && favorites.length === 0 ? 'Use the star on a market to add it here.' : 'Try another symbol, name, or category.'}</span>
           </div>
         ) : (
           filteredAssets.map((asset) => {
@@ -99,21 +127,25 @@ export function AssetList({ selected, onSelect }: AssetListProps) {
             const isFavorite = favorites.includes(asset.symbol)
 
             return (
-              <div key={asset.symbol} className={'asset-row' + (isSelected ? ' asset-row--active' : '')}>
+              <div
+                key={asset.symbol}
+                className={'asset-row' + (isSelected ? ' asset-row--active' : '')}
+              >
                 <button
                   className="asset-row__select"
                   onClick={() => onSelect(asset)}
                   type="button"
                   aria-label={'Select ' + asset.symbol}
+                  aria-current={isSelected ? 'true' : undefined}
                 >
-                  <span className={'asset-icon asset-icon--' + asset.accent}>{asset.symbol.slice(0, 1)}</span>
+                  <span className={'asset-icon asset-icon--' + asset.accent} aria-hidden="true">{asset.symbol.slice(0, 1)}</span>
                   <span className="asset-row__identity">
                     <strong>{asset.symbol}</strong>
-                    <small>{asset.name}</small>
+                    <small>{asset.name} · Vol {asset.volume}</small>
                   </span>
                   <span className="asset-row__value">
                     <strong>{formatPrice(asset.price, asset.price < 10 ? 5 : 2)}</strong>
-                    <small className={positive ? 'text-positive' : 'text-negative'}>{formatPercent(asset.change)}</small>
+                    <small className={positive ? 'text-positive' : 'text-negative'}>{formatPercent(asset.change)} <span>24h</span></small>
                   </span>
                 </button>
 
@@ -123,7 +155,7 @@ export function AssetList({ selected, onSelect }: AssetListProps) {
                   type="button"
                   aria-label={isFavorite ? 'Remove ' + asset.symbol + ' from favorites' : 'Add ' + asset.symbol + ' to favorites'}
                   aria-pressed={isFavorite}
-                  title={isFavorite ? 'Remove favorite' : 'Add favorite'}
+                  title={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
                 >
                   <Star size={13} fill={isFavorite ? 'currentColor' : 'none'} />
                 </button>
@@ -134,8 +166,8 @@ export function AssetList({ selected, onSelect }: AssetListProps) {
       </div>
 
       <div className="panel__footer-note">
-        <span>{filteredAssets.length} assets · interface preview</span>
-        <span className="muted-dot" />
+        <span>{filteredAssets.length} shown · demo market data</span>
+        <span className="asset-footer-status"><span className="muted-dot" /> Simulated</span>
       </div>
     </section>
   )
