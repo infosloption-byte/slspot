@@ -152,6 +152,28 @@ describe('platform API routes', () => {
     await app.close()
   })
 
+
+  it('registers the complete platform API route surface', async () => {
+    const app = buildApp({ logging: false, authService, apiService })
+    await app.ready()
+
+    const routes = app.printRoutes()
+    for (const route of [
+      'GET    /api/v1/market/assets',
+      'GET    /api/v1/portfolio/summary',
+      'GET    /api/v1/portfolio/positions',
+      'GET    /api/v1/trades',
+      'GET    /api/v1/wallet',
+      'GET    /api/v1/wallet/transactions',
+      'GET    /api/v1/notifications',
+      'POST   /api/v1/notifications/:notificationId/read',
+    ]) {
+      assert.match(routes, new RegExp(route.replace(/[.*+?^$()|[\]{}]/g, '\\  it('binds notification reads to the authenticated user', async () => {').replace(/\\s+/g, '\\\\s+')))
+    }
+
+    await app.close()
+  })
+
   it('binds notification reads to the authenticated user', async () => {
     let requestedUserId = ''
     let requestedNotificationId = ''
