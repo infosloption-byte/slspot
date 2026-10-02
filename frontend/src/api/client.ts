@@ -1,5 +1,3 @@
-import type { ApiErrorResponse } from './contracts'
-
 const DEFAULT_API_BASE_URL = '/api/v1'
 const DEFAULT_REQUEST_TIMEOUT_MS = 15_000
 
