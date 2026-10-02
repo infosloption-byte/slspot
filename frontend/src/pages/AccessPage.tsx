@@ -362,7 +362,9 @@ export function AccessPage() {
               void (async () => {
                 try {
                   setBusy(true)
-                  const result = await authApi.requestEmailVerification(values.email)
+                  const email = values.email
+                  if (!email) return
+                  const result = await authApi.requestEmailVerification(email)
                   setSubmitted(true)
                   if (result.verification?.token) {
                     setValues((current) => ({ ...current, token: result.verification?.token ?? '' }))
