@@ -14,6 +14,7 @@ The repository is now structured as a monorepo with explicit frontend and backen
 - [x] Add Redis/realtime infrastructure foundation.
 - [x] Connect authentication/session management to the backend.
 - [ ] Replace demo market/trade/wallet authority with server-backed state.
+- [x] Establish typed frontend/backend API service layers and authenticated realtime client.
 
 ### Current repository shape
 
@@ -549,10 +550,12 @@ Tasks:
 - [x] Request timeout.
 - [x] Error normalization.
 - [x] Browser credential/session transport (`credentials: include`) foundation.
-- [ ] Retry rules.
-- [ ] Cache policy.
+- [ ] Retry rules (deferred for non-idempotent financial mutations).
+- [x] Cache policy: server-authoritative reads are no-store by default; realtime provides live updates.
 - [x] Request tracing/correlation ID.
 - [x] Idempotency-Key transport support.
+- [x] Domain API modules for auth, market, portfolio, trades, wallet, and notifications.
+- [x] Backend route/service boundary for user-scoped server-state reads.
 
 ---
 
@@ -570,20 +573,21 @@ src/realtime/
 
 Tasks:
 
-- [ ] Connect.
-- [ ] Authenticate.
-- [ ] Subscribe.
-- [ ] Unsubscribe.
-- [ ] Heartbeat.
-- [ ] Reconnect.
-- [ ] Exponential backoff.
-- [ ] Connection state.
-- [ ] Subscription recovery.
-- [ ] Message validation.
-- [ ] Message-size limits.
+- [x] Connect.
+- [x] Authenticate.
+- [x] Subscribe.
+- [x] Unsubscribe.
+- [x] Heartbeat.
+- [x] Reconnect.
+- [x] Exponential backoff.
+- [x] Connection state.
+- [x] Subscription recovery.
+- [x] Message validation.
+- [x] Message-size limits.
 - [x] Event versioning.
 - [x] Subscription message contract.
 - [x] Subscription authorization contract.
+- [x] Mount realtime client only for authenticated frontend sessions.
 
 Market events:
 
