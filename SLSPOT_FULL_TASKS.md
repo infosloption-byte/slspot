@@ -726,11 +726,14 @@ Market events:
 - [x] Create backend package.
 - [x] TypeScript.
 - [x] Fastify decision and foundation.
-- [ ] Environment validation.
+- [x] Environment validation.
 - [x] Structured logging.
 - [x] Error handling.
-- [ ] Request IDs/correlation contract.
-- [x] Health endpoint.
+- [x] Request IDs/correlation contract.
+- [x] Health and readiness endpoints.
+- [x] Baseline API security headers.
+- [x] Graceful shutdown handling.
+- [x] Backend foundation test suite.
 - [ ] API versioning beyond the initial `/api/v1` foundation.
 
 ## 14.2 Database
