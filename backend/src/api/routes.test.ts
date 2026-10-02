@@ -114,4 +114,69 @@ describe('platform API routes', () => {
     assert.equal(requestedUserId, 'user-1')
     await app.close()
   })
+  it('rejects invalid market asset type values', async () => {
+    const app = buildApp({ logging: false, authService, apiService })
+    await app.ready()
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/v1/market/assets?type=NOT_A_REAL_ASSET',
+    })
+
+    assert.equal(response.statusCode, 400)
+    assert.equal(response.json<{ error: { code: string } }>().error.code, 'INVALID_QUERY')
+    await app.close()
+  })
+
+  it('binds private wallet requests to the authenticated user', async () => {
+    let requestedUserId = ''
+    const scoped = {
+      ...apiService,
+      getWallet: async (userId: string) => {
+        requestedUserId = userId
+        return null
+      },
+    } as unknown as PlatformApiService
+
+    const app = buildApp({ logging: false, authService, apiService: scoped })
+    await app.ready()
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/v1/wallet',
+      headers: { cookie: 'slspot_session=test-session' },
+    })
+
+    assert.equal(response.statusCode, 200)
+    assert.equal(requestedUserId, 'user-1')
+    await app.close()
+  })
+
+  it('binds notification reads to the authenticated user', async () => {
+    let requestedUserId = ''
+    let requestedNotificationId = ''
+    const scoped = {
+      ...apiService,
+      markNotificationRead: async (userId: string, notificationId: string) => {
+        requestedUserId = userId
+        requestedNotificationId = notificationId
+        return true
+      },
+    } as unknown as PlatformApiService
+
+    const app = buildApp({ logging: false, authService, apiService: scoped })
+    await app.ready()
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/v1/notifications/notification-1/read',
+      headers: { cookie: 'slspot_session=test-session' },
+    })
+
+    assert.equal(response.statusCode, 200)
+    assert.equal(requestedUserId, 'user-1')
+    assert.equal(requestedNotificationId, 'notification-1')
+    await app.close()
+  })
+
 })
