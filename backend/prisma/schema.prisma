@@ -1,0 +1,494 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+enum UserStatus {
+  PENDING_VERIFICATION
+  ACTIVE
+  SUSPENDED
+  DISABLED
+}
+
+enum AccountStatus {
+  ACTIVE
+  SUSPENDED
+  CLOSED
+}
+
+enum AssetType {
+  CRYPTO
+  FOREX
+  STOCK
+  COMMODITY
+  INDEX
+  OTHER
+}
+
+enum MarketStatus {
+  OPEN
+  CLOSED
+  HALTED
+  MAINTENANCE
+}
+
+enum OrderType {
+  MARKET
+  LIMIT
+}
+
+enum OrderSide {
+  BUY
+  SELL
+}
+
+enum OrderStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  CANCELLED
+  FAILED
+}
+
+enum PositionStatus {
+  OPEN
+  CLOSED
+}
+
+enum TradeStatus {
+  OPEN
+  WON
+  LOST
+  CANCELLED
+  EXPIRED
+}
+
+enum SettlementStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+enum WalletStatus {
+  ACTIVE
+  SUSPENDED
+  CLOSED
+}
+
+enum WalletTransactionType {
+  DEPOSIT
+  WITHDRAWAL
+  TRADE_HOLD
+  TRADE_RELEASE
+  SETTLEMENT
+  FEE
+  ADJUSTMENT
+}
+
+enum WalletTransactionStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  REJECTED
+}
+
+enum LedgerDirection {
+  DEBIT
+  CREDIT
+}
+
+enum DepositStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  REJECTED
+}
+
+enum WithdrawalStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  REJECTED
+}
+
+enum KycStatus {
+  NOT_STARTED
+  PENDING
+  IN_REVIEW
+  APPROVED
+  REJECTED
+}
+
+enum NotificationType {
+  TRADE_RESULT
+  DEPOSIT
+  WITHDRAWAL
+  SECURITY
+  VERIFICATION
+  SYSTEM
+}
+
+model User {
+  id            String       @id @default(uuid()) @db.Char(36)
+  email         String       @unique @db.VarChar(320)
+  passwordHash  String       @db.VarChar(255)
+  status        UserStatus   @default(PENDING_VERIFICATION)
+  countryCode   String?      @db.Char(2)
+  createdAt     DateTime     @default(now()) @db.DateTime(3)
+  updatedAt     DateTime     @updatedAt @db.DateTime(3)
+  lastLoginAt   DateTime?    @db.DateTime(3)
+
+  sessions      Session[]
+  devices       Device[]
+  accounts      Account[]
+  orders        Order[]
+  positions     Position[]
+  trades        Trade[]
+  kycCases      KycCase[]
+  notifications Notification[]
+  auditLogs     AuditLog[]   @relation("AuditActor")
+}
+
+model Session {
+  id         String    @id @default(uuid()) @db.Char(36)
+  userId     String    @db.Char(36)
+  tokenHash  String    @unique @db.VarChar(255)
+  expiresAt  DateTime  @db.DateTime(3)
+  revokedAt  DateTime? @db.DateTime(3)
+  ipAddress  String?   @db.VarChar(64)
+  userAgent  String?   @db.VarChar(512)
+  createdAt  DateTime  @default(now()) @db.DateTime(3)
+  updatedAt  DateTime  @updatedAt @db.DateTime(3)
+
+  user       User      @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([userId, expiresAt])
+  @@index([userId, revokedAt])
+}
+
+model Device {
+  id              String    @id @default(uuid()) @db.Char(36)
+  userId          String    @db.Char(36)
+  deviceName      String?   @db.VarChar(120)
+  fingerprintHash String?   @db.VarChar(255)
+  userAgent       String?   @db.VarChar(512)
+  lastSeenAt      DateTime  @default(now()) @db.DateTime(3)
+  revokedAt       DateTime? @db.DateTime(3)
+  createdAt       DateTime  @default(now()) @db.DateTime(3)
+  updatedAt       DateTime  @updatedAt @db.DateTime(3)
+
+  user            User      @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([userId, revokedAt])
+  @@index([userId, lastSeenAt])
+}
+
+model Account {
+  id            String        @id @default(uuid()) @db.Char(36)
+  userId        String        @db.Char(36)
+  name          String        @db.VarChar(120)
+  currency      String        @db.Char(3)
+  status        AccountStatus @default(ACTIVE)
+  createdAt     DateTime      @default(now()) @db.DateTime(3)
+  updatedAt     DateTime      @updatedAt @db.DateTime(3)
+
+  user          User          @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  orders        Order[]
+  positions     Position[]
+  wallets       Wallet[]
+  ledgerEntries LedgerEntry[]
+
+  @@unique([userId, currency])
+  @@index([userId, status])
+}
+
+model Asset {
+  id            String     @id @default(uuid()) @db.Char(36)
+  symbol        String     @unique @db.VarChar(32)
+  name          String     @db.VarChar(120)
+  type          AssetType
+  baseCurrency  String?    @db.Char(3)
+  quoteCurrency String?    @db.Char(3)
+  priceScale    Int        @default(8)
+  quantityScale Int        @default(8)
+  isActive      Boolean    @default(true)
+  sortOrder     Int        @default(0)
+  createdAt     DateTime   @default(now()) @db.DateTime(3)
+  updatedAt     DateTime   @updatedAt @db.DateTime(3)
+
+  markets       Market[]
+  orders        Order[]
+  positions     Position[]
+
+  @@index([type, isActive, sortOrder])
+}
+
+model Market {
+  id             String       @id @default(uuid()) @db.Char(36)
+  assetId        String       @db.Char(36)
+  provider       String       @db.VarChar(64)
+  externalSymbol String       @db.VarChar(128)
+  status         MarketStatus @default(CLOSED)
+  lastPrice      Decimal?     @db.Decimal(30, 12)
+  lastPriceAt    DateTime?    @db.DateTime(3)
+  createdAt      DateTime     @default(now()) @db.DateTime(3)
+  updatedAt      DateTime     @updatedAt @db.DateTime(3)
+
+  asset          Asset        @relation(fields: [assetId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@unique([provider, externalSymbol])
+  @@index([assetId, status])
+}
+
+model Order {
+  id              String       @id @default(uuid()) @db.Char(36)
+  clientRequestId String       @unique @db.VarChar(128)
+  userId          String       @db.Char(36)
+  accountId       String       @db.Char(36)
+  assetId         String       @db.Char(36)
+  type            OrderType
+  side            OrderSide
+  status          OrderStatus  @default(PENDING)
+  amount          Decimal      @db.Decimal(30, 8)
+  requestedPrice  Decimal?     @db.Decimal(30, 12)
+  executedPrice   Decimal?     @db.Decimal(30, 12)
+  durationSeconds Int?
+  expiresAt       DateTime?    @db.DateTime(3)
+  fee             Decimal      @default(0) @db.Decimal(30, 8)
+  rejectionReason String?      @db.VarChar(255)
+  createdAt       DateTime     @default(now()) @db.DateTime(3)
+  updatedAt       DateTime     @updatedAt @db.DateTime(3)
+  acceptedAt      DateTime?    @db.DateTime(3)
+
+  user            User         @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  account         Account      @relation(fields: [accountId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  asset           Asset        @relation(fields: [assetId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  position        Position?
+
+  @@index([userId, createdAt])
+  @@index([accountId, status, createdAt])
+  @@index([assetId, status, createdAt])
+}
+
+model Position {
+  id          String         @id @default(uuid()) @db.Char(36)
+  orderId     String         @unique @db.Char(36)
+  userId      String         @db.Char(36)
+  accountId   String         @db.Char(36)
+  assetId     String         @db.Char(36)
+  side        OrderSide
+  status      PositionStatus @default(OPEN)
+  amount      Decimal        @db.Decimal(30, 8)
+  entryPrice  Decimal        @db.Decimal(30, 12)
+  exitPrice   Decimal?       @db.Decimal(30, 12)
+  openedAt    DateTime       @default(now()) @db.DateTime(3)
+  closedAt    DateTime?      @db.DateTime(3)
+  createdAt   DateTime       @default(now()) @db.DateTime(3)
+  updatedAt   DateTime       @updatedAt @db.DateTime(3)
+
+  order       Order          @relation(fields: [orderId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  user        User           @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  account     Account        @relation(fields: [accountId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  asset       Asset          @relation(fields: [assetId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  trade       Trade?
+
+  @@index([userId, status, openedAt])
+  @@index([accountId, status, openedAt])
+  @@index([assetId, status, openedAt])
+}
+
+model Trade {
+  id         String      @id @default(uuid()) @db.Char(36)
+  positionId String      @unique @db.Char(36)
+  userId     String      @db.Char(36)
+  status     TradeStatus @default(OPEN)
+  grossPnl   Decimal?    @db.Decimal(30, 8)
+  fee        Decimal      @default(0) @db.Decimal(30, 8)
+  netPnl     Decimal?    @db.Decimal(30, 8)
+  openedAt   DateTime    @default(now()) @db.DateTime(3)
+  closedAt   DateTime?   @db.DateTime(3)
+  createdAt  DateTime    @default(now()) @db.DateTime(3)
+  updatedAt  DateTime    @updatedAt @db.DateTime(3)
+
+  position   Position    @relation(fields: [positionId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  user       User        @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  settlement Settlement?
+
+  @@index([userId, status, openedAt])
+  @@index([status, openedAt])
+}
+
+model Settlement {
+  id              String           @id @default(uuid()) @db.Char(36)
+  tradeId         String           @unique @db.Char(36)
+  status          SettlementStatus @default(PENDING)
+  settlementPrice Decimal?         @db.Decimal(30, 12)
+  grossPayout     Decimal?         @db.Decimal(30, 8)
+  fees            Decimal          @default(0) @db.Decimal(30, 8)
+  netPnl          Decimal?         @db.Decimal(30, 8)
+  referenceId     String?          @db.VarChar(128)
+  settledAt       DateTime?        @db.DateTime(3)
+  createdAt       DateTime         @default(now()) @db.DateTime(3)
+  updatedAt       DateTime         @updatedAt @db.DateTime(3)
+
+  trade           Trade            @relation(fields: [tradeId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([status, settledAt])
+  @@index([referenceId])
+}
+
+model Wallet {
+  id               String        @id @default(uuid()) @db.Char(36)
+  accountId        String        @unique @db.Char(36)
+  currency         String        @db.Char(3)
+  status           WalletStatus  @default(ACTIVE)
+  availableBalance Decimal       @default(0) @db.Decimal(30, 8)
+  heldBalance      Decimal       @default(0) @db.Decimal(30, 8)
+  createdAt        DateTime      @default(now()) @db.DateTime(3)
+  updatedAt        DateTime      @updatedAt @db.DateTime(3)
+
+  account          Account       @relation(fields: [accountId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  transactions     WalletTransaction[]
+  deposits         Deposit[]
+  withdrawals      Withdrawal[]
+
+  @@index([status])
+}
+
+model WalletTransaction {
+  id                  String                  @id @default(uuid()) @db.Char(36)
+  walletId            String                  @db.Char(36)
+  type                WalletTransactionType
+  status              WalletTransactionStatus @default(PENDING)
+  amount              Decimal                 @db.Decimal(30, 8)
+  currency            String                  @db.Char(3)
+  idempotencyKey      String                  @unique @db.VarChar(128)
+  referenceType       String?                 @db.VarChar(64)
+  referenceId         String?                 @db.VarChar(128)
+  description         String?                 @db.VarChar(255)
+  createdAt           DateTime                @default(now()) @db.DateTime(3)
+  updatedAt           DateTime                @updatedAt @db.DateTime(3)
+
+  wallet              Wallet                  @relation(fields: [walletId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  ledgerEntries       LedgerEntry[]
+
+  @@index([walletId, createdAt])
+  @@index([referenceType, referenceId])
+}
+
+model LedgerEntry {
+  id                  String          @id @default(uuid()) @db.Char(36)
+  transactionId       String          @db.Char(36)
+  accountId           String          @db.Char(36)
+  walletTransactionId String?         @db.Char(36)
+  direction           LedgerDirection
+  amount              Decimal         @db.Decimal(30, 8)
+  currency            String          @db.Char(3)
+  referenceType       String?         @db.VarChar(64)
+  referenceId         String?         @db.VarChar(128)
+  createdAt           DateTime        @default(now()) @db.DateTime(3)
+
+  account             Account         @relation(fields: [accountId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  walletTransaction   WalletTransaction? @relation(fields: [walletTransactionId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([transactionId])
+  @@index([accountId, createdAt])
+  @@index([walletTransactionId])
+  @@index([referenceType, referenceId])
+}
+
+model Deposit {
+  id                String        @id @default(uuid()) @db.Char(36)
+  walletId          String        @db.Char(36)
+  provider          String        @db.VarChar(64)
+  providerReference String?       @unique @db.VarChar(128)
+  amount            Decimal       @db.Decimal(30, 8)
+  currency          String        @db.Char(3)
+  status            DepositStatus @default(PENDING)
+  failureReason     String?       @db.VarChar(255)
+  requestedAt       DateTime      @default(now()) @db.DateTime(3)
+  completedAt       DateTime?     @db.DateTime(3)
+  createdAt         DateTime      @default(now()) @db.DateTime(3)
+  updatedAt         DateTime      @updatedAt @db.DateTime(3)
+
+  wallet            Wallet        @relation(fields: [walletId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([walletId, createdAt])
+  @@index([provider, status, createdAt])
+}
+
+model Withdrawal {
+  id                String           @id @default(uuid()) @db.Char(36)
+  walletId          String           @db.Char(36)
+  provider          String           @db.VarChar(64)
+  providerReference String?          @unique @db.VarChar(128)
+  amount            Decimal          @db.Decimal(30, 8)
+  currency          String           @db.Char(3)
+  status            WithdrawalStatus @default(PENDING)
+  failureReason     String?          @db.VarChar(255)
+  requestedAt       DateTime         @default(now()) @db.DateTime(3)
+  completedAt       DateTime?        @db.DateTime(3)
+  createdAt         DateTime         @default(now()) @db.DateTime(3)
+  updatedAt         DateTime         @updatedAt @db.DateTime(3)
+
+  wallet            Wallet           @relation(fields: [walletId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([walletId, createdAt])
+  @@index([provider, status, createdAt])
+}
+
+model KycCase {
+  id             String     @id @default(uuid()) @db.Char(36)
+  userId         String     @db.Char(36)
+  provider       String?    @db.VarChar(64)
+  providerCaseId String?    @unique @db.VarChar(128)
+  status         KycStatus  @default(NOT_STARTED)
+  submittedAt    DateTime?  @db.DateTime(3)
+  resolvedAt     DateTime?  @db.DateTime(3)
+  createdAt      DateTime   @default(now()) @db.DateTime(3)
+  updatedAt      DateTime   @updatedAt @db.DateTime(3)
+
+  user           User       @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([userId, status])
+  @@index([provider, status])
+}
+
+model Notification {
+  id         String           @id @default(uuid()) @db.Char(36)
+  userId     String           @db.Char(36)
+  type       NotificationType
+  title      String           @db.VarChar(160)
+  body       String           @db.Text
+  readAt     DateTime?        @db.DateTime(3)
+  createdAt  DateTime         @default(now()) @db.DateTime(3)
+
+  user       User             @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([userId, readAt, createdAt])
+}
+
+model AuditLog {
+  id          String    @id @default(uuid()) @db.Char(36)
+  actorUserId String?   @db.Char(36)
+  action      String    @db.VarChar(100)
+  entityType  String    @db.VarChar(64)
+  entityId    String?   @db.VarChar(128)
+  metadata    Json?
+  ipAddress   String?   @db.VarChar(64)
+  userAgent   String?   @db.VarChar(512)
+  createdAt   DateTime  @default(now()) @db.DateTime(3)
+
+  actorUser   User?     @relation("AuditActor", fields: [actorUserId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([actorUserId, createdAt])
+  @@index([entityType, entityId, createdAt])
+  @@index([action, createdAt])
+}
