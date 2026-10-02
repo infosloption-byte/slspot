@@ -1,7 +1,16 @@
-import { Bell, ChevronDown, Plus } from 'lucide-react'
-import { Link } from 'react-router'
+import { Bell, LogOut, Plus } from 'lucide-react'
+import { Link, useNavigate } from 'react-router'
+import { useAuth } from '../../auth/AuthProvider'
 
 export function TopBar() {
+  const navigate = useNavigate()
+  const { user, logout } = useAuth()
+
+  const signOut = async () => {
+    await logout()
+    navigate('/login', { replace: true, state: { message: 'You have been signed out.' } })
+  }
+
   return (
     <header className="topbar">
       <Link to="/app/trading" className="topbar__brand" aria-label="SL Spot home">
@@ -16,12 +25,15 @@ export function TopBar() {
         <span className="topbar__bell-dot" />
       </Link>
 
-      <button className="account-chip" type="button" aria-label="Switch account">
+      <div className="account-chip" aria-label="Signed in account">
         <span className="account-chip__body">
-          <small>Demo account</small>
-          <strong>$12,480.65</strong>
+          <small>{user?.email ?? 'Signed in'}</small>
+          <strong>{user?.status === 'ACTIVE' ? 'Account active' : 'Account'}</strong>
         </span>
-        <ChevronDown size={15} />
+      </div>
+
+      <button className="icon-button" type="button" onClick={() => void signOut()} aria-label="Sign out" title="Sign out">
+        <LogOut size={17} />
       </button>
 
       <Link className="btn btn--primary topbar__deposit" to="/app/wallet">
