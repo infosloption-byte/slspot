@@ -673,14 +673,28 @@ export class TradingService {
     }) as Promise<TradeDetails | null>
   }
 
-  private async ensureAccount(tx: Prisma.TransactionClient, userId: string, currency: string) {
-    const existing = await tx.account.findFirst({ where: { userId, status: 'ACTIVE' }, orderBy: { createdAt: 'asc' } })
-    if (existing) return existing
+  private async ensureAccount(
+    tx: Prisma.TransactionClient,
+    userId: string,
+    currency: string,
+  ) {
+    const normalizedCurrency = currency.slice(0, 3).toUpperCase()
+    const existing = await tx.account.findUnique({
+      where: { userId_currency: { userId, currency: normalizedCurrency } },
+    })
+
+    if (existing) {
+      if (existing.status !== 'ACTIVE') {
+        throw new TradingError(403, 'ACCOUNT_NOT_ELIGIBLE', 'The trading account is not active')
+      }
+      return existing
+    }
+
     return tx.account.create({
       data: {
         userId,
         name: 'Primary Trading Account',
-        currency: currency.slice(0, 3).toUpperCase(),
+        currency: normalizedCurrency,
         status: 'ACTIVE',
       },
     })
