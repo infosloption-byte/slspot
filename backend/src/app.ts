@@ -134,7 +134,7 @@ export function buildApp(options: AppOptions = {}) {
         ? error.statusCode
         : 500
 
-    const response: ErrorResponse = {
+    const response: ApiError = {
       success: false,
       error: {
         code: statusCode === 500 ? 'INTERNAL_SERVER_ERROR' : (error.code ?? 'REQUEST_ERROR'),
