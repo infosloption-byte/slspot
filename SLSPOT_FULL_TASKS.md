@@ -1,3 +1,36 @@
+## Current Frontend Task Audit — 2026-10-02
+
+The latest frontend theme is **Black Gold / SL Spot** and is now the active design direction. The requested frontend work below is implemented on `main`:
+
+### Trading screen polish
+- [x] Open positions: live countdown, current P&L, close action.
+- [x] Chart trade markers: entry marker, countdown/progress line.
+- [x] Chart type switch: candles, line, area.
+- [x] Basic indicators: MA and RSI.
+- [x] Drawing tools: horizontal level and trend line, plus clear/reset.
+- [x] Live demo price ticks.
+- [x] Win/lose/open trade toast feedback.
+- [x] Optional trade sounds with persisted preference.
+- [x] Asset payout percentages.
+- [x] Crypto, FX, Stocks, Commodities and Indices categories.
+- [x] Favorites tab and persistence.
+- [x] Mobile sticky UP/DOWN trading bar with expandable stake/duration configuration.
+
+### Missing screens and shared UI
+- [x] Login/register/forgot/reset/email verification/2FA forms.
+- [x] Wallet deposit/withdraw demo forms and transaction table.
+- [x] 404 page.
+- [x] Protected-route boundary.
+- [x] Toast.
+- [x] Tooltip.
+- [x] Skeleton.
+- [x] EmptyState.
+- [x] ErrorState.
+- [x] Select.
+- [x] Pagination.
+- [x] Custom SL Spot brand mark and favicon.
+
+These items are implemented as demo/frontend behavior. Server-authoritative authentication, market data, balances, orders, settlement and wallet operations remain backend integration work and must not be moved into frontend authority.
 # Current Frontend Implementation Update — 2026-10-02
 
 The frontend theme was audited before the latest implementation work. The current visual system is **Black Gold**: true-black surfaces, yellow brand accent, green/red reserved for market direction, compact rail/topbar, and denser controls. New UI work in this milestone follows those tokens rather than the earlier cyan/graphite styling.
@@ -168,21 +201,21 @@ Before real-money features:
 Create reusable primitives:
 
 - [ ] Button
-- [ ] IconButton
+- [x] IconButton
 - [ ] Input
-- [ ] Select
+- [x] Select
 - [ ] Dropdown
 - [ ] Tabs
 - [ ] Badge
-- [ ] Tooltip
+- [x] Tooltip
 - [ ] Modal
 - [ ] Drawer
-- [ ] Toast
-- [ ] Skeleton
-- [ ] EmptyState
-- [ ] ErrorState
+- [x] Toast
+- [x] Skeleton
+- [x] EmptyState
+- [x] ErrorState
 - [ ] DataTable
-- [ ] Pagination
+- [x] Pagination
 - [ ] ConfirmDialog
 
 ---
@@ -248,7 +281,7 @@ Create reusable primitives:
 - [x] Search.
 - [x] Favorites.
 - [x] Favorite persistence.
-- [ ] Categories.
+- [x] Categories.
 - [x] Crypto filter.
 - [x] FX filter.
 - [x] Stocks filter.
@@ -256,8 +289,8 @@ Create reusable primitives:
 - [x] Indices filter.
 - [ ] Recent assets.
 - [ ] Sorting.
-- [ ] Live price.
-- [ ] Percentage change.
+- [x] Live price.
+- [x] Percentage change.
 - [ ] Volume.
 - [x] Market status.
 - [x] Mobile asset picker.
