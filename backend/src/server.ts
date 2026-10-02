@@ -9,10 +9,15 @@ import {
   unsubscribe,
 } from './realtime/redis.js'
 import { RealtimeGateway } from './realtime/gateway.js'
+import {
+  checkDatabase,
+  connectDatabase,
+  disconnectDatabase,
+} from './db/prisma.js'
 
 const realtimeGateway = new RealtimeGateway()
 const app = buildApp({
-  checkDatabase: async () => (await import('./db/prisma.js')).checkDatabase(),
+  checkDatabase,
   checkRedis,
   redisRequired: env.redisRequired,
   realtimeGateway,
@@ -37,7 +42,6 @@ async function shutdown(signal: string) {
     realtimeGateway.closeAll()
     await app.close()
     disconnectRedis()
-    const { disconnectDatabase } = await import('./db/prisma.js')
     await disconnectDatabase()
     clearTimeout(timeout)
     app.log.info('Shutdown complete')
@@ -57,7 +61,6 @@ process.once('SIGTERM', () => {
 })
 
 try {
-  const { connectDatabase } = await import('./db/prisma.js')
   await connectDatabase()
 
   try {
