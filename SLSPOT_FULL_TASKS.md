@@ -1,3 +1,28 @@
+## Current Architecture Milestone — 2026-10-02
+
+The repository is now structured as a monorepo with explicit frontend and backend application boundaries.
+
+- [x] Move the React/Vite application into `frontend/`.
+- [x] Keep shared documentation and repository governance at the root.
+- [x] Create a dedicated TypeScript + Fastify backend in `backend/`.
+- [x] Add backend configuration and a versioned `/api/v1/health` endpoint.
+- [x] Add the frontend API client foundation at `frontend/src/api/client.ts`.
+- [x] Configure the frontend development proxy for `/api` and WebSocket traffic.
+- [ ] Add backend persistence with Prisma/MySQL.
+- [ ] Add Redis/realtime infrastructure.
+- [ ] Connect authentication to the backend.
+- [ ] Replace demo market/trade/wallet authority with server-backed state.
+
+### Current repository shape
+
+```text
+slspot/
+├── frontend/    # React + Vite trading UI
+├── backend/     # Fastify API + future realtime/business services
+├── docs/        # Architecture, design and security documentation
+└── repository-level docs/config
+```
+
 ## Current Frontend Task Audit — 2026-10-02
 
 The latest frontend theme is **Black Gold / SL Spot** and is now the active design direction. The requested frontend work below is implemented on `main`:
@@ -75,7 +100,7 @@ Still intentionally pending for the frontend platform layer:
 
 **Repository:** `infosloption-byte/slspot`  
 **Branch:** `main`  
-**Current status:** Frontend foundation / Trading Terminal V0  
+**Current status:** Frontend foundation + frontend/backend monorepo + API foundation  
 **Target:** Production-ready original trading platform, subject to product/legal decisions
 
 ---
@@ -113,6 +138,7 @@ Status legend:
 - [x] Confirm default branch is `main`.
 - [x] Confirm current foundation commit.
 - [x] Document repository structure.
+- [x] Establish separate `frontend/` and `backend/` application boundaries.
 - [ ] Add project versioning policy.
 - [ ] Add `CHANGELOG.md`.
 - [ ] Add contribution/development workflow.
@@ -182,11 +208,10 @@ Before real-money features:
 
 # PHASE 2 — Design System
 
-## 2.1 Midnight Signal
+## 2.1 Black Gold / SL Spot
 
-- [x] Establish dark graphite base.
-- [x] Establish cyan market accent.
-- [x] Establish amber attention accent.
+- [x] Establish true-black base surfaces.
+- [x] Establish yellow/gold brand accent.
 - [x] Establish green positive state.
 - [x] Establish red negative state.
 - [x] Establish surface/border tokens.
@@ -517,11 +542,11 @@ src/api/
 
 Tasks:
 
-- [ ] HTTP client.
-- [ ] Base URL configuration.
+- [x] HTTP client foundation.
+- [x] Base URL configuration.
 - [ ] Request timeout.
-- [ ] Error normalization.
-- [ ] Session handling.
+- [x] Error normalization.
+- [x] Browser credential/session transport (`credentials: include`) foundation.
 - [ ] Retry rules.
 - [ ] Cache policy.
 - [ ] Request tracing/correlation ID.
@@ -696,14 +721,15 @@ Market events:
 
 ## 14.1 Node.js
 
-- [ ] Create backend package.
-- [ ] TypeScript.
-- [ ] Fastify or NestJS decision.
+- [x] Create backend package.
+- [x] TypeScript.
+- [x] Fastify decision and foundation.
 - [ ] Environment validation.
-- [ ] Structured logging.
-- [ ] Error handling.
-- [ ] Request IDs.
-- [ ] Health endpoint.
+- [x] Structured logging.
+- [x] Error handling.
+- [ ] Request IDs/correlation contract.
+- [x] Health endpoint.
+- [ ] API versioning beyond the initial `/api/v1` foundation.
 
 ## 14.2 Database
 
@@ -1279,6 +1305,22 @@ A production release is blocked until:
 - [ ] Rollback procedure exists.
 
 ---
+
+# CURRENT STATUS AFTER MONOREPO SEPARATION
+
+## Completed in this milestone
+
+- [x] Frontend moved to `frontend/` without changing the Black Gold UI direction.
+- [x] Frontend package/config/build files moved with the app.
+- [x] Backend Fastify/TypeScript foundation created under `backend/`.
+- [x] Versioned health endpoint created at `GET /api/v1/health`.
+- [x] Frontend API client foundation created.
+- [x] Frontend Vite development proxy configured for backend HTTP/WebSocket traffic.
+- [x] Root task/architecture documentation updated.
+
+## Next milestone
+
+Build the API contract and connect the first read-only endpoint to the frontend before introducing authenticated trading mutations.
 
 # PRIORITY ORDER
 

@@ -1,62 +1,89 @@
 # SL Spot Web
 
-Original React trading-terminal frontend for SL Spot.
+SL Spot is an original trading-terminal product with a React/Vite frontend and a dedicated Fastify/TypeScript backend in the same repository.
 
-## Product direction
+## Repository structure
 
-The UI uses the **Black Gold** design language: near-black surfaces, a single yellow accent for brand and primary actions, green/red reserved for market direction, and a simple chart-first layout (left rail, top account bar, chart, right trade panel). See `docs/DESIGN_SYSTEM.md`.
+```text
+slspot/
+├── frontend/    # React 19 + Vite trading terminal
+├── backend/     # Fastify + TypeScript API/realtime foundation
+├── docs/        # Architecture, design system and security documentation
+└── repository-level documentation and configuration
+```
 
-This project is intentionally an original implementation, inspired by common trading-terminal interaction patterns, not a copy of another broker's branding, code, or visual assets.
+The frontend uses the **Black Gold** design language: near-black surfaces, a single yellow accent for brand and primary actions, green/red reserved for market direction, and a chart-first trading layout.
 
 ## Stack
+
+### Frontend
 
 - React 19 + TypeScript
 - Vite 8
 - React Router 8
-- Lucide React icons
+- Lightweight Charts
+- Lucide React
 - CSS design tokens and component-level styles
 
-Node.js 24 LTS is the recommended local/runtime baseline for development. Production should use an actively supported LTS release.
+### Backend
 
-## Frontend security rules
+- Node.js 24
+- TypeScript
+- Fastify 5
+- Versioned REST API under `/api/v1`
+- WebSocket boundary planned under `/ws`
 
-- No secrets or private credentials in Vite environment variables.
-- Authentication will use secure, server-managed cookies rather than storing long-lived access tokens in `localStorage`.
-- Sensitive API responses must be served with appropriate cache controls by the backend.
-- The deployed frontend must receive security headers, including a strict Content Security Policy, `X-Content-Type-Options`, frame protections, and HSTS where appropriate.
-- User-controlled rich text/HTML will never be injected with `dangerouslySetInnerHTML` without an explicit reviewed sanitizer boundary.
-- Trading amounts and order state are UI inputs only; the server will validate and authorize every financial operation.
+The browser is never authoritative for balances, order validity, payouts, settlement, wallet debits/credits, or other financial decisions.
 
 ## Development
 
+### Frontend
+
 ```bash
+cd frontend
 npm install
 npm run dev
 ```
 
-Checks:
+Default dev URL: `http://localhost:5173`
+
+### Backend
 
 ```bash
+cd backend
+npm install
+npm run dev
+```
+
+Default API URL: `http://localhost:8080`
+
+Health check:
+
+```text
+GET http://localhost:8080/api/v1/health
+```
+
+### Frontend checks
+
+```bash
+cd frontend
 npm run typecheck
 npm run lint
 npm run build
 ```
 
-## Planned frontend areas
+### Backend checks
 
-- Trading terminal
-- Watchlist and asset search
-- Chart workspace
-- Order panel
-- Positions / order history
-- Wallet
-- Portfolio
-- Alerts
-- Account & security
-- Support
-- Admin workspace (separate application boundary later)
+```bash
+cd backend
+npm run typecheck
+npm run build
+```
 
+## Security baseline
 
-## Frontend V1 progress
-
-The current frontend now has real application routes, functional watchlist search/category/favorites, a candlestick chart powered by Lightweight Charts, and a validated demo-order confirmation flow. Real authentication, market data, financial execution, wallet authority, and server-backed state remain intentionally pending.
+- No secrets or private credentials belong in Vite environment variables.
+- Browser sessions will use secure, server-managed cookies.
+- Sensitive API responses must use appropriate cache controls.
+- Deployed frontend/backend services require security headers, TLS, origin controls and rate limiting.
+- Trading and wallet operations are UI inputs only; the server must validate and authorize every financial operation.
