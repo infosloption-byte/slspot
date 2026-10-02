@@ -378,10 +378,18 @@ export class PlatformApiService {
   }
 
   async markNotificationRead(userId: string, notificationId: string): Promise<boolean> {
-    const result = await this.prisma.notification.updateMany({
-      where: { id: notificationId, userId, readAt: null },
+    const notification = await this.prisma.notification.findFirst({
+      where: { id: notificationId, userId },
+      select: { readAt: true },
+    })
+
+    if (!notification) return false
+    if (notification.readAt) return true
+
+    await this.prisma.notification.update({
+      where: { id: notificationId },
       data: { readAt: new Date() },
     })
-    return result.count > 0
+    return true
   }
 }
