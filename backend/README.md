@@ -37,7 +37,7 @@ The default local connection is:
 mysql://slspot:slspot@127.0.0.1:3307/slspot
 ```
 
-The initial schema keeps indexed string fields within the MySQL 5.7-compatible InnoDB key-prefix range. This lets the same migration run against the WAMP MySQL 5.7.40 setup as well as newer MySQL versions.
+The initial schema explicitly uses InnoDB for every table and keeps indexed string fields within the conservative MySQL 5.7-compatible key-prefix range. This prevents a server configured with MyISAM defaults from producing the 1000-byte key error and keeps the migration compatible with WAMP MySQL 5.7.40 as well as newer MySQL versions.
 
 Initialize the database:
 
