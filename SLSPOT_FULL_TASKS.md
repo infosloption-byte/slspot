@@ -1,3 +1,43 @@
+# Current Frontend Implementation Update — 2026-10-02
+
+The frontend theme was audited before the latest implementation work. The current visual system is **Black Gold**: true-black surfaces, yellow brand accent, green/red reserved for market direction, compact rail/topbar, and denser controls. New UI work in this milestone follows those tokens rather than the earlier cyan/graphite styling.
+
+Completed in this milestone:
+
+- [x] Live demo market-price ticking in the Trading Room.
+- [x] Open-position countdowns.
+- [x] Live demo P&L.
+- [x] Close-position action and automatic expiry settlement.
+- [x] Trade entry markers and countdown/progress lines on the chart.
+- [x] Candles / line / area chart type switching.
+- [x] MA (14) overlay.
+- [x] RSI (14) indicator panel.
+- [x] Horizontal and trend-line drawing tools.
+- [x] Win/lose result toasts.
+- [x] Optional trade sounds with persisted preference.
+- [x] Asset payout percentages.
+- [x] Crypto / FX / Stocks / Commodities / Indices / Favorites market filtering.
+- [x] Mobile sticky UP/DOWN execution bar with expandable stake/duration controls.
+- [x] Login / register / recovery / reset / verification / 2FA forms.
+- [x] Demo protected-route boundary.
+- [x] Dedicated 404 page.
+- [x] Wallet deposit / withdrawal forms.
+- [x] Wallet transaction table and pagination.
+- [x] Shared Toast / Tooltip / Skeleton / EmptyState / ErrorState / Select / Pagination components.
+- [x] Black Gold branded mark and favicon.
+
+Still intentionally pending for the frontend platform layer:
+
+- [ ] Server-backed authentication.
+- [ ] API client abstraction.
+- [ ] WebSocket/realtime client.
+- [ ] Authoritative market data and wallet state.
+- [ ] Loading/offline/reconnecting states across all features.
+- [ ] Full accessibility audit and focus trapping.
+- [ ] Unit/component/E2E test suite.
+- [ ] CI quality gates.
+
+
 # SL Spot / SL Option — Full Implementation Task File
 
 **Repository:** `infosloption-byte/slspot`  
@@ -175,11 +215,11 @@ Create reusable primitives:
 ## 3.3 Route behavior
 
 - [x] Active navigation state.
-- [ ] Not-found page.
-- [ ] Unauthorized state.
+- [x] Not-found page.
+- [x] Unauthorized state.
 - [ ] Forbidden state.
 - [ ] Loading route state.
-- [ ] Protected route boundary.
+- [x] Protected route boundary.
 - [x] Redirect rules.
 
 ---
@@ -196,7 +236,7 @@ Create reusable primitives:
 - [x] Bottom panel.
 - [x] Responsive base.
 - [x] Convert navigation buttons to real routes.
-- [ ] Add mobile navigation behavior.
+- [x] Add mobile navigation behavior.
 - [ ] Add keyboard shortcuts.
 - [ ] Add global loading state.
 - [ ] Add global connection status.
@@ -211,16 +251,16 @@ Create reusable primitives:
 - [ ] Categories.
 - [x] Crypto filter.
 - [x] FX filter.
-- [ ] Stocks filter.
-- [ ] Commodities filter.
-- [ ] Indices filter.
+- [x] Stocks filter.
+- [x] Commodities filter.
+- [x] Indices filter.
 - [ ] Recent assets.
 - [ ] Sorting.
 - [ ] Live price.
 - [ ] Percentage change.
 - [ ] Volume.
-- [ ] Market status.
-- [ ] Mobile asset picker.
+- [x] Market status.
+- [x] Mobile asset picker.
 - [ ] Loading state.
 - [x] Empty state.
 - [ ] Error state.
@@ -243,8 +283,8 @@ Create reusable primitives:
 - [x] Zoom.
 - [x] Pan.
 - [ ] Volume.
-- [ ] Fullscreen.
-- [ ] Chart settings.
+- [x] Fullscreen.
+- [x] Chart settings.
 - [ ] Connection status.
 - [ ] Stale-data indicator.
 
@@ -322,7 +362,7 @@ Architecture:
 - [ ] Minimum duration.
 - [ ] Maximum duration.
 - [ ] Market-specific duration rules.
-- [ ] Expiry preview.
+- [x] Expiry preview.
 
 ## 5.4 Trade states
 
@@ -365,7 +405,7 @@ Architecture:
 - [ ] Countdown.
 - [ ] Current P&L.
 - [ ] Status.
-- [ ] Details drawer/modal.
+- [x] Details drawer/modal.
 
 ## 6.2 History
 
@@ -486,7 +526,7 @@ Market events:
 
 - [ ] Price update.
 - [ ] Candle update.
-- [ ] Market status.
+- [x] Market status.
 - [ ] Trade status.
 - [ ] Position update.
 - [ ] Wallet update.
@@ -502,7 +542,7 @@ Market events:
 - [ ] Password field.
 - [ ] Validation.
 - [ ] Loading.
-- [ ] Error.
+- [x] Error.
 - [ ] Rate-limit state.
 - [ ] Locked-account state.
 - [ ] Remember-device behavior where appropriate.
@@ -551,8 +591,8 @@ Market events:
 - [ ] Favorite assets.
 - [ ] Performance chart.
 - [ ] Loading.
-- [ ] Empty.
-- [ ] Error.
+- [x] Empty.
+- [x] Error.
 
 ---
 
@@ -685,7 +725,7 @@ AuditLog
 - [ ] Timestamp normalization.
 - [ ] OHLC normalization.
 - [ ] Volume normalization.
-- [ ] Market status.
+- [x] Market status.
 - [ ] Provider reconnect.
 - [ ] Provider failure handling.
 - [ ] Redis publishing.
@@ -854,7 +894,7 @@ Admin should be a separate application boundary.
 - [ ] Open positions.
 - [ ] Settlements.
 - [ ] Asset configuration.
-- [ ] Market status.
+- [x] Market status.
 - [ ] Rules.
 
 ## Finance
@@ -903,11 +943,11 @@ Do not simply shrink desktop.
 
 ## Mobile
 
-- [ ] Bottom navigation.
-- [ ] Asset picker drawer.
-- [ ] Chart toolbar.
-- [ ] Order panel layout.
-- [ ] Trade confirmation.
+- [x] Bottom navigation.
+- [x] Asset picker drawer.
+- [x] Chart toolbar.
+- [x] Order panel layout.
+- [x] Trade confirmation.
 - [ ] Positions.
 - [ ] History.
 - [ ] Wallet.
@@ -934,8 +974,8 @@ Test at:
 Every major feature:
 
 - [ ] Loading.
-- [ ] Empty.
-- [ ] Error.
+- [x] Empty.
+- [x] Error.
 - [ ] Offline.
 - [ ] Reconnecting.
 - [ ] Unauthorized.
@@ -958,7 +998,7 @@ Every major feature:
 ## Component
 
 - [ ] AssetList.
-- [ ] Chart toolbar.
+- [x] Chart toolbar.
 - [ ] Order panel.
 - [ ] History.
 - [ ] Wallet.
