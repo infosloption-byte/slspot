@@ -1,14 +1,136 @@
-const port = Number(process.env.PORT ?? '8080')
+const NODE_ENVS = ['development', 'test', 'production'] as const
+const LOG_LEVELS = ['fatal', 'error', 'warn', 'info', 'debug', 'trace'] as const
 
-if (!Number.isInteger(port) || port < 1 || port > 65_535) {
-  throw new Error('PORT must be a valid TCP port between 1 and 65535')
+type NodeEnv = (typeof NODE_ENVS)[number]
+type LogLevel = (typeof LOG_LEVELS)[number]
+
+function parsePort(value: string | undefined): number {
+  const port = Number(value ?? '8080')
+
+  if (!Number.isInteger(port) || port < 1 || port > 65_535) {
+    throw new Error('PORT must be a valid TCP port between 1 and 65535')
+  }
+
+  return port
 }
 
-export const env = {
-  host: process.env.HOST ?? '0.0.0.0',
-  port,
-  corsOrigins: (process.env.CORS_ORIGIN ?? 'http://localhost:5173')
+function parsePositiveInteger(
+  name: string,
+  value: string | undefined,
+  fallback: number,
+  minimum: number,
+  maximum: number,
+): number {
+  const parsed = Number(value ?? String(fallback))
+
+  if (!Number.isInteger(parsed) || parsed < minimum || parsed > maximum) {
+    throw new Error(
+      `${name} must be an integer between ${minimum} and ${maximum}`,
+    )
+  }
+
+  return parsed
+}
+
+function parseNodeEnv(value: string | undefined): NodeEnv {
+  const nodeEnv = value ?? 'development'
+
+  if (!NODE_ENVS.includes(nodeEnv as NodeEnv)) {
+    throw new Error('NODE_ENV must be development, test, or production')
+  }
+
+  return nodeEnv as NodeEnv
+}
+
+function parseLogLevel(value: string | undefined): LogLevel {
+  const logLevel = value ?? 'info'
+
+  if (!LOG_LEVELS.includes(logLevel as LogLevel)) {
+    throw new Error('LOG_LEVEL must be fatal, error, warn, info, debug, or trace')
+  }
+
+  return logLevel as LogLevel
+}
+
+function parseBoolean(name: string, value: string | undefined, fallback: boolean): boolean {
+  const normalized = (value ?? String(fallback)).trim().toLowerCase()
+
+  if (normalized === 'true') {
+    return true
+  }
+
+  if (normalized === 'false') {
+    return false
+  }
+
+  throw new Error(`${name} must be true or false`)
+}
+
+function parseCorsOrigins(value: string | undefined, nodeEnv: NodeEnv): string[] {
+  const rawOrigins = (value ?? 'http://localhost:5173')
     .split(',')
-    .map((value) => value.trim())
-    .filter(Boolean),
+    .map((item) => item.trim())
+    .filter(Boolean)
+
+  if (rawOrigins.length === 0) {
+    throw new Error('CORS_ORIGIN must contain at least one origin')
+  }
+
+  if (rawOrigins.includes('*')) {
+    throw new Error('CORS_ORIGIN cannot use * when browser credentials are enabled')
+  }
+
+  const origins = rawOrigins.map((origin) => {
+    let parsed: URL
+
+    try {
+      parsed = new URL(origin)
+    } catch {
+      throw new Error(`CORS_ORIGIN contains an invalid origin: ${origin}`)
+    }
+
+    if (!['http:', 'https:'].includes(parsed.protocol) || parsed.origin !== origin) {
+      throw new Error(`CORS_ORIGIN must contain only scheme + host origins: ${origin}`)
+    }
+
+    return parsed.origin
+  })
+
+  if (nodeEnv === 'production' && value === undefined) {
+    throw new Error('CORS_ORIGIN must be explicitly configured in production')
+  }
+
+  return [...new Set(origins)]
+}
+
+const nodeEnv = parseNodeEnv(process.env.NODE_ENV)
+
+export const env = {
+  nodeEnv,
+  host: process.env.HOST?.trim() || '0.0.0.0',
+  port: parsePort(process.env.PORT),
+  corsOrigins: parseCorsOrigins(process.env.CORS_ORIGIN, nodeEnv),
+  logLevel: parseLogLevel(process.env.LOG_LEVEL),
+  trustProxy: parseBoolean('TRUST_PROXY', process.env.TRUST_PROXY, false),
+  requestTimeoutMs: parsePositiveInteger(
+    'REQUEST_TIMEOUT_MS',
+    process.env.REQUEST_TIMEOUT_MS,
+    30_000,
+    1_000,
+    120_000,
+  ),
+  shutdownTimeoutMs: parsePositiveInteger(
+    'SHUTDOWN_TIMEOUT_MS',
+    process.env.SHUTDOWN_TIMEOUT_MS,
+    10_000,
+    1_000,
+    30_000,
+  ),
+  bodyLimitBytes: parsePositiveInteger(
+    'BODY_LIMIT_BYTES',
+    process.env.BODY_LIMIT_BYTES,
+    1_048_576,
+    1_024,
+    10_485_760,
+  ),
 } as const

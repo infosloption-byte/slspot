@@ -8,6 +8,8 @@ The repository is now structured as a monorepo with explicit frontend and backen
 - [x] Add backend configuration and a versioned `/api/v1/health` endpoint.
 - [x] Add the frontend API client foundation at `frontend/src/api/client.ts`.
 - [x] Configure the frontend development proxy for `/api` and WebSocket traffic.
+- [x] Harden backend runtime configuration, request IDs, security headers, readiness, and graceful shutdown.
+- [x] Add automated backend foundation tests.
 - [ ] Add backend persistence with Prisma/MySQL.
 - [ ] Add Redis/realtime infrastructure.
 - [ ] Connect authentication to the backend.
