@@ -69,19 +69,13 @@ export function AuthProvider({ children }: PropsWithChildren) {
   }, [])
 
   const logout = useCallback(async () => {
-    try {
-      await authApi.logout()
-    } finally {
-      clearSession()
-    }
+    await authApi.logout()
+    clearSession()
   }, [clearSession])
 
   const logoutAll = useCallback(async () => {
-    try {
-      await authApi.logoutAll()
-    } finally {
-      clearSession()
-    }
+    await authApi.logoutAll()
+    clearSession()
   }, [clearSession])
 
   const value = useMemo<AuthContextValue>(() => ({
