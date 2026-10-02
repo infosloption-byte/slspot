@@ -1360,13 +1360,26 @@ Implemented in:
 
 ### `SLSPOT-006 — Frontend Server-State Integration`
 
-- [ ] Connect frontend authentication screens to server auth/session APIs.
-- [ ] Add session bootstrap and `/auth/me` state.
-- [ ] Add auth-aware logout and session revocation UI.
+- [x] Connect frontend authentication screens to server auth/session APIs.
+- [x] Add session bootstrap and `/auth/me` state.
+- [x] Add auth-aware logout control backed by the server session.
+- [ ] Add session-list/revocation UI.
 - [ ] Introduce server-state service boundaries for market, portfolio, wallet, and notifications.
-- [ ] Replace demo auth/session authority with backend responses.
-- [ ] Add unauthorized/forbidden/session-expired handling.
+- [x] Replace demo auth/session authority with backend responses.
+- [x] Add unauthorized/session-expired handling.
+- [ ] Add forbidden state handling.
 - [ ] Add frontend API integration tests.
+
+Implemented in:
+- `frontend/src/auth/AuthProvider.tsx`
+- `frontend/src/auth/types.ts`
+- `frontend/src/api/auth.ts`
+- `frontend/src/api/client.ts`
+- `frontend/src/pages/AccessPage.tsx`
+- `frontend/src/components/routing/ProtectedRoute.tsx`
+- `frontend/src/components/layout/TopBar.tsx`
+
+The remaining unchecked items continue the broader server-state milestone; market, wallet, portfolio, notification and session-management UI are intentionally not treated as complete.
 
 ## Following milestones
 
