@@ -801,3 +801,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
   .market-filter-row::-webkit-scrollbar { display:none; }
   .filter-pill { flex:0 0 auto; }
 }
+
+.mobile-duration-options {
+  display:grid; grid-template-columns:repeat(4,1fr); gap:5px; margin-top:5px;
+}
+.mobile-duration-options .duration-option { min-height:34px; }
