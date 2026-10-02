@@ -51,11 +51,13 @@ function ok<T>(request: FastifyRequest, data: T) {
   return { success: true as const, data, requestId: request.id }
 }
 
+export type TradingServiceLike = Pick<TradingService, 'createTrade' | 'closeTrade'>
+
 export type PlatformApiOptions = {
   authService: AuthServiceLike
   apiService: PlatformApiService
   marketDataService?: MarketDataServiceLike
-  tradingService?: TradingService
+  tradingService?: TradingServiceLike
 }
 
 export function registerPlatformApiRoutes(app: FastifyInstance, options: PlatformApiOptions): void {
