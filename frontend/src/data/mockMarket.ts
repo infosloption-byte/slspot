@@ -1,4 +1,5 @@
 export type MarketAsset = {
+  assetId?: string
   symbol: string
   name: string
   category: string
