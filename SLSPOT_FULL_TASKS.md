@@ -430,15 +430,15 @@ Architecture:
 
 - [x] Draft.
 - [x] Confirming.
-- [x] Pending.
-- [x] Accepted.
-- [x] Open.
-- [x] Rejected.
-- [x] Failed.
-- [x] Won.
-- [x] Lost.
-- [x] Cancelled.
-- [x] Expired.
+- [ ] Pending.
+- [ ] Accepted.
+- [ ] Open.
+- [ ] Rejected.
+- [ ] Failed.
+- [ ] Won.
+- [ ] Lost.
+- [ ] Cancelled.
+- [ ] Expired.
 
 ## 5.5 Submission safety
 
@@ -457,32 +457,32 @@ Architecture:
 ## 6.1 Open positions
 
 - [x] Server-driven data.
-- [ ] Position ID.
-- [ ] Instrument.
-- [ ] Direction.
-- [ ] Entry.
-- [ ] Mark/current.
-- [ ] Amount.
-- [ ] Duration.
-- [ ] Countdown.
+- [x] Position ID.
+- [x] Instrument.
+- [x] Direction.
+- [x] Entry.
+- [x] Mark/current.
+- [x] Amount.
+- [x] Duration.
+- [x] Countdown.
 - [x] Server settlement P&L; no client-side authoritative P&L calculation.
-- [ ] Status.
+- [x] Status.
 - [x] Details drawer/modal.
 
 ## 6.2 History
 
-- [ ] Trade ID.
-- [ ] Instrument.
-- [ ] Direction.
-- [ ] Entry.
-- [ ] Exit.
-- [ ] Amount.
-- [ ] Duration.
-- [ ] Open time.
-- [ ] Close time.
-- [ ] Result.
-- [ ] P&L.
-- [ ] Fees.
+- [x] Trade ID.
+- [x] Instrument.
+- [x] Direction.
+- [x] Entry.
+- [x] Exit.
+- [x] Amount.
+- [x] Duration.
+- [x] Open time.
+- [x] Close time.
+- [x] Result.
+- [x] P&L.
+- [x] Fees.
 - [x] Settlement reference.
 
 ## 6.3 History UX
@@ -592,7 +592,7 @@ Tasks:
 
 Market events:
 
-- [ ] Price update.
+- [x] Price update.
 - [ ] Candle update.
 - [x] Market status.
 - [x] Trade status.
@@ -696,7 +696,7 @@ Market events:
 - [ ] Amount.
 - [ ] Limits.
 - [ ] Verification requirements.
-- [x] Pending/submitting state.
+- [ ] Pending state.
 - [ ] Success.
 - [ ] Failure.
 
@@ -708,8 +708,8 @@ Market events:
 - [ ] Fees.
 - [ ] Verification.
 - [ ] Confirmation.
-- [x] Pending.
-- [x] Rejected.
+- [ ] Pending.
+- [ ] Rejected.
 - [ ] Completed.
 
 ## 13.4 Transactions
@@ -1233,7 +1233,7 @@ Tasks:
 - [ ] File-upload controls.
 - [ ] Webhook verification.
 - [ ] Idempotency.
-- [x] Replay protection through unique idempotency keys and transactional state claims.
+- [ ] Replay protection.
 - [ ] Audit logging.
 
 ## Financial
@@ -1243,7 +1243,7 @@ Tasks:
 - [ ] Settlement auditability.
 - [ ] Withdrawal controls.
 - [ ] Exposure limits.
-- [x] Risk limits.
+- [ ] Risk limits.
 - [ ] Transaction monitoring.
 
 ---
