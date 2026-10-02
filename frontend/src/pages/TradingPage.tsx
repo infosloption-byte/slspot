@@ -161,6 +161,7 @@ export function TradingPage() {
         status: trade.status === 'WON' ? 'WON' : trade.status === 'LOST' ? 'LOST' : 'CLOSED',
         closedAt: trade.closedAt ? Date.parse(trade.closedAt) : undefined,
         exitPrice: trade.position.exitPrice ? Number(trade.position.exitPrice) : undefined,
+        netPnl: trade.netPnl ? Number(trade.netPnl) : undefined,
       }))
   }, [trades.data])
 
