@@ -1451,9 +1451,9 @@ Frontend server-state integration ✅
         ↓
 Market Data Service ✅
         ↓
-Server-authoritative demo trading
+Server-authoritative trading engine ✅
         ↓
-Positions / History / Portfolio
+Positions / History / Portfolio hardening
         ↓
 Financial Ledger
         ↓
