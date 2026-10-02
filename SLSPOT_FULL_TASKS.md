@@ -11,7 +11,7 @@ The repository is now structured as a monorepo with explicit frontend and backen
 - [x] Harden backend runtime configuration, request IDs, security headers, readiness, and graceful shutdown.
 - [x] Add automated backend foundation tests.
 - [x] Add backend persistence with Prisma/MySQL.
-- [ ] Add Redis/realtime infrastructure.
+- [x] Add Redis/realtime infrastructure foundation.
 - [ ] Connect authentication to the backend.
 - [ ] Replace demo market/trade/wallet authority with server-backed state.
 
@@ -769,13 +769,13 @@ AuditLog
 
 ## 14.3 Redis
 
-- [ ] Redis deployment.
-- [ ] Connection handling.
-- [ ] Market cache.
-- [ ] Pub/sub.
-- [ ] Session/temporary state where appropriate.
-- [ ] TTL policy.
-- [ ] Cache invalidation.
+- [x] Redis development deployment.
+- [x] Connection handling.
+- [~] Market cache primitives (actual market-data population is deferred to Phase 15).
+- [x] Pub/sub.
+- [~] Session/temporary-state primitives (actual session usage is deferred to authentication).
+- [x] TTL policy.
+- [x] Cache invalidation.
 
 ---
 
