@@ -96,9 +96,10 @@ export function buildApp(options: AppOptions = {}) {
     const databaseReady = options.checkDatabase
       ? await options.checkDatabase().catch(() => false)
       : true
-    const redisReady = options.checkRedis
+    const redisConnected = options.checkRedis
       ? await options.checkRedis().catch(() => false)
-      : !options.redisRequired
+      : false
+    const redisReady = redisConnected || options.redisRequired !== true
     const ready = databaseReady && redisReady
 
     const response = successResponse(request, {
@@ -106,7 +107,11 @@ export function buildApp(options: AppOptions = {}) {
       checks: {
         process: 'ready',
         database: databaseReady ? 'ready' : 'unavailable',
-        redis: redisReady ? 'ready' : 'unavailable',
+        redis: redisConnected
+          ? 'ready'
+          : options.redisRequired
+            ? 'unavailable'
+            : 'optional_unavailable',
       },
     })
 
