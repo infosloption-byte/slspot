@@ -72,13 +72,14 @@ export async function apiRequest<T>(
   const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs)
 
   try {
+    const hasBody = requestInit.body !== undefined && requestInit.body !== null
     const response = await fetch(url, {
       ...requestInit,
       signal: controller.signal,
       credentials: 'include',
       headers: {
         Accept: 'application/json',
-        'Content-Type': 'application/json',
+        ...(hasBody ? { 'Content-Type': 'application/json' } : {}),
         'x-request-id': requestId,
         ...(idempotencyKey ? { 'idempotency-key': idempotencyKey } : {}),
         ...requestInit.headers,
