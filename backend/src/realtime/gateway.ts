@@ -2,8 +2,10 @@ import websocket from '@fastify/websocket'
 import type { FastifyInstance, FastifyRequest } from 'fastify'
 import type { WebSocket } from 'ws'
 import { env } from '../config/env.js'
+import { isUserChannelAuthorized, type RealtimeChannel } from '../contracts/realtime.js'
 import {
   createRealtimeEvent,
+  parseRealtimeClientMessage,
   parseRealtimeEvent,
   serializeRealtimeEvent,
   type RealtimeEvent,
@@ -21,6 +23,7 @@ export type RealtimeGatewayOptions = {
 export class RealtimeGateway {
   private readonly sockets = new Map<WebSocket, AuthenticatedSocket>()
   private readonly heartbeatTimers = new Map<WebSocket, ReturnType<typeof setInterval>>()
+  private readonly subscriptions = new Map<WebSocket, Set<RealtimeChannel>>()
 
   constructor(private readonly options: RealtimeGatewayOptions = {}) {}
 
@@ -45,8 +48,19 @@ export class RealtimeGateway {
   }
 
   broadcastSerialized(message: string): void {
+    const event = parseRealtimeEvent(message)
+
     for (const socket of this.sockets.keys()) {
-      if (socket.readyState === 1) socket.send(message)
+      if (socket.readyState !== 1) continue
+
+      if (!event?.channel) {
+        socket.send(message)
+        continue
+      }
+
+      if (this.subscriptions.get(socket)?.has(event.channel)) {
+        socket.send(message)
+      }
     }
   }
 
@@ -59,10 +73,12 @@ export class RealtimeGateway {
     for (const timer of this.heartbeatTimers.values()) clearInterval(timer)
     this.sockets.clear()
     this.heartbeatTimers.clear()
+    this.subscriptions.clear()
   }
 
   private attach(socket: WebSocket, principal: AuthenticatedSocket): void {
     this.sockets.set(socket, principal)
+    this.subscriptions.set(socket, new Set())
 
     socket.send(
       serializeRealtimeEvent(
@@ -83,17 +99,77 @@ export class RealtimeGateway {
 
     socket.on('message', (raw) => {
       const message = raw.toString()
+
       if (message === 'ping') {
-        socket.send(serializeRealtimeEvent(createRealtimeEvent('connection.pong', {})))
+        socket.send(serializeRealtimeEvent(createRealtimeEvent('connection.pong', { accepted: true })))
         return
       }
 
-      const event = parseRealtimeEvent(message)
-      if (event?.type === 'connection.pong') return
+      const clientMessage = parseRealtimeClientMessage(message)
 
+      if (!clientMessage) {
+        socket.send(
+          serializeRealtimeEvent(
+            createRealtimeEvent('subscription.rejected', {
+              reason: 'INVALID_MESSAGE',
+            }),
+          ),
+        )
+        return
+      }
+
+      if (clientMessage.type === 'connection.ping') {
+        socket.send(
+          serializeRealtimeEvent(
+            createRealtimeEvent('connection.pong', {
+              accepted: true,
+              ...(clientMessage.requestId ? { requestId: clientMessage.requestId } : {}),
+            }),
+          ),
+        )
+        return
+      }
+
+      const authorized = isUserChannelAuthorized(clientMessage.channel, principal.userId)
+
+      if (!authorized) {
+        socket.send(
+          serializeRealtimeEvent(
+            createRealtimeEvent('subscription.rejected', {
+              requestId: clientMessage.requestId,
+              channel: clientMessage.channel,
+              reason: 'FORBIDDEN',
+            }),
+          ),
+        )
+        return
+      }
+
+      const subscriptions = this.subscriptions.get(socket)
+      if (!subscriptions) return
+
+      if (clientMessage.type === 'subscription.subscribe') {
+        subscriptions.add(clientMessage.channel)
+        socket.send(
+          serializeRealtimeEvent(
+            createRealtimeEvent('subscription.updated', {
+              requestId: clientMessage.requestId,
+              channel: clientMessage.channel,
+              subscribed: true,
+            }),
+          ),
+        )
+        return
+      }
+
+      subscriptions.delete(clientMessage.channel)
       socket.send(
         serializeRealtimeEvent(
-          createRealtimeEvent('connection.pong', { accepted: false }),
+          createRealtimeEvent('subscription.updated', {
+            requestId: clientMessage.requestId,
+            channel: clientMessage.channel,
+            subscribed: false,
+          }),
         ),
       )
     })
@@ -104,6 +180,7 @@ export class RealtimeGateway {
 
   private remove(socket: WebSocket): void {
     this.sockets.delete(socket)
+    this.subscriptions.delete(socket)
     const timer = this.heartbeatTimers.get(socket)
     if (timer) clearInterval(timer)
     this.heartbeatTimers.delete(socket)
