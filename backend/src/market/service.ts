@@ -1,4 +1,4 @@
-import type { PrismaClient } from '../generated/prisma/client.js'
+import type { AssetType, PrismaClient } from '../generated/prisma/client.js'
 import { env } from '../config/env.js'
 import { createRealtimeEvent, serializeRealtimeEvent } from '../realtime/events.js'
 import { isRedisReady, publish } from '../realtime/redis.js'
@@ -173,7 +173,7 @@ export class MarketDataService {
     assetId: string
     provider: string
     externalSymbol: string
-    asset: { id: string; symbol: string; type: typeof marketAssetType }
+    asset: { id: string; symbol: string; type: AssetType }
   }): Promise<void> {
     const definition = {
       assetId: market.assetId,
@@ -253,6 +253,5 @@ export class MarketDataService {
   }
 }
 
-type marketAssetType = 'CRYPTO' | 'FOREX' | 'STOCK' | 'COMMODITY' | 'INDEX' | 'OTHER'
 
 export { CANDLE_INTERVALS }
