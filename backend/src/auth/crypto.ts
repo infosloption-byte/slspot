@@ -60,7 +60,7 @@ export function parsePasswordHash(value: string) {
     return null
   }
 
-  const match = /^N=(d+),r=(d+),p=(d+)$/.exec(parameterText)
+  const match = /^N=(\d+),r=(\d+),p=(\d+)$/.exec(parameterText)
 
   if (!match) {
     return null
