@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AssetList } from '../components/market/AssetList'
 import { BottomPanel } from '../components/layout/BottomPanel'
 import { TradePanel } from '../components/trading/TradePanel'
@@ -94,6 +94,12 @@ export function TradingPage() {
     return () => window.clearInterval(timer)
   }, [])
 
+  const addToast = useCallback((tone: ToastTone, title: string, message: string) => {
+    const id = Date.now()
+    setToasts((items) => [{ id, tone, title, message }, ...items].slice(0, 4))
+    window.setTimeout(() => setToasts((items) => items.filter((item) => item.id !== id)), 4500)
+  }, [])
+
   useEffect(() => {
     const expired = openTrades.filter((trade) => trade.status === 'OPEN' && trade.expiresAt <= now)
     if (expired.length === 0) return
@@ -109,21 +115,14 @@ export function TradingPage() {
 
     resolved.forEach((trade) => {
       const won = trade.status === 'WON'
-      setToasts((items) => [{
-        id: Date.now() + items.length,
-        tone: won ? 'success' : 'error',
-        title: won ? 'Trade won' : 'Trade lost',
-        message: trade.symbol + ' ' + trade.direction + ' · ' + (won ? 'Payout credited' : 'Position settled below target'),
-      }, ...items].slice(0, 4))
+      addToast(
+        won ? 'success' : 'error',
+        won ? 'Trade won' : 'Trade lost',
+        trade.symbol + ' ' + trade.direction + ' · ' + (won ? 'Payout credited' : 'Position settled below target'),
+      )
       if (soundEnabled) playTradeSound(won ? 'win' : 'lose')
     })
-  }, [livePrices, now, openTrades, soundEnabled])
-
-  const addToast = (tone: ToastTone, title: string, message: string) => {
-    const id = Date.now()
-    setToasts((items) => [{ id, tone, title, message }, ...items].slice(0, 4))
-    window.setTimeout(() => setToasts((items) => items.filter((item) => item.id !== id)), 4500)
-  }
+  }, [addToast, livePrices, now, openTrades, soundEnabled])
 
   const openTrade = (request: { direction: 'UP' | 'DOWN'; amount: number; durationSeconds: number; entryPrice: number; payoutRate: number }) => {
     const openedAt = Date.now()
