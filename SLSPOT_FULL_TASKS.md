@@ -1381,7 +1381,7 @@ Implemented in:
 - `frontend/src/realtime/contracts.ts`
 - `frontend/src/api/client.ts`
 
-## Immediate next milestone
+## Completed milestones
 
 ### `SLSPOT-006 — Frontend Server-State Integration`
 
@@ -1405,6 +1405,10 @@ Implemented in:
 - `frontend/src/components/layout/TopBar.tsx`
 
 SLSPOT-006 is complete. The next major dependency is server-authoritative trading and its financial controls; wallet mutations remain intentionally disabled until the ledger/payment milestones.
+
+## Immediate next milestone
+
+Phase 16 — Trading Engine / server-authoritative demo trading
 
 ## Following milestones
 
