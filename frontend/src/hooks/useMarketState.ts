@@ -57,18 +57,20 @@ export function useLiveMarketAssets() {
         ? data.timestamp
         : new Date().toISOString()
 
+      const quote: MarketPrice = {
+        assetId,
+        symbol,
+        bid,
+        ask,
+        last,
+        changePct,
+        volume,
+        timestamp,
+      }
+
       setQuotes((current) => ({
         ...current,
-        [assetId]: {
-          assetId,
-          symbol,
-          bid,
-          ask,
-          last,
-          changePct,
-          volume,
-          timestamp,
-        },
+        [assetId]: quote,
       }))
     })
   }, [realtime])
