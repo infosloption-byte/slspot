@@ -88,6 +88,10 @@ export async function apiRequest<T>(
     const body = await readResponseBody(response)
 
     if (!response.ok) {
+      if (response.status === 401) {
+        window.dispatchEvent(new Event('slspot:auth-expired'))
+      }
+
       const payload = body as {
         error?: ApiErrorPayload
         message?: string
