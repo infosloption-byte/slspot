@@ -1,10 +1,12 @@
 export function BrandMark() {
   return (
-    <div className="brand-mark" aria-hidden="true">
-      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M4 17l5-6 4 3 7-8" />
-        <path d="M15 6h5v5" />
+    <span className="brand-mark" aria-hidden="true">
+      <svg viewBox="0 0 32 32" width="22" height="22" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M7 23V9" strokeWidth="2.5" />
+        <path d="M7 23h18" strokeWidth="2.5" />
+        <path d="M10 19l5-5 4 3 6-8" strokeWidth="2.5" />
+        <path d="M20 9h5v5" strokeWidth="2.5" />
       </svg>
-    </div>
+    </span>
   )
 }
