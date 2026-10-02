@@ -23,6 +23,7 @@ type SuccessResponse<T> = {
 
 type AppOptions = {
   checkDatabase?: () => Promise<boolean>
+  logging?: boolean
 }
 
 function resolveRequestId(value: string | string[] | undefined): string {
@@ -45,7 +46,7 @@ function successResponse<T>(request: FastifyRequest, data: T): SuccessResponse<T
 
 export function buildApp(options: AppOptions = {}) {
   const app = Fastify({
-    logger: { level: env.logLevel },
+    logger: options.logging === false ? false : { level: env.logLevel },
     bodyLimit: env.bodyLimitBytes,
     requestTimeout: env.requestTimeoutMs,
     trustProxy: env.trustProxy,
