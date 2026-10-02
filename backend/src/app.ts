@@ -5,24 +5,10 @@ import { env } from './config/env.js'
 import { RealtimeGateway } from './realtime/gateway.js'
 import cookie from '@fastify/cookie'
 import { registerAuthRoutes, type AuthServiceLike } from './auth/routes.js'
+import type { ApiError, ApiSuccess } from './contracts/api.js'
 
 const API_PREFIX = '/api/v1'
 const REQUEST_ID_PATTERN = /^[A-Za-z0-9._:-]{1,128}$/
-
-type ErrorResponse = {
-  success: false
-  error: {
-    code: string
-    message: string
-  }
-  requestId: string
-}
-
-type SuccessResponse<T> = {
-  success: true
-  data: T
-  requestId: string
-}
 
 type AppOptions = {
   checkDatabase?: () => Promise<boolean>
@@ -43,7 +29,7 @@ function resolveRequestId(value: string | string[] | undefined): string {
   return randomUUID()
 }
 
-function successResponse<T>(request: FastifyRequest, data: T): SuccessResponse<T> {
+function successResponse<T>(request: FastifyRequest, data: T): ApiSuccess<T> {
   return {
     success: true,
     data,
@@ -128,7 +114,7 @@ export function buildApp(options: AppOptions = {}) {
   })
 
   app.setNotFoundHandler((request, reply) => {
-    const response: ErrorResponse = {
+    const response: ApiError = {
       success: false,
       error: {
         code: 'NOT_FOUND',
