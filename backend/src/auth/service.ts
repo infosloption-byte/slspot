@@ -1,5 +1,5 @@
 import type { FastifyRequest } from 'fastify'
-import type { PrismaClient } from '../generated/prisma/client.js'
+import { Prisma, type PrismaClient } from '../generated/prisma/client.js'
 import { env } from '../config/env.js'
 import { createOpaqueToken, hashOpaqueToken, hashPassword, verifyPassword } from './crypto.js'
 
@@ -87,6 +87,8 @@ export class AuthService {
         data: { email, passwordHash, countryCode, status: 'PENDING_VERIFICATION' },
       })
 
+      await this.ensureTradingAccount(tx, user.id, 'USD')
+
       const token = createOpaqueToken()
       const expiresAt = new Date(now.getTime() + env.auth.verificationTtlSeconds * 1000)
       await tx.authToken.create({
@@ -149,6 +151,7 @@ export class AuthService {
       })
 
       await tx.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } })
+      await this.ensureTradingAccount(tx, user.id, 'USD')
       await tx.auditLog.create({
         data: {
           actorUserId: user.id,
@@ -310,6 +313,82 @@ export class AuthService {
     return this.prisma.authToken.findFirst({
       where: { tokenHash: hashOpaqueToken(token), type, consumedAt: null, expiresAt: { gt: new Date() } },
     })
+  }
+
+  private async ensureTradingAccount(
+    tx: Prisma.TransactionClient,
+    userId: string,
+    currency: string,
+  ): Promise<void> {
+    const existingAccount = await tx.account.findFirst({
+      where: { userId, status: 'ACTIVE' },
+      orderBy: { createdAt: 'asc' },
+    })
+
+    if (existingAccount) {
+      const existingWallet = await tx.wallet.findUnique({ where: { accountId: existingAccount.id } })
+      if (!existingWallet) {
+        await tx.wallet.create({
+          data: {
+            accountId: existingAccount.id,
+            currency: existingAccount.currency,
+            status: 'ACTIVE',
+            availableBalance: 0,
+            heldBalance: 0,
+          },
+        })
+      }
+      return
+    }
+
+    const account = await tx.account.create({
+      data: {
+        userId,
+        name: 'Primary Trading Account',
+        currency: currency.slice(0, 3).toUpperCase(),
+        status: 'ACTIVE',
+      },
+    })
+
+    const initialBalance = new Prisma.Decimal(env.trading.initialBalance)
+    const wallet = await tx.wallet.create({
+      data: {
+        accountId: account.id,
+        currency: account.currency,
+        status: 'ACTIVE',
+        availableBalance: initialBalance,
+        heldBalance: 0,
+      },
+    })
+
+    if (initialBalance.gt(0)) {
+      const walletTransaction = await tx.walletTransaction.create({
+        data: {
+          walletId: wallet.id,
+          type: 'ADJUSTMENT',
+          status: 'COMPLETED',
+          amount: initialBalance,
+          currency: account.currency,
+          idempotencyKey: 'wallet-initial:' + wallet.id,
+          referenceType: 'SYSTEM',
+          referenceId: wallet.id,
+          description: 'Initial development trading balance',
+        },
+      })
+
+      await tx.ledgerEntry.create({
+        data: {
+          transactionId: walletTransaction.id,
+          accountId: account.id,
+          walletTransactionId: walletTransaction.id,
+          direction: 'CREDIT',
+          amount: initialBalance,
+          currency: account.currency,
+          referenceType: 'SYSTEM',
+          referenceId: wallet.id,
+        },
+      })
+    }
   }
 
   private async writeAudit(action: string, entityId: string, actorUserId?: string, ipAddress?: string, userAgent?: string) {
