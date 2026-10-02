@@ -789,19 +789,19 @@ AuditLog
 
 # PHASE 15 — Market Data Service
 
-- [ ] Choose market provider.
-- [ ] Provider adapter.
-- [ ] Asset registry.
-- [ ] Symbol mapping.
-- [ ] Price normalization.
-- [ ] Timestamp normalization.
-- [ ] OHLC normalization.
-- [ ] Volume normalization.
+- [x] Choose market provider.
+- [x] Provider adapter.
+- [x] Asset registry.
+- [x] Symbol mapping.
+- [x] Price normalization.
+- [x] Timestamp normalization.
+- [x] OHLC normalization.
+- [x] Volume normalization.
 - [x] Market status.
-- [ ] Provider reconnect.
-- [ ] Provider failure handling.
-- [ ] Redis publishing.
-- [ ] WebSocket distribution.
+- [x] Provider reconnect/retry backoff.
+- [x] Provider failure handling.
+- [x] Redis publishing.
+- [x] WebSocket distribution.
 
 ---
 
@@ -1339,6 +1339,26 @@ A production release is blocked until:
 
 ## Completed milestone
 
+### `SLSPOT-007 — Market Data Service`
+
+- [x] Twelve Data provider adapter.
+- [x] Development asset registry and provider symbol mapping.
+- [x] Quote normalization and market-status normalization.
+- [x] OHLC/time-series normalization.
+- [x] MySQL market-state persistence.
+- [x] Redis-backed market price/status events.
+- [x] Public market candle API.
+- [x] Provider failure isolation and exponential retry backoff.
+- [x] Trading Room server-state market/candle consumption.
+
+Implemented in:
+- `backend/src/market/`
+- `backend/src/api/routes.ts`
+- `frontend/src/hooks/useMarketState.ts`
+- `frontend/src/hooks/useServerState.ts`
+- `frontend/src/components/trading/ChartWorkspace.tsx`
+- `docs/MARKET_DATA.md`
+
 ### `SLSPOT-005 — API & WebSocket Contract`
 
 - [x] Define REST response conventions.
@@ -1368,12 +1388,12 @@ Implemented in:
 - [x] Connect frontend authentication screens to server auth/session APIs.
 - [x] Add session bootstrap and `/auth/me` state.
 - [x] Add auth-aware logout control backed by the server session.
-- [ ] Add session-list/revocation UI.
-- [ ] Introduce server-state service boundaries for market, portfolio, wallet, and notifications.
+- [x] Add session-list/revocation UI.
+- [x] Introduce server-state service boundaries for market, portfolio, wallet, and notifications.
 - [x] Replace demo auth/session authority with backend responses.
 - [x] Add unauthorized/session-expired handling.
-- [ ] Add forbidden state handling.
-- [ ] Add frontend API integration tests.
+- [x] Add forbidden state handling.
+- [x] Add frontend API integration tests.
 
 Implemented in:
 - `frontend/src/auth/AuthProvider.tsx`
@@ -1384,7 +1404,7 @@ Implemented in:
 - `frontend/src/components/routing/ProtectedRoute.tsx`
 - `frontend/src/components/layout/TopBar.tsx`
 
-The remaining unchecked items continue the broader server-state milestone; market, wallet, portfolio, notification and session-management UI are intentionally not treated as complete.
+SLSPOT-006 is complete. The next major dependency is server-authoritative trading and its financial controls; wallet mutations remain intentionally disabled until the ledger/payment milestones.
 
 ## Following milestones
 
