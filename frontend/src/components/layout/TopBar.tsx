@@ -1,14 +1,26 @@
 import { Bell, LogOut, Plus } from 'lucide-react'
+import { useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { useAuth } from '../../auth/AuthProvider'
 
 export function TopBar() {
   const navigate = useNavigate()
   const { user, logout } = useAuth()
+  const [loggingOut, setLoggingOut] = useState(false)
+  const [logoutError, setLogoutError] = useState('')
 
   const signOut = async () => {
-    await logout()
-    navigate('/login', { replace: true, state: { message: 'You have been signed out.' } })
+    if (loggingOut) return
+    setLoggingOut(true)
+    setLogoutError('')
+    try {
+      await logout()
+      navigate('/login', { replace: true, state: { message: 'You have been signed out.' } })
+    } catch (error) {
+      setLogoutError(error instanceof Error ? error.message : 'Unable to sign out right now.')
+    } finally {
+      setLoggingOut(false)
+    }
   }
 
   return (
@@ -32,7 +44,9 @@ export function TopBar() {
         </span>
       </div>
 
-      <button className="icon-button" type="button" onClick={() => void signOut()} aria-label="Sign out" title="Sign out">
+      {logoutError ? <span className="topbar__auth-error" role="alert">{logoutError}</span> : null}
+
+      <button className="icon-button" type="button" disabled={loggingOut} onClick={() => void signOut()} aria-label="Sign out" title="Sign out">
         <LogOut size={17} />
       </button>
 
