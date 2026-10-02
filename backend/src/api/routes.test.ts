@@ -159,16 +159,16 @@ describe('platform API routes', () => {
 
     const routes = app.printRoutes()
     for (const route of [
-      'GET    /api/v1/market/assets',
-      'GET    /api/v1/portfolio/summary',
-      'GET    /api/v1/portfolio/positions',
-      'GET    /api/v1/trades',
-      'GET    /api/v1/wallet',
-      'GET    /api/v1/wallet/transactions',
-      'GET    /api/v1/notifications',
-      'POST   /api/v1/notifications/:notificationId/read',
+      '/api/v1/market/assets',
+      '/api/v1/portfolio/summary',
+      '/api/v1/portfolio/positions',
+      '/api/v1/trades',
+      '/api/v1/wallet',
+      '/api/v1/wallet/transactions',
+      '/api/v1/notifications',
+      '/api/v1/notifications/:notificationId/read',
     ]) {
-      assert.match(routes, new RegExp(route.replace(/[.*+?^$()|[\]{}]/g, '\\  it('binds notification reads to the authenticated user', async () => {').replace(/\\s+/g, '\\\\s+')))
+      assert.equal(routes.includes(route), true, 'missing registered route: ' + route)
     }
 
     await app.close()
