@@ -1,5 +1,8 @@
 import { ArrowUpRight, BarChart3, Bell, Check, Clock3, DollarSign, PieChart, ShieldCheck, Smartphone, TrendingUp, WalletCards } from 'lucide-react'
+import { useState } from 'react'
 import { Link } from 'react-router'
+import { Pagination } from '../components/ui/Pagination'
+import { Select } from '../components/ui/Select'
 
 type WorkspacePageProps = {
   eyebrow: string
@@ -106,17 +109,117 @@ function PortfolioPage() {
 }
 
 function WalletPage() {
-  const summary = [
-    { label: 'Available balance', value: '$12,480.65', note: 'Demo balance', Icon: WalletCards, tone: '' },
-    { label: 'Available to trade', value: '$11,240.65', note: '90.1% liquid', Icon: DollarSign, tone: '' },
-    { label: 'Pending', value: '$120.00', note: 'Withdrawal', Icon: Clock3, tone: 'text-negative' },
-    { label: 'This month', value: '+$1,284.40', note: 'Net activity', Icon: TrendingUp, tone: 'text-positive' },
-  ] as const
+  const [mode, setMode] = useState<'deposit' | 'withdraw'>('deposit')
+  const [amount, setAmount] = useState('250')
+  const [method, setMethod] = useState('card')
+  const [destination, setDestination] = useState('')
+  const [transactions, setTransactions] = useState(walletActivity)
+  const [page, setPage] = useState(1)
+
+  const submitFunding = (event: React.FormEvent) => {
+    event.preventDefault()
+    const numericAmount = Number(amount)
+    if (!Number.isFinite(numericAmount) || numericAmount <= 0) return
+
+    const label = mode === 'deposit' ? 'Demo deposit request' : 'Demo withdrawal request'
+    const signedAmount = mode === 'deposit' ? '+$' + numericAmount.toFixed(2) : '-$' + numericAmount.toFixed(2)
+    setTransactions((current) => [{
+      label,
+      type: mode === 'deposit' ? 'Deposit' : 'Withdrawal',
+      amount: signedAmount,
+      status: 'Pending',
+      time: 'Just now',
+      positive: mode === 'deposit',
+    }, ...current])
+    setAmount('')
+    setDestination('')
+    setPage(1)
+  }
+
+  const totalPages = Math.max(1, Math.ceil(transactions.length / 5))
+  const visibleTransactions = transactions.slice((page - 1) * 5, page * 5)
 
   return <div className="workspace-page">
-    <PageHeader eyebrow="Funds" title="Wallet" description="Track your demo balance, funding activity and account ledger." action="Back to trading" />
-    <div className="dashboard-stats">{summary.map(({ label, value, note, Icon, tone }) => <section className="dashboard-stat panel" key={label}><div className="dashboard-stat__top"><span>{label}</span><span className="dashboard-stat__icon"><Icon size={15} /></span></div><strong>{value}</strong><small className={tone}>{note}</small></section>)}</div>
-    <section className="dashboard-card panel"><div className="dashboard-card__header"><div><span className="eyebrow">Ledger</span><h2>Wallet activity</h2></div><span className="status-pill status-pill--pending">DEMO DATA</span></div><div className="data-table"><div className="data-table__row data-table__row--header"><span>Activity</span><span>Type</span><span>Amount</span><span>Status</span><span>Time</span></div>{walletActivity.map((item) => <div className="data-table__row" key={item.label}><div><strong>{item.label}</strong><small>{item.type}</small></div><span>{item.type}</span><strong className={item.positive ? 'text-positive' : 'text-negative'}>{item.amount}</strong><span className={item.status === 'Pending' ? 'status-pill status-pill--pending' : 'status-pill status-pill--positive'}>{item.status}</span><small>{item.time}</small></div>)}</div><div className="dashboard-note"><WalletCards size={14} /> Deposits, withdrawals and balance changes will become server-authoritative when the wallet API is connected.</div></section>
+    <PageHeader eyebrow="Funds" title="Wallet" description="Manage demo funding, withdrawals and wallet activity." action="Back to trading" />
+    <div className="dashboard-stats">
+      {[
+        { label: 'Available balance', value: '$12,480.65', note: 'Demo balance', Icon: WalletCards },
+        { label: 'Available to trade', value: '$11,240.65', note: '90.1% liquid', Icon: DollarSign },
+        { label: 'Pending', value: '$120.00', note: 'Withdrawal', Icon: Clock3 },
+        { label: 'This month', value: '+$1,284.40', note: 'Net activity', Icon: TrendingUp },
+      ].map(({ label, value, note, Icon }) => (
+        <section className="dashboard-stat panel" key={label}>
+          <div className="dashboard-stat__top"><span>{label}</span><span className="dashboard-stat__icon"><Icon size={15} /></span></div>
+          <strong>{value}</strong>
+          <small>{note}</small>
+        </section>
+      ))}
+    </div>
+
+    <div className="wallet-grid">
+      <section className="dashboard-card panel wallet-funding-card">
+        <div className="dashboard-card__header">
+          <div><span className="eyebrow">Funding</span><h2>{mode === 'deposit' ? 'Deposit funds' : 'Withdraw funds'}</h2></div>
+          <span className="status-pill status-pill--pending">DEMO</span>
+        </div>
+
+        <div className="wallet-mode-switch">
+          <button type="button" className={mode === 'deposit' ? 'wallet-mode wallet-mode--active' : 'wallet-mode'} onClick={() => setMode('deposit')}>Deposit</button>
+          <button type="button" className={mode === 'withdraw' ? 'wallet-mode wallet-mode--active' : 'wallet-mode'} onClick={() => setMode('withdraw')}>Withdraw</button>
+        </div>
+
+        <form className="wallet-funding-form" onSubmit={submitFunding}>
+          <label>
+            <span>Amount</span>
+            <div className="wallet-amount-input"><span>$</span><input required inputMode="decimal" min="1" step="0.01" type="number" value={amount} onChange={(event) => setAmount(event.target.value)} placeholder="0.00" /></div>
+          </label>
+          <Select
+            label={mode === 'deposit' ? 'Funding method' : 'Withdrawal method'}
+            value={method}
+            onChange={setMethod}
+            options={mode === 'deposit'
+              ? [{ value: 'card', label: 'Demo card' }, { value: 'bank', label: 'Demo bank transfer' }, { value: 'crypto', label: 'Demo crypto' }]
+              : [{ value: 'bank', label: 'Demo bank account' }, { value: 'crypto', label: 'Demo wallet address' }]}
+          />
+          {mode === 'withdraw' ? (
+            <label>
+              <span>Destination</span>
+              <input required value={destination} onChange={(event) => setDestination(event.target.value)} placeholder="Demo destination" />
+            </label>
+          ) : (
+            <div className="wallet-form-note"><Check size={15} /> Demo funding requests never move real money.</div>
+          )}
+          <button className="btn btn--primary" type="submit">{mode === 'deposit' ? 'Create deposit request' : 'Create withdrawal request'} <ArrowUpRight size={14} /></button>
+        </form>
+      </section>
+
+      <section className="dashboard-card panel">
+        <div className="dashboard-card__header">
+          <div><span className="eyebrow">Security</span><h2>Funding controls</h2></div>
+          <ShieldCheck size={16} className="dashboard-muted-icon" />
+        </div>
+        <div className="setting-row"><div><strong>Withdrawal verification</strong><small>Production withdrawals will require server-side verification.</small></div><span className="status-pill status-pill--pending">READY</span></div>
+        <div className="setting-row"><div><strong>Daily withdrawal limit</strong><small>Demo limit configured for this workspace.</small></div><strong>$10,000</strong></div>
+        <div className="setting-row"><div><strong>Settlement state</strong><small>All balances are demo-only until a wallet API is connected.</small></div><span className="status-pill status-pill--positive">DEMO</span></div>
+      </section>
+    </div>
+
+    <section className="dashboard-card panel">
+      <div className="dashboard-card__header"><div><span className="eyebrow">Transactions</span><h2>Wallet activity</h2></div><span className="status-pill status-pill--pending">{transactions.length} RECORDS</span></div>
+      <div className="data-table">
+        <div className="data-table__row data-table__row--header"><span>Activity</span><span>Type</span><span>Amount</span><span>Status</span><span>Time</span></div>
+        {visibleTransactions.map((item, index) => (
+          <div className="data-table__row" key={item.label + item.time + index}>
+            <div><strong>{item.label}</strong><small>{item.type}</small></div>
+            <span>{item.type}</span>
+            <strong className={item.positive ? 'text-positive' : 'text-negative'}>{item.amount}</strong>
+            <span className={item.status === 'Pending' ? 'status-pill status-pill--pending' : 'status-pill status-pill--positive'}>{item.status}</span>
+            <small>{item.time}</small>
+          </div>
+        ))}
+      </div>
+      <Pagination page={page} totalPages={totalPages} onChange={setPage} />
+    </section>
   </div>
 }
 
