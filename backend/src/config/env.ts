@@ -1,8 +1,10 @@
 const NODE_ENVS = ['development', 'test', 'production'] as const
 const LOG_LEVELS = ['fatal', 'error', 'warn', 'info', 'debug', 'trace'] as const
+const AUTH_SAME_SITE_VALUES = ['lax', 'strict', 'none'] as const
 
 type NodeEnv = (typeof NODE_ENVS)[number]
 type LogLevel = (typeof LOG_LEVELS)[number]
+type AuthSameSite = (typeof AUTH_SAME_SITE_VALUES)[number]
 
 function parsePort(value: string | undefined): number {
   const port = Number(value ?? '8080')
@@ -52,6 +54,20 @@ function parseLogLevel(value: string | undefined): LogLevel {
   return logLevel as LogLevel
 }
 
+function parseAuthSameSite(value: string | undefined): AuthSameSite {
+  const sameSite = (value ?? 'lax').trim().toLowerCase()
+  if (!AUTH_SAME_SITE_VALUES.includes(sameSite as AuthSameSite)) {
+    throw new Error('AUTH_COOKIE_SAMESITE must be lax, strict, or none')
+  }
+  return sameSite as AuthSameSite
+}
+function parseCookieName(value: string | undefined): string {
+  const name = value?.trim() || 'slspot_session'
+  if (!/^[A-Za-z0-9!#$%&'*+.^_`|~-]{1,64}$/.test(name)) {
+    throw new Error('AUTH_COOKIE_NAME must be a valid cookie name')
+  }
+  return name
+}
 function parseBoolean(name: string, value: string | undefined, fallback: boolean): boolean {
   const normalized = (value ?? String(fallback)).trim().toLowerCase()
 
@@ -179,6 +195,24 @@ function parseCorsOrigins(value: string | undefined, nodeEnv: NodeEnv): string[]
 const nodeEnv = parseNodeEnv(process.env.NODE_ENV)
 const database = parseDatabaseUrl(process.env.DATABASE_URL, nodeEnv)
 const redisUrl = parseRedisUrl(process.env.REDIS_URL, nodeEnv)
+const authCookieSecure = parseBoolean(
+  'AUTH_COOKIE_SECURE',
+  process.env.AUTH_COOKIE_SECURE,
+  nodeEnv === 'production',
+)
+const exposeDevTokens = parseBoolean(
+  'AUTH_EXPOSE_DEV_TOKENS',
+  process.env.AUTH_EXPOSE_DEV_TOKENS,
+  false,
+)
+
+if (nodeEnv === 'production' && !authCookieSecure) {
+  throw new Error('AUTH_COOKIE_SECURE must be true in production')
+}
+
+if (nodeEnv === 'production' && exposeDevTokens) {
+  throw new Error('AUTH_EXPOSE_DEV_TOKENS must be false in production')
+}
 
 export const env = {
   nodeEnv,
@@ -234,4 +268,15 @@ export const env = {
     1_024,
     10_485_760,
   ),
+  auth: {
+    sessionTtlSeconds: parsePositiveInteger('AUTH_SESSION_TTL_SECONDS', process.env.AUTH_SESSION_TTL_SECONDS, 2_592_000, 900, 7_776_000),
+    verificationTtlSeconds: parsePositiveInteger('AUTH_VERIFICATION_TTL_SECONDS', process.env.AUTH_VERIFICATION_TTL_SECONDS, 86_400, 600, 604_800),
+    passwordResetTtlSeconds: parsePositiveInteger('AUTH_PASSWORD_RESET_TTL_SECONDS', process.env.AUTH_PASSWORD_RESET_TTL_SECONDS, 3_600, 600, 86_400),
+    passwordMinLength: parsePositiveInteger('AUTH_PASSWORD_MIN_LENGTH', process.env.AUTH_PASSWORD_MIN_LENGTH, 12, 10, 128),
+    cookieName: parseCookieName(process.env.AUTH_COOKIE_NAME),
+    cookieSameSite: parseAuthSameSite(process.env.AUTH_COOKIE_SAMESITE),
+    cookieSecure: authCookieSecure,
+    cookieDomain: process.env.AUTH_COOKIE_DOMAIN?.trim() || undefined,
+    exposeDevTokens,
+  },
 } as const

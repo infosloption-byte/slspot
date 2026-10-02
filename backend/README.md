@@ -20,7 +20,7 @@ Realtime WebSocket endpoint:
 
 - `ws://localhost:8080/ws`
 
-The WebSocket foundation provides connection-ready events, heartbeat pings, bounded payload size, protocol-versioned event envelopes and Redis-backed broadcast fan-out. Authentication and application event authorization are intentionally deferred to the authentication/realtime milestones.
+The WebSocket gateway now requires an authenticated session when the production server supplies the auth service. It provides connection-ready events, heartbeat pings, bounded payload size, protocol-versioned event envelopes and Redis-backed broadcast fan-out.
 
 Health endpoints:
 
@@ -88,6 +88,12 @@ Important backend settings:
 - `REDIS_CHANNEL` is the versioned pub/sub channel used for realtime fan-out.
 - `REDIS_KEY_PREFIX` namespaces application cache/session keys.
 - `WEBSOCKET_MAX_PAYLOAD_BYTES` limits inbound WebSocket payloads.
+- `AUTH_SESSION_TTL_SECONDS` controls session lifetime.
+- `AUTH_VERIFICATION_TTL_SECONDS` controls email-verification token lifetime.
+- `AUTH_PASSWORD_RESET_TTL_SECONDS` controls password-reset token lifetime.
+- `AUTH_PASSWORD_MIN_LENGTH` enforces the backend password minimum.
+- `AUTH_COOKIE_*` controls the HttpOnly session cookie.
+- `AUTH_EXPOSE_DEV_TOKENS=true` exposes verification/reset tokens only for explicitly enabled local development; keep it false in production.
 
 ## Validation
 
@@ -122,8 +128,11 @@ npm run prisma:migrate:status
 - Local MySQL development container
 - Redis connection, pub/sub, TTL and invalidation primitives
 - Local Redis development container
-- WebSocket gateway foundation at `/ws`
+- WebSocket gateway at `/ws` with authenticated session handshake
+- Authentication routes for registration, login, logout, current-user, sessions, verification and password reset
+- HttpOnly session-cookie authentication backed by durable hashed session tokens
+- scrypt password hashing and SHA-256 token hashing
 - Versioned realtime event envelope and heartbeat handling
 - Automated backend foundation tests
 
-Authentication, market-data providers, realtime event distribution, order lifecycle, wallet authority and financial ledger business logic remain subsequent milestones.
+Market-data providers, realtime event distribution beyond the authenticated gateway, order lifecycle, wallet authority and financial ledger business logic remain subsequent milestones.

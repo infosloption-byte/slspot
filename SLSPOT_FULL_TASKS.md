@@ -12,7 +12,7 @@ The repository is now structured as a monorepo with explicit frontend and backen
 - [x] Add automated backend foundation tests.
 - [x] Add backend persistence with Prisma/MySQL.
 - [x] Add Redis/realtime infrastructure foundation.
-- [ ] Connect authentication to the backend.
+- [x] Connect authentication/session management to the backend.
 - [ ] Replace demo market/trade/wallet authority with server-backed state.
 
 ### Current repository shape
@@ -102,7 +102,7 @@ Still intentionally pending for the frontend platform layer:
 
 **Repository:** `infosloption-byte/slspot`  
 **Branch:** `main`  
-**Current status:** Frontend foundation + frontend/backend monorepo + API foundation  
+**Current status:** Frontend foundation + backend foundation + persistence + realtime + authentication/session foundation  
 **Target:** Production-ready original trading platform, subject to product/legal decisions
 
 ---
@@ -1311,157 +1311,36 @@ A production release is blocked until:
 
 ---
 
-# CURRENT STATUS AFTER MONOREPO SEPARATION
+# CURRENT STATUS — 2026-10-02
 
-## Completed in this milestone
+## Completed in the current backend milestone
 
-- [x] Frontend moved to `frontend/` without changing the Black Gold UI direction.
-- [x] Frontend package/config/build files moved with the app.
-- [x] Backend Fastify/TypeScript foundation created under `backend/`.
-- [x] Versioned health endpoint created at `GET /api/v1/health`.
-- [x] Frontend API client foundation created.
-- [x] Frontend Vite development proxy configured for backend HTTP/WebSocket traffic.
-- [x] Root task/architecture documentation updated.
+- [x] Frontend/backend monorepo separation.
+- [x] Fastify backend foundation.
+- [x] Prisma ORM 7 + MySQL persistence.
+- [x] Redis + WebSocket realtime foundation.
+- [x] Dependency vulnerability remediation and clean npm audit.
+- [x] Durable database-backed sessions with hashed opaque session tokens.
+- [x] scrypt password hashing.
+- [x] HttpOnly session-cookie authentication.
+- [x] Registration and email-verification token lifecycle.
+- [x] Login/logout/current-user/session-management APIs.
+- [x] Password reset token lifecycle with session revocation.
+- [x] Authenticated WebSocket handshake.
+- [x] Authentication tests and backend documentation.
 
-## Next milestone
+## Immediate next milestone
 
-Build the API contract and connect the first read-only endpoint to the frontend before introducing authenticated trading mutations.
+### `SLSPOT-005 — API & WebSocket Contract`
 
-# PRIORITY ORDER
-
-## P0 — Blocking decisions/security
-
-- [ ] Product instrument decision.
-- [ ] Jurisdiction/compliance decision.
-- [ ] Ledger design.
-- [ ] Authentication architecture.
-- [ ] Backend authority model.
-
-## P1 — Next development milestone
-
-- [ ] Routing.
-- [ ] Design-system primitives.
-- [ ] Trading Terminal V1.
-- [ ] Lightweight Charts.
-- [ ] Watchlist UX.
-- [ ] Order states.
-- [ ] Positions/history.
-- [ ] Loading/error/offline states.
-- [ ] API contract.
-- [ ] WebSocket contract.
-
-## P2 — Platform foundation
-
-- [ ] Node backend.
-- [ ] MySQL/Prisma.
-- [ ] Redis.
-- [ ] Market-data service.
-- [ ] Authentication backend.
-- [ ] Demo trading.
-
-## P3 — Financial platform
-
-- [ ] Trading engine.
-- [ ] Settlement.
-- [ ] Ledger.
-- [ ] Wallet.
-- [ ] Payments.
-- [ ] KYC/AML.
-
-## P4 — Product expansion
-
-- [ ] Dashboard.
-- [ ] Portfolio.
-- [ ] Notifications.
-- [ ] Admin.
-- [ ] Mobile apps.
-- [ ] Advanced charting.
-
-## P5 — Production hardening
-
-- [ ] CI/CD.
-- [ ] Observability.
-- [ ] Security hardening.
-- [ ] Disaster recovery.
-- [ ] Compliance operations.
-- [ ] Production release.
-
----
-
-# IMMEDIATE NEXT TASK
-
-## `SLSPOT-001 — Trading Terminal V1`
-
-### Goal
-
-Turn the current static/demo terminal into a complete frontend interaction model without connecting real financial execution yet.
-
-### Scope
-
-- [ ] Implement application routes.
-- [ ] Convert sidebar to real navigation.
-- [ ] Build reusable UI primitives.
-- [ ] Implement asset search.
-- [ ] Implement asset categories.
-- [ ] Implement favorites.
-- [ ] Replace SVG chart with Lightweight Charts.
-- [ ] Add candlestick data abstraction.
-- [ ] Implement timeframes.
-- [ ] Implement chart toolbar.
-- [ ] Implement order validation UI.
-- [ ] Implement order states.
-- [ ] Implement positions states.
-- [ ] Implement history UI.
-- [ ] Add loading states.
-- [ ] Add error states.
-- [ ] Add offline/reconnect states.
-- [ ] Improve mobile terminal behavior.
-- [ ] Add component tests.
-- [ ] Add E2E foundation.
-- [ ] Update architecture documentation.
-
-### Acceptance criteria
-
-- [ ] All major navigation items route correctly.
-- [ ] Asset search actually filters assets.
-- [ ] Asset categories actually filter.
-- [ ] Favorite state works.
-- [ ] Chart uses a proper chart library rather than the current SVG sample.
-- [ ] Timeframe changes affect the displayed chart state.
-- [ ] Order panel validates invalid inputs.
-- [ ] Duplicate action is prevented in the UI.
-- [ ] Open positions/history use typed data models.
-- [ ] Loading/error/empty states exist.
-- [ ] Mobile UX is usable without desktop-only controls.
-- [ ] `npm run lint` passes.
-- [ ] `npm run typecheck` passes.
-- [ ] `npm run build` passes.
-- [ ] Automated tests pass.
-- [ ] No financial operation is authoritative in the browser.
-
-### Suggested commit
-
-```text
-feat: complete trading terminal v1
-```
-
----
-
-# IMMEDIATE FOLLOW-UP
-
-## `SLSPOT-002 — API & WebSocket Contract`
-
-After Terminal V1:
-
-- [ ] Define REST API conventions.
-- [ ] Define authentication/session contract.
-- [ ] Define market-data response contract.
-- [ ] Define WebSocket event contract.
-- [ ] Define error format.
-- [ ] Define pagination.
-- [ ] Define idempotency.
-- [ ] Define request correlation IDs.
-- [ ] Update frontend API modules.
+- [ ] Define REST response conventions.
+- [ ] Define authentication/session contract for frontend integration.
+- [ ] Define market-data response schema.
+- [ ] Define realtime subscription model.
+- [ ] Define event authorization rules by user/session.
+- [ ] Define pagination/filter/sort conventions.
+- [ ] Define idempotency and request-correlation conventions.
+- [ ] Add shared frontend-facing TypeScript contracts where practical.
 
 Suggested commit:
 
@@ -1469,31 +1348,37 @@ Suggested commit:
 feat: define trading api and realtime contracts
 ```
 
----
-
-# IMMEDIATE FOLLOW-UP
-
-## `SLSPOT-003 — Backend Foundation`
-
-- [ ] Node.js + TypeScript.
-- [ ] Framework decision.
-- [ ] Prisma.
-- [ ] MySQL.
-- [ ] Redis.
-- [ ] Authentication.
-- [ ] Health checks.
-- [ ] Logging.
-- [ ] Error handling.
-- [ ] Docker.
-- [ ] Local development environment.
-
-Suggested commit:
+## Following milestones
 
 ```text
-feat: initialize trading backend foundation
+API + WebSocket contracts
+        ↓
+Frontend server-state integration
+        ↓
+Market Data Service
+        ↓
+Demo Trading
+        ↓
+Positions / History / Portfolio
+        ↓
+Financial Ledger
+        ↓
+Wallet + Payments
+        ↓
+KYC / AML
+        ↓
+Notifications
+        ↓
+Admin
+        ↓
+CI / Observability / Security
+        ↓
+Production readiness
 ```
 
----
+## Current architecture gate
+
+The browser remains non-authoritative for balances, prices, trade settlement and financial state. Authentication is now server-backed, but authorization, market data, trading authority and ledger integrity remain blocking backend work before real-money execution.
 
 # Definition of Done
 
@@ -1516,9 +1401,8 @@ responsive behavior
 +
 tests
 +
-documentation```
-
-are all addressed.
+documentation
+```
 
 For financial features, additionally require:
 
@@ -1533,56 +1417,3 @@ ledger/audit trail
 +
 reconciliation
 ```
-
----
-
-# Final Project Roadmap
-
-```text
-CURRENT
-Frontend Foundation
-        │
-        ▼
-Trading Terminal V1
-        │
-        ▼
-API + WebSocket Contracts
-        │
-        ▼
-Authentication
-        │
-        ▼
-Backend Foundation
-        │
-        ▼
-Market Data
-        │
-        ▼
-Demo Trading
-        │
-        ▼
-Trading Engine
-        │
-        ▼
-Settlement + Ledger
-        │
-        ▼
-Wallet + Payments
-        │
-        ▼
-KYC / AML
-        │
-        ▼
-Portfolio + Notifications
-        │
-        ▼
-Admin
-        │
-        ▼
-Security / Observability / CI
-        │
-        ▼
-Production Readiness
-```
-
-**The next implementation target is `SLSPOT-001 — Trading Terminal V1`.**
