@@ -143,7 +143,7 @@ export function TradePanel({ asset, balance, soundEnabled, onToggleSound, onOpen
             <span className="trade-field__label">Stake</span>
             <div className="stepper">
               <button type="button" onClick={() => adjustAmount(-10)} aria-label="Decrease stake"><Minus size={17} /></button>
-              <div className="stepper__value"><span>$</span><input value={amount} onChange={(event) => { setAmount(Number(event.target.value) || 0); resetOrder() }} type="number" inputMode="decimal" min={MIN_AMOUNT} max={MAX_AMOUNT} aria-label="Stake amount" /></div>
+              <div className="stepper__value"><span>$</span><input value={amount} onChange={(event) => { setAmount(Number(event.target.value) || 0); resetOrder() }} type="number" inputMode="decimal" min={asset.minAmount} max={asset.maxAmount} aria-label="Stake amount" /></div>
               <button type="button" onClick={() => adjustAmount(10)} aria-label="Increase stake"><Plus size={17} /></button>
             </div>
             <div className="chips">
@@ -324,7 +324,7 @@ export function TradePanel({ asset, balance, soundEnabled, onToggleSound, onOpen
             <span className="trade-field__label">Stake</span>
             <div className="stepper">
               <button type="button" onClick={() => adjustAmount(-10)} aria-label="Decrease stake"><Minus size={17} /></button>
-              <div className="stepper__value"><span>$</span><input value={amount} onChange={(event) => { setAmount(Number(event.target.value) || 0); resetOrder() }} type="number" inputMode="decimal" min={MIN_AMOUNT} max={MAX_AMOUNT} aria-label="Stake amount" /></div>
+              <div className="stepper__value"><span>$</span><input value={amount} onChange={(event) => { setAmount(Number(event.target.value) || 0); resetOrder() }} type="number" inputMode="decimal" min={asset.minAmount} max={asset.maxAmount} aria-label="Stake amount" /></div>
               <button type="button" onClick={() => adjustAmount(10)} aria-label="Increase stake"><Plus size={17} /></button>
             </div>
             <div className="chips">
