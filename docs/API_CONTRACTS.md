@@ -227,6 +227,7 @@ Prices and monetary quantities are decimal strings:
   "ask": "65000.44",
   "last": "65000.30",
   "changePct": "-0.42",
+  "volume": "2100000000",
   "timestamp": "2026-10-02T00:00:00.000Z"
 }
 \`\`\`
@@ -242,7 +243,7 @@ Candles use the same decimal-string convention for OHLCV values.
 
 ## Out of scope
 
-Real market provider integration, trading execution, settlement, wallet mutations, payment webhooks, financial ledger behavior, and full RBAC remain separate milestones.
+Trading execution, settlement, wallet mutations, payment webhooks, financial ledger behavior, and full RBAC remain separate milestones. Market provider integration is implemented behind the backend market-data adapter.
 
 
 ## Platform server-state endpoints
@@ -262,6 +263,12 @@ Authenticated:
 - `GET /wallet/transactions?page=&pageSize=`
 - `GET /notifications?page=&pageSize=&unreadOnly=`
 - `POST /notifications/:notificationId/read`
+
+Public market chart data:
+
+- `GET /market/assets/:assetId/candles?interval=5min&limit=200`
+
+The candle endpoint returns normalized OHLCV decimal strings. The Trading Room uses the candle snapshot for chart initialization and the realtime market channel for current price/status updates.
 
 All private resources derive the user ID from the authenticated HttpOnly session cookie. Client-supplied user IDs are not accepted.
 
