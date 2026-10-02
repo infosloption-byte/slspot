@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 import Fastify, { LogController, type FastifyError, type FastifyRequest } from 'fastify'
 import cors from '@fastify/cors'
 import { env } from './config/env.js'
+import { RealtimeGateway } from './realtime/gateway.js'
 
 const API_PREFIX = '/api/v1'
 const REQUEST_ID_PATTERN = /^[A-Za-z0-9._:-]{1,128}$/
@@ -23,7 +24,10 @@ type SuccessResponse<T> = {
 
 type AppOptions = {
   checkDatabase?: () => Promise<boolean>
+  checkRedis?: () => Promise<boolean>
+  redisRequired?: boolean
   logging?: boolean
+  realtimeGateway?: RealtimeGateway
 }
 
 function resolveRequestId(value: string | string[] | undefined): string {
@@ -45,6 +49,8 @@ function successResponse<T>(request: FastifyRequest, data: T): SuccessResponse<T
 }
 
 export function buildApp(options: AppOptions = {}) {
+  const realtimeGateway = options.realtimeGateway ?? new RealtimeGateway()
+
   const app = Fastify({
     logger: options.logging === false ? false : { level: env.logLevel },
     bodyLimit: env.bodyLimitBytes,
@@ -53,6 +59,8 @@ export function buildApp(options: AppOptions = {}) {
     genReqId: (request) => resolveRequestId(request.headers['x-request-id']),
     logController: new LogController({ requestIdLogLabel: 'requestId' }),
   })
+
+  realtimeGateway.register(app)
 
   app.register(cors, {
     credentials: true,
@@ -88,16 +96,21 @@ export function buildApp(options: AppOptions = {}) {
     const databaseReady = options.checkDatabase
       ? await options.checkDatabase().catch(() => false)
       : true
+    const redisReady = options.checkRedis
+      ? await options.checkRedis().catch(() => false)
+      : !options.redisRequired
+    const ready = databaseReady && redisReady
 
     const response = successResponse(request, {
-      status: databaseReady ? 'ready' : 'not_ready',
+      status: ready ? 'ready' : 'not_ready',
       checks: {
         process: 'ready',
         database: databaseReady ? 'ready' : 'unavailable',
+        redis: redisReady ? 'ready' : 'unavailable',
       },
     })
 
-    return reply.status(databaseReady ? 200 : 503).send(response)
+    return reply.status(ready ? 200 : 503).send(response)
   })
 
   app.setNotFoundHandler((request, reply) => {
