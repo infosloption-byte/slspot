@@ -49,6 +49,7 @@ export class RealtimeGateway {
 
   broadcastSerialized(message: string): void {
     const event = parseRealtimeEvent(message)
+    if (!event) return
 
     for (const socket of this.sockets.keys()) {
       if (socket.readyState !== 1) continue
