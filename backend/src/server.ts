@@ -1,5 +1,7 @@
 import { buildApp } from './app.js'
 import { PlatformApiService } from './api/service.js'
+import { createMarketDataProvider } from './market/index.js'
+import { MarketDataService } from './market/service.js'
 import { AuthService } from './auth/service.js'
 import { env } from './config/env.js'
 import { prisma } from './db/prisma.js'
@@ -20,6 +22,8 @@ import {
 
 const authService = new AuthService(prisma)
 const apiService = new PlatformApiService(prisma)
+const marketDataProvider = createMarketDataProvider()
+const marketDataService = new MarketDataService(prisma, marketDataProvider)
 const realtimeGateway = new RealtimeGateway({
   authenticate: (request) => authService.authenticateWebSocket(request),
 })
@@ -30,6 +34,7 @@ const app = buildApp({
   realtimeGateway,
   authService,
   apiService,
+  marketDataService,
 })
 let shuttingDown = false
 
@@ -51,6 +56,7 @@ async function shutdown(signal: string) {
     realtimeGateway.closeAll()
     await app.close()
     await disconnectRedis()
+    await marketDataService.stop()
     await disconnectDatabase()
     clearTimeout(timeout)
     app.log.info('Shutdown complete')
@@ -86,6 +92,7 @@ try {
   }
 
   await app.listen({ host: env.host, port: env.port })
+  await marketDataService.start()
   app.log.info(
     { host: env.host, port: env.port },
     'SL Spot API listening',

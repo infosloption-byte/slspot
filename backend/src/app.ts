@@ -20,6 +20,7 @@ type AppOptions = {
   realtimeGateway?: RealtimeGateway
   authService?: AuthServiceLike
   apiService?: PlatformApiService
+  marketDataService?: import('./market/service.js').MarketDataServiceLike
 }
 
 function resolveRequestId(value: string | string[] | undefined): string {
@@ -85,6 +86,7 @@ export function buildApp(options: AppOptions = {}) {
     registerPlatformApiRoutes(app, {
       authService: options.authService,
       apiService: options.apiService,
+      marketDataService: options.marketDataService,
     })
   }
 

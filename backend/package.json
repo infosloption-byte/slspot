@@ -16,7 +16,8 @@
     "prisma:studio": "prisma --config prisma7.config.ts studio",
     "db:up": "docker compose -f docker-compose.yml up -d mysql",
     "db:down": "docker compose -f docker-compose.yml down",
-    "db:logs": "docker compose -f docker-compose.yml logs -f mysql"
+    "db:logs": "docker compose -f docker-compose.yml logs -f mysql",
+    "test:market": "node --import tsx --test src/market/*.test.ts"
   },
   "dependencies": {
     "@fastify/cors": "^11.3.0",
@@ -25,7 +26,6 @@
     "@prisma/client": "^7.10.0",
     "fastify": "^5.12.5",
     "mariadb": "^3.4.5",
-    "@fastify/websocket": "^11.3.1",
     "redis": "^6.3.0",
     "@fastify/cookie": "^11.1.2"
   },

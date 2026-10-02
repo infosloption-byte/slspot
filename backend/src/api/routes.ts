@@ -3,6 +3,8 @@ import { AuthError, type AuthSession } from '../auth/service.js'
 import type { AuthServiceLike } from '../auth/routes.js'
 import { env } from '../config/env.js'
 import { PlatformApiService } from './service.js'
+import { isCandleInterval } from '../market/types.js'
+import type { MarketDataServiceLike } from '../market/service.js'
 
 const PREFIX = '/api/v1'
 
@@ -51,6 +53,7 @@ function ok<T>(request: FastifyRequest, data: T) {
 export type PlatformApiOptions = {
   authService: AuthServiceLike
   apiService: PlatformApiService
+  marketDataService?: MarketDataServiceLike
 }
 
 export function registerPlatformApiRoutes(app: FastifyInstance, options: PlatformApiOptions): void {
@@ -61,6 +64,18 @@ export function registerPlatformApiRoutes(app: FastifyInstance, options: Platfor
       type: queryEnum(request.query.type, ASSET_TYPES, 'Asset type'),
     }))
   })
+
+  app.get<{ Params: { assetId: string }; Querystring: Query & { interval?: string; limit?: string } }>(
+    PREFIX + '/market/assets/:assetId/candles',
+    async (request) => {
+      if (!options.marketDataService) throw new AuthError(503, 'MARKET_DATA_UNAVAILABLE', 'Market data service is unavailable')
+      const interval = request.query.interval ?? '5min'
+      if (!isCandleInterval(interval)) throw new AuthError(400, 'INVALID_QUERY', 'Chart interval is invalid')
+      const limit = queryNumber(request.query.limit)
+      if (limit !== undefined && limit > 5000) throw new AuthError(400, 'INVALID_QUERY', 'Candle limit must not exceed 5000')
+      return ok(request, await options.marketDataService.getCandles(request.params.assetId, interval, limit ?? 200))
+    },
+  )
 
   app.get<{ Querystring: Query }>(PREFIX + '/portfolio/summary', async (request) => {
     const session = await requireSession(request, options.authService)

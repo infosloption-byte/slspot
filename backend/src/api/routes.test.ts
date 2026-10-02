@@ -56,9 +56,16 @@ const apiService = {
   markNotificationRead: async () => true,
 } as unknown as PlatformApiService
 
+const marketDataService = {
+  getCandles: async (assetId: string, interval: string, _limit: number) => ({
+    assetId, symbol: 'BTC/USD', interval,
+    candles: [{ assetId, symbol: 'BTC/USD', interval, openTime: new Date(0).toISOString(), closeTime: new Date(60_000).toISOString(), open: '100', high: '101', low: '99', close: '100.5', volume: '10' }],
+  }),
+}
+
 describe('platform API routes', () => {
   it('requires a session for private resources', async () => {
-    const app = buildApp({ logging: false, authService, apiService })
+    const app = buildApp({ logging: false, authService, apiService, marketDataService })
     await app.ready()
 
     const response = await app.inject({
@@ -72,7 +79,7 @@ describe('platform API routes', () => {
   })
 
   it('returns a versioned success envelope for public market assets', async () => {
-    const app = buildApp({ logging: false, authService, apiService })
+    const app = buildApp({ logging: false, authService, apiService, marketDataService })
     await app.ready()
 
     const response = await app.inject({
@@ -119,8 +126,17 @@ describe('platform API routes', () => {
     assert.equal(requestedUserId, 'user-1')
     await app.close()
   })
+  it('returns normalized market candles from the market data service', async () => {
+    const app = buildApp({ logging: false, authService, apiService, marketDataService })
+    await app.ready()
+    const response = await app.inject({ method: 'GET', url: '/api/v1/market/assets/asset-1/candles?interval=5min&limit=20' })
+    assert.equal(response.statusCode, 200)
+    assert.equal(response.json<{ data: { candles: unknown[] } }>().data.candles.length, 1)
+    await app.close()
+  })
+
   it('rejects invalid market asset type values', async () => {
-    const app = buildApp({ logging: false, authService, apiService })
+    const app = buildApp({ logging: false, authService, apiService, marketDataService })
     await app.ready()
 
     const response = await app.inject({
@@ -159,11 +175,12 @@ describe('platform API routes', () => {
 
 
   it('registers the complete platform API route surface', async () => {
-    const app = buildApp({ logging: false, authService, apiService })
+    const app = buildApp({ logging: false, authService, apiService, marketDataService })
     await app.ready()
 
     for (const url of [
       '/api/v1/market/assets',
+      '/api/v1/market/assets/:assetId/candles',
       '/api/v1/portfolio/summary',
       '/api/v1/portfolio/positions',
       '/api/v1/trades',

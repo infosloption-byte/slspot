@@ -76,7 +76,15 @@ function parseBoolean(name: string, value: string | undefined, fallback: boolean
   if (normalized === 'true') return true
   if (normalized === 'false') return false
 
-  throw new Error(`${name} must be true or false`)
+  throw new Error(name + ' must be true or false')
+}
+
+function parseMarketProvider(value: string | undefined): 'disabled' | 'twelve-data' {
+  const provider = (value ?? 'twelve-data').trim().toLowerCase()
+  if (provider !== 'disabled' && provider !== 'twelve-data') {
+    throw new Error('MARKET_DATA_PROVIDER must be disabled or twelve-data')
+  }
+  return provider as 'disabled' | 'twelve-data'
 }
 
 function parseDatabaseUrl(
@@ -207,6 +215,10 @@ const exposeDevTokens = parseBoolean(
   process.env.AUTH_EXPOSE_DEV_TOKENS,
   false,
 )
+const marketDataProvider = parseMarketProvider(process.env.MARKET_DATA_PROVIDER)
+const marketDataEnabled = parseBoolean('MARKET_DATA_ENABLED', process.env.MARKET_DATA_ENABLED, marketDataProvider !== 'disabled')
+const marketDataApiKey = process.env.MARKET_DATA_API_KEY?.trim() || undefined
+const marketDataBootstrapAssets = parseBoolean('MARKET_DATA_BOOTSTRAP_ASSETS', process.env.MARKET_DATA_BOOTSTRAP_ASSETS, nodeEnv !== 'production')
 
 if (nodeEnv === 'production' && !authCookieSecure) {
   throw new Error('AUTH_COOKIE_SECURE must be true in production')
@@ -214,6 +226,10 @@ if (nodeEnv === 'production' && !authCookieSecure) {
 
 if (nodeEnv === 'production' && exposeDevTokens) {
   throw new Error('AUTH_EXPOSE_DEV_TOKENS must be false in production')
+}
+
+if (nodeEnv === 'production' && marketDataEnabled && marketDataProvider === 'twelve-data' && !marketDataApiKey) {
+  throw new Error('MARKET_DATA_API_KEY must be configured when Twelve Data market data is enabled in production')
 }
 
 export const env = {
@@ -263,6 +279,15 @@ export const env = {
   ),
   redisChannel: process.env.REDIS_CHANNEL?.trim() || 'slspot:realtime:v1',
   redisKeyPrefix: process.env.REDIS_KEY_PREFIX?.trim() || 'slspot:',
+  marketData: {
+    provider: marketDataProvider,
+    enabled: marketDataEnabled,
+    apiKey: marketDataApiKey,
+    baseUrl: process.env.MARKET_DATA_BASE_URL?.trim() || 'https://api.twelvedata.com',
+    pollIntervalMs: parsePositiveInteger('MARKET_DATA_POLL_INTERVAL_MS', process.env.MARKET_DATA_POLL_INTERVAL_MS, 15_000, 5_000, 300_000),
+    requestTimeoutMs: parsePositiveInteger('MARKET_DATA_REQUEST_TIMEOUT_MS', process.env.MARKET_DATA_REQUEST_TIMEOUT_MS, 10_000, 1_000, 60_000),
+    bootstrapAssets: marketDataBootstrapAssets,
+  },
   websocketMaxPayloadBytes: parsePositiveInteger(
     'WEBSOCKET_MAX_PAYLOAD_BYTES',
     process.env.WEBSOCKET_MAX_PAYLOAD_BYTES,
