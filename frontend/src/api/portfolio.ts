@@ -13,11 +13,19 @@ export type PortfolioSummary = {
 
 export type PortfolioPosition = {
   id: string
+  tradeId: string | null
+  orderId: string
   status: 'OPEN' | 'CLOSED'
   side: 'BUY' | 'SELL'
+  direction: 'UP' | 'DOWN'
   amount: string
   entryPrice: string
+  currentPrice: string | null
   exitPrice: string | null
+  payoutRate: string
+  fee: string
+  durationSeconds: number
+  expiresAt: string | null
   openedAt: string
   closedAt: string | null
   asset: {
