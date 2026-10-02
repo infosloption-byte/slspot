@@ -30,6 +30,14 @@ function queryBoolean(value: string | undefined): boolean | undefined {
   throw new AuthError(400, 'INVALID_QUERY', 'Boolean query values must be true or false')
 }
 
+function queryEnum(value: string | undefined, allowed: readonly string[], name: string): string | undefined {
+  if (value === undefined || allowed.includes(value)) return value
+  throw new AuthError(400, 'INVALID_QUERY', name + ' is invalid')
+}
+
+const ASSET_TYPES = ['CRYPTO', 'FOREX', 'STOCK', 'COMMODITY', 'INDEX', 'OTHER'] as const
+const TRADE_STATUSES = ['OPEN', 'WON', 'LOST', 'CANCELLED', 'EXPIRED'] as const
+
 async function requireSession(request: FastifyRequest, authService: AuthServiceLike): Promise<AuthSession> {
   const session = await authService.authenticateSession(request.cookies?.[env.auth.cookieName])
   if (!session) throw new AuthError(401, 'UNAUTHENTICATED', 'Authentication is required')
@@ -72,7 +80,7 @@ export function registerPlatformApiRoutes(app: FastifyInstance, options: Platfor
     return ok(request, await options.apiService.listTrades(session.id, {
       page: queryNumber(request.query.page),
       pageSize: queryNumber(request.query.pageSize),
-      status: request.query.status,
+      status: queryEnum(request.query.status, TRADE_STATUSES, 'Trade status'),
     }))
   })
 
