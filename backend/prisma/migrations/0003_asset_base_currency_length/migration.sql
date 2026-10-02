@@ -1,0 +1,2 @@
+ALTER TABLE `Asset`
+  MODIFY COLUMN `baseCurrency` VARCHAR(32) NULL;
