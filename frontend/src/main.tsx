@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router'
 import App from './App'
 import { AuthProvider } from './auth/AuthProvider'
+import { RealtimeProvider } from './realtime/RealtimeProvider'
 import './styles/theme.css'
 import './styles/global.css'
 
@@ -16,7 +17,9 @@ createRoot(rootElement).render(
   <StrictMode>
     <BrowserRouter>
       <AuthProvider>
-        <App />
+        <RealtimeProvider>
+          <App />
+        </RealtimeProvider>
       </AuthProvider>
     </BrowserRouter>
   </StrictMode>,
