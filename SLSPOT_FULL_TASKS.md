@@ -546,12 +546,13 @@ Tasks:
 
 - [x] HTTP client foundation.
 - [x] Base URL configuration.
-- [ ] Request timeout.
+- [x] Request timeout.
 - [x] Error normalization.
 - [x] Browser credential/session transport (`credentials: include`) foundation.
 - [ ] Retry rules.
 - [ ] Cache policy.
-- [ ] Request tracing/correlation ID.
+- [x] Request tracing/correlation ID.
+- [x] Idempotency-Key transport support.
 
 ---
 
@@ -580,7 +581,9 @@ Tasks:
 - [ ] Subscription recovery.
 - [ ] Message validation.
 - [ ] Message-size limits.
-- [ ] Event versioning.
+- [x] Event versioning.
+- [x] Subscription message contract.
+- [x] Subscription authorization contract.
 
 Market events:
 
@@ -1333,27 +1336,32 @@ A production release is blocked until:
 
 ### `SLSPOT-005 — API & WebSocket Contract`
 
-- [ ] Define REST response conventions.
-- [ ] Define authentication/session contract for frontend integration.
-- [ ] Define market-data response schema.
-- [ ] Define realtime subscription model.
-- [ ] Define event authorization rules by user/session.
-- [ ] Define pagination/filter/sort conventions.
-- [ ] Define idempotency and request-correlation conventions.
-- [ ] Add shared frontend-facing TypeScript contracts where practical.
+- [x] Define REST response conventions.
+- [x] Define authentication/session contract for frontend integration.
+- [x] Define market-data response schema.
+- [x] Define realtime subscription model.
+- [x] Define event authorization rules by user/session.
+- [x] Define pagination/filter/sort conventions.
+- [x] Define idempotency and request-correlation conventions.
+- [x] Add shared frontend-facing TypeScript contracts where practical.
+- [x] Add contract documentation and backend/frontend contract types.
+- [x] Add contract-focused automated tests.
 
-Suggested commit:
-
-```text
-feat: define trading api and realtime contracts
-```
+Implemented in:
+- `docs/API_CONTRACTS.md`
+- `backend/src/contracts/api.ts`
+- `backend/src/contracts/realtime.ts`
+- `backend/src/contracts/*.test.ts`
+- `frontend/src/api/contracts.ts`
+- `frontend/src/realtime/contracts.ts`
+- `frontend/src/api/client.ts`
 
 ## Following milestones
 
 ```text
-API + WebSocket contracts
+API + WebSocket contracts ✅
         ↓
-Frontend server-state integration
+Frontend server-state integration   ← NEXT
         ↓
 Market Data Service
         ↓
