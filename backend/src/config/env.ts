@@ -1,3 +1,5 @@
+import 'dotenv/config'
+
 const NODE_ENVS = ['development', 'test', 'production'] as const
 const LOG_LEVELS = ['fatal', 'error', 'warn', 'info', 'debug', 'trace'] as const
 const AUTH_SAME_SITE_VALUES = ['lax', 'strict', 'none'] as const
