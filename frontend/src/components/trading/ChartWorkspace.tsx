@@ -24,7 +24,6 @@ import {
   type IChartApi,
 } from 'lightweight-charts'
 import type { MarketAsset } from '../../data/mockMarket'
-import { generateMockCandles } from '../../data/mockCandles'
 import type { MarketCandle } from '../../api/contracts'
 import { useMarketCandles } from '../../hooks/useServerState'
 import type { OpenTrade } from '../../types/trading'
@@ -34,6 +33,13 @@ import { IconButton } from '../ui/IconButton'
 
 type ChartType = 'candles' | 'line' | 'area'
 type DrawingTool = 'none' | 'horizontal' | 'trend'
+type ChartCandle = {
+  time: import('lightweight-charts').UTCTimestamp
+  open: number
+  high: number
+  low: number
+  close: number
+}
 
 type ChartWorkspaceProps = {
   asset: MarketAsset
@@ -44,7 +50,7 @@ type ChartWorkspaceProps = {
 
 const timeframes = ['1m', '5m', '15m', '30m', '1H', '4H', '1D']
 
-function calculateSma(candles: ReturnType<typeof generateMockCandles>, period = 14) {
+function calculateSma(candles: ChartCandle[], period = 14) {
   return candles.map((candle, index) => {
     const start = Math.max(0, index - period + 1)
     const slice = candles.slice(start, index + 1)
@@ -105,7 +111,7 @@ function ChartCanvas({
   gridEnabled: boolean
   priceLineEnabled: boolean
   maEnabled: boolean
-  candles: ReturnType<typeof generateMockCandles>
+  candles: ChartCandle[]
 }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const chartRef = useRef<IChartApi | null>(null)
@@ -225,10 +231,9 @@ export function ChartWorkspace({ asset, onOpenMarkets, openTrades, now }: ChartW
   const price = formatPrice(asset.price, asset.price < 10 ? 5 : 2)
   const marketInterval = timeframeToApiInterval(timeframe)
   const candleResource = useMarketCandles(asset.assetId, marketInterval, 200)
-  const candles = useMemo(() => {
-    if (candleResource.data?.candles.length) return toChartCandles(candleResource.data.candles)
-    return generateMockCandles(asset, timeframe)
-  }, [asset, candleResource.data, timeframe])
+  const candles = useMemo<ChartCandle[]>(() => (
+    candleResource.data ? toChartCandles(candleResource.data.candles) : []
+  ), [candleResource.data])
   const rsi = useMemo(() => calculateRsi(candles), [candles])
 
   useEffect(() => {
