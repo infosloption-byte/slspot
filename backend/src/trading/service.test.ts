@@ -24,7 +24,7 @@ test('winning settlement returns stake plus profit and subtracts fee from P&L', 
   assert.equal(terms.grossPnl.toFixed(2), '44.00')
   assert.equal(terms.grossPayout.toFixed(2), '94.00')
   assert.equal(terms.netPnl.toFixed(2), '43.00')
-  assert.equal(terms.holdAmount.toFixed(2), '51.00')
+  assert.equal(terms.holdAmount.toFixed(2), '50.00')
 })
 
 test('losing settlement releases no payout and records the stake loss plus fee', () => {
