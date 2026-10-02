@@ -5,19 +5,32 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "build": "tsc -p tsconfig.json",
+    "build": "npm run prisma:generate && tsc -p tsconfig.json",
     "start": "node dist/server.js",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "node --import tsx --test"
+    "typecheck": "npm run prisma:generate && tsc -p tsconfig.json --noEmit",
+    "test": "node --import tsx --test",
+    "prisma:generate": "prisma --config prisma7.config.ts generate",
+    "prisma:migrate": "prisma --config prisma7.config.ts migrate dev",
+    "prisma:migrate:deploy": "prisma --config prisma7.config.ts migrate deploy",
+    "prisma:migrate:status": "prisma --config prisma7.config.ts migrate status",
+    "prisma:studio": "prisma --config prisma7.config.ts studio",
+    "db:up": "docker compose -f docker-compose.yml up -d mysql",
+    "db:down": "docker compose -f docker-compose.yml down",
+    "db:logs": "docker compose -f docker-compose.yml logs -f mysql"
   },
   "dependencies": {
     "@fastify/cors": "^11.3.0",
-    "fastify": "^5.12.5"
+    "fastify": "^5.12.5",
+    "@prisma/adapter-mariadb": "^7.10.0",
+    "@prisma/client": "^7.10.0",
+    "mariadb": "^3.4.5"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
     "tsx": "^4.23.15",
-    "typescript": "^7.0.2"
+    "typescript": "^7.0.2",
+    "dotenv": "^17.2.2",
+    "prisma": "^7.10.0"
   },
   "engines": {
     "node": ">=24.0.0 <27",
