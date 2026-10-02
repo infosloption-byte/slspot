@@ -21,6 +21,7 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
     }
 
     client.disconnect()
+    return undefined
   }, [client, status])
 
   const value = useMemo(() => client, [client])
