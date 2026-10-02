@@ -21,7 +21,7 @@ type AppOptions = {
   authService?: AuthServiceLike
   apiService?: PlatformApiService
   marketDataService?: import('./market/service.js').MarketDataServiceLike
-  tradingService?: import('./trading/service.js').TradingService
+  tradingService?: import('./api/routes.js').TradingServiceLike
 }
 
 function resolveRequestId(value: string | string[] | undefined): string {
