@@ -26,7 +26,8 @@ export class ApiError extends Error {
   }
 }
 
-const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL || DEFAULT_API_BASE_URL).replace(/\/$/, '')
+const viteEnv = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env
+const apiBaseUrl = (viteEnv?.VITE_API_BASE_URL || DEFAULT_API_BASE_URL).replace(/\/$/, '')
 
 function createRequestId(): string {
   return crypto.randomUUID()
