@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import Fastify, { type FastifyRequest } from 'fastify'
+import Fastify, { type FastifyError, type FastifyRequest } from 'fastify'
 import cors from '@fastify/cors'
 import { env } from './config/env.js'
 
@@ -112,7 +112,7 @@ export function buildApp(options: AppOptions = {}) {
     return reply.status(404).send(response)
   })
 
-  app.setErrorHandler((error, request, reply) => {
+  app.setErrorHandler((error: FastifyError, request, reply) => {
     request.log.error({ err: error, requestId: request.id }, 'Request failed')
 
     const statusCode =
