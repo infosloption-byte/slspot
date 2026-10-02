@@ -3,6 +3,8 @@ import Fastify, { LogController, type FastifyError, type FastifyRequest } from '
 import cors from '@fastify/cors'
 import { env } from './config/env.js'
 import { RealtimeGateway } from './realtime/gateway.js'
+import { registerPlatformApiRoutes } from './api/routes.js'
+import type { PlatformApiService } from './api/service.js'
 import cookie from '@fastify/cookie'
 import { registerAuthRoutes, type AuthServiceLike } from './auth/routes.js'
 import type { ApiError, ApiSuccess } from './contracts/api.js'
@@ -17,6 +19,7 @@ type AppOptions = {
   logging?: boolean
   realtimeGateway?: RealtimeGateway
   authService?: AuthServiceLike
+  apiService?: PlatformApiService
 }
 
 function resolveRequestId(value: string | string[] | undefined): string {
@@ -76,6 +79,13 @@ export function buildApp(options: AppOptions = {}) {
 
   if (options.authService) {
     registerAuthRoutes(app, options.authService)
+  }
+
+  if (options.authService && options.apiService) {
+    registerPlatformApiRoutes(app, {
+      authService: options.authService,
+      apiService: options.apiService,
+    })
   }
 
   app.get(API_PREFIX + '/health', async (request) =>
