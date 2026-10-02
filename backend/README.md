@@ -14,6 +14,14 @@ npm run dev
 
 The API listens on http://localhost:8080 by default.
 
+Local Redis is included in `docker-compose.yml` on port 6379. Redis is optional in development by default; set `REDIS_REQUIRED=true` when you want readiness/startup to require it.
+
+Realtime WebSocket endpoint:
+
+- `ws://localhost:8080/ws`
+
+The WebSocket foundation provides connection-ready events, heartbeat pings, bounded payload size, protocol-versioned event envelopes and Redis-backed broadcast fan-out. Authentication and application event authorization are intentionally deferred to the authentication/realtime milestones.
+
 Health endpoints:
 
 - `GET /api/v1/health` — liveness.
@@ -75,6 +83,11 @@ Important backend settings:
 - `TRUST_PROXY` must only be enabled when the deployment is actually behind a trusted reverse proxy.
 - Request timeout, graceful-shutdown timeout and request body size are bounded by validated environment settings.
 - `DATABASE_CONNECTION_LIMIT` controls the MySQL driver-adapter connection pool.
+- `REDIS_URL` configures the Redis connection; `rediss://` may be used for TLS deployments.
+- `REDIS_REQUIRED=false` keeps local API startup available when Redis is not installed; production deployments should explicitly decide whether Redis is required.
+- `REDIS_CHANNEL` is the versioned pub/sub channel used for realtime fan-out.
+- `REDIS_KEY_PREFIX` namespaces application cache/session keys.
+- `WEBSOCKET_MAX_PAYLOAD_BYTES` limits inbound WebSocket payloads.
 
 ## Validation
 
@@ -107,6 +120,10 @@ npm run prisma:migrate:status
 - Connection-pool configuration
 - Versioned database migrations
 - Local MySQL development container
+- Redis connection, pub/sub, TTL and invalidation primitives
+- Local Redis development container
+- WebSocket gateway foundation at `/ws`
+- Versioned realtime event envelope and heartbeat handling
 - Automated backend foundation tests
 
 Authentication, market-data providers, realtime event distribution, order lifecycle, wallet authority and financial ledger business logic remain subsequent milestones.
