@@ -1411,11 +1411,11 @@ SLSPOT-006 is complete. The next major dependency is server-authoritative tradin
 ```text
 API + WebSocket contracts ✅
         ↓
-Frontend server-state integration   ← NEXT
+Frontend server-state integration ✅
         ↓
-Market Data Service
+Market Data Service ✅
         ↓
-Demo Trading
+Server-authoritative demo trading
         ↓
 Positions / History / Portfolio
         ↓
@@ -1436,7 +1436,7 @@ Production readiness
 
 ## Current architecture gate
 
-The browser remains non-authoritative for balances, prices, trade settlement and financial state. Authentication is now server-backed, but authorization, market data, trading authority and ledger integrity remain blocking backend work before real-money execution.
+The browser remains non-authoritative for balances, prices, trade settlement and financial state. Authentication and market data are now server-backed; trading authority, settlement, ledger integrity, payments and production authorization remain blocking backend work before any real-money execution.
 
 # Definition of Done
 
