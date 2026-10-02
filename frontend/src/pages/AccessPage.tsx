@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router'
 import { ApiError } from '../api/client'
+import { authApi } from '../api/auth'
 import { useAuth } from '../auth/AuthProvider'
 
 const configByPath = {
@@ -188,7 +189,6 @@ export function AccessPage() {
       }
 
       if (location.pathname === '/forgot-password') {
-        const { authApi } = await import('../api/auth')
         const result = await authApi.forgotPassword(values.email ?? '')
         if (result.reset?.token) {
           navigate('/reset-password', {
@@ -202,7 +202,6 @@ export function AccessPage() {
       }
 
       if (location.pathname === '/reset-password') {
-        const { authApi } = await import('../api/auth')
         await authApi.resetPassword(values.token ?? initialToken, values.password ?? '')
         navigate('/login', {
           replace: true,
@@ -212,7 +211,6 @@ export function AccessPage() {
       }
 
       if (location.pathname === '/verify-email') {
-        const { authApi } = await import('../api/auth')
         const token = values.token ?? initialToken
         if (!token) {
           if (!values.email) {
@@ -364,7 +362,6 @@ export function AccessPage() {
               void (async () => {
                 try {
                   setBusy(true)
-                  const { authApi } = await import('../api/auth')
                   const result = await authApi.requestEmailVerification(values.email)
                   setSubmitted(true)
                   if (result.verification?.token) {
