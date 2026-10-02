@@ -47,20 +47,27 @@ export function useLiveMarketAssets() {
       ) return
 
       const assetId = data.assetId
+      const symbol = data.symbol
+      const last = data.last
+      const bid = typeof data.bid === 'string' ? data.bid : last
+      const ask = typeof data.ask === 'string' ? data.ask : last
+      const changePct = typeof data.changePct === 'string' ? data.changePct : '0'
+      const volume = typeof data.volume === 'string' ? data.volume : null
+      const timestamp = typeof data.timestamp === 'string'
+        ? data.timestamp
+        : new Date().toISOString()
 
       setQuotes((current) => ({
         ...current,
         [assetId]: {
-          assetId: data.assetId,
-          symbol: data.symbol,
-          bid: typeof data.bid === 'string' ? data.bid : data.last,
-          ask: typeof data.ask === 'string' ? data.ask : data.last,
-          last: data.last,
-          changePct: typeof data.changePct === 'string' ? data.changePct : '0',
-          volume: typeof data.volume === 'string' ? data.volume : null,
-          timestamp: typeof data.timestamp === 'string'
-            ? data.timestamp
-            : new Date().toISOString(),
+          assetId,
+          symbol,
+          bid,
+          ask,
+          last,
+          changePct,
+          volume,
+          timestamp,
         },
       }))
     })
