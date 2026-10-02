@@ -113,6 +113,28 @@ function parseDatabaseUrl(
   }
 }
 
+function parseRedisUrl(value: string | undefined, nodeEnv: NodeEnv): string {
+  const rawUrl = value ?? 'redis://127.0.0.1:6379'
+
+  if (nodeEnv === 'production' && value === undefined) {
+    throw new Error('REDIS_URL must be explicitly configured in production')
+  }
+
+  let parsed: URL
+
+  try {
+    parsed = new URL(rawUrl)
+  } catch {
+    throw new Error('REDIS_URL must be a valid redis:// or rediss:// URL')
+  }
+
+  if (!['redis:', 'rediss:'].includes(parsed.protocol) || parsed.origin !== parsed.protocol + '//' + parsed.host) {
+    throw new Error('REDIS_URL must use redis:// or rediss:// and include only a host/port origin')
+  }
+
+  return parsed.toString()
+}
+
 function parseCorsOrigins(value: string | undefined, nodeEnv: NodeEnv): string[] {
   const rawOrigins = (value ?? 'http://localhost:5173')
     .split(',')
@@ -152,6 +174,7 @@ function parseCorsOrigins(value: string | undefined, nodeEnv: NodeEnv): string[]
 
 const nodeEnv = parseNodeEnv(process.env.NODE_ENV)
 const database = parseDatabaseUrl(process.env.DATABASE_URL, nodeEnv)
+const redisUrl = parseRedisUrl(process.env.REDIS_URL, nodeEnv)
 
 export const env = {
   nodeEnv,
@@ -188,5 +211,23 @@ export const env = {
     10,
     1,
     100,
+  ),
+  redisUrl,
+  redisRequired: parseBoolean('REDIS_REQUIRED', process.env.REDIS_REQUIRED, false),
+  redisConnectTimeoutMs: parsePositiveInteger(
+    'REDIS_CONNECT_TIMEOUT_MS',
+    process.env.REDIS_CONNECT_TIMEOUT_MS,
+    3_000,
+    500,
+    30_000,
+  ),
+  redisChannel: process.env.REDIS_CHANNEL?.trim() || 'slspot:realtime:v1',
+  redisKeyPrefix: process.env.REDIS_KEY_PREFIX?.trim() || 'slspot:',
+  websocketMaxPayloadBytes: parsePositiveInteger(
+    'WEBSOCKET_MAX_PAYLOAD_BYTES',
+    process.env.WEBSOCKET_MAX_PAYLOAD_BYTES,
+    1_048_576,
+    1_024,
+    10_485_760,
   ),
 } as const
