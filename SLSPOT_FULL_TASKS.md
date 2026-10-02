@@ -1332,7 +1332,7 @@ A production release is blocked until:
 - [x] Authenticated WebSocket handshake.
 - [x] Authentication tests and backend documentation.
 
-## Immediate next milestone
+## Completed milestone
 
 ### `SLSPOT-005 — API & WebSocket Contract`
 
@@ -1355,6 +1355,18 @@ Implemented in:
 - `frontend/src/api/contracts.ts`
 - `frontend/src/realtime/contracts.ts`
 - `frontend/src/api/client.ts`
+
+## Immediate next milestone
+
+### `SLSPOT-006 — Frontend Server-State Integration`
+
+- [ ] Connect frontend authentication screens to server auth/session APIs.
+- [ ] Add session bootstrap and `/auth/me` state.
+- [ ] Add auth-aware logout and session revocation UI.
+- [ ] Introduce server-state service boundaries for market, portfolio, wallet, and notifications.
+- [ ] Replace demo auth/session authority with backend responses.
+- [ ] Add unauthorized/forbidden/session-expired handling.
+- [ ] Add frontend API integration tests.
 
 ## Following milestones
 
