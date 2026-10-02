@@ -1,8 +1,8 @@
 import { createHash, randomBytes, scrypt as scryptCallback, timingSafeEqual, type ScryptOptions } from 'node:crypto'
 
-const SCRYPT_N = 16_384
-const SCRYPT_R = 8
-const SCRYPT_P = 1
+const SCRYPT_COST = 16_384
+const SCRYPT_BLOCK_SIZE = 8
+const SCRYPT_PARALLELIZATION = 1
 const KEY_LENGTH = 64
 const SALT_LENGTH = 16
 const MAXMEM = 32 * 1024 * 1024
@@ -28,15 +28,15 @@ function scryptAsync(
 export async function hashPassword(password: string): Promise<string> {
   const salt = randomBytes(SALT_LENGTH)
   const derived = await scryptAsync(password, salt, KEY_LENGTH, {
-    N: SCRYPT_N,
-    r: SCRYPT_R,
-    p: SCRYPT_P,
+    cost: SCRYPT_COST,
+    blockSize: SCRYPT_BLOCK_SIZE,
+    parallelization: SCRYPT_PARALLELIZATION,
     maxmem: MAXMEM,
   })
 
   return [
     'scrypt',
-    `N=${SCRYPT_N},r=${SCRYPT_R},p=${SCRYPT_P}`,
+    `N=${SCRYPT_COST},r=${SCRYPT_BLOCK_SIZE},p=${SCRYPT_PARALLELIZATION}`,
     salt.toString('base64url'),
     derived.toString('base64url'),
   ].join('$')
@@ -102,9 +102,9 @@ export async function verifyPassword(password: string, encodedHash: string): Pro
   }
 
   const derived = await scryptAsync(password, parsed.salt, parsed.hash.length, {
-    N: parsed.n,
-    r: parsed.r,
-    p: parsed.p,
+    cost: parsed.n,
+    blockSize: parsed.r,
+    parallelization: parsed.p,
     maxmem: MAXMEM,
   })
 

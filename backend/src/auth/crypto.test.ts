@@ -9,6 +9,20 @@ describe('authentication crypto', () => {
     assert.notEqual(first, second)
     assert.equal(await verifyPassword('A-strong-password-123', first), true)
     assert.equal(await verifyPassword('wrong-password', first), false)
+
+    const parts = first.split('
+  })
+
+  it('creates deterministic one-way hashes for session tokens', () => {
+    const first = hashOpaqueToken('example-session-token')
+    const second = hashOpaqueToken('example-session-token')
+    assert.equal(first, second)
+    assert.match(first, /^[a-f0-9]{64}$/)
+  })
+})
+)
+    assert.equal(parts.length, 4)
+    assert.match(parts[1] ?? '', /^N=16384,r=8,p=1$/)
   })
 
   it('creates deterministic one-way hashes for session tokens', () => {
