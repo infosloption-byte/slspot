@@ -1,4 +1,5 @@
 import type { PrismaClient } from '../generated/prisma/client.js'
+import { getTradingRules } from '../trading/config.js'
 
 export type ApiPage = {
   page: number
@@ -42,6 +43,14 @@ export type ApiMarketAsset = {
   quoteCurrency: string | null
   priceScale: number
   quantityScale: number
+  trading: {
+    enabled: boolean
+    payoutRate: string
+    minAmount: string
+    maxAmount: string
+    durationsSeconds: number[]
+    feeRate: string
+  }
   market: {
     id: string
     status: string
@@ -64,11 +73,19 @@ export type ApiPortfolioSummary = {
 
 export type ApiPosition = {
   id: string
+  tradeId: string | null
+  orderId: string
   status: string
   side: string
+  direction: 'UP' | 'DOWN'
   amount: string
   entryPrice: string
+  currentPrice: string | null
   exitPrice: string | null
+  payoutRate: string
+  fee: string
+  durationSeconds: number
+  expiresAt: string | null
   openedAt: string
   closedAt: string | null
   asset: {
@@ -80,10 +97,17 @@ export type ApiPosition = {
 
 export type ApiTrade = {
   id: string
+  orderId: string
   status: string
+  direction: 'UP' | 'DOWN'
+  amount: string
+  payoutRate: string
+  durationSeconds: number
+  expiresAt: string | null
   grossPnl: string | null
   fee: string
   netPnl: string | null
+  settlementReference: string | null
   openedAt: string
   closedAt: string | null
   position: {
@@ -168,6 +192,7 @@ export class PlatformApiService {
           quoteCurrency: asset.quoteCurrency,
           priceScale: asset.priceScale,
           quantityScale: asset.quantityScale,
+          trading: getTradingRules(asset.symbol, market?.status === 'OPEN'),
           market: market
             ? {
                 id: market.id,
@@ -232,26 +257,41 @@ export class PlatformApiService {
         orderBy: { openedAt: 'desc' },
         skip: (paging.page - 1) * paging.pageSize,
         take: paging.pageSize,
-        include: { asset: true },
+        include: {
+          asset: { include: { markets: { orderBy: { updatedAt: 'desc' }, take: 1 } } },
+          order: true,
+          trade: true,
+        },
       }),
     ])
 
     return {
-      items: positions.map((position) => ({
-        id: position.id,
-        status: position.status,
-        side: position.side,
-        amount: position.amount.toString(),
-        entryPrice: position.entryPrice.toString(),
-        exitPrice: position.exitPrice?.toString() ?? null,
-        openedAt: position.openedAt.toISOString(),
-        closedAt: position.closedAt?.toISOString() ?? null,
-        asset: {
-          id: position.asset.id,
-          symbol: position.asset.symbol,
-          name: position.asset.name,
-        },
-      })),
+      items: positions.map((position) => {
+        const market = position.asset.markets[0]
+        return {
+          id: position.id,
+          tradeId: position.trade?.id ?? null,
+          orderId: position.orderId,
+          status: position.status,
+          side: position.side,
+          direction: position.side === 'BUY' ? 'UP' : 'DOWN',
+          amount: position.amount.toString(),
+          entryPrice: position.entryPrice.toString(),
+          currentPrice: market?.lastPrice?.toString() ?? null,
+          exitPrice: position.exitPrice?.toString() ?? null,
+          payoutRate: position.order.payoutRate.toString(),
+          fee: position.order.fee.toString(),
+          durationSeconds: position.order.durationSeconds ?? 0,
+          expiresAt: position.order.expiresAt?.toISOString() ?? null,
+          openedAt: position.openedAt.toISOString(),
+          closedAt: position.closedAt?.toISOString() ?? null,
+          asset: {
+            id: position.asset.id,
+            symbol: position.asset.symbol,
+            name: position.asset.name,
+          },
+        }
+      }),
       pagination: paginate(total, paging.page, paging.pageSize),
     }
   }
@@ -270,17 +310,27 @@ export class PlatformApiService {
         orderBy: { openedAt: 'desc' },
         skip: (paging.page - 1) * paging.pageSize,
         take: paging.pageSize,
-        include: { position: { include: { asset: true } } },
+        include: {
+          position: { include: { asset: true, order: true } },
+          settlement: true,
+        },
       }),
     ])
 
     return {
       items: trades.map((trade) => ({
         id: trade.id,
+        orderId: trade.position.orderId,
         status: trade.status,
+        direction: trade.position.side === 'BUY' ? 'UP' : 'DOWN',
+        amount: trade.position.amount.toString(),
+        payoutRate: trade.position.order.payoutRate.toString(),
+        durationSeconds: trade.position.order.durationSeconds ?? 0,
+        expiresAt: trade.position.order.expiresAt?.toISOString() ?? null,
         grossPnl: trade.grossPnl?.toString() ?? null,
         fee: trade.fee.toString(),
         netPnl: trade.netPnl?.toString() ?? null,
+        settlementReference: trade.settlement?.referenceId ?? null,
         openedAt: trade.openedAt.toISOString(),
         closedAt: trade.closedAt?.toISOString() ?? null,
         position: {
