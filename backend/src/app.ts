@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import Fastify, { type FastifyError, type FastifyRequest } from 'fastify'
+import Fastify, { LogController, type FastifyError, type FastifyRequest } from 'fastify'
 import cors from '@fastify/cors'
 import { env } from './config/env.js'
 
@@ -50,7 +50,7 @@ export function buildApp(options: AppOptions = {}) {
     requestTimeout: env.requestTimeoutMs,
     trustProxy: env.trustProxy,
     genReqId: (request) => resolveRequestId(request.headers['x-request-id']),
-    requestIdLogLabel: 'requestId',
+    logController: new LogController({ requestIdLogLabel: 'requestId' }),
   })
 
   app.register(cors, {
