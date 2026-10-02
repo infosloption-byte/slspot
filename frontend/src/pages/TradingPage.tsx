@@ -4,7 +4,8 @@ import { BottomPanel } from '../components/layout/BottomPanel'
 import { TradePanel } from '../components/trading/TradePanel'
 import { ChartWorkspace } from '../components/trading/ChartWorkspace'
 import { Toast, type ToastTone } from '../components/ui/Toast'
-import { marketAssets } from '../data/mockMarket'
+import { ApiState } from '../components/ui/ApiState'
+import { useLiveMarketAssets } from '../hooks/useMarketState'
 import { resolveTrade, type OpenTrade } from '../types/trading'
 
 type ToastItem = {
@@ -20,6 +21,7 @@ function playTradeSound(outcome: 'open' | 'win' | 'lose') {
     const context = new AudioContextCtor()
     const oscillator = context.createOscillator()
     const gain = context.createGain()
+
     oscillator.type = 'sine'
     oscillator.frequency.value = outcome === 'win' ? 740 : outcome === 'lose' ? 220 : 520
     gain.gain.setValueAtTime(0.0001, context.currentTime)
@@ -42,55 +44,31 @@ declare global {
 }
 
 export function TradingPage() {
-  const initialAsset = marketAssets[0]
-  if (!initialAsset) throw new Error('Market asset list is empty')
-
-  const [selectedSymbol, setSelectedSymbol] = useState(initialAsset.symbol)
-  const [livePrices, setLivePrices] = useState<Record<string, number>>(() => Object.fromEntries(marketAssets.map((asset) => [asset.symbol, asset.price])))
+  const market = useLiveMarketAssets()
+  const [selectedSymbol, setSelectedSymbol] = useState('')
   const [marketPickerOpen, setMarketPickerOpen] = useState(false)
   const [activityOpen, setActivityOpen] = useState(true)
   const [now, setNow] = useState(() => Date.now())
   const [soundEnabled, setSoundEnabled] = useState(() => window.localStorage.getItem('slspot.trade-sounds') === 'on')
-  const [openTrades, setOpenTrades] = useState<OpenTrade[]>(() => [{
-    id: 'SL-DEMO-01',
-    symbol: initialAsset.symbol,
-    direction: 'UP',
-    amount: 25,
-    durationSeconds: 90,
-    openedAt: Date.now() - 35000,
-    expiresAt: Date.now() + 55000,
-    entryPrice: initialAsset.price * 0.9994,
-    payoutRate: initialAsset.payout / 100,
-    status: 'OPEN',
-  }])
+  const [openTrades, setOpenTrades] = useState<OpenTrade[]>([])
   const [settledTrades, setSettledTrades] = useState<OpenTrade[]>([])
   const [toasts, setToasts] = useState<ToastItem[]>([])
 
-  const selectedAsset = useMemo(() => {
-    const base = marketAssets.find((asset) => asset.symbol === selectedSymbol) ?? initialAsset
-    const price = livePrices[base.symbol] ?? base.price
-    const change = base.change + ((price - base.price) / base.price) * 100
-    return { ...base, price, change }
-  }, [initialAsset, livePrices, selectedSymbol])
+  const initialAsset = market.assets[0]
+
+  useEffect(() => {
+    if (!selectedSymbol && initialAsset) {
+      setSelectedSymbol(initialAsset.symbol)
+    }
+  }, [initialAsset, selectedSymbol])
+
+  const selectedAsset = useMemo(
+    () => market.assets.find((asset) => asset.symbol === selectedSymbol) ?? initialAsset,
+    [initialAsset, market.assets, selectedSymbol],
+  )
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 1000)
-    return () => window.clearInterval(timer)
-  }, [])
-
-  useEffect(() => {
-    const timer = window.setInterval(() => {
-      setLivePrices((current) => {
-        const next = { ...current }
-        marketAssets.forEach((asset, index) => {
-          const previous = current[asset.symbol] ?? asset.price
-          const wave = Math.sin(Date.now() / 4600 + index * 1.7) * asset.price * 0.00018
-          const drift = Math.cos(Date.now() / 8100 + index) * asset.price * 0.00007
-          next[asset.symbol] = Math.max(asset.price * 0.00001, previous + wave + drift)
-        })
-        return next
-      })
-    }, 1000)
     return () => window.clearInterval(timer)
   }, [])
 
@@ -105,8 +83,8 @@ export function TradingPage() {
     if (expired.length === 0) return
 
     const resolved = expired.map((trade) => {
-      const price = livePrices[trade.symbol] ?? trade.entryPrice
-      return resolveTrade(trade, price)
+      const current = market.assets.find((asset) => asset.symbol === trade.symbol)
+      return resolveTrade(trade, current?.price ?? trade.entryPrice)
     })
 
     const expiredIds = new Set(expired.map((trade) => trade.id))
@@ -117,14 +95,32 @@ export function TradingPage() {
       const won = trade.status === 'WON'
       addToast(
         won ? 'success' : 'error',
-        won ? 'Trade won' : 'Trade lost',
-        trade.symbol + ' ' + trade.direction + ' · ' + (won ? 'Payout credited' : 'Position settled below target'),
+        won ? 'Demo trade won' : 'Demo trade lost',
+        trade.symbol + ' ' + trade.direction + ' · local demo settlement',
       )
       if (soundEnabled) playTradeSound(won ? 'win' : 'lose')
     })
-  }, [addToast, livePrices, now, openTrades, soundEnabled])
+  }, [addToast, market.assets, now, openTrades, soundEnabled])
 
-  const openTrade = (request: { direction: 'UP' | 'DOWN'; amount: number; durationSeconds: number; entryPrice: number; payoutRate: number }) => {
+  if (market.loading || market.error || !selectedAsset) {
+    return (
+      <main className="trading-room">
+        <div className="trading-room__main panel">
+          <ApiState loading={market.loading} error={market.error} onRetry={() => void market.reload()}>
+            {!market.loading && !market.error ? <div className="dashboard-note">No active market assets are configured.</div> : null}
+          </ApiState>
+        </div>
+      </main>
+    )
+  }
+
+  const openTrade = (request: {
+    direction: 'UP' | 'DOWN'
+    amount: number
+    durationSeconds: number
+    entryPrice: number
+    payoutRate: number
+  }) => {
     const openedAt = Date.now()
     const trade: OpenTrade = {
       id: 'SL-' + String(openedAt).slice(-6),
@@ -138,20 +134,24 @@ export function TradingPage() {
       payoutRate: request.payoutRate,
       status: 'OPEN',
     }
+
     setOpenTrades((current) => [trade, ...current])
-    addToast('success', 'Trade opened', trade.symbol + ' ' + trade.direction + ' · ' + request.durationSeconds + 's countdown started')
+    addToast('success', 'Demo trade opened', trade.symbol + ' ' + trade.direction + ' · server trading is not enabled yet')
     if (soundEnabled) playTradeSound('open')
   }
 
   const closeTrade = (tradeId: string) => {
     const trade = openTrades.find((item) => item.id === tradeId)
     if (!trade) return
-    const price = livePrices[trade.symbol] ?? trade.entryPrice
-    const result = resolveTrade(trade, price)
-    setOpenTrades((current) => current.filter((item) => item.id !== tradeId))
+
+    const current = market.assets.find((asset) => asset.symbol === trade.symbol)
+    const result = resolveTrade(trade, current?.price ?? trade.entryPrice)
+
+    setOpenTrades((items) => items.filter((item) => item.id !== tradeId))
     setSettledTrades((history) => [result, ...history])
+
     const won = result.status === 'WON'
-    addToast(won ? 'success' : 'error', won ? 'Trade won' : 'Trade closed', result.symbol + ' ' + result.direction + ' · ' + (won ? 'Positive result' : 'Closed below target'))
+    addToast(won ? 'success' : 'error', won ? 'Demo trade won' : 'Demo trade closed', result.symbol + ' ' + result.direction)
     if (soundEnabled) playTradeSound(won ? 'win' : 'lose')
   }
 
@@ -166,7 +166,12 @@ export function TradingPage() {
   return (
     <main className="trading-room">
       <div className="trading-room__main">
-        <ChartWorkspace asset={selectedAsset} onOpenMarkets={() => setMarketPickerOpen(true)} openTrades={openTrades} now={now} />
+        <ChartWorkspace
+          asset={selectedAsset}
+          onOpenMarkets={() => setMarketPickerOpen(true)}
+          openTrades={openTrades}
+          now={now}
+        />
         <BottomPanel
           selectedSymbol={selectedSymbol}
           currentPrice={selectedAsset.price}
@@ -198,7 +203,13 @@ export function TradingPage() {
 
       <div className="toast-viewport" aria-live="polite">
         {toasts.map((toast) => (
-          <Toast key={toast.id} title={toast.title} message={toast.message} tone={toast.tone} onClose={() => setToasts((items) => items.filter((item) => item.id !== toast.id))} />
+          <Toast
+            key={toast.id}
+            title={toast.title}
+            message={toast.message}
+            tone={toast.tone}
+            onClose={() => setToasts((items) => items.filter((item) => item.id !== toast.id))}
+          />
         ))}
       </div>
     </main>
