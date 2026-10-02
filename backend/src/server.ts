@@ -1,4 +1,5 @@
 import { buildApp } from './app.js'
+import { PlatformApiService } from './api/service.js'
 import { AuthService } from './auth/service.js'
 import { env } from './config/env.js'
 import { prisma } from './db/prisma.js'
@@ -18,6 +19,7 @@ import {
 } from './db/prisma.js'
 
 const authService = new AuthService(prisma)
+const apiService = new PlatformApiService(prisma)
 const realtimeGateway = new RealtimeGateway({
   authenticate: (request) => authService.authenticateWebSocket(request),
 })
@@ -27,6 +29,7 @@ const app = buildApp({
   redisRequired: env.redisRequired,
   realtimeGateway,
   authService,
+  apiService,
 })
 let shuttingDown = false
 
