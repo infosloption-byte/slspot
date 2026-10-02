@@ -236,7 +236,7 @@ model Asset {
   symbol        String     @unique @db.VarChar(32)
   name          String     @db.VarChar(120)
   type          AssetType
-  baseCurrency  String?    @db.Char(3)
+  baseCurrency  String?    @db.VarChar(32)
   quoteCurrency String?    @db.Char(3)
   priceScale    Int        @default(8)
   quantityScale Int        @default(8)
