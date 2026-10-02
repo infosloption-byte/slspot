@@ -96,48 +96,54 @@ export function calculateSettlementTerms(input: {
   }
 }
 
-type TradeDetails = {
-  trade: {
+type TradingTradeRecord = {
+  id: string
+  userId: string
+  status: string
+  grossPnl: Prisma.Decimal | null
+  fee: Prisma.Decimal
+  netPnl: Prisma.Decimal | null
+  openedAt: Date
+  closedAt: Date | null
+}
+
+type TradingPositionRecord = {
+  id: string
+  userId: string
+  accountId: string
+  assetId: string
+  side: 'BUY' | 'SELL'
+  amount: Prisma.Decimal
+  entryPrice: Prisma.Decimal
+  exitPrice: Prisma.Decimal | null
+  openedAt: Date
+  closedAt: Date | null
+  order: {
     id: string
-    userId: string
-    status: string
-    grossPnl: Prisma.Decimal | null
+    amount: Prisma.Decimal
+    durationSeconds: number | null
+    expiresAt: Date | null
+    payoutRate: Prisma.Decimal
     fee: Prisma.Decimal
-    netPnl: Prisma.Decimal | null
-    openedAt: Date
-    closedAt: Date | null
-    position: {
-      id: string
-      userId: string
-      accountId: string
-      assetId: string
-      side: 'BUY' | 'SELL'
-      amount: Prisma.Decimal
-      entryPrice: Prisma.Decimal
-      exitPrice: Prisma.Decimal | null
-      openedAt: Date
-      closedAt: Date | null
-      order: {
-        id: string
-        amount: Prisma.Decimal
-        durationSeconds: number | null
-        expiresAt: Date | null
-        payoutRate: Prisma.Decimal
-        fee: Prisma.Decimal
-        clientRequestId: string
-        status: string
-      }
-      asset: { id: string; symbol: string; name: string }
-    }
-    settlement?: {
-      id: string
-      status: string
-      settlementPrice: Prisma.Decimal | null
-      referenceId: string | null
-      netPnl: Prisma.Decimal | null
-      settledAt: Date | null
-    } | null
+    clientRequestId: string
+    status: string
   }
+  asset: { id: string; symbol: string; name: string }
+}
+
+type TradingSettlementRecord = {
+  id: string
+  status: string
+  settlementPrice: Prisma.Decimal | null
+  referenceId: string | null
+  netPnl: Prisma.Decimal | null
+  settledAt: Date | null
+}
+
+type TradeDetails = {
+  trade: TradingTradeRecord
+  position: TradingPositionRecord
+  settlement: TradingSettlementRecord | null
 }
 
 export class TradingService {
@@ -415,13 +421,13 @@ export class TradingService {
     if (!details || details.trade.userId !== userId) {
       throw new TradingError(404, 'TRADE_NOT_FOUND', 'Trade was not found')
     }
-    if (details.trade.status !== 'OPEN' || !details.trade.position.order.expiresAt) {
-      if (details.trade.settlement) return this.toTradingResult(details.trade, details.trade.position, details.trade.settlement)
+    if (details.trade.status !== 'OPEN' || !details.position.order.expiresAt) {
+      if (details.settlement) return this.toTradingResult(details.trade, details.position, details.settlement)
       throw new TradingError(409, 'TRADE_NOT_OPEN', 'Trade is no longer open')
     }
 
     const market = await this.prisma.market.findFirst({
-      where: { assetId: details.trade.position.assetId },
+      where: { assetId: details.position.assetId },
       orderBy: { updatedAt: 'desc' },
       select: { lastPrice: true, lastPriceAt: true, status: true },
     })
@@ -747,7 +753,7 @@ export class TradingService {
     return wallet
   }
 
-  private toTradingResult(trade: TradeDetails['trade'], position: TradeDetails['trade']['position'], settlement: TradeDetails['trade']['settlement'] | null): ApiTradingResult {
+  private toTradingResult(trade: TradingTradeRecord, position: TradingPositionRecord, settlement: TradingSettlementRecord | null): ApiTradingResult {
     const order = position.order
     return {
       orderId: order.id,
