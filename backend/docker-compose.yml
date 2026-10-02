@@ -33,3 +33,4 @@ services:
 
 volumes:
   slspot_mysql_data:
+  slspot_redis_data:
