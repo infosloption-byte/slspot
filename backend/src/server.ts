@@ -41,7 +41,7 @@ async function shutdown(signal: string) {
     await unsubscribe(env.redisChannel)
     realtimeGateway.closeAll()
     await app.close()
-    disconnectRedis()
+    await disconnectRedis()
     await disconnectDatabase()
     clearTimeout(timeout)
     app.log.info('Shutdown complete')
