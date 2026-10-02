@@ -1,13 +1,12 @@
 import { buildApp } from './app.js'
 import { env } from './config/env.js'
+import { checkDatabase, connectDatabase, disconnectDatabase } from './db/prisma.js'
 
-const app = buildApp()
+const app = buildApp({ checkDatabase })
 let shuttingDown = false
 
 async function shutdown(signal: string) {
-  if (shuttingDown) {
-    return
-  }
+  if (shuttingDown) return
 
   shuttingDown = true
   app.log.info({ signal }, 'Shutdown requested')
@@ -21,6 +20,7 @@ async function shutdown(signal: string) {
 
   try {
     await app.close()
+    await disconnectDatabase()
     clearTimeout(timeout)
     app.log.info('Shutdown complete')
   } catch (error) {
@@ -39,6 +39,7 @@ process.once('SIGTERM', () => {
 })
 
 try {
+  await connectDatabase()
   await app.listen({ host: env.host, port: env.port })
   app.log.info(
     { host: env.host, port: env.port },
