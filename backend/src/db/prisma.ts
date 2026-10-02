@@ -15,6 +15,7 @@ export const prisma = new PrismaClient({ adapter })
 
 export async function connectDatabase(): Promise<void> {
   await prisma.$connect()
+  await prisma.$queryRaw`SELECT 1`
 }
 
 export async function checkDatabase(): Promise<boolean> {
