@@ -30,9 +30,14 @@ const authService: AuthServiceLike = {
 }
 
 const apiService = {
-  listAssets: async () => ({
+  listAssets: async (query: { page?: number; pageSize?: number }) => ({
     items: [],
-    pagination: { page: 1, pageSize: 25, total: 0, totalPages: 1 },
+    pagination: {
+      page: query.page ?? 1,
+      pageSize: query.pageSize ?? 25,
+      total: 0,
+      totalPages: 1,
+    },
   }),
   getPortfolioSummary: async () => ({
     currency: 'USD',
@@ -157,8 +162,7 @@ describe('platform API routes', () => {
     const app = buildApp({ logging: false, authService, apiService })
     await app.ready()
 
-    const routes = app.printRoutes()
-    for (const route of [
+    for (const url of [
       '/api/v1/market/assets',
       '/api/v1/portfolio/summary',
       '/api/v1/portfolio/positions',
@@ -168,7 +172,11 @@ describe('platform API routes', () => {
       '/api/v1/notifications',
       '/api/v1/notifications/:notificationId/read',
     ]) {
-      assert.equal(routes.includes(route), true, 'missing registered route: ' + route)
+      assert.equal(
+        app.hasRoute({ method: url.endsWith('/read') ? 'POST' : 'GET', url }),
+        true,
+        'missing registered route: ' + url,
+      )
     }
 
     await app.close()
