@@ -280,7 +280,7 @@ describe('platform API routes', () => {
       },
     }
 
-    const app = buildApp({ logging: false, authService, apiService, tradingService: scopedTradingService as never })
+    const app = buildApp({ logging: false, authService, apiService, tradingService: scopedTradingService })
     await app.ready()
 
     const response = await app.inject({
