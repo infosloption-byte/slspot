@@ -1400,6 +1400,17 @@ Implemented in:
 - `frontend/src/auth/types.ts`
 - `frontend/src/api/auth.ts`
 - `frontend/src/api/client.ts`
+- `frontend/src/api/market.ts`
+- `frontend/src/api/portfolio.ts`
+- `frontend/src/api/trades.ts`
+- `frontend/src/api/wallet.ts`
+- `frontend/src/api/notifications.ts`
+- `frontend/src/hooks/useAsyncResource.ts`
+- `frontend/src/hooks/useServerState.ts`
+- `frontend/src/hooks/useMarketState.ts`
+- `frontend/src/components/ui/ApiState.tsx`
+- `frontend/src/pages/WorkspacePage.tsx`
+- `frontend/src/pages/TradingPage.tsx`
 - `frontend/src/pages/AccessPage.tsx`
 - `frontend/src/components/routing/ProtectedRoute.tsx`
 - `frontend/src/components/layout/TopBar.tsx`
