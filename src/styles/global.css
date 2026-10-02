@@ -791,3 +791,13 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
   .trade-mobile-config__grid { grid-template-columns:1fr 1fr; }
   .trade-chart-marker__label { padding:4px 6px; font-size:9px; }
 }
+
+.asset-icon--aapl,.asset-icon--nas { background:rgba(255,194,26,.1); color:var(--accent); border-color:var(--accent-line); }
+.asset-icon--tsla { background:rgba(255,77,94,.1); color:#ff7784; border-color:rgba(255,77,94,.25); }
+.asset-icon--xau { background:rgba(247,185,85,.12); color:#f7c96d; border-color:rgba(247,185,85,.26); }
+
+@media (max-width: 820px) {
+  .market-filter-row { overflow-x:auto; scrollbar-width:none; }
+  .market-filter-row::-webkit-scrollbar { display:none; }
+  .filter-pill { flex:0 0 auto; }
+}
