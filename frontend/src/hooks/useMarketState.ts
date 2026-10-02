@@ -5,19 +5,6 @@ import { useRealtime } from '../realtime/RealtimeProvider'
 import { marketChannel } from '../realtime/subscriptions'
 import { useMarketAssets } from './useServerState'
 
-const payoutBySymbol: Record<string, number> = {
-  'BTC/USD': 88,
-  'ETH/USD': 86,
-  'SOL/USD': 84,
-  'XRP/USD': 82,
-  'EUR/USD': 80,
-  'GBP/USD': 81,
-  'AAPL/USD': 78,
-  'TSLA/USD': 79,
-  'XAU/USD': 83,
-  'NAS100/USD': 80,
-}
-
 export function useLiveMarketAssets() {
   const resource = useMarketAssets(100)
   const realtime = useRealtime()
@@ -91,7 +78,13 @@ export function useLiveMarketAssets() {
         change: Number.isFinite(change) ? change : 0,
         volume: volume > 0 ? compactVolume(volume) : '—',
         accent: accentForSymbol(asset.symbol),
-        payout: payoutBySymbol[asset.symbol] ?? 80,
+        payout: Number(asset.trading.payoutRate) * 100,
+        payoutRate: asset.trading.payoutRate,
+        feeRate: asset.trading.feeRate,
+        minAmount: Number(asset.trading.minAmount),
+        maxAmount: Number(asset.trading.maxAmount),
+        durationsSeconds: asset.trading.durationsSeconds,
+        tradingEnabled: asset.trading.enabled,
       }
     })
   ), [quotes, resource.data])
