@@ -37,12 +37,22 @@ The default local connection is:
 mysql://slspot:slspot@127.0.0.1:3307/slspot
 ```
 
+The initial schema keeps indexed string fields within the MySQL 5.7-compatible InnoDB key-prefix range. This lets the same migration run against the WAMP MySQL 5.7.40 setup as well as newer MySQL versions.
+
 Initialize the database:
 
 ```bash
 npm run prisma:generate
 npm run prisma:migrate:deploy
 ```
+
+If a previous attempt left `0001_init` in a failed state on a brand-new local database, reset that local database before retrying. The simplest clean-dev option is:
+
+```bash
+npx prisma --config prisma7.config.ts migrate reset --force
+```
+
+This destroys and recreates the local `slspot` database, so do not use it against a database containing data you need to keep.
 
 For normal schema development, create and apply migrations with:
 
