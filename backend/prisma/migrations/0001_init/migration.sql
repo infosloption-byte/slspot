@@ -12,7 +12,7 @@ CREATE TABLE `User` (
   `lastLoginAt` DATETIME(3) NULL,
   UNIQUE INDEX `User_email_key`(`email`),
   PRIMARY KEY (`id`)
-) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 CREATE TABLE `Session` (
   `id` CHAR(36) NOT NULL,
@@ -28,7 +28,7 @@ CREATE TABLE `Session` (
   INDEX `Session_userId_expiresAt_idx`(`userId`, `expiresAt`),
   INDEX `Session_userId_revokedAt_idx`(`userId`, `revokedAt`),
   PRIMARY KEY (`id`)
-) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 CREATE TABLE `Device` (
   `id` CHAR(36) NOT NULL,
@@ -43,7 +43,7 @@ CREATE TABLE `Device` (
   INDEX `Device_userId_revokedAt_idx`(`userId`, `revokedAt`),
   INDEX `Device_userId_lastSeenAt_idx`(`userId`, `lastSeenAt`),
   PRIMARY KEY (`id`)
-) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 CREATE TABLE `Account` (
   `id` CHAR(36) NOT NULL,
@@ -56,7 +56,7 @@ CREATE TABLE `Account` (
   UNIQUE INDEX `Account_userId_currency_key`(`userId`, `currency`),
   INDEX `Account_userId_status_idx`(`userId`, `status`),
   PRIMARY KEY (`id`)
-) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 CREATE TABLE `Asset` (
   `id` CHAR(36) NOT NULL,
@@ -74,13 +74,13 @@ CREATE TABLE `Asset` (
   UNIQUE INDEX `Asset_symbol_key`(`symbol`),
   INDEX `Asset_type_isActive_sortOrder_idx`(`type`, `isActive`, `sortOrder`),
   PRIMARY KEY (`id`)
-) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 CREATE TABLE `Market` (
   `id` CHAR(36) NOT NULL,
   `assetId` CHAR(36) NOT NULL,
   `provider` VARCHAR(64) NOT NULL,
-  `externalSymbol` VARCHAR(128) NOT NULL,
+  `externalSymbol` VARCHAR(127) NOT NULL,
   `status` ENUM('OPEN','CLOSED','HALTED','MAINTENANCE') NOT NULL DEFAULT 'CLOSED',
   `lastPrice` DECIMAL(30,12) NULL,
   `lastPriceAt` DATETIME(3) NULL,
@@ -89,7 +89,7 @@ CREATE TABLE `Market` (
   UNIQUE INDEX `Market_provider_externalSymbol_key`(`provider`, `externalSymbol`),
   INDEX `Market_assetId_status_idx`(`assetId`, `status`),
   PRIMARY KEY (`id`)
-) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 CREATE TABLE `Order` (
   `id` CHAR(36) NOT NULL,
@@ -115,7 +115,7 @@ CREATE TABLE `Order` (
   INDEX `Order_accountId_status_createdAt_idx`(`accountId`, `status`, `createdAt`),
   INDEX `Order_assetId_status_createdAt_idx`(`assetId`, `status`, `createdAt`),
   PRIMARY KEY (`id`)
-) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 CREATE TABLE `Position` (
   `id` CHAR(36) NOT NULL,
@@ -137,7 +137,7 @@ CREATE TABLE `Position` (
   INDEX `Position_accountId_status_openedAt_idx`(`accountId`, `status`, `openedAt`),
   INDEX `Position_assetId_status_openedAt_idx`(`assetId`, `status`, `openedAt`),
   PRIMARY KEY (`id`)
-) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 CREATE TABLE `Trade` (
   `id` CHAR(36) NOT NULL,
@@ -155,7 +155,7 @@ CREATE TABLE `Trade` (
   INDEX `Trade_userId_status_openedAt_idx`(`userId`, `status`, `openedAt`),
   INDEX `Trade_status_openedAt_idx`(`status`, `openedAt`),
   PRIMARY KEY (`id`)
-) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 CREATE TABLE `Settlement` (
   `id` CHAR(36) NOT NULL,
@@ -165,7 +165,7 @@ CREATE TABLE `Settlement` (
   `grossPayout` DECIMAL(30,8) NULL,
   `fees` DECIMAL(30,8) NOT NULL DEFAULT 0,
   `netPnl` DECIMAL(30,8) NULL,
-  `referenceId` VARCHAR(128) NULL,
+  `referenceId` VARCHAR(127) NULL,
   `settledAt` DATETIME(3) NULL,
   `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   `updatedAt` DATETIME(3) NOT NULL,
@@ -173,7 +173,7 @@ CREATE TABLE `Settlement` (
   INDEX `Settlement_status_settledAt_idx`(`status`, `settledAt`),
   INDEX `Settlement_referenceId_idx`(`referenceId`),
   PRIMARY KEY (`id`)
-) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 CREATE TABLE `Wallet` (
   `id` CHAR(36) NOT NULL,
@@ -187,7 +187,7 @@ CREATE TABLE `Wallet` (
   UNIQUE INDEX `Wallet_accountId_key`(`accountId`),
   INDEX `Wallet_status_idx`(`status`),
   PRIMARY KEY (`id`)
-) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 CREATE TABLE `WalletTransaction` (
   `id` CHAR(36) NOT NULL,
@@ -206,7 +206,7 @@ CREATE TABLE `WalletTransaction` (
   INDEX `WalletTransaction_walletId_createdAt_idx`(`walletId`, `createdAt`),
   INDEX `WalletTransaction_referenceType_referenceId_idx`(`referenceType`, `referenceId`),
   PRIMARY KEY (`id`)
-) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 CREATE TABLE `LedgerEntry` (
   `id` CHAR(36) NOT NULL,
@@ -224,7 +224,7 @@ CREATE TABLE `LedgerEntry` (
   INDEX `LedgerEntry_walletTransactionId_idx`(`walletTransactionId`),
   INDEX `LedgerEntry_referenceType_referenceId_idx`(`referenceType`, `referenceId`),
   PRIMARY KEY (`id`)
-) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 CREATE TABLE `Deposit` (
   `id` CHAR(36) NOT NULL,
@@ -243,7 +243,7 @@ CREATE TABLE `Deposit` (
   INDEX `Deposit_walletId_createdAt_idx`(`walletId`, `createdAt`),
   INDEX `Deposit_provider_status_createdAt_idx`(`provider`, `status`, `createdAt`),
   PRIMARY KEY (`id`)
-) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 CREATE TABLE `Withdrawal` (
   `id` CHAR(36) NOT NULL,
@@ -262,7 +262,7 @@ CREATE TABLE `Withdrawal` (
   INDEX `Withdrawal_walletId_createdAt_idx`(`walletId`, `createdAt`),
   INDEX `Withdrawal_provider_status_createdAt_idx`(`provider`, `status`, `createdAt`),
   PRIMARY KEY (`id`)
-) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 CREATE TABLE `KycCase` (
   `id` CHAR(36) NOT NULL,
@@ -278,7 +278,7 @@ CREATE TABLE `KycCase` (
   INDEX `KycCase_userId_status_idx`(`userId`, `status`),
   INDEX `KycCase_provider_status_idx`(`provider`, `status`),
   PRIMARY KEY (`id`)
-) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 CREATE TABLE `Notification` (
   `id` CHAR(36) NOT NULL,
@@ -290,14 +290,14 @@ CREATE TABLE `Notification` (
   `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   INDEX `Notification_userId_readAt_createdAt_idx`(`userId`, `readAt`, `createdAt`),
   PRIMARY KEY (`id`)
-) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 CREATE TABLE `AuditLog` (
   `id` CHAR(36) NOT NULL,
   `actorUserId` CHAR(36) NULL,
   `action` VARCHAR(100) NOT NULL,
   `entityType` VARCHAR(64) NOT NULL,
-  `entityId` VARCHAR(128) NULL,
+  `entityId` VARCHAR(127) NULL,
   `metadata` JSON NULL,
   `ipAddress` VARCHAR(64) NULL,
   `userAgent` VARCHAR(512) NULL,
@@ -306,7 +306,7 @@ CREATE TABLE `AuditLog` (
   INDEX `AuditLog_entityType_entityId_createdAt_idx`(`entityType`, `entityId`, `createdAt`),
   INDEX `AuditLog_action_createdAt_idx`(`action`, `createdAt`),
   PRIMARY KEY (`id`)
-) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 ALTER TABLE `Session`
   ADD CONSTRAINT `Session_userId_fkey` FOREIGN KEY (`userId`) REFERENCES `User`(`id`) ON DELETE RESTRICT ON UPDATE CASCADE;
