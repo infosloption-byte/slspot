@@ -21,6 +21,10 @@ type SuccessResponse<T> = {
   requestId: string
 }
 
+type AppOptions = {
+  checkDatabase?: () => Promise<boolean>
+}
+
 function resolveRequestId(value: string | string[] | undefined): string {
   const candidate = Array.isArray(value) ? value[0] : value
 
@@ -39,7 +43,7 @@ function successResponse<T>(request: FastifyRequest, data: T): SuccessResponse<T
   }
 }
 
-export function buildApp() {
+export function buildApp(options: AppOptions = {}) {
   const app = Fastify({
     logger: { level: env.logLevel },
     bodyLimit: env.bodyLimitBytes,
@@ -79,14 +83,21 @@ export function buildApp() {
     }),
   )
 
-  app.get(API_PREFIX + '/ready', async (request) =>
-    successResponse(request, {
-      status: 'ready',
+  app.get(API_PREFIX + '/ready', async (request, reply) => {
+    const databaseReady = options.checkDatabase
+      ? await options.checkDatabase().catch(() => false)
+      : true
+
+    const response = successResponse(request, {
+      status: databaseReady ? 'ready' : 'not_ready',
       checks: {
         process: 'ready',
+        database: databaseReady ? 'ready' : 'unavailable',
       },
-    }),
-  )
+    })
+
+    return reply.status(databaseReady ? 200 : 503).send(response)
+  })
 
   app.setNotFoundHandler((request, reply) => {
     const response: ErrorResponse = {
