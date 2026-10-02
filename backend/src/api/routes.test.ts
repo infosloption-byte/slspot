@@ -64,9 +64,58 @@ const marketDataService = {
   }),
 }
 
+const tradingService = {
+  createTrade: async (_userId: string, input: {
+    assetId: string
+    direction: 'UP' | 'DOWN'
+    amount: string
+    durationSeconds: number
+    clientRequestId: string
+  }) => ({
+    orderId: 'order-1',
+    tradeId: 'trade-1',
+    positionId: 'position-1',
+    status: 'OPEN',
+    direction: input.direction,
+    amount: input.amount,
+    entryPrice: '100',
+    exitPrice: null,
+    payoutRate: '0.8',
+    fee: '0',
+    grossPnl: null,
+    netPnl: null,
+    openedAt: new Date().toISOString(),
+    closedAt: null,
+    expiresAt: new Date(Date.now() + input.durationSeconds * 1000).toISOString(),
+    settlementId: null,
+    settlementPrice: null,
+    settlementReference: null,
+  }),
+  closeTrade: async () => ({
+    orderId: 'order-1',
+    tradeId: 'trade-1',
+    positionId: 'position-1',
+    status: 'WON',
+    direction: 'UP',
+    amount: '10',
+    entryPrice: '100',
+    exitPrice: '101',
+    payoutRate: '0.8',
+    fee: '0',
+    grossPnl: '8',
+    netPnl: '8',
+    openedAt: new Date().toISOString(),
+    closedAt: new Date().toISOString(),
+    expiresAt: null,
+    settlementId: 'settlement-1',
+    settlementPrice: '101',
+    settlementReference: 'manual:trade-1',
+  }),
+};
+
 describe('platform API routes', () => {
   it('requires a session for private resources', async () => {
-    const app = buildApp({ logging: false, authService, apiService, marketDataService })
+    const app = buildApp({ logging: false, authService, apiService, marketDataService, tradingService })
     await app.ready()
 
     const response = await app.inject({
@@ -197,6 +246,61 @@ describe('platform API routes', () => {
       )
     }
 
+    await app.close()
+  })
+
+  it('requires an idempotency key for trade creation', async () => {
+    const app = buildApp({ logging: false, authService, apiService, tradingService })
+    await app.ready()
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/v1/trades',
+      headers: { cookie: 'slspot_session=test-session' },
+      payload: {
+        assetId: 'asset-1',
+        direction: 'UP',
+        amount: '10',
+        durationSeconds: 60,
+      },
+    })
+
+    assert.equal(response.statusCode, 400)
+    assert.equal(response.json<{ error: { code: string } }>().error.code, 'IDEMPOTENCY_REQUIRED')
+    await app.close()
+  })
+
+  it('passes an idempotent trade request to the trading service', async () => {
+    let request = ''
+    const scopedTradingService = {
+      ...tradingService,
+      createTrade: async (_userId: string, input: Parameters<typeof tradingService.createTrade>[1]) => {
+        request = input.clientRequestId
+        return tradingService.createTrade('user-1', input)
+      },
+    }
+
+    const app = buildApp({ logging: false, authService, apiService, tradingService: scopedTradingService as never })
+    await app.ready()
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/v1/trades',
+      headers: {
+        cookie: 'slspot_session=test-session',
+        'idempotency-key': 'test-trade-123',
+      },
+      payload: {
+        assetId: 'asset-1',
+        direction: 'UP',
+        amount: '10',
+        durationSeconds: 60,
+      },
+    })
+
+    assert.equal(response.statusCode, 200)
+    assert.equal(request, 'test-trade-123')
+    assert.equal(response.json<{ data: { tradeId: string } }>().data.tradeId, 'trade-1')
     await app.close()
   })
 
