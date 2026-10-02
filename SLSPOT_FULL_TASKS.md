@@ -10,7 +10,7 @@ The repository is now structured as a monorepo with explicit frontend and backen
 - [x] Configure the frontend development proxy for `/api` and WebSocket traffic.
 - [x] Harden backend runtime configuration, request IDs, security headers, readiness, and graceful shutdown.
 - [x] Add automated backend foundation tests.
-- [ ] Add backend persistence with Prisma/MySQL.
+- [x] Add backend persistence with Prisma/MySQL.
 - [ ] Add Redis/realtime infrastructure.
 - [ ] Connect authentication to the backend.
 - [ ] Replace demo market/trade/wallet authority with server-backed state.
@@ -738,10 +738,10 @@ Market events:
 
 ## 14.2 Database
 
-- [ ] MySQL.
-- [ ] Prisma.
-- [ ] Migration strategy.
-- [ ] Connection pooling.
+- [x] MySQL.
+- [x] Prisma ORM 7 integration.
+- [x] Migration strategy and initial migration.
+- [x] Connection pooling configuration.
 - [ ] Backup strategy.
 
 Initial entities:
