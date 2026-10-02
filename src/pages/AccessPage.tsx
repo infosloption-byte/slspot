@@ -1,5 +1,6 @@
 import { ArrowRight, KeyRound, MailCheck, ShieldCheck } from 'lucide-react'
-import { FormEvent, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
+import type { FormEvent } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router'
 import { setDemoSession } from '../components/routing/ProtectedRoute'
 
