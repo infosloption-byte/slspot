@@ -87,11 +87,12 @@ Completed in this milestone:
 - [x] Shared Toast / Tooltip / Skeleton / EmptyState / ErrorState / Select / Pagination components.
 - [x] Black Gold branded mark and favicon.
 
-Still intentionally pending for the frontend platform layer:
+Frontend platform layer status after the 2026-10-02 API layering milestone:
 
-- [ ] Server-backed authentication.
-- [ ] API client abstraction.
-- [ ] WebSocket/realtime client.
+- [x] Server-backed authentication.
+- [x] API client abstraction.
+- [x] Typed domain API clients for market, portfolio, trades, wallet, and notifications.
+- [x] Authenticated WebSocket/realtime client with reconnect and subscription recovery.
 - [ ] Authoritative market data and wallet state.
 - [ ] Loading/offline/reconnecting states across all features.
 - [ ] Full accessibility audit and focus trapping.
