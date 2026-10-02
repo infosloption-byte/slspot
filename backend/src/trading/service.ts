@@ -676,6 +676,7 @@ export class TradingService {
   private async ensureWallet(tx: Prisma.TransactionClient, accountId: string, currency: string, seedInitialBalance: boolean) {
     const existing = await tx.wallet.findUnique({ where: { accountId } })
     if (existing) return existing
+    const initialBalance = new Prisma.Decimal(env.trading.initialBalance)
     const wallet = await tx.wallet.create({
       data: {
         accountId,
@@ -685,7 +686,6 @@ export class TradingService {
         heldBalance: 0,
       },
     })
-    const initialBalance = new Prisma.Decimal(env.trading.initialBalance)
     if (seedInitialBalance && initialBalance.gt(0)) {
       const walletTransaction = await tx.walletTransaction.create({
         data: {
