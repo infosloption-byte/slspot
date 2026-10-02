@@ -1,12 +1,12 @@
-# SL Option Web
+# SL Spot Web
 
-Original React trading-terminal frontend for SL Option.
+Original React trading-terminal frontend for SL Spot.
 
 ## Product direction
 
-The UI uses the **Midnight Signal** design language: graphite surfaces, cool cyan market data, amber attention states, strong hierarchy, compact data density, and a chart-first workspace.
+The UI uses the **Black Gold** design language: near-black surfaces, a single yellow accent for brand and primary actions, green/red reserved for market direction, and a simple chart-first layout (left rail, top account bar, chart, right trade panel). See `docs/DESIGN_SYSTEM.md`.
 
-This project is intentionally an original implementation. It is inspired by common trading-terminal interaction patterns, not a copy of another broker's branding, code, or visual assets.
+This project is intentionally an original implementation, inspired by common trading-terminal interaction patterns, not a copy of another broker's branding, code, or visual assets.
 
 ## Stack
 

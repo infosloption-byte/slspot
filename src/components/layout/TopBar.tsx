@@ -1,39 +1,33 @@
-import { Bell, ChevronDown, Command, Search, Sparkles, Wallet } from 'lucide-react'
-import { IconButton } from '../ui/IconButton'
+import { Bell, ChevronDown, Plus } from 'lucide-react'
+import { Link } from 'react-router'
 
 export function TopBar() {
   return (
     <header className="topbar">
-      <div className="topbar__search">
-        <Search size={17} />
-        <span>Search markets</span>
-        <kbd><Command size={11} /> K</kbd>
-      </div>
+      <Link to="/app/trading" className="topbar__brand" aria-label="SL Spot home">
+        <span className="topbar__brand-name">SL<b>SPOT</b></span>
+        <span className="topbar__live"><i className="live-dot" /> Live</span>
+      </Link>
 
       <div className="topbar__spacer" />
 
-      <div className="topbar__market-status">
-        <span className="status-pulse" />
-        Live market data
-      </div>
+      <Link to="/app/alerts" className="icon-button topbar__bell" aria-label="Notifications" title="Notifications">
+        <Bell size={18} />
+        <span className="topbar__bell-dot" />
+      </Link>
 
-      <IconButton label="Notifications">
-        <Bell size={17} />
-      </IconButton>
-
-      <button className="wallet-chip" type="button">
-        <span className="wallet-chip__icon"><Wallet size={15} /></span>
-        <span>
-          <span className="wallet-chip__label">Available</span>
+      <button className="account-chip" type="button" aria-label="Switch account">
+        <span className="account-chip__body">
+          <small>Demo account</small>
           <strong>$12,480.65</strong>
         </span>
         <ChevronDown size={15} />
       </button>
 
-      <button className="upgrade-chip" type="button">
-        <Sparkles size={15} />
-        Pro workspace
-      </button>
+      <Link className="btn btn--primary topbar__deposit" to="/app/wallet">
+        <Plus size={16} strokeWidth={2.6} />
+        <span>Deposit</span>
+      </Link>
     </header>
   )
 }

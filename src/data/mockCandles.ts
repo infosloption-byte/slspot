@@ -44,5 +44,17 @@ export function generateMockCandles(asset: MarketAsset, timeframe: string): Cand
     close = nextClose
   }
 
+  // Anchor the series so the last close matches the asset's quoted price
+  const last = candles[candles.length - 1]
+  if (last) {
+    const offset = asset.price - last.close
+    for (const candle of candles) {
+      candle.open += offset
+      candle.high += offset
+      candle.low = Math.max(0.0000001, candle.low + offset)
+      candle.close += offset
+    }
+  }
+
   return candles
 }

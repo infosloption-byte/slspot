@@ -1,4 +1,4 @@
-import { Check, ChevronDown, Crosshair, Grid2X2, Maximize2, Settings2 } from 'lucide-react'
+import { Check, Crosshair, Grid2X2, Maximize2, Plus, Settings2 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { CandlestickSeries, ColorType, CrosshairMode, createChart, type IChartApi } from 'lightweight-charts'
 import type { MarketAsset } from '../../data/mockMarket'
@@ -33,26 +33,26 @@ function ChartCanvas({
     const chart = createChart(container, {
       width: container.clientWidth,
       height: Math.max(container.clientHeight, 260),
-      layout: { background: { type: ColorType.Solid, color: 'transparent' }, textColor: '#536770', attributionLogo: false },
+      layout: { background: { type: ColorType.Solid, color: 'transparent' }, textColor: '#6c6c76', attributionLogo: false },
       grid: {
-        vertLines: { color: gridEnabled ? 'rgba(255,255,255,.035)' : 'transparent' },
-        horzLines: { color: gridEnabled ? 'rgba(255,255,255,.035)' : 'transparent' },
+        vertLines: { color: gridEnabled ? 'rgba(255,255,255,.04)' : 'transparent' },
+        horzLines: { color: gridEnabled ? 'rgba(255,255,255,.04)' : 'transparent' },
       },
       crosshair: {
         mode: crosshairEnabled ? CrosshairMode.Normal : CrosshairMode.Hidden,
-        vertLine: { color: 'rgba(85,219,203,.28)', width: 1, labelVisible: crosshairEnabled },
-        horzLine: { color: 'rgba(85,219,203,.18)', width: 1, labelVisible: crosshairEnabled },
+        vertLine: { color: 'rgba(255,194,26,.4)', width: 1, labelBackgroundColor: '#2a2a31', labelVisible: crosshairEnabled },
+        horzLine: { color: 'rgba(255,194,26,.25)', width: 1, labelBackgroundColor: '#2a2a31', labelVisible: crosshairEnabled },
       },
-      rightPriceScale: { borderColor: 'rgba(196,229,240,.08)', scaleMargins: { top: 0.08, bottom: 0.1 } },
-      timeScale: { borderColor: 'rgba(196,229,240,.08)', timeVisible: true, secondsVisible: false, rightOffset: 5 },
+      rightPriceScale: { borderColor: 'rgba(255,255,255,.07)', scaleMargins: { top: 0.08, bottom: 0.1 } },
+      timeScale: { borderColor: 'rgba(255,255,255,.07)', timeVisible: true, secondsVisible: false, rightOffset: 5 },
       handleScale: { axisPressedMouseMove: true, mouseWheel: true, pinch: true },
       handleScroll: { mouseWheel: true, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: true },
     })
 
-    const series = chart.addSeries(CandlestickSeries, { upColor: '#52d98b', downColor: '#f06b78', borderVisible: false, wickUpColor: '#52d98b', wickDownColor: '#f06b78' })
+    const series = chart.addSeries(CandlestickSeries, { upColor: '#1fd27a', downColor: '#ff4d5e', borderVisible: false, lastValueVisible: false, priceLineVisible: false, wickUpColor: '#1fd27a', wickDownColor: '#ff4d5e' })
     series.setData(candles)
     if (priceLineEnabled) {
-      series.createPriceLine({ price: asset.price, color: '#55dbcb', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'Last' })
+      series.createPriceLine({ price: asset.price, color: '#ffc21a', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'Last' })
     }
 
     chart.timeScale().fitContent()
@@ -123,12 +123,16 @@ export function ChartWorkspace({ asset, onOpenMarkets }: ChartWorkspaceProps) {
   return (
     <section ref={workspaceRef} className="chart-workspace panel">
       <div className="simple-chart-toolbar">
-        <button className="market-trigger" type="button" onClick={onOpenMarkets} aria-label="Choose market" title="Choose market">
-          <span className={'asset-icon asset-icon--' + asset.accent} aria-hidden="true">{asset.symbol.slice(0, 1)}</span>
-          <span className="market-trigger__copy"><strong>{asset.symbol}</strong><small>{asset.name}</small></span>
-          <span className="market-trigger__price"><strong>{price}</strong><small className={changeClass}>{formatPercent(asset.change)} 24h</small></span>
-          <ChevronDown size={14} />
-        </button>
+        <div className="asset-tabs">
+          <button className="market-trigger" type="button" onClick={onOpenMarkets} aria-label="Choose market" title="Choose market">
+            <span className={'asset-icon asset-icon--' + asset.accent} aria-hidden="true">{asset.symbol.slice(0, 1)}</span>
+            <span className="market-trigger__copy"><strong>{asset.symbol}</strong><small>{asset.category}</small></span>
+            <span className="market-trigger__price"><strong>{price}</strong><small className={changeClass}>{formatPercent(asset.change)}</small></span>
+          </button>
+          <button className="asset-tabs__add" type="button" onClick={onOpenMarkets} aria-label="Add or change market" title="Markets">
+            <Plus size={16} strokeWidth={2.4} />
+          </button>
+        </div>
 
         <div className="chart-timeframes" aria-label="Chart timeframe">
           {timeframes.map((value) => (
@@ -206,7 +210,6 @@ export function ChartWorkspace({ asset, onOpenMarkets }: ChartWorkspaceProps) {
           gridEnabled={gridEnabled}
           priceLineEnabled={priceLineEnabled}
         />
-        {priceLineEnabled && <div className="chart-price-tag"><span>{price}</span><small>{formatPercent(asset.change)}</small></div>}
       </div>
 
       <div className="chart-bottom-status">

@@ -1,24 +1,51 @@
+/*
+  SL Spot — "Black Gold" design tokens
+  Rule of thumb: yellow = brand + primary action + active state.
+  Green / red are reserved for market direction only (UP / DOWN, P&L).
+*/
 :root {
   color-scheme: dark;
   font-family: "Inter", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-  --bg-0: #050a0f;
-  --bg-1: #071018;
-  --bg-2: #0a151d;
-  --panel: rgba(12, 24, 32, 0.9);
-  --panel-strong: #0d1b24;
-  --panel-soft: #0b171f;
-  --line: rgba(196, 229, 240, 0.09);
-  --line-strong: rgba(196, 229, 240, 0.16);
-  --text: #f1f6f8;
-  --muted: #82949d;
-  --muted-2: #536770;
-  --cyan: #55dbcb;
-  --cyan-deep: #1a9c91;
-  --amber: #f7b955;
-  --green: #52d98b;
-  --red: #f06b78;
-  --shadow: 0 22px 60px rgba(0, 0, 0, 0.22);
-  --radius-lg: 18px;
-  --radius-md: 13px;
-  --radius-sm: 9px;
+
+  /* Surfaces (true-black base, subtle elevation steps) */
+  --bg-0: #08080a;
+  --bg-1: #0d0d10;
+  --bg-2: #131317;
+  --bg-3: #1a1a1f;
+  --panel: #0f0f12;
+  --panel-raised: #16161b;
+
+  /* Lines */
+  --line: rgba(255, 255, 255, 0.07);
+  --line-strong: rgba(255, 255, 255, 0.14);
+
+  /* Text */
+  --text: #f5f5f7;
+  --muted: #9a9aa4;
+  --muted-2: #62626c;
+
+  /* Brand yellow */
+  --accent: #ffc21a;
+  --accent-hover: #ffd248;
+  --accent-deep: #d99e00;
+  --accent-ink: #141000;               /* text on yellow */
+  --accent-soft: rgba(255, 194, 26, 0.1);
+  --accent-line: rgba(255, 194, 26, 0.32);
+
+  /* Market direction */
+  --green: #1fd27a;
+  --green-soft: rgba(31, 210, 122, 0.12);
+  --red: #ff4d5e;
+  --red-soft: rgba(255, 77, 94, 0.12);
+
+  /* Shape */
+  --radius-lg: 14px;
+  --radius-md: 10px;
+  --radius-sm: 8px;
+
+  /* Layout */
+  --rail-w: 64px;
+  --topbar-h: 56px;
+  --trade-w: 300px;
+  --shadow: 0 18px 50px rgba(0, 0, 0, 0.45);
 }

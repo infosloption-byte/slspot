@@ -1,5 +1,5 @@
-import { CheckCircle2, ChevronDown, Minus, Plus, ShieldAlert, Timer, TrendingDown, TrendingUp, X } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { CheckCircle2, Minus, Plus, ShieldAlert, TrendingDown, TrendingUp, X } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import type { MarketAsset } from '../../data/mockMarket'
 
 type TradePanelProps = { asset: MarketAsset }
@@ -13,6 +13,7 @@ const MAX_DURATION = 3600
 const BALANCE = 12480.65
 const PAYOUT_RATE = 0.82
 const durations = [15, 30, 60, 300]
+const quickAmounts = [10, 50, 100, 500]
 
 function formatDuration(value: number) {
   return value < 60 ? value + 's' : value / 60 + 'm'
@@ -21,46 +22,34 @@ function formatDuration(value: number) {
 export function TradePanel({ asset }: TradePanelProps) {
   const [amount, setAmount] = useState(50)
   const [duration, setDuration] = useState(60)
-  const [durationOpen, setDurationOpen] = useState(false)
   const [direction, setDirection] = useState<PreviewDirection | null>(null)
   const [stage, setStage] = useState<OrderStage>('draft')
   const [error, setError] = useState('')
-  const durationRef = useRef<HTMLDivElement>(null)
   const estimatedPayout = amount * PAYOUT_RATE
   const totalReturn = amount + estimatedPayout
 
   const validate = () => {
-    if (!Number.isFinite(amount) || amount < MIN_AMOUNT || amount > MAX_AMOUNT) return 'Stake must be between $1 and $100,000.'
-    if (!Number.isInteger(duration) || duration < MIN_DURATION || duration > MAX_DURATION) return 'Duration must be between 5 seconds and 60 minutes.'
-    if (amount > BALANCE) return 'Stake exceeds the current demo balance.'
+    if (!Number.isFinite(amount) || amount < MIN_AMOUNT || amount > MAX_AMOUNT) return 'Investment must be between $1 and $100,000.'
+    if (!Number.isInteger(duration) || duration < MIN_DURATION || duration > MAX_DURATION) return 'Time must be between 5 seconds and 60 minutes.'
+    if (amount > BALANCE) return 'Investment exceeds the current demo balance.'
     return ''
   }
 
   useEffect(() => {
-    if (!durationOpen && stage !== 'confirming' && !error) return
+    if (stage !== 'confirming' && !error) return
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return
-      if (durationOpen) setDurationOpen(false)
       if (stage === 'confirming') {
         setDirection(null)
         setStage('draft')
       }
       if (error) setError('')
     }
-    const handlePointerDown = (event: PointerEvent) => {
-      if (durationOpen && durationRef.current && !durationRef.current.contains(event.target as Node)) {
-        setDurationOpen(false)
-      }
-    }
 
     document.addEventListener('keydown', handleKeyDown)
-    document.addEventListener('pointerdown', handlePointerDown)
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown)
-      document.removeEventListener('pointerdown', handlePointerDown)
-    }
-  }, [durationOpen, stage, error])
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [stage, error])
 
   const resetOrder = () => { setDirection(null); setStage('draft'); setError('') }
   const requestPreview = (nextDirection: PreviewDirection) => {
@@ -73,37 +62,138 @@ export function TradePanel({ asset }: TradePanelProps) {
     setAmount((current) => Math.max(MIN_AMOUNT, Math.min(MAX_AMOUNT, current + delta)))
     if (stage !== 'draft') resetOrder()
   }
+  const chooseAmount = (value: number) => {
+    setAmount(value)
+    if (stage !== 'draft') resetOrder()
+  }
   const chooseDuration = (value: number) => {
-    setDuration(value); setDurationOpen(false)
+    setDuration(value)
     if (stage !== 'draft') resetOrder()
   }
 
   return (
     <>
-      <section className="trade-dock panel" aria-label="Trade controls">
-        <div className="trade-dock__balance"><span>Demo balance</span><strong>$12,480.65</strong></div>
-        <div className="trade-dock__field">
-          <label>Stake</label>
-          <div className="trade-dock__stepper"><button type="button" onClick={() => adjustAmount(-10)} aria-label="Decrease stake"><Minus size={14} /></button><div><span>$</span><input value={amount} onChange={(event) => { setAmount(Number(event.target.value) || 0); resetOrder() }} type="number" inputMode="decimal" min={MIN_AMOUNT} max={MAX_AMOUNT} aria-label="Stake amount" /></div><button type="button" onClick={() => adjustAmount(10)} aria-label="Increase stake"><Plus size={14} /></button></div>
+      <aside className="trade-panel" aria-label="Trade controls">
+        <div className="trade-panel__head">
+          <div>
+            <span className="trade-panel__label">Trading</span>
+            <strong>{asset.symbol}</strong>
+          </div>
+          <div className="trade-panel__rate">
+            <strong>{Math.round(PAYOUT_RATE * 100)}%</strong>
+            <span>Payout</span>
+          </div>
         </div>
-        <div className="trade-dock__field trade-dock__field--duration" ref={durationRef}>
-          <label>Duration</label>
-          <button className="trade-dock__select" type="button" onClick={() => setDurationOpen((open) => !open)} aria-expanded={durationOpen} aria-haspopup="dialog" aria-label={"Duration " + formatDuration(duration)}><Timer size={14} /><strong>{formatDuration(duration)}</strong><ChevronDown size={13} /></button>
-          {durationOpen && <div className="duration-popover" role="dialog" aria-label="Choose duration"><div className="duration-popover__header"><span>Expiry</span><button type="button" onClick={() => setDurationOpen(false)} aria-label="Close duration selector"><X size={13} /></button></div><div className="duration-popover__grid">{durations.map((value) => <button key={value} className={duration === value ? 'duration-option duration-option--active' : 'duration-option'} type="button" onClick={() => chooseDuration(value)}>{formatDuration(value)}</button>)}</div></div>}
+
+        <div className="trade-field">
+          <span className="trade-field__label">Time</span>
+          <div className="segmented" role="group" aria-label="Trade time">
+            {durations.map((value) => (
+              <button
+                key={value}
+                type="button"
+                className={duration === value ? 'segmented__item segmented__item--active' : 'segmented__item'}
+                onClick={() => chooseDuration(value)}
+                aria-pressed={duration === value}
+              >
+                {formatDuration(value)}
+              </button>
+            ))}
+          </div>
         </div>
-        <div className="trade-dock__payout"><span>Potential return</span><strong>+${estimatedPayout.toFixed(2)}</strong><small>82% demo rate · ${totalReturn.toFixed(2)} total</small></div>
-        <div className="trade-dock__actions" aria-label="Trade direction">
-          <button className="trade-dock__action trade-dock__action--up" type="button" onClick={() => requestPreview('UP')} disabled={stage === 'confirming'}><TrendingUp size={18} /><span>UP</span><small>Higher</small></button>
-          <button className="trade-dock__action trade-dock__action--down" type="button" onClick={() => requestPreview('DOWN')} disabled={stage === 'confirming'}><TrendingDown size={18} /><span>DOWN</span><small>Lower</small></button>
+
+        <div className="trade-field">
+          <label className="trade-field__label" htmlFor="trade-amount">Investment</label>
+          <div className="stepper">
+            <button type="button" onClick={() => adjustAmount(-10)} aria-label="Decrease investment"><Minus size={16} /></button>
+            <div className="stepper__value">
+              <span>$</span>
+              <input
+                id="trade-amount"
+                value={amount}
+                onChange={(event) => { setAmount(Number(event.target.value) || 0); resetOrder() }}
+                type="number"
+                inputMode="decimal"
+                min={MIN_AMOUNT}
+                max={MAX_AMOUNT}
+                aria-label="Investment amount"
+              />
+            </div>
+            <button type="button" onClick={() => adjustAmount(10)} aria-label="Increase investment"><Plus size={16} /></button>
+          </div>
+          <div className="chips">
+            {quickAmounts.map((value) => (
+              <button key={value} type="button" className={amount === value ? 'chip chip--active' : 'chip'} onClick={() => chooseAmount(value)}>
+                ${value}
+              </button>
+            ))}
+          </div>
         </div>
-        <div className="trade-dock__caption"><span>{asset.symbol}</span><span><i className="live-dot" /> Demo pricing</span></div>
-      </section>
 
-      {error && <div className="trade-modal-backdrop"><div className="trade-modal trade-modal--error" role="alertdialog" aria-modal="true"><div className="trade-modal__icon"><ShieldAlert size={18} /></div><div><span>Check your trade</span><strong>{error}</strong></div><button className="icon-button" type="button" onClick={() => setError('')} aria-label="Close error"><X size={15} /></button></div></div>}
+        <div className="payout-card">
+          <div><span>Your payout</span><strong>${totalReturn.toFixed(2)}</strong></div>
+          <div><span>Profit</span><strong className="text-positive">+${estimatedPayout.toFixed(2)}</strong></div>
+        </div>
 
-      {stage === 'confirming' && direction && <div className="trade-modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) resetOrder() }}><div className="trade-modal" role="dialog" aria-modal="true" aria-label="Confirm demo trade"><div className="trade-modal__header"><div><span>Review trade</span><strong>{direction} · {asset.symbol}</strong></div><button className="icon-button" type="button" onClick={resetOrder} aria-label="Cancel"><X size={15} /></button></div><div className="trade-modal__summary"><div><span>Stake</span><strong>${amount.toFixed(2)}</strong></div><div><span>Duration</span><strong>{formatDuration(duration)}</strong></div><div><span>Payout</span><strong>82%</strong></div><div><span>Potential return</span><strong>+${estimatedPayout.toFixed(2)}</strong></div></div><p>This is a demo preview. No real order will be submitted.</p><div className="trade-modal__actions"><button type="button" className="confirmation-button confirmation-button--ghost" onClick={resetOrder}>Cancel</button><button type="button" className="confirmation-button confirmation-button--primary" onClick={confirmPreview}><CheckCircle2 size={14} /> Confirm preview</button></div></div></div>}
+        <div className="trade-actions" aria-label="Trade direction">
+          <button className="trade-btn trade-btn--up" type="button" onClick={() => requestPreview('UP')} disabled={stage === 'confirming'}>
+            <TrendingUp size={20} strokeWidth={2.4} />
+            <span>UP</span>
+          </button>
+          <button className="trade-btn trade-btn--down" type="button" onClick={() => requestPreview('DOWN')} disabled={stage === 'confirming'}>
+            <TrendingDown size={20} strokeWidth={2.4} />
+            <span>DOWN</span>
+          </button>
+        </div>
 
-      {stage === 'previewed' && direction && <div className="trade-modal-backdrop"><div className="trade-modal trade-modal--success" role="status"><div className="trade-modal__icon"><CheckCircle2 size={18} /></div><div><span>Demo preview ready</span><strong>{direction} · {asset.symbol}</strong><p>No trade was submitted. Production orders will require server confirmation.</p></div><button className="confirmation-button confirmation-button--primary" type="button" onClick={resetOrder}>Done</button></div></div>}
+        <p className="trade-panel__note"><i className="live-dot" /> Demo pricing · no real orders are placed</p>
+      </aside>
+
+      {error && (
+        <div className="trade-modal-backdrop">
+          <div className="trade-modal trade-modal--error" role="alertdialog" aria-modal="true">
+            <div className="trade-modal__icon"><ShieldAlert size={18} /></div>
+            <div><span>Check your trade</span><strong>{error}</strong></div>
+            <button className="icon-button" type="button" onClick={() => setError('')} aria-label="Close error"><X size={16} /></button>
+          </div>
+        </div>
+      )}
+
+      {stage === 'confirming' && direction && (
+        <div className="trade-modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) resetOrder() }}>
+          <div className="trade-modal" role="dialog" aria-modal="true" aria-label="Confirm demo trade">
+            <div className="trade-modal__header">
+              <div><span>Review trade</span><strong>{direction} · {asset.symbol}</strong></div>
+              <button className="icon-button" type="button" onClick={resetOrder} aria-label="Cancel"><X size={16} /></button>
+            </div>
+            <div className="trade-modal__summary">
+              <div><span>Investment</span><strong>${amount.toFixed(2)}</strong></div>
+              <div><span>Time</span><strong>{formatDuration(duration)}</strong></div>
+              <div><span>Payout</span><strong>{Math.round(PAYOUT_RATE * 100)}%</strong></div>
+              <div><span>Profit</span><strong className="text-positive">+${estimatedPayout.toFixed(2)}</strong></div>
+            </div>
+            <p>This is a demo preview. No real order will be submitted.</p>
+            <div className="trade-modal__actions">
+              <button type="button" className="btn btn--ghost" onClick={resetOrder}>Cancel</button>
+              <button type="button" className="btn btn--primary" onClick={confirmPreview}><CheckCircle2 size={16} /> Confirm</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {stage === 'previewed' && direction && (
+        <div className="trade-modal-backdrop">
+          <div className="trade-modal trade-modal--success" role="status">
+            <div className="trade-modal__icon"><CheckCircle2 size={18} /></div>
+            <div>
+              <span>Demo preview ready</span>
+              <strong>{direction} · {asset.symbol}</strong>
+              <p>No trade was submitted. Production orders will require server confirmation.</p>
+            </div>
+            <button className="btn btn--primary" type="button" onClick={resetOrder}>Done</button>
+          </div>
+        </div>
+      )}
     </>
   )
 }
