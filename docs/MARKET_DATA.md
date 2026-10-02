@@ -62,7 +62,7 @@ GET /api/v1/market/assets/:assetId/candles?interval=5min&limit=200
 
 Supported intervals include 1min, 5min, 15min, 30min, 45min, 1h, 2h, 4h, 8h, 1day, 1week and 1month.
 
-The Trading Room combines the REST candle snapshot with the application's `market.price` and `market.status` realtime events.
+The Trading Room combines the REST candle snapshot with the application's `market.price` and `market.status` realtime events. Server-authoritative trading consumes the persisted market price and freshness timestamp rather than trusting browser quotes.
 
 ## Failure handling
 
@@ -113,4 +113,4 @@ browser
 
 ## Scope boundary
 
-This milestone does not implement order submission, server-authoritative execution, settlement, payout calculation, wallet mutation, ledger posting, deposits, or withdrawals.
+This document covers market-data ingestion. Server-authoritative order submission, position creation, settlement, payout calculation, wallet reservation and settlement ledger movements are now implemented in `backend/src/trading/` and documented in `docs/TRADING_ENGINE.md`. Deposits, withdrawals, payments, KYC/AML, reconciliation and production financial controls remain outside this milestone.
