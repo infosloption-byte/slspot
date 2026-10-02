@@ -94,6 +94,12 @@ Important backend settings:
 - `AUTH_PASSWORD_MIN_LENGTH` enforces the backend password minimum.
 - `AUTH_COOKIE_*` controls the HttpOnly session cookie.
 - `AUTH_EXPOSE_DEV_TOKENS=true` exposes verification/reset tokens only for explicitly enabled local development; keep it false in production.
+- `TRADING_FEE_RATE` controls the server-side fee rate applied when a trade is opened.
+- `TRADING_INITIAL_BALANCE` seeds a new development trading wallet only; production defaults to zero unless explicitly configured.
+- `TRADING_MAX_OPEN_POSITIONS` limits simultaneous open positions per user.
+- `TRADING_MAX_OPEN_EXPOSURE` limits total open position amount per user.
+- `TRADING_MARKET_MAX_AGE_MS` rejects stale market prices at order/settlement time.
+- `TRADING_SETTLEMENT_INTERVAL_MS` controls the expiry-settlement worker interval.
 
 ## Validation
 
