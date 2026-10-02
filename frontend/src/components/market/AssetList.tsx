@@ -1,11 +1,12 @@
 import { Search, Star, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { marketAssets, type MarketAsset } from '../../data/mockMarket'
+import type { MarketAsset } from '../../data/mockMarket'
 import { formatPercent, formatPrice } from '../../lib/format'
 
 type AssetListProps = {
   open: boolean
   selected: string
+  assets: MarketAsset[]
   onSelect: (asset: MarketAsset) => void
   onClose: () => void
 }
@@ -13,7 +14,7 @@ type AssetListProps = {
 const favoriteStorageKey = 'slspot.watchlist.favorites'
 const categories = ['All', 'Crypto', 'FX', 'Stocks', 'Commodities', 'Indices', 'Fav'] as const
 
-export function AssetList({ open, selected, onSelect, onClose }: AssetListProps) {
+export function AssetList({ open, selected, assets, onSelect, onClose }: AssetListProps) {
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState<(typeof categories)[number]>('All')
   const searchInputRef = useRef<HTMLInputElement>(null)
@@ -61,7 +62,7 @@ export function AssetList({ open, selected, onSelect, onClose }: AssetListProps)
   const filteredAssets = useMemo(() => {
     const normalized = query.trim().toLowerCase()
 
-    return marketAssets.filter((asset) => {
+    return assets.filter((asset) => {
       const matchesCategory =
         category === 'All' ||
         (category === 'Fav' ? favorites.includes(asset.symbol) : asset.category === category)
@@ -94,7 +95,7 @@ export function AssetList({ open, selected, onSelect, onClose }: AssetListProps)
           <div className="eyebrow">Markets</div>
           <div className="asset-panel__title-row">
             <h2>Choose a market</h2>
-            <span className="asset-count">{marketAssets.length}</span>
+            <span className="asset-count">{assets.length}</span>
           </div>
         </div>
         <button className="quiet-button" type="button" aria-label="Close market picker" title="Close" onClick={onClose}><X size={16} /></button>
@@ -127,10 +128,10 @@ export function AssetList({ open, selected, onSelect, onClose }: AssetListProps)
       <div className="market-filter-row" aria-label="Market category">
         {categories.map((value) => {
           const count = value === 'All'
-            ? marketAssets.length
+            ? assets.length
             : value === 'Fav'
               ? favorites.length
-              : marketAssets.filter((asset) => asset.category === value).length
+              : assets.filter((asset) => asset.category === value).length
 
           return (
             <button
@@ -203,7 +204,7 @@ export function AssetList({ open, selected, onSelect, onClose }: AssetListProps)
 
       <div className="panel__footer-note">
         <span>Click a market to switch the chart</span>
-        <span className="asset-footer-status"><span className="muted-dot" /> Demo feed</span>
+        <span className="asset-footer-status"><span className="muted-dot" /> Server feed</span>
       </div>
     </section>
     </div>
