@@ -59,7 +59,7 @@ function calculateSma(candles: ChartCandle[], period = 14) {
   })
 }
 
-function calculateRsi(candles: ReturnType<typeof generateMockCandles>, period = 14) {
+function calculateRsi(candles: ChartCandle[], period = 14) {
   const points = candles.map((candle, index) => {
     if (index === 0) return 50
     const previous = candles[index - 1]
@@ -185,7 +185,7 @@ function ChartCanvas({
   return (
     <div className="chart-canvas-shell">
       <div ref={containerRef} className="chart-canvas" role="img" aria-label={asset.symbol + ' ' + chartType + ' market chart'} />
-      <div className="chart-attribution">Demo OHLC</div>
+      <div className="chart-attribution">Server OHLC</div>
     </div>
   )
 }
