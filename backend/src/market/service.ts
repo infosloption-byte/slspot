@@ -52,6 +52,10 @@ export class MarketDataService {
   ) {}
 
   async start(): Promise<void> {
+    if (env.marketData.provider !== 'disabled' && env.marketData.bootstrapAssets) {
+      await ensureDefaultMarketRegistry(this.prisma, env.marketData.provider)
+    }
+
     if (!env.marketData.enabled || env.marketData.provider === 'disabled') {
       this.logger.info({ provider: env.marketData.provider }, 'Market data service disabled')
       return
@@ -60,10 +64,6 @@ export class MarketDataService {
     if (!this.provider) {
       this.logger.warn({ provider: env.marketData.provider }, 'Market data provider is not configured')
       return
-    }
-
-    if (env.marketData.bootstrapAssets) {
-      await ensureDefaultMarketRegistry(this.prisma, env.marketData.provider)
     }
 
     this.running = true
