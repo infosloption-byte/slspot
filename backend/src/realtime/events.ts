@@ -4,7 +4,7 @@ import {
   isRealtimeChannel,
   type RealtimeChannel,
   type RealtimeClientMessage,
-} from './realtime.js'
+} from '../contracts/realtime.js'
 
 export const REALTIME_EVENT_VERSION = 1 as const
 
