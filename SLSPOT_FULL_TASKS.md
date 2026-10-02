@@ -13,7 +13,7 @@ The repository is now structured as a monorepo with explicit frontend and backen
 - [x] Add backend persistence with Prisma/MySQL.
 - [x] Add Redis/realtime infrastructure foundation.
 - [x] Connect authentication/session management to the backend.
-- [ ] Replace demo market/trade/wallet authority with server-backed state.
+- [x] Replace demo market/trade/wallet authority with server-backed state.
 - [x] Establish typed frontend/backend API service layers and authenticated realtime client.
 
 ### Current repository shape
@@ -65,10 +65,10 @@ The frontend theme was audited before the latest implementation work. The curren
 
 Completed in this milestone:
 
-- [x] Live demo market-price ticking in the Trading Room.
-- [x] Open-position countdowns.
-- [x] Live demo P&L.
-- [x] Close-position action and automatic expiry settlement.
+- [x] Live server market-price updates in the Trading Room.
+- [x] Server-backed open-position countdowns.
+- [x] Server settlement P&L for closed trades; open positions intentionally do not fabricate mark-to-market P&L.
+- [x] Server close-position action and automatic expiry settlement.
 - [x] Trade entry markers and countdown/progress lines on the chart.
 - [x] Candles / line / area chart type switching.
 - [x] MA (14) overlay.
@@ -82,7 +82,7 @@ Completed in this milestone:
 - [x] Login / register / recovery / reset / verification / 2FA forms.
 - [x] Demo protected-route boundary.
 - [x] Dedicated 404 page.
-- [x] Wallet deposit / withdrawal forms.
+- [x] Wallet deposit / withdrawal forms retained as UI-only flows; authoritative wallet mutations remain a later payments milestone.
 - [x] Wallet transaction table and pagination.
 - [x] Shared Toast / Tooltip / Skeleton / EmptyState / ErrorState / Select / Pagination components.
 - [x] Black Gold branded mark and favicon.
@@ -93,7 +93,7 @@ Frontend platform layer status after the 2026-10-02 API layering milestone:
 - [x] API client abstraction.
 - [x] Typed domain API clients for market, portfolio, trades, wallet, and notifications.
 - [x] Authenticated WebSocket/realtime client with reconnect and subscription recovery.
-- [ ] Authoritative market data and wallet state.
+- [x] Authoritative market data and wallet state for trading flows.
 - [ ] Loading/offline/reconnecting states across all features.
 - [ ] Full accessibility audit and focus trapping.
 - [ ] Unit/component/E2E test suite.
@@ -104,7 +104,7 @@ Frontend platform layer status after the 2026-10-02 API layering milestone:
 
 **Repository:** `infosloption-byte/slspot`  
 **Branch:** `main`  
-**Current status:** Frontend foundation + backend foundation + persistence + realtime + authentication/session foundation  
+**Current status:** Frontend + backend foundation + persistence + realtime + authentication + server-authoritative trading engine  
 **Target:** Production-ready original trading platform, subject to product/legal decisions
 
 ---
@@ -305,7 +305,7 @@ Create reusable primitives:
 
 ## 4.2 Asset watchlist
 
-- [x] Mock asset list.
+- [x] Server-backed asset registry/list.
 - [x] Asset selection.
 - [x] Search.
 - [x] Favorites.
@@ -412,40 +412,40 @@ Architecture:
 - [x] Stepper.
 - [x] Presets.
 - [x] Validation.
-- [ ] Min/max enforcement from server configuration.
-- [ ] Decimal rules.
+- [x] Min/max enforcement from server configuration.
+- [x] Server accepts validated decimal trade amounts.
 - [ ] Currency display.
 - [x] Invalid amount state.
 
 ## 5.3 Duration UX
 
 - [x] Stepper.
-- [ ] Allowed-duration list from server.
-- [ ] Minimum duration.
-- [ ] Maximum duration.
-- [ ] Market-specific duration rules.
+- [x] Allowed-duration list from server.
+- [x] Server duration constraints.
+- [x] Server duration constraints.
+- [x] Market trading rules are supplied by the backend.
 - [x] Expiry preview.
 
 ## 5.4 Trade states
 
 - [x] Draft.
 - [x] Confirming.
-- [ ] Pending.
-- [ ] Accepted.
-- [ ] Open.
-- [ ] Rejected.
-- [ ] Failed.
-- [ ] Won.
-- [ ] Lost.
-- [ ] Cancelled.
-- [ ] Expired.
+- [x] Pending.
+- [x] Accepted.
+- [x] Open.
+- [x] Rejected.
+- [x] Failed.
+- [x] Won.
+- [x] Lost.
+- [x] Cancelled.
+- [x] Expired.
 
 ## 5.5 Submission safety
 
 - [x] Disable duplicate submission.
-- [ ] Client request ID.
-- [ ] Server idempotency key.
-- [ ] Pending state.
+- [x] Client request ID.
+- [x] Server idempotency key.
+- [x] Pending/submitting state.
 - [ ] Retry policy.
 - [x] Error recovery.
 - [x] Confirmation UI.
@@ -456,7 +456,7 @@ Architecture:
 
 ## 6.1 Open positions
 
-- [ ] Server-driven data.
+- [x] Server-driven data.
 - [ ] Position ID.
 - [ ] Instrument.
 - [ ] Direction.
@@ -465,7 +465,7 @@ Architecture:
 - [ ] Amount.
 - [ ] Duration.
 - [ ] Countdown.
-- [ ] Current P&L.
+- [x] Server settlement P&L; no client-side authoritative P&L calculation.
 - [ ] Status.
 - [x] Details drawer/modal.
 
@@ -483,7 +483,7 @@ Architecture:
 - [ ] Result.
 - [ ] P&L.
 - [ ] Fees.
-- [ ] Settlement reference.
+- [x] Settlement reference.
 
 ## 6.3 History UX
 
@@ -522,9 +522,9 @@ Architecture:
 
 ## 7.3 Prevent authority leaks
 
-- [ ] No authoritative balance in local state.
-- [ ] No authoritative payout in local state.
-- [ ] No authoritative settlement in local state.
+- [x] No authoritative balance in local state.
+- [x] No authoritative payout in local state.
+- [x] No authoritative settlement in local state.
 - [ ] No authorization decisions in UI components.
 
 ---
@@ -595,9 +595,9 @@ Market events:
 - [ ] Price update.
 - [ ] Candle update.
 - [x] Market status.
-- [ ] Trade status.
-- [ ] Position update.
-- [ ] Wallet update.
+- [x] Trade status.
+- [x] Position update.
+- [x] Wallet update.
 - [ ] Notification event.
 
 ---
@@ -696,7 +696,7 @@ Market events:
 - [ ] Amount.
 - [ ] Limits.
 - [ ] Verification requirements.
-- [ ] Pending state.
+- [x] Pending/submitting state.
 - [ ] Success.
 - [ ] Failure.
 
@@ -708,8 +708,8 @@ Market events:
 - [ ] Fees.
 - [ ] Verification.
 - [ ] Confirmation.
-- [ ] Pending.
-- [ ] Rejected.
+- [x] Pending.
+- [x] Rejected.
 - [ ] Completed.
 
 ## 13.4 Transactions
@@ -810,45 +810,45 @@ AuditLog
 This is a high-risk backend phase.
 
 ## 16.1 Validation
-- [ ] User eligibility.
-- [ ] Account status.
-- [ ] Asset availability.
-- [ ] Market availability.
-- [ ] Amount limits.
-- [ ] Duration limits.
-- [ ] Balance availability.
-- [ ] Risk limits.
-- [ ] Duplicate request protection.
+- [x] User eligibility.
+- [x] Account status.
+- [x] Asset availability.
+- [x] Market availability.
+- [x] Amount limits.
+- [x] Duration limits.
+- [x] Balance availability.
+- [x] Risk limits.
+- [x] Duplicate request protection.
 
 ## 16.2 Order lifecycle
 
-- [ ] Create.
-- [ ] Validate.
-- [ ] Accept.
-- [ ] Reject.
-- [ ] Open.
-- [ ] Update.
-- [ ] Close.
-- [ ] Settle.
+- [x] Create.
+- [x] Validate.
+- [x] Accept.
+- [x] Reject.
+- [x] Open.
+- [x] Update.
+- [x] Close.
+- [x] Settle.
 
 ## 16.3 Settlement
 
-- [ ] Define authoritative price source.
-- [ ] Define settlement timestamp.
-- [ ] Define settlement rules.
-- [ ] Define fees.
-- [ ] Calculate result.
-- [ ] Persist settlement.
-- [ ] Create ledger entries.
-- [ ] Publish trade event.
+- [x] Define authoritative price source.
+- [x] Define settlement timestamp.
+- [x] Define settlement rules.
+- [x] Define fees.
+- [x] Calculate result.
+- [x] Persist settlement.
+- [x] Create ledger entries for stake and fee movements.
+- [x] Publish trade and position/wallet events.
 
 ## 16.4 Idempotency
 
-- [ ] Client request ID.
-- [ ] Server idempotency key.
-- [ ] Duplicate detection.
-- [ ] Replay protection.
-- [ ] Transaction locking.
+- [x] Client request ID.
+- [x] Server idempotency key.
+- [x] Duplicate detection.
+- [x] Replay protection through unique idempotency keys and transactional state claims.
+- [x] Transactional state claims and conditional wallet updates.
 
 ---
 
@@ -1082,8 +1082,8 @@ Every major feature:
 - [ ] Auth.
 - [ ] Market subscription.
 - [ ] Trade submission.
-- [ ] Position update.
-- [ ] Wallet update.
+- [x] Position update.
+- [x] Wallet update.
 
 ## E2E
 
@@ -1233,7 +1233,7 @@ Tasks:
 - [ ] File-upload controls.
 - [ ] Webhook verification.
 - [ ] Idempotency.
-- [ ] Replay protection.
+- [x] Replay protection through unique idempotency keys and transactional state claims.
 - [ ] Audit logging.
 
 ## Financial
@@ -1243,7 +1243,7 @@ Tasks:
 - [ ] Settlement auditability.
 - [ ] Withdrawal controls.
 - [ ] Exposure limits.
-- [ ] Risk limits.
+- [x] Risk limits.
 - [ ] Transaction monitoring.
 
 ---
@@ -1417,9 +1417,30 @@ Implemented in:
 
 SLSPOT-006 is complete. The next major dependency is server-authoritative trading and its financial controls; wallet mutations remain intentionally disabled until the ledger/payment milestones.
 
+## Completed milestone
+
+Phase 16 — Server-authoritative trading engine
+
+- [x] Server-authoritative market price is read from persisted Market state and provider-fed realtime updates.
+- [x] Server-authoritative wallet/account is created during auth registration/login and is never trusted from browser state.
+- [x] Server-authoritative order creation with eligibility, market, amount, duration, balance, exposure and duplicate-request validation.
+- [x] Atomic stake reservation and separate fee ledger movement.
+- [x] Server-authoritative positions and trade records.
+- [x] Automatic expiry settlement worker plus manual server-price settlement endpoint.
+- [x] Settlement persistence with payout, fees, P&L, timestamp and reference ID.
+- [x] Conditional trade claims, wallet balance updates and idempotent settlement records.
+- [x] Realtime trade/position/wallet events with authenticated user-channel delivery.
+- [x] Trading UI no longer owns authoritative positions, settlement, balances, payout or demo trade state.
+- [x] Trading UI creates server orders with an idempotency key and reloads server state after mutations/events.
+- [x] Unit coverage for core settlement direction and payout calculations.
+
+### Required before real-money execution
+
+The trading engine milestone is complete for the currently defined server-side fixed-duration ruleset. Phase 1 product/legal decisions and the later financial-ledger/payment/compliance milestones remain release blockers for any real-money product.
+
 ## Immediate next milestone
 
-Phase 16 — Trading Engine / server-authoritative demo trading
+Positions / History / Portfolio / Financial Ledger hardening
 
 ## Following milestones
 
@@ -1451,7 +1472,7 @@ Production readiness
 
 ## Current architecture gate
 
-The browser remains non-authoritative for balances, prices, trade settlement and financial state. Authentication and market data are now server-backed; trading authority, settlement, ledger integrity, payments and production authorization remain blocking backend work before any real-money execution.
+The browser remains non-authoritative for balances, prices, trade settlement and financial state. Authentication, market data, trading orders, positions and settlement are now server-backed. Full financial-ledger reconciliation, payments, KYC/AML, production authorization and the Phase 1 product/legal gate remain blocking before any real-money execution.
 
 # Definition of Done
 
