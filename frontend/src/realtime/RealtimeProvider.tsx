@@ -1,10 +1,10 @@
-import { createContext, useContext, useEffect, useMemo, useRef } from 'react'
+import { createContext, useContext, useEffect, useMemo, useRef, type ReactNode } from 'react'
 import { useAuth } from '../auth/AuthProvider'
 import { RealtimeClient } from './connection'
 
 const RealtimeContext = createContext<RealtimeClient | null>(null)
 
-export function RealtimeProvider({ children }: { children: React.ReactNode }) {
+export function RealtimeProvider({ children }: { children: ReactNode }) {
   const { status } = useAuth()
   const clientRef = useRef<RealtimeClient | null>(null)
 
