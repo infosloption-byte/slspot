@@ -25,7 +25,7 @@ import {
 } from 'lightweight-charts'
 import type { MarketAsset } from '../../data/mockMarket'
 import { generateMockCandles } from '../../data/mockCandles'
-import type { MarketCandle } from '../../api/market'
+import type { MarketCandle } from '../../api/contracts'
 import { useMarketCandles } from '../../hooks/useServerState'
 import type { OpenTrade } from '../../types/trading'
 import { tradeProgress, tradeRemainingSeconds } from '../../types/trading'
