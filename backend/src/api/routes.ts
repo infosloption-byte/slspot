@@ -58,7 +58,7 @@ export function registerPlatformApiRoutes(app: FastifyInstance, options: Platfor
     return ok(request, await options.apiService.listAssets({
       page: queryNumber(request.query.page),
       pageSize: queryNumber(request.query.pageSize),
-      type: request.query.type,
+      type: queryEnum(request.query.type, ASSET_TYPES, 'Asset type'),
     }))
   })
 
