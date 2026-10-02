@@ -5,7 +5,7 @@ import { TradePanel } from '../components/trading/TradePanel'
 import { ChartWorkspace } from '../components/trading/ChartWorkspace'
 import { Toast, type ToastTone } from '../components/ui/Toast'
 import { marketAssets } from '../data/mockMarket'
-import { calculateTradePnl, resolveTrade, type OpenTrade } from '../types/trading'
+import { resolveTrade, type OpenTrade } from '../types/trading'
 
 type ToastItem = {
   id: number
