@@ -28,18 +28,43 @@ export type MarketAssetsQuery = {
   type?: MarketAssetType
 }
 
+export type MarketCandleResponse = {
+  assetId: string
+  symbol: string
+  interval: string
+  candles: Array<{
+    assetId: string
+    symbol: string
+    interval: string
+    openTime: string
+    closeTime: string
+    open: string
+    high: string
+    low: string
+    close: string
+    volume: string
+  }>
+}
+
 export const marketApi = {
   listAssets: (query: MarketAssetsQuery = {}) =>
     apiClient
       .get<ApiSuccess<PaginatedData<MarketAsset>>>('/market/assets' + toQueryString(query))
       .then((response) => response.data),
+
+  candles: (assetId: string, query: { interval?: string; limit?: number } = {}) =>
+    apiClient
+      .get<ApiSuccess<MarketCandleResponse>>('/market/assets/' + encodeURIComponent(assetId) + '/candles' + toQueryString(query))
+      .then((response) => response.data),
 }
 
-function toQueryString(query: MarketAssetsQuery): string {
+function toQueryString(query: MarketAssetsQuery & { interval?: string; limit?: number }): string {
   const params = new URLSearchParams()
   if (query.page !== undefined) params.set('page', String(query.page))
   if (query.pageSize !== undefined) params.set('pageSize', String(query.pageSize))
   if (query.type) params.set('type', query.type)
+  if (query.interval) params.set('interval', query.interval)
+  if (query.limit !== undefined) params.set('limit', String(query.limit))
   const value = params.toString()
   return value ? '?' + value : ''
 }
