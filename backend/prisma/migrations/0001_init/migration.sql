@@ -3,7 +3,7 @@
 
 CREATE TABLE `User` (
   `id` CHAR(36) NOT NULL,
-  `email` VARCHAR(320) NOT NULL,
+  `email` VARCHAR(191) NOT NULL,
   `passwordHash` VARCHAR(255) NOT NULL,
   `status` ENUM('PENDING_VERIFICATION','ACTIVE','SUSPENDED','DISABLED') NOT NULL DEFAULT 'PENDING_VERIFICATION',
   `countryCode` CHAR(2) NULL,
@@ -17,7 +17,7 @@ CREATE TABLE `User` (
 CREATE TABLE `Session` (
   `id` CHAR(36) NOT NULL,
   `userId` CHAR(36) NOT NULL,
-  `tokenHash` VARCHAR(255) NOT NULL,
+  `tokenHash` VARCHAR(191) NOT NULL,
   `expiresAt` DATETIME(3) NOT NULL,
   `revokedAt` DATETIME(3) NULL,
   `ipAddress` VARCHAR(64) NULL,
