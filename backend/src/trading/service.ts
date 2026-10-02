@@ -638,7 +638,7 @@ export class TradingService {
     }
     if (!TRADING_RULES.durationsSeconds.includes(input.durationSeconds as never)) return 'Duration is not allowed for this market'
     if (input.openPositionCount >= env.trading.maxOpenPositions) return 'Maximum open position limit reached'
-    if (input.openExposure.plus(input.amount).gt(env.trading.maxOpenExposure)) return 'Maximum open exposure limit reached'
+    if (input.openExposure.plus(input.amount).gt(new Prisma.Decimal(env.trading.maxOpenExposure))) return 'Maximum open exposure limit reached'
     const fee = input.amount.mul(new Prisma.Decimal(input.rules.feeRate))
     if (input.walletBalance.lt(input.amount.plus(fee))) return 'Insufficient available balance'
     return null
@@ -681,17 +681,18 @@ export class TradingService {
         accountId,
         currency,
         status: 'ACTIVE',
-        availableBalance: seedInitialBalance ? env.trading.initialBalance : new Prisma.Decimal(0),
+        availableBalance: seedInitialBalance ? initialBalance : new Prisma.Decimal(0),
         heldBalance: 0,
       },
     })
-    if (seedInitialBalance && env.trading.initialBalance.gt(0)) {
+    const initialBalance = new Prisma.Decimal(env.trading.initialBalance)
+    if (seedInitialBalance && initialBalance.gt(0)) {
       const walletTransaction = await tx.walletTransaction.create({
         data: {
           walletId: wallet.id,
           type: 'ADJUSTMENT',
           status: 'COMPLETED',
-          amount: env.trading.initialBalance,
+          amount: initialBalance,
           currency,
           idempotencyKey: 'wallet-initial:' + wallet.id,
           referenceType: 'SYSTEM',
@@ -705,7 +706,7 @@ export class TradingService {
           accountId,
           walletTransactionId: walletTransaction.id,
           direction: 'CREDIT',
-          amount: env.trading.initialBalance,
+          amount: initialBalance,
           currency,
           referenceType: 'SYSTEM',
           referenceId: wallet.id,
@@ -731,7 +732,7 @@ export class TradingService {
       grossPnl: trade.grossPnl?.toString() ?? null,
       netPnl: trade.netPnl?.toString() ?? settlement?.netPnl?.toString() ?? null,
       openedAt: trade.openedAt.toISOString(),
-      closedAt: trade.closedAt?.toString() ?? settlement?.settledAt?.toISOString() ?? null,
+      closedAt: trade.closedAt?.toISOString() ?? settlement?.settledAt?.toISOString() ?? null,
       expiresAt: order.expiresAt?.toISOString() ?? null,
       settlementId: settlement?.id ?? null,
       settlementPrice: settlement?.settlementPrice?.toString() ?? null,
