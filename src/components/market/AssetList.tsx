@@ -11,7 +11,7 @@ type AssetListProps = {
 }
 
 const favoriteStorageKey = 'slspot.watchlist.favorites'
-const categories = ['All', 'Crypto', 'FX', 'Fav'] as const
+const categories = ['All', 'Crypto', 'FX', 'Stocks', 'Commodities', 'Indices', 'Fav'] as const
 
 export function AssetList({ open, selected, onSelect, onClose }: AssetListProps) {
   const [query, setQuery] = useState('')
