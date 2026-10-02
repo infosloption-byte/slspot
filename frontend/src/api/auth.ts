@@ -13,6 +13,16 @@ function data<T>(response: ApiSuccess<T>): T {
   return response.data
 }
 
+export type AuthSessionRecord = {
+  id: string
+  ipAddress: string | null
+  userAgent: string | null
+  createdAt: string
+  lastSeenAt: string
+  expiresAt: string
+  current: boolean
+}
+
 export const authApi = {
   register: (input: { email: string; password: string; countryCode?: string }) =>
     apiClient.post<ApiSuccess<RegistrationResponse>>('/auth/register', input).then(data),
@@ -28,6 +38,12 @@ export const authApi = {
 
   me: () =>
     apiClient.get<ApiSuccess<{ user: AuthSession; sessionId: string }>>('/auth/me').then(data),
+
+  sessions: () =>
+    apiClient.get<ApiSuccess<{ sessions: AuthSessionRecord[] }>>('/auth/sessions').then(data),
+
+  revokeSession: (sessionId: string) =>
+    apiClient.delete<ApiSuccess<{ revoked: boolean }>>('/auth/sessions/' + sessionId).then(data),
 
   verifyEmail: (token: string) =>
     apiClient.post<ApiSuccess<{ user: AuthUser }>>('/auth/verify-email', { token }).then(data),
