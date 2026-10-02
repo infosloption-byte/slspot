@@ -96,7 +96,7 @@ const tradingService = {
     tradeId: 'trade-1',
     positionId: 'position-1',
     status: 'WON',
-    direction: 'UP',
+    direction: 'UP' as const,
     amount: '10',
     entryPrice: '100',
     exitPrice: '101',
