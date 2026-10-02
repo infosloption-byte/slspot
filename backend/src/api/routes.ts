@@ -1,6 +1,6 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify'
-import { AuthError, type AuthServiceLike } from '../auth/service.js'
-import type { AuthSession } from '../auth/service.js'
+import { AuthError, type AuthSession } from '../auth/service.js'
+import type { AuthServiceLike } from '../auth/routes.js'
 import { env } from '../config/env.js'
 import { PlatformApiService } from './service.js'
 
