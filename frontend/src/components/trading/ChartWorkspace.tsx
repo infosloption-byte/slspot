@@ -25,6 +25,8 @@ import {
 } from 'lightweight-charts'
 import type { MarketAsset } from '../../data/mockMarket'
 import { generateMockCandles } from '../../data/mockCandles'
+import type { MarketCandle } from '../../api/market'
+import { useMarketCandles } from '../../hooks/useServerState'
 import type { OpenTrade } from '../../types/trading'
 import { tradeProgress, tradeRemainingSeconds } from '../../types/trading'
 import { formatPercent, formatPrice } from '../../lib/format'
@@ -94,6 +96,7 @@ function ChartCanvas({
   gridEnabled,
   priceLineEnabled,
   maEnabled,
+  candles,
 }: {
   asset: MarketAsset
   timeframe: string
@@ -102,10 +105,10 @@ function ChartCanvas({
   gridEnabled: boolean
   priceLineEnabled: boolean
   maEnabled: boolean
+  candles: ReturnType<typeof generateMockCandles>
 }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const chartRef = useRef<IChartApi | null>(null)
-  const candles = useMemo(() => generateMockCandles(asset, timeframe), [asset.symbol, timeframe])
   const closes = useMemo(() => candles.map((candle) => ({ time: candle.time, value: candle.close })), [candles])
   const sma = useMemo(() => calculateSma(candles), [candles])
 
@@ -181,6 +184,29 @@ function ChartCanvas({
   )
 }
 
+function timeframeToApiInterval(timeframe: string): string {
+  switch (timeframe) {
+    case '1m': return '1min'
+    case '5m': return '5min'
+    case '15m': return '15min'
+    case '30m': return '30min'
+    case '1H': return '1h'
+    case '4H': return '4h'
+    case '1D': return '1day'
+    default: return '5min'
+  }
+}
+
+function toChartCandles(candles: MarketCandle[]) {
+  return candles.map((candle) => ({
+    time: Math.floor(new Date(candle.openTime).getTime() / 1000) as import('lightweight-charts').UTCTimestamp,
+    open: Number(candle.open),
+    high: Number(candle.high),
+    low: Number(candle.low),
+    close: Number(candle.close),
+  }))
+}
+
 export function ChartWorkspace({ asset, onOpenMarkets, openTrades, now }: ChartWorkspaceProps) {
   const [timeframe, setTimeframe] = useState('5m')
   const [crosshairEnabled, setCrosshairEnabled] = useState(true)
@@ -197,7 +223,13 @@ export function ChartWorkspace({ asset, onOpenMarkets, openTrades, now }: ChartW
   const optionsRef = useRef<HTMLDivElement>(null)
   const stageRef = useRef<HTMLDivElement>(null)
   const price = formatPrice(asset.price, asset.price < 10 ? 5 : 2)
-  const rsi = useMemo(() => calculateRsi(generateMockCandles(asset, timeframe)), [asset.symbol, asset.price, timeframe])
+  const marketInterval = timeframeToApiInterval(timeframe)
+  const candleResource = useMarketCandles(asset.assetId, marketInterval, 200)
+  const candles = useMemo(() => {
+    if (candleResource.data?.candles.length) return toChartCandles(candleResource.data.candles)
+    return generateMockCandles(asset, timeframe)
+  }, [asset, candleResource.data, timeframe])
+  const rsi = useMemo(() => calculateRsi(candles), [candles])
 
   useEffect(() => {
     if (!optionsOpen) return
@@ -344,7 +376,7 @@ export function ChartWorkspace({ asset, onOpenMarkets, openTrades, now }: ChartW
       </div>
 
       <div className={rsiEnabled ? 'chart-stage chart-stage--rsi' : 'chart-stage'} ref={stageRef}>
-        <ChartCanvas asset={asset} timeframe={timeframe} chartType={chartType} crosshairEnabled={crosshairEnabled} gridEnabled={gridEnabled} priceLineEnabled={priceLineEnabled} maEnabled={maEnabled} />
+        <ChartCanvas asset={asset} timeframe={timeframe} chartType={chartType} crosshairEnabled={crosshairEnabled} gridEnabled={gridEnabled} priceLineEnabled={priceLineEnabled} maEnabled={maEnabled} candles={candles} />
 
         <div className="trade-chart-markers" aria-hidden="true">
           {openTrades.map((trade) => {
@@ -392,7 +424,7 @@ export function ChartWorkspace({ asset, onOpenMarkets, openTrades, now }: ChartW
       </div>
 
       <div className="chart-bottom-status">
-        <span><i className="live-dot" /> Live demo</span>
+        <span><i className="live-dot" /> {candleResource.data?.candles.length ? 'Live market data' : 'Waiting for market data'}</span>
         <span>{timeframe}</span>
         <span>{chartType === 'candles' ? 'Candles' : chartType === 'line' ? 'Line' : 'Area'}</span>
         <span className="chart-bottom-status__spacer" />
