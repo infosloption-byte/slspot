@@ -79,6 +79,18 @@ function parseBoolean(name: string, value: string | undefined, fallback: boolean
   throw new Error(name + ' must be true or false')
 }
 
+function parseDecimalString(
+  name: string,
+  value: string | undefined,
+  fallback: string,
+): string {
+  const normalized = (value ?? fallback).trim()
+  if (!/^\\d{1,20}(?:\\.\\d{1,8})?$/.test(normalized)) {
+    throw new Error(name + ' must be a non-negative decimal with up to 8 fractional digits')
+  }
+  return normalized
+}
+
 function parseMarketProvider(value: string | undefined): 'disabled' | 'twelve-data' {
   const provider = (value ?? 'twelve-data').trim().toLowerCase()
   if (provider !== 'disabled' && provider !== 'twelve-data') {
@@ -287,6 +299,18 @@ export const env = {
     pollIntervalMs: parsePositiveInteger('MARKET_DATA_POLL_INTERVAL_MS', process.env.MARKET_DATA_POLL_INTERVAL_MS, 15_000, 5_000, 300_000),
     requestTimeoutMs: parsePositiveInteger('MARKET_DATA_REQUEST_TIMEOUT_MS', process.env.MARKET_DATA_REQUEST_TIMEOUT_MS, 10_000, 1_000, 60_000),
     bootstrapAssets: marketDataBootstrapAssets,
+  },
+  trading: {
+    feeRate: parseDecimalString('TRADING_FEE_RATE', process.env.TRADING_FEE_RATE, '0'),
+    initialBalance: parseDecimalString(
+      'TRADING_INITIAL_BALANCE',
+      process.env.TRADING_INITIAL_BALANCE,
+      nodeEnv === 'production' ? '0' : '12480.65',
+    ),
+    maxOpenPositions: parsePositiveInteger('TRADING_MAX_OPEN_POSITIONS', process.env.TRADING_MAX_OPEN_POSITIONS, 20, 1, 1_000),
+    maxOpenExposure: parseDecimalString('TRADING_MAX_OPEN_EXPOSURE', process.env.TRADING_MAX_OPEN_EXPOSURE, '100000'),
+    marketMaxAgeMs: parsePositiveInteger('TRADING_MARKET_MAX_AGE_MS', process.env.TRADING_MARKET_MAX_AGE_MS, 120_000, 5_000, 3_600_000),
+    settlementIntervalMs: parsePositiveInteger('TRADING_SETTLEMENT_INTERVAL_MS', process.env.TRADING_SETTLEMENT_INTERVAL_MS, 1_000, 250, 60_000),
   },
   websocketMaxPayloadBytes: parsePositiveInteger(
     'WEBSOCKET_MAX_PAYLOAD_BYTES',
