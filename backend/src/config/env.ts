@@ -85,7 +85,7 @@ function parseDecimalString(
   fallback: string,
 ): string {
   const normalized = (value ?? fallback).trim()
-  if (!/^\\d{1,20}(?:\\.\\d{1,8})?$/.test(normalized)) {
+  if (!/^\d{1,20}(?:\.\d{1,8})?$/.test(normalized)) {
     throw new Error(name + ' must be a non-negative decimal with up to 8 fractional digits')
   }
   return normalized
