@@ -1,7 +1,7 @@
 import { ArrowRight, KeyRound, MailCheck, ShieldCheck } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router'
+import { Link, Navigate, useLocation, useNavigate } from 'react-router'
 import { ApiError } from '../api/client'
 import { useAuth } from '../auth/AuthProvider'
 
@@ -111,14 +111,23 @@ export function AccessPage() {
     [location.pathname],
   )
   const Icon = config.icon
+  const routeState = (
+    location.state &&
+    typeof location.state === 'object' &&
+    location.state !== null
+  ) ? location.state as {
+    token?: string
+    email?: string
+    from?: string
+    message?: string
+  } : {}
 
-  const initialToken = typeof location.state?.token === 'string'
-    ? location.state.token
+  const initialToken = typeof routeState.token === 'string'
+    ? routeState.token
     : new URLSearchParams(location.search).get('token') ?? ''
 
   if (isAuthenticated && (location.pathname === '/login' || location.pathname === '/register')) {
-    navigate('/app/trading', { replace: true })
-    return null
+    return <Navigate to="/app/trading" replace />
   }
 
   const setField = (field: Field, value: string) => {
@@ -246,8 +255,8 @@ export function AccessPage() {
           <div className="access-form__message">Checking your secure session…</div>
         ) : null}
 
-        {location.state?.message ? (
-          <div className="access-form__message">{String(location.state.message)}</div>
+        {routeState.message ? (
+          <div className="access-form__message">{routeState.message}</div>
         ) : null}
 
         {error ? (
@@ -273,7 +282,7 @@ export function AccessPage() {
               <input
                 required
                 type="email"
-                value={values.email ?? (typeof location.state?.email === 'string' ? location.state.email : '')}
+                value={values.email ?? routeState.email ?? ''}
                 onChange={(event) => setField('email', event.target.value)}
                 autoComplete="email"
               />
@@ -345,7 +354,7 @@ export function AccessPage() {
 
         {location.pathname === '/verify-email' && values.email ? (
           <button
-            className="btn btn--ghost access-card__demo"
+            className="btn btn--ghost access-card__secondary"
             type="button"
             disabled={busy}
             onClick={() => {
