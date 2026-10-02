@@ -1,4 +1,3 @@
-import { createRequestId } from './requestId'
 import { parseRealtimeMessage } from './events'
 import type { RealtimeChannel, RealtimeClientMessage, RealtimeEvent } from './contracts'
 import { getReconnectDelay } from './reconnect'
