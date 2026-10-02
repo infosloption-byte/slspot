@@ -243,3 +243,26 @@ Candles use the same decimal-string convention for OHLCV values.
 ## Out of scope
 
 Real market provider integration, trading execution, settlement, wallet mutations, payment webhooks, financial ledger behavior, and full RBAC remain separate milestones.
+
+
+## Platform server-state endpoints
+
+The first server-backed read boundary is now available under `/api/v1`.
+
+Public:
+
+- `GET /market/assets?page=&pageSize=&type=`
+
+Authenticated:
+
+- `GET /portfolio/summary`
+- `GET /portfolio/positions?page=&pageSize=`
+- `GET /trades?page=&pageSize=&status=`
+- `GET /wallet`
+- `GET /wallet/transactions?page=&pageSize=`
+- `GET /notifications?page=&pageSize=&unreadOnly=`
+- `POST /notifications/:notificationId/read`
+
+All private resources derive the user ID from the authenticated HttpOnly session cookie. Client-supplied user IDs are not accepted.
+
+Financial quantities are transported as decimal strings. Date/time fields are ISO-8601 strings.
