@@ -46,9 +46,11 @@ export function useLiveMarketAssets() {
         typeof data.last !== 'string'
       ) return
 
+      const assetId = data.assetId
+
       setQuotes((current) => ({
         ...current,
-        [data.assetId]: {
+        [assetId]: {
           assetId: data.assetId,
           symbol: data.symbol,
           bid: typeof data.bid === 'string' ? data.bid : data.last,
