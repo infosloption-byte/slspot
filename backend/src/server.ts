@@ -1,6 +1,7 @@
 import { buildApp } from './app.js'
 import { AuthService } from './auth/service.js'
 import { env } from './config/env.js'
+import { prisma } from './db/prisma.js'
 import {
   checkRedis,
   connectRedis,

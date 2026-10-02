@@ -1,7 +1,5 @@
-import { createHash, randomBytes, scrypt as scryptCallback, timingSafeEqual } from 'node:crypto'
-import { promisify } from 'node:util'
+import { createHash, randomBytes, scrypt as scryptCallback, timingSafeEqual, type ScryptOptions } from 'node:crypto'
 
-const scrypt = promisify(scryptCallback)
 const SCRYPT_N = 16_384
 const SCRYPT_R = 8
 const SCRYPT_P = 1
@@ -9,11 +7,32 @@ const KEY_LENGTH = 64
 const SALT_LENGTH = 16
 const MAXMEM = 32 * 1024 * 1024
 
+function scryptAsync(
+  password: string,
+  salt: Buffer,
+  keyLength: number,
+  options: ScryptOptions,
+): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    scryptCallback(password, salt, keyLength, options, (error, derivedKey) => {
+      if (error) {
+        reject(error)
+        return
+      }
+
+      resolve(derivedKey)
+    })
+  })
+}
+
 export async function hashPassword(password: string): Promise<string> {
   const salt = randomBytes(SALT_LENGTH)
-  const derived = (await scrypt(password, salt, KEY_LENGTH, {
-    N: SCRYPT_N, r: SCRYPT_R, p: SCRYPT_P, maxmem: MAXMEM,
-  })) as Buffer
+  const derived = await scryptAsync(password, salt, KEY_LENGTH, {
+    N: SCRYPT_N,
+    r: SCRYPT_R,
+    p: SCRYPT_P,
+    maxmem: MAXMEM,
+  })
 
   return [
     'scrypt',
@@ -25,24 +44,51 @@ export async function hashPassword(password: string): Promise<string> {
 
 export function parsePasswordHash(value: string) {
   const parts = value.split('$')
-  if (parts.length !== 4 || parts[0] !== 'scrypt') return null
 
-  const params = Object.fromEntries(
-    parts[1].split(',').map((item) => {
-      const [key, raw] = item.split('=')
-      return [key, Number(raw)]
-    }),
-  )
+  if (parts.length !== 4) {
+    return null
+  }
 
-  if (!Number.isInteger(params.N) || !Number.isInteger(params.r) || !Number.isInteger(params.p)) {
+  const [algorithm, parameterText, saltText, hashText] = parts
+
+  if (
+    algorithm !== 'scrypt' ||
+    parameterText === undefined ||
+    saltText === undefined ||
+    hashText === undefined
+  ) {
+    return null
+  }
+
+  const match = /^N=(d+),r=(d+),p=(d+)$/.exec(parameterText)
+
+  if (!match) {
+    return null
+  }
+
+  const [, nText, rText, pText] = match
+
+  if (nText === undefined || rText === undefined || pText === undefined) {
+    return null
+  }
+
+  const n = Number(nText)
+  const r = Number(rText)
+  const p = Number(pText)
+
+  if (!Number.isInteger(n) || !Number.isInteger(r) || !Number.isInteger(p)) {
     return null
   }
 
   try {
-    const salt = Buffer.from(parts[2], 'base64url')
-    const hash = Buffer.from(parts[3], 'base64url')
-    if (salt.length < SALT_LENGTH || hash.length !== KEY_LENGTH) return null
-    return { n: params.N, r: params.r, p: params.p, salt, hash }
+    const salt = Buffer.from(saltText, 'base64url')
+    const hash = Buffer.from(hashText, 'base64url')
+
+    if (salt.length < SALT_LENGTH || hash.length !== KEY_LENGTH) {
+      return null
+    }
+
+    return { n, r, p, salt, hash }
   } catch {
     return null
   }
@@ -50,11 +96,17 @@ export function parsePasswordHash(value: string) {
 
 export async function verifyPassword(password: string, encodedHash: string): Promise<boolean> {
   const parsed = parsePasswordHash(encodedHash)
-  if (!parsed) return false
 
-  const derived = (await scrypt(password, parsed.salt, parsed.hash.length, {
-    N: parsed.n, r: parsed.r, p: parsed.p, maxmem: MAXMEM,
-  })) as Buffer
+  if (!parsed) {
+    return false
+  }
+
+  const derived = await scryptAsync(password, parsed.salt, parsed.hash.length, {
+    N: parsed.n,
+    r: parsed.r,
+    p: parsed.p,
+    maxmem: MAXMEM,
+  })
 
   return timingSafeEqual(derived, parsed.hash)
 }
