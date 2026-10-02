@@ -77,6 +77,10 @@ const configByPath = {
 
 type Field = 'email' | 'password' | 'confirm' | 'token' | 'code' | 'name'
 
+function hasField(fields: readonly Field[], field: Field): boolean {
+  return fields.includes(field)
+}
+
 function errorMessage(error: unknown): string {
   if (!(error instanceof ApiError)) return 'Something went wrong. Please try again.'
 
@@ -274,7 +278,7 @@ export function AccessPage() {
         ) : null}
 
         <form className="access-form" onSubmit={(event) => void submit(event)}>
-          {config.fields.includes('email') ? (
+          {hasField(config.fields, 'email') ? (
             <label>
               <span>Email address</span>
               <input
@@ -287,7 +291,7 @@ export function AccessPage() {
             </label>
           ) : null}
 
-          {config.fields.includes('token') ? (
+          {hasField(config.fields, 'token') ? (
             <label>
               <span>{location.pathname === '/verify-email' ? 'Verification token' : 'Recovery token'}</span>
               <input
@@ -301,7 +305,7 @@ export function AccessPage() {
             </label>
           ) : null}
 
-          {config.fields.includes('password') ? (
+          {hasField(config.fields, 'password') ? (
             <label>
               <span>Password</span>
               <input
@@ -315,7 +319,7 @@ export function AccessPage() {
             </label>
           ) : null}
 
-          {config.fields.includes('confirm') ? (
+          {hasField(config.fields, 'confirm') ? (
             <label>
               <span>Confirm password</span>
               <input
@@ -329,7 +333,7 @@ export function AccessPage() {
             </label>
           ) : null}
 
-          {config.fields.includes('code') ? (
+          {hasField(config.fields, 'code') ? (
             <label>
               <span>Verification code</span>
               <input
