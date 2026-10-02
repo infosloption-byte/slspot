@@ -45,7 +45,6 @@ export function buildApp() {
     bodyLimit: env.bodyLimitBytes,
     requestTimeout: env.requestTimeoutMs,
     trustProxy: env.trustProxy,
-    requestIdHeader: 'x-request-id',
     genReqId: (request) => resolveRequestId(request.headers['x-request-id']),
     requestIdLogLabel: 'requestId',
   })

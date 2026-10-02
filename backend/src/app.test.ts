@@ -5,6 +5,10 @@ import { buildApp } from '../src/app.js'
 describe('backend HTTP foundation', () => {
   const app = buildApp()
 
+  app.get('/test/internal-error', async () => {
+    throw new Error('test failure')
+  })
+
   before(async () => {
     await app.ready()
   })
@@ -90,10 +94,6 @@ describe('backend HTTP foundation', () => {
   })
 
   it('returns standard 500 responses for unexpected failures', async () => {
-    app.get('/test/internal-error', async () => {
-      throw new Error('test failure')
-    })
-
     const response = await app.inject({
       method: 'GET',
       url: '/test/internal-error',
