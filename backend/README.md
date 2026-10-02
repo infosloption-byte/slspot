@@ -23,7 +23,7 @@ Both endpoints return a versioned JSON envelope with a correlation/request ID.
 
 ## MySQL + Prisma
 
-The backend uses Prisma ORM 7 with MySQL and the `@prisma/adapter-mariadb` driver adapter. Prisma's current ORM 8 release does not yet include MySQL support, so this backend deliberately stays on the supported Prisma 7 MySQL path. citeturn807920search7turn807920search8
+The backend uses Prisma ORM 7 with MySQL and the `@prisma/adapter-mariadb` driver adapter. Prisma ORM 8 does not currently include MySQL support, so this backend deliberately stays on the supported Prisma 7 MySQL path.
 
 The included `docker-compose.yml` starts a local MySQL 8.4 instance on host port 3307:
 
