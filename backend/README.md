@@ -4,40 +4,83 @@ Fastify/TypeScript backend foundation for SL Spot.
 
 ## Development
 
-\`bash
+```bash
 npm install
+npm run db:up
+npm run prisma:generate
+npm run prisma:migrate:deploy
 npm run dev
-\`
+```
 
 The API listens on http://localhost:8080 by default.
 
 Health endpoints:
 
-- \`GET /api/v1/health\` — liveness.
-- \`GET /api/v1/ready\` — current process readiness. Database readiness will be added with Prisma.
+- `GET /api/v1/health` — liveness.
+- `GET /api/v1/ready` — readiness including a database connectivity check when the server is running.
 
 Both endpoints return a versioned JSON envelope with a correlation/request ID.
 
+## MySQL + Prisma
+
+The backend uses Prisma ORM 7 with MySQL and the `@prisma/adapter-mariadb` driver adapter. Prisma's current ORM 8 release does not yet include MySQL support, so this backend deliberately stays on the supported Prisma 7 MySQL path. citeturn807920search7turn807920search8
+
+The included `docker-compose.yml` starts a local MySQL 8.4 instance on host port 3307:
+
+```bash
+npm run db:up
+```
+
+The default local connection is:
+
+```text
+mysql://slspot:slspot@127.0.0.1:3307/slspot
+```
+
+Initialize the database:
+
+```bash
+npm run prisma:generate
+npm run prisma:migrate:deploy
+```
+
+For normal schema development, create and apply migrations with:
+
+```bash
+npm run prisma:migrate -- --name your_change_name
+```
+
+The initial persistence model covers the planned User, Session, Device, Account, Asset, Market, Order, Position, Trade, Settlement, Wallet, WalletTransaction, LedgerEntry, Deposit, Withdrawal, KycCase, Notification and AuditLog entities.
+
+The financial product definition remains separate from this storage foundation. Order, position, settlement and fee rules must still follow the product-definition gate before real-money execution.
+
 ## Environment
 
-Copy \`backend/.env.example\` to your local backend environment and adjust as needed.
+Copy `backend/.env.example` to your local backend environment and adjust as needed.
 
 Important backend settings:
 
-- \`CORS_ORIGIN\` is an explicit comma-separated allowlist; wildcard origins are not accepted.
-- \`NODE_ENV=production\` requires an explicit \`CORS_ORIGIN\`.
-- \`TRUST_PROXY\` must only be enabled when the deployment is actually behind a trusted reverse proxy.
+- `CORS_ORIGIN` is an explicit comma-separated allowlist; wildcard origins are not accepted.
+- `NODE_ENV=production` requires an explicit `CORS_ORIGIN` and `DATABASE_URL`.
+- `TRUST_PROXY` must only be enabled when the deployment is actually behind a trusted reverse proxy.
 - Request timeout, graceful-shutdown timeout and request body size are bounded by validated environment settings.
+- `DATABASE_CONNECTION_LIMIT` controls the MySQL driver-adapter connection pool.
 
 ## Validation
 
-From \`backend/\`:
+From `backend/`:
 
-\`bash
+```bash
 npm run typecheck
 npm run build
 npm test
-\`
+```
+
+Database migration status:
+
+```bash
+npm run prisma:migrate:status
+```
 
 ## Current scope
 
@@ -50,6 +93,10 @@ npm test
 - Centralized error/not-found responses
 - Liveness and readiness endpoints
 - Graceful SIGINT/SIGTERM shutdown
+- Prisma/MySQL persistence foundation
+- Connection-pool configuration
+- Versioned database migrations
+- Local MySQL development container
 - Automated backend foundation tests
 
-Database, authentication, market-data providers, realtime event distribution, order lifecycle, wallet authority and financial ledger work are intentionally subsequent milestones.
+Authentication, market-data providers, realtime event distribution, order lifecycle, wallet authority and financial ledger business logic remain subsequent milestones.
