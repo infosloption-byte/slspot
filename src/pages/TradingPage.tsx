@@ -95,31 +95,29 @@ export function TradingPage() {
   }, [])
 
   useEffect(() => {
-    setOpenTrades((current) => {
-      const expired = current.filter((trade) => trade.status === 'OPEN' && trade.expiresAt <= now)
-      if (expired.length === 0) return current
+    const expired = openTrades.filter((trade) => trade.status === 'OPEN' && trade.expiresAt <= now)
+    if (expired.length === 0) return
 
-      const remaining = current.filter((trade) => !expired.some((item) => item.id === trade.id))
-      const resolved = expired.map((trade) => {
-        const price = livePrices[trade.symbol] ?? trade.entryPrice
-        const result = resolveTrade(trade, price)
-        return result
-      })
-
-      setSettledTrades((history) => [...resolved, ...history])
-      resolved.forEach((trade) => {
-        const won = trade.status === 'WON'
-        setToasts((items) => [{
-          id: Date.now() + items.length,
-          tone: won ? 'success' : 'error',
-          title: won ? 'Trade won' : 'Trade lost',
-          message: trade.symbol + ' ' + trade.direction + ' · ' + (won ? 'Payout credited' : 'Position settled below target'),
-        }, ...items].slice(0, 4))
-        if (soundEnabled) playTradeSound(won ? 'win' : 'lose')
-      })
-      return remaining
+    const resolved = expired.map((trade) => {
+      const price = livePrices[trade.symbol] ?? trade.entryPrice
+      return resolveTrade(trade, price)
     })
-  }, [livePrices, now, soundEnabled])
+
+    const expiredIds = new Set(expired.map((trade) => trade.id))
+    setOpenTrades((current) => current.filter((trade) => !expiredIds.has(trade.id)))
+    setSettledTrades((history) => [...resolved, ...history])
+
+    resolved.forEach((trade) => {
+      const won = trade.status === 'WON'
+      setToasts((items) => [{
+        id: Date.now() + items.length,
+        tone: won ? 'success' : 'error',
+        title: won ? 'Trade won' : 'Trade lost',
+        message: trade.symbol + ' ' + trade.direction + ' · ' + (won ? 'Payout credited' : 'Position settled below target'),
+      }, ...items].slice(0, 4))
+      if (soundEnabled) playTradeSound(won ? 'win' : 'lose')
+    })
+  }, [livePrices, now, openTrades, soundEnabled])
 
   const addToast = (tone: ToastTone, title: string, message: string) => {
     const id = Date.now()
