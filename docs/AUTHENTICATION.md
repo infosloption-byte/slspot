@@ -70,3 +70,35 @@ The production server passes the authentication service into the realtime gatewa
 ## Remaining authentication follow-ups
 
 Rate limiting/abuse controls, email-provider delivery, MFA, authorization/RBAC, security-event notifications, full device management UX and the final CSRF strategy remain later security work.
+
+
+## Frontend session integration
+
+The React frontend now uses the backend session as its single authentication authority.
+
+```text
+browser
+   ↓
+HttpOnly session cookie
+   ↓
+GET /api/v1/auth/me
+   ↓
+AuthProvider
+   ↓
+ProtectedRoute / account UI
+```
+
+The frontend does not store session tokens in localStorage or sessionStorage.
+
+Implemented frontend behavior:
+
+- Authentication bootstraps through `GET /auth/me`.
+- Login stores the returned authenticated user in in-memory React state.
+- Logout calls the backend and then clears in-memory session state.
+- A `401` API response emits a session-expired event and clears the authenticated state.
+- Protected routes wait for the initial session check before redirecting to login.
+- Registration, email verification, password recovery and reset use the backend authentication endpoints.
+- Development verification/reset tokens can be passed through the existing dev-only backend response; production does not expose those tokens.
+- The account header shows the authenticated email and provides a server-backed sign-out control.
+
+No authentication state is granted by demo/local-storage flags.
