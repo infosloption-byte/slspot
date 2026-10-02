@@ -1,8 +1,22 @@
 import { buildApp } from './app.js'
 import { env } from './config/env.js'
-import { checkDatabase, connectDatabase, disconnectDatabase } from './db/prisma.js'
+import {
+  checkRedis,
+  connectRedis,
+  disconnectRedis,
+  isRedisReady,
+  subscribe,
+  unsubscribe,
+} from './realtime/redis.js'
+import { RealtimeGateway } from './realtime/gateway.js'
 
-const app = buildApp({ checkDatabase })
+const realtimeGateway = new RealtimeGateway()
+const app = buildApp({
+  checkDatabase: async () => (await import('./db/prisma.js')).checkDatabase(),
+  checkRedis,
+  redisRequired: env.redisRequired,
+  realtimeGateway,
+})
 let shuttingDown = false
 
 async function shutdown(signal: string) {
@@ -19,7 +33,11 @@ async function shutdown(signal: string) {
   timeout.unref()
 
   try {
+    await unsubscribe(env.redisChannel)
+    realtimeGateway.closeAll()
     await app.close()
+    disconnectRedis()
+    const { disconnectDatabase } = await import('./db/prisma.js')
     await disconnectDatabase()
     clearTimeout(timeout)
     app.log.info('Shutdown complete')
@@ -39,7 +57,22 @@ process.once('SIGTERM', () => {
 })
 
 try {
+  const { connectDatabase } = await import('./db/prisma.js')
   await connectDatabase()
+
+  try {
+    await connectRedis()
+    await subscribe(env.redisChannel, (message) => {
+      if (isRedisReady()) {
+        realtimeGateway.broadcastSerialized(message)
+      }
+    })
+    app.log.info({ channel: env.redisChannel }, 'Redis realtime broker connected')
+  } catch (error) {
+    if (env.redisRequired) throw error
+    app.log.warn({ err: error }, 'Redis is unavailable; continuing without distributed realtime')
+  }
+
   await app.listen({ host: env.host, port: env.port })
   app.log.info(
     { host: env.host, port: env.port },
