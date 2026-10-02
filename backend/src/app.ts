@@ -21,6 +21,7 @@ type AppOptions = {
   authService?: AuthServiceLike
   apiService?: PlatformApiService
   marketDataService?: import('./market/service.js').MarketDataServiceLike
+  tradingService?: import('./trading/service.js').TradingService
 }
 
 function resolveRequestId(value: string | string[] | undefined): string {
@@ -83,10 +84,14 @@ export function buildApp(options: AppOptions = {}) {
   }
 
   if (options.authService && options.apiService) {
+    if (!options.tradingService) {
+      throw new Error('Trading service is required when platform API routes are registered')
+    }
     registerPlatformApiRoutes(app, {
       authService: options.authService,
       apiService: options.apiService,
       marketDataService: options.marketDataService,
+      tradingService: options.tradingService,
     })
   }
 
