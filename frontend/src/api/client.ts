@@ -90,17 +90,21 @@ export async function apiRequest<T>(
     const body = await readResponseBody(response)
 
     if (!response.ok) {
-      const payload = body as ApiErrorResponse | { message?: string } | null
+      const payload = body as {
+        error?: ApiErrorPayload
+        message?: string
+        requestId?: string
+      } | null
       const message =
-        ('error' in (payload ?? {}) ? payload?.error.message : undefined) ??
+        payload?.error?.message ??
         payload?.message ??
         'Request failed with status ' + response.status
 
       throw new ApiError(
         response.status,
         message,
-        'error' in (payload ?? {}) ? payload?.error.code : undefined,
-        'requestId' in (payload ?? {}) ? payload?.requestId : undefined,
+        payload?.error?.code,
+        payload?.requestId,
       )
     }
 
