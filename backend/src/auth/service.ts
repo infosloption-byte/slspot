@@ -320,12 +320,16 @@ export class AuthService {
     userId: string,
     currency: string,
   ): Promise<void> {
-    const existingAccount = await tx.account.findFirst({
-      where: { userId, status: 'ACTIVE' },
-      orderBy: { createdAt: 'asc' },
+    const normalizedCurrency = currency.slice(0, 3).toUpperCase()
+    const existingAccount = await tx.account.findUnique({
+      where: { userId_currency: { userId, currency: normalizedCurrency } },
     })
 
     if (existingAccount) {
+      if (existingAccount.status !== 'ACTIVE') {
+        return
+      }
+
       const existingWallet = await tx.wallet.findUnique({ where: { accountId: existingAccount.id } })
       if (!existingWallet) {
         await tx.wallet.create({
@@ -345,7 +349,7 @@ export class AuthService {
       data: {
         userId,
         name: 'Primary Trading Account',
-        currency: currency.slice(0, 3).toUpperCase(),
+        currency: normalizedCurrency,
         status: 'ACTIVE',
       },
     })
