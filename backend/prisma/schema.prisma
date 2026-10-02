@@ -284,6 +284,7 @@ model Order {
   durationSeconds Int?
   expiresAt       DateTime?    @db.DateTime(3)
   fee             Decimal      @default(0) @db.Decimal(30, 8)
+  payoutRate      Decimal      @default(0.8) @db.Decimal(8, 6)
   rejectionReason String?      @db.VarChar(255)
   createdAt       DateTime     @default(now()) @db.DateTime(3)
   updatedAt       DateTime     @updatedAt @db.DateTime(3)
