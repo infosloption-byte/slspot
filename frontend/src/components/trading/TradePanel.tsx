@@ -30,6 +30,18 @@ export function TradePanel({ asset, balance, soundEnabled, onToggleSound, onOpen
   const estimatedPayout = amount * asset.payoutRate
   const totalReturn = amount + estimatedPayout
 
+  useEffect(() => {
+    setAmount((current) => Math.min(asset.maxAmount, Math.max(asset.minAmount, current)))
+    setDuration((current) => (
+      asset.durationsSeconds.includes(current)
+        ? current
+        : asset.durationsSeconds[0] ?? current
+    ))
+    setDirection(null)
+    setStage('draft')
+    setError('')
+  }, [asset.assetId, asset.minAmount, asset.maxAmount, asset.durationsSeconds])
+
   const validate = () => {
     if (!Number.isFinite(amount) || amount < asset.minAmount || amount > asset.maxAmount) {
       return 'Stake must be between $' + asset.minAmount.toFixed(2) + ' and $' + asset.maxAmount.toFixed(2) + '.'
