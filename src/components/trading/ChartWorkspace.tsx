@@ -364,7 +364,7 @@ export function ChartWorkspace({ asset, onOpenMarkets, openTrades, now }: ChartW
           </div>
         ) : null}
 
-        <svg className="drawing-layer-svg" aria-hidden="true">
+        <svg className="drawing-layer-svg" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
           {[...drawings, ...(activeDrawing ? [activeDrawing] : [])].map((drawing, index) => (
             drawing.type === 'horizontal'
               ? <line key={index} x1="0" x2="100" y1={drawing.y1} y2={drawing.y1} pathLength="100" />
