@@ -188,8 +188,15 @@ export class PlatformApiService {
     const account = await this.prisma.account.findFirst({
       where: { userId, status: 'ACTIVE' },
       orderBy: { createdAt: 'asc' },
-      include: { wallet: true },
+      include: {
+        wallets: {
+          where: { status: { not: 'CLOSED' } },
+          take: 1,
+        },
+      },
     })
+
+    const wallet = account?.wallets[0]
 
     const [openPositionCount, tradeCount, pnl] = await Promise.all([
       this.prisma.position.count({ where: { userId, status: 'OPEN' } }),
@@ -197,9 +204,11 @@ export class PlatformApiService {
       this.prisma.trade.aggregate({ where: { userId }, _sum: { netPnl: true } }),
     ])
 
-    const availableBalance = account?.wallet?.availableBalance?.toString() ?? '0'
-    const heldBalance = account?.wallet?.heldBalance?.toString() ?? '0'
-    const totalBalance = account?.wallet ? account.wallet.availableBalance.add(account.wallet.heldBalance).toFixed(8) : '0.00000000'
+    const availableBalance = wallet?.availableBalance?.toString() ?? '0'
+    const heldBalance = wallet?.heldBalance?.toString() ?? '0'
+    const totalBalance = wallet
+      ? wallet.availableBalance.add(wallet.heldBalance).toFixed(8)
+      : '0.00000000'
 
     return {
       currency: account?.currency ?? null,
