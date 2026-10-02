@@ -75,7 +75,7 @@ const configByPath = {
   },
 } as const
 
-type Field = typeof configByPath[keyof typeof configByPath]['fields'][number]
+type Field = 'email' | 'password' | 'confirm' | 'token' | 'code' | 'name'
 
 function errorMessage(error: unknown): string {
   if (!(error instanceof ApiError)) return 'Something went wrong. Please try again.'
