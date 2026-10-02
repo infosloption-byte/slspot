@@ -3,10 +3,17 @@ import type { ApiSuccess, PaginatedData } from './contracts'
 
 export type TradeRecord = {
   id: string
+  orderId: string
   status: 'OPEN' | 'WON' | 'LOST' | 'CANCELLED' | 'EXPIRED'
+  direction: 'UP' | 'DOWN'
+  amount: string
+  payoutRate: string
+  durationSeconds: number
+  expiresAt: string | null
   grossPnl: string | null
   fee: string
   netPnl: string | null
+  settlementReference: string | null
   openedAt: string
   closedAt: string | null
   position: {
@@ -27,6 +34,48 @@ export const tradesApi = {
   list: (query: { page?: number; pageSize?: number; status?: TradeRecord['status'] } = {}) =>
     apiClient
       .get<ApiSuccess<PaginatedData<TradeRecord>>>('/trades' + toQueryString(query))
+      .then((response) => response.data),
+
+  create: (input: {
+    assetId: string
+    direction: 'UP' | 'DOWN'
+    amount: string
+    durationSeconds: number
+    clientRequestId: string
+  }) =>
+    apiClient
+      .post<ApiSuccess<{
+        orderId: string
+        tradeId: string
+        positionId: string
+        status: string
+        direction: 'UP' | 'DOWN'
+        amount: string
+        entryPrice: string
+        exitPrice: string | null
+        payoutRate: string
+        fee: string
+        grossPnl: string | null
+        netPnl: string | null
+        openedAt: string
+        closedAt: string | null
+        expiresAt: string | null
+        settlementId: string | null
+        settlementPrice: string | null
+        settlementReference: string | null
+      }>('/trades', input, { idempotencyKey: input.clientRequestId })
+      .then((response) => response.data),
+
+  close: (tradeId: string) =>
+    apiClient
+      .post<ApiSuccess<{
+        tradeId: string
+        status: string
+        grossPnl: string | null
+        netPnl: string | null
+        settlementId: string | null
+        settlementPrice: string | null
+      }>>('/trades/' + encodeURIComponent(tradeId) + '/close')
       .then((response) => response.data),
 }
 
