@@ -55,7 +55,7 @@ export type PlatformApiOptions = {
   authService: AuthServiceLike
   apiService: PlatformApiService
   marketDataService?: MarketDataServiceLike
-  tradingService: TradingService
+  tradingService?: TradingService
 }
 
 export function registerPlatformApiRoutes(app: FastifyInstance, options: PlatformApiOptions): void {
@@ -132,6 +132,9 @@ export function registerPlatformApiRoutes(app: FastifyInstance, options: Platfor
     if (!clientRequestId) {
       throw new AuthError(400, 'IDEMPOTENCY_REQUIRED', 'Idempotency-Key is required for trade creation')
     }
+    if (!options.tradingService) {
+      throw new AuthError(503, 'TRADING_UNAVAILABLE', 'Trading service is unavailable')
+    }
 
     return ok(request, await options.tradingService.createTrade(session.id, {
       assetId: request.body.assetId,
@@ -144,6 +147,9 @@ export function registerPlatformApiRoutes(app: FastifyInstance, options: Platfor
 
   app.post<{ Params: { tradeId: string } }>(PREFIX + '/trades/:tradeId/close', async (request) => {
     const session = await requireSession(request, options.authService)
+    if (!options.tradingService) {
+      throw new AuthError(503, 'TRADING_UNAVAILABLE', 'Trading service is unavailable')
+    }
     return ok(request, await options.tradingService.closeTrade(session.id, request.params.tradeId))
   })
 
