@@ -5,6 +5,7 @@ import { env } from '../config/env.js'
 import { PlatformApiService } from './service.js'
 import { isCandleInterval } from '../market/types.js'
 import type { MarketDataServiceLike } from '../market/service.js'
+import type { TradingService } from '../trading/service.js'
 
 const PREFIX = '/api/v1'
 
@@ -54,6 +55,7 @@ export type PlatformApiOptions = {
   authService: AuthServiceLike
   apiService: PlatformApiService
   marketDataService?: MarketDataServiceLike
+  tradingService: TradingService
 }
 
 export function registerPlatformApiRoutes(app: FastifyInstance, options: PlatformApiOptions): void {
@@ -97,6 +99,52 @@ export function registerPlatformApiRoutes(app: FastifyInstance, options: Platfor
       pageSize: queryNumber(request.query.pageSize),
       status: queryEnum(request.query.status, TRADE_STATUSES, 'Trade status'),
     }))
+  })
+
+  app.post<{
+    Body: {
+      assetId: string
+      direction: 'UP' | 'DOWN'
+      amount: string | number
+      durationSeconds: number
+      clientRequestId?: string
+    }
+  }>(PREFIX + '/trades', {
+    schema: {
+      body: {
+        type: 'object',
+        required: ['assetId', 'direction', 'amount', 'durationSeconds'],
+        additionalProperties: false,
+        properties: {
+          assetId: { type: 'string', minLength: 1, maxLength: 64 },
+          direction: { type: 'string', enum: ['UP', 'DOWN'] },
+          amount: { anyOf: [{ type: 'string', minLength: 1, maxLength: 64 }, { type: 'number', exclusiveMinimum: 0 }] },
+          durationSeconds: { type: 'integer', minimum: 1, maximum: 86400 },
+          clientRequestId: { type: 'string', minLength: 1, maxLength: 128 },
+        },
+      },
+    },
+  }, async (request) => {
+    const session = await requireSession(request, options.authService)
+    const headerKey = request.headers['idempotency-key']
+    const clientRequestId = request.body.clientRequestId
+      ?? (Array.isArray(headerKey) ? headerKey[0] : headerKey)
+    if (!clientRequestId) {
+      throw new AuthError(400, 'IDEMPOTENCY_REQUIRED', 'Idempotency-Key is required for trade creation')
+    }
+
+    return ok(request, await options.tradingService.createTrade(session.id, {
+      assetId: request.body.assetId,
+      direction: request.body.direction,
+      amount: String(request.body.amount),
+      durationSeconds: request.body.durationSeconds,
+      clientRequestId,
+    }))
+  })
+
+  app.post<{ Params: { tradeId: string } }>(PREFIX + '/trades/:tradeId/close', async (request) => {
+    const session = await requireSession(request, options.authService)
+    return ok(request, await options.tradingService.closeTrade(session.id, request.params.tradeId))
   })
 
   app.get(PREFIX + '/wallet', async (request) => {
