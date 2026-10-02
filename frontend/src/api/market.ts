@@ -12,6 +12,14 @@ export type MarketAsset = {
   quoteCurrency: string | null
   priceScale: number
   quantityScale: number
+  trading: {
+    enabled: boolean
+    payoutRate: string
+    minAmount: string
+    maxAmount: string
+    durationsSeconds: number[]
+    feeRate: string
+  }
   market: {
     id: string
     status: 'OPEN' | 'CLOSED' | 'HALTED' | 'MAINTENANCE'
