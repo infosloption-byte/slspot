@@ -1,0 +1,21 @@
+services:
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: slspot
+      MYSQL_USER: slspot
+      MYSQL_PASSWORD: slspot
+      MYSQL_ROOT_PASSWORD: slspot-root
+    ports:
+      - "3307:3306"
+    volumes:
+      - slspot_mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uslspot -pslspot --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  slspot_mysql_data:
