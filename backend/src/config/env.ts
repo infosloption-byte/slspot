@@ -55,15 +55,62 @@ function parseLogLevel(value: string | undefined): LogLevel {
 function parseBoolean(name: string, value: string | undefined, fallback: boolean): boolean {
   const normalized = (value ?? String(fallback)).trim().toLowerCase()
 
-  if (normalized === 'true') {
-    return true
-  }
-
-  if (normalized === 'false') {
-    return false
-  }
+  if (normalized === 'true') return true
+  if (normalized === 'false') return false
 
   throw new Error(`${name} must be true or false`)
+}
+
+function parseDatabaseUrl(
+  value: string | undefined,
+  nodeEnv: NodeEnv,
+): {
+  url: string
+  host: string
+  port: number
+  user: string
+  password: string
+  name: string
+} {
+  const fallback = 'mysql://slspot:slspot@127.0.0.1:3307/slspot'
+  const rawUrl = value ?? fallback
+
+  if (nodeEnv === 'production' && value === undefined) {
+    throw new Error('DATABASE_URL must be explicitly configured in production')
+  }
+
+  let parsed: URL
+
+  try {
+    parsed = new URL(rawUrl)
+  } catch {
+    throw new Error('DATABASE_URL must be a valid MySQL connection URL')
+  }
+
+  if (parsed.protocol !== 'mysql:') {
+    throw new Error('DATABASE_URL must use the mysql:// scheme')
+  }
+
+  const databaseName = parsed.pathname.replace(/^\//, '')
+
+  if (!parsed.hostname || !databaseName) {
+    throw new Error('DATABASE_URL must include a database host and database name')
+  }
+
+  const port = parsed.port ? Number(parsed.port) : 3306
+
+  if (!Number.isInteger(port) || port < 1 || port > 65_535) {
+    throw new Error('DATABASE_URL contains an invalid database port')
+  }
+
+  return {
+    url: parsed.toString(),
+    host: parsed.hostname,
+    port,
+    user: decodeURIComponent(parsed.username),
+    password: decodeURIComponent(parsed.password),
+    name: decodeURIComponent(databaseName),
+  }
 }
 
 function parseCorsOrigins(value: string | undefined, nodeEnv: NodeEnv): string[] {
@@ -104,6 +151,7 @@ function parseCorsOrigins(value: string | undefined, nodeEnv: NodeEnv): string[]
 }
 
 const nodeEnv = parseNodeEnv(process.env.NODE_ENV)
+const database = parseDatabaseUrl(process.env.DATABASE_URL, nodeEnv)
 
 export const env = {
   nodeEnv,
@@ -132,5 +180,13 @@ export const env = {
     1_048_576,
     1_024,
     10_485_760,
+  ),
+  database,
+  databaseConnectionLimit: parsePositiveInteger(
+    'DATABASE_CONNECTION_LIMIT',
+    process.env.DATABASE_CONNECTION_LIMIT,
+    10,
+    1,
+    100,
   ),
 } as const
