@@ -92,7 +92,7 @@ export function calculateSettlementTerms(input: {
     grossPayout,
     netPnl,
     fee,
-    holdAmount: amount.plus(fee),
+    holdAmount: amount,
   }
 }
 
