@@ -223,7 +223,7 @@ export class TradingService {
         const amount = this.parseAmount(input.amount)
         const payoutRate = new Prisma.Decimal(rules.payoutRate)
         const fee = amount.mul(new Prisma.Decimal(rules.feeRate))
-        const holdAmount = amount.plus(fee)
+        const holdAmount = amount
 
         const openPositionTotals = await tx.position.aggregate({
           where: { userId, status: 'OPEN' },
@@ -269,10 +269,10 @@ export class TradingService {
           where: {
             id: wallet!.id,
             status: 'ACTIVE',
-            availableBalance: { gte: holdAmount },
+            availableBalance: { gte: holdAmount.plus(fee) },
           },
           data: {
-            availableBalance: { decrement: holdAmount },
+            availableBalance: { decrement: holdAmount.plus(fee) },
             heldBalance: { increment: holdAmount },
           },
         })
@@ -341,6 +341,35 @@ export class TradingService {
             referenceId: trade.id,
           },
         })
+
+        if (fee.gt(0)) {
+          const feeTx = await tx.walletTransaction.create({
+            data: {
+              walletId: wallet!.id,
+              type: 'FEE',
+              status: 'COMPLETED',
+              amount: fee.neg(),
+              currency: wallet!.currency,
+              idempotencyKey: 'trade-fee:' + trade.id,
+              referenceType: 'TRADE',
+              referenceId: trade.id,
+              description: 'Trading fee for ' + trade.id,
+            },
+          })
+
+          await tx.ledgerEntry.create({
+            data: {
+              transactionId: feeTx.id,
+              accountId: account.id,
+              walletTransactionId: feeTx.id,
+              direction: 'DEBIT',
+              amount: fee,
+              currency: wallet!.currency,
+              referenceType: 'FEE',
+              referenceId: trade.id,
+            },
+          })
+        }
 
         return { kind: 'opened' as const, order: updatedOrder, position, trade, asset }
       })
@@ -523,22 +552,6 @@ export class TradingService {
             currency: wallet.currency,
             referenceType: 'SETTLEMENT',
             referenceId,
-          },
-        })
-      }
-
-      if (terms.fee.gt(0)) {
-        await tx.walletTransaction.create({
-          data: {
-            walletId: wallet.id,
-            type: 'FEE',
-            status: 'COMPLETED',
-            amount: terms.fee.neg(),
-            currency: wallet.currency,
-            idempotencyKey: 'trade-fee:' + tradeId,
-            referenceType: 'TRADE',
-            referenceId: tradeId,
-            description: 'Trading fee for ' + tradeId,
           },
         })
       }
