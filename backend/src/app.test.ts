@@ -3,7 +3,7 @@ import { after, before, describe, it } from 'node:test'
 import { buildApp } from '../src/app.js'
 
 describe('backend HTTP foundation', () => {
-  const app = buildApp()
+  const app = buildApp({ logging: false })
 
   app.get('/test/internal-error', async () => {
     throw new Error('test failure')
