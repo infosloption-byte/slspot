@@ -84,9 +84,6 @@ export function buildApp(options: AppOptions = {}) {
   }
 
   if (options.authService && options.apiService) {
-    if (!options.tradingService) {
-      throw new Error('Trading service is required when platform API routes are registered')
-    }
     registerPlatformApiRoutes(app, {
       authService: options.authService,
       apiService: options.apiService,
