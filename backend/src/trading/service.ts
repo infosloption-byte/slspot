@@ -388,7 +388,11 @@ export class TradingService {
         throw new TradingError(422, 'ORDER_REJECTED', result.order.rejectionReason ?? 'Trade request was rejected')
       }
 
-      const tradingResult = this.toTradingResult(result.trade, result.position, null)
+      const tradingResult = this.toTradingResult(
+        result.trade,
+        { ...result.position, order: result.order, asset: result.asset },
+        null,
+      )
       await this.publishTradeOpened(userId, tradingResult)
       return tradingResult
     } catch (error) {
