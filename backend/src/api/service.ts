@@ -199,7 +199,7 @@ export class PlatformApiService {
 
     const availableBalance = account?.wallet?.availableBalance?.toString() ?? '0'
     const heldBalance = account?.wallet?.heldBalance?.toString() ?? '0'
-    const totalBalance = (Number(availableBalance) + Number(heldBalance)).toFixed(8)
+    const totalBalance = account?.wallet ? account.wallet.availableBalance.add(account.wallet.heldBalance).toFixed(8) : '0.00000000'
 
     return {
       currency: account?.currency ?? null,
@@ -305,7 +305,7 @@ export class PlatformApiService {
       status: wallet.status,
       availableBalance: wallet.availableBalance.toString(),
       heldBalance: wallet.heldBalance.toString(),
-      totalBalance: (Number(wallet.availableBalance) + Number(wallet.heldBalance)).toFixed(8),
+      totalBalance: wallet.availableBalance.add(wallet.heldBalance).toFixed(8),
     }
   }
 
