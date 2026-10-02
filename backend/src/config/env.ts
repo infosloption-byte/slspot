@@ -128,8 +128,12 @@ function parseRedisUrl(value: string | undefined, nodeEnv: NodeEnv): string {
     throw new Error('REDIS_URL must be a valid redis:// or rediss:// URL')
   }
 
-  if (!['redis:', 'rediss:'].includes(parsed.protocol) || parsed.origin !== parsed.protocol + '//' + parsed.host) {
-    throw new Error('REDIS_URL must use redis:// or rediss:// and include only a host/port origin')
+  if (!['redis:', 'rediss:'].includes(parsed.protocol) || !parsed.hostname) {
+    throw new Error('REDIS_URL must use redis:// or rediss:// and include a host')
+  }
+
+  if (parsed.port && (!Number.isInteger(Number(parsed.port)) || Number(parsed.port) < 1 || Number(parsed.port) > 65_535)) {
+    throw new Error('REDIS_URL contains an invalid Redis port')
   }
 
   return parsed.toString()
