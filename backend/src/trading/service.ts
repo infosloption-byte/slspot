@@ -220,6 +220,10 @@ export class TradingService {
         const rules = getTradingRules(asset.symbol, Boolean(market && market.status === 'OPEN'))
         const account = await this.ensureAccount(tx, userId, asset.quoteCurrency ?? 'USD')
         const wallet = await this.ensureWallet(tx, account.id, account.currency, false)
+        if (wallet.status !== 'ACTIVE') {
+          throw new TradingError(403, 'WALLET_NOT_ELIGIBLE', 'The trading wallet is not active')
+        }
+
         const amount = this.parseAmount(input.amount)
         const payoutRate = new Prisma.Decimal(rules.payoutRate)
         const fee = amount.mul(new Prisma.Decimal(rules.feeRate))
