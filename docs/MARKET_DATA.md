@@ -4,7 +4,7 @@
 
 The first market-data adapter is Twelve Data. The provider API key is backend-only and is never sent to the browser.
 
-Twelve Data documents HTTP-header authentication using `Authorization: apikey ...` and REST quote/time-series endpoints. citeturn812593search0turn812593search2
+Twelve Data documents HTTP-header authentication using `Authorization: apikey ...` and REST quote/time-series endpoints.
 
 Configure the backend with:
 
@@ -60,7 +60,7 @@ The application exposes normalized candles through:
 GET /api/v1/market/assets/:assetId/candles?interval=5min&limit=200
 ```
 
-Supported intervals include 1min, 5min, 15min, 30min, 45min, 1h, 2h, 4h, 8h, 1day, 1week and 1month. citeturn812593search0
+Supported intervals include 1min, 5min, 15min, 30min, 45min, 1h, 2h, 4h, 8h, 1day, 1week and 1month.
 
 The Trading Room combines the REST candle snapshot with the application's `market.price` and `market.status` realtime events.
 
@@ -95,7 +95,7 @@ Without a provider key, set `MARKET_DATA_ENABLED=false` to disable polling while
 
 ## Provider transport boundary
 
-The first implementation intentionally uses REST polling instead of making Twelve Data's WebSocket service a hard dependency of SL Spot's browser realtime layer. Twelve Data documents WebSocket streaming with plan-dependent limits. citeturn812593search0turn811464search0turn811464search2
+The first implementation intentionally uses REST polling instead of making Twelve Data's WebSocket service a hard dependency of SL Spot's browser realtime layer. Twelve Data documents WebSocket streaming with plan-dependent limits.
 
 ```text
 external provider
