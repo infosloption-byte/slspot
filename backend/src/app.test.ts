@@ -143,3 +143,72 @@ describe('backend HTTP foundation', () => {
     assert.equal(response.headers['access-control-allow-credentials'], 'true')
   })
 })
+
+
+describe('backend readiness dependencies', () => {
+  it('reports optional redis as unavailable without failing readiness', async () => {
+    const app = buildApp({
+      logging: false,
+      checkDatabase: async () => true,
+      checkRedis: async () => false,
+      redisRequired: false,
+    })
+
+    await app.ready()
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/v1/ready',
+    })
+
+    assert.equal(response.statusCode, 200)
+
+    const body = response.json<{
+      success: boolean
+      data: {
+        status: string
+        checks: {
+          redis: string
+        }
+      }
+    }>()
+
+    assert.equal(body.data.status, 'ready')
+    assert.equal(body.data.checks.redis, 'optional_unavailable')
+
+    await app.close()
+  })
+
+  it('fails readiness when redis is required but unavailable', async () => {
+    const app = buildApp({
+      logging: false,
+      checkDatabase: async () => true,
+      checkRedis: async () => false,
+      redisRequired: true,
+    })
+
+    await app.ready()
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/v1/ready',
+    })
+
+    assert.equal(response.statusCode, 503)
+
+    const body = response.json<{
+      success: boolean
+      data: {
+        status: string
+        checks: {
+          redis: string
+        }
+      }
+    }>()
+
+    assert.equal(body.data.status, 'not_ready')
+    assert.equal(body.data.checks.redis, 'unavailable')
+
+    await app.close()
+  })
+})
