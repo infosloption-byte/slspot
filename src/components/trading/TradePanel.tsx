@@ -30,6 +30,7 @@ export function TradePanel({ asset, soundEnabled, onToggleSound, onOpenTrade }: 
   const [stage, setStage] = useState<OrderStage>('draft')
   const [error, setError] = useState('')
   const [mobileConfigOpen, setMobileConfigOpen] = useState(false)
+  const [mobileDurationOpen, setMobileDurationOpen] = useState(false)
   const durationRef = useRef<HTMLDivElement>(null)
   const estimatedPayout = amount * (asset.payout / 100)
   const totalReturn = amount + estimatedPayout
@@ -182,7 +183,11 @@ export function TradePanel({ asset, soundEnabled, onToggleSound, onOpenTrade }: 
             <div className="trade-mobile-config__panel">
               <div className="trade-mobile-config__grid">
                 <label><span>Stake</span><div className="stepper"><button type="button" onClick={() => adjustAmount(-10)} aria-label="Decrease stake"><Minus size={15} /></button><div className="stepper__value"><span>$</span><input value={amount} onChange={(event) => { setAmount(Number(event.target.value) || 0); resetOrder() }} type="number" inputMode="decimal" /></div><button type="button" onClick={() => adjustAmount(10)} aria-label="Increase stake"><Plus size={15} /></button></div></label>
-                <label><span>Duration</span><button className="mobile-duration-button" type="button" onClick={() => setDurationOpen((open) => !open)}>{formatDuration(duration)} <ChevronDown size={13} /></button></label>
+                <label>
+                  <span>Duration</span>
+                  <button className="mobile-duration-button" type="button" onClick={() => setMobileDurationOpen((open) => !open)} aria-expanded={mobileDurationOpen}>{formatDuration(duration)} <ChevronDown size={13} /></button>
+                  {mobileDurationOpen ? <div className="mobile-duration-options">{[15, 30, 60, 300].map((value) => <button key={value} type="button" className={duration === value ? 'duration-option duration-option--active' : 'duration-option'} onClick={() => { chooseDuration(value); setMobileDurationOpen(false) }}>{formatDuration(value)}</button>)}</div> : null}
+                </label>
               </div>
               <div className="payout-card"><div><span>Potential return</span><strong>+${estimatedPayout.toFixed(2)}</strong></div><small>{asset.payout}% payout · ${totalReturn.toFixed(2)} total</small></div>
               <button type="button" className="trade-panel__sound-button" onClick={onToggleSound}>{soundEnabled ? <Volume2 size={14} /> : <VolumeX size={14} />} {soundEnabled ? 'Sounds on' : 'Sounds off'}</button>
