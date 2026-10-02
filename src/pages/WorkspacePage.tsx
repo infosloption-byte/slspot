@@ -1,5 +1,6 @@
 import { ArrowUpRight, BarChart3, Bell, Check, Clock3, DollarSign, PieChart, ShieldCheck, Smartphone, TrendingUp, WalletCards } from 'lucide-react'
 import { useState } from 'react'
+import type { FormEvent } from 'react'
 import { Link } from 'react-router'
 import { Pagination } from '../components/ui/Pagination'
 import { Select } from '../components/ui/Select'
@@ -116,7 +117,7 @@ function WalletPage() {
   const [transactions, setTransactions] = useState(walletActivity)
   const [page, setPage] = useState(1)
 
-  const submitFunding = (event: React.FormEvent) => {
+  const submitFunding = (event: FormEvent) => {
     event.preventDefault()
     const numericAmount = Number(amount)
     if (!Number.isFinite(numericAmount) || numericAmount <= 0) return
