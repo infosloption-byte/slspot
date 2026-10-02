@@ -4,6 +4,7 @@ import { buildApp } from '../app.js'
 import type { AuthServiceLike } from '../auth/routes.js'
 import type { AuthSession } from '../auth/service.js'
 import type { PlatformApiService } from './service.js'
+import type { CandleInterval } from '../market/types.js'
 
 const session: AuthSession = {
   id: 'user-1',
@@ -57,7 +58,7 @@ const apiService = {
 } as unknown as PlatformApiService
 
 const marketDataService = {
-  getCandles: async (assetId: string, interval: string, _limit: number) => ({
+  getCandles: async (assetId: string, interval: CandleInterval, _limit: number) => ({
     assetId, symbol: 'BTC/USD', interval,
     candles: [{ assetId, symbol: 'BTC/USD', interval, openTime: new Date(0).toISOString(), closeTime: new Date(60_000).toISOString(), open: '100', high: '101', low: '99', close: '100.5', volume: '10' }],
   }),
