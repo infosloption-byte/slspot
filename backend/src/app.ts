@@ -3,6 +3,8 @@ import Fastify, { LogController, type FastifyError, type FastifyRequest } from '
 import cors from '@fastify/cors'
 import { env } from './config/env.js'
 import { RealtimeGateway } from './realtime/gateway.js'
+import cookie from '@fastify/cookie'
+import { registerAuthRoutes, type AuthServiceLike } from './auth/routes.js'
 
 const API_PREFIX = '/api/v1'
 const REQUEST_ID_PATTERN = /^[A-Za-z0-9._:-]{1,128}$/
@@ -28,6 +30,7 @@ type AppOptions = {
   redisRequired?: boolean
   logging?: boolean
   realtimeGateway?: RealtimeGateway
+  authService?: AuthServiceLike
 }
 
 function resolveRequestId(value: string | string[] | undefined): string {
@@ -60,6 +63,8 @@ export function buildApp(options: AppOptions = {}) {
     logController: new LogController({ requestIdLogLabel: 'requestId' }),
   })
 
+  app.register(cookie)
+
   realtimeGateway.register(app)
 
   app.register(cors, {
@@ -82,6 +87,10 @@ export function buildApp(options: AppOptions = {}) {
       )
     }
   })
+
+  if (options.authService) {
+    registerAuthRoutes(app, options.authService)
+  }
 
   app.get(API_PREFIX + '/health', async (request) =>
     successResponse(request, {

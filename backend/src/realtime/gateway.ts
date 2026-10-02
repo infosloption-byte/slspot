@@ -1,5 +1,5 @@
 import websocket from '@fastify/websocket'
-import type { FastifyInstance } from 'fastify'
+import type { FastifyInstance, FastifyRequest } from 'fastify'
 import type { WebSocket } from 'ws'
 import { env } from '../config/env.js'
 import {
@@ -12,30 +12,41 @@ import {
 const WS_PATH = '/ws'
 const HEARTBEAT_MS = 30_000
 
+type AuthenticatedSocket = { userId: string }
+
+export type RealtimeGatewayOptions = {
+  authenticate?: (request: FastifyRequest) => Promise<AuthenticatedSocket | null>
+}
+
 export class RealtimeGateway {
-  private readonly sockets = new Set<WebSocket>()
-  private readonly heartbeatTimers = new Map<
-    WebSocket,
-    ReturnType<typeof setInterval>
-  >()
+  private readonly sockets = new Map<WebSocket, AuthenticatedSocket>()
+  private readonly heartbeatTimers = new Map<WebSocket, ReturnType<typeof setInterval>>()
+
+  constructor(private readonly options: RealtimeGatewayOptions = {}) {}
 
   register(app: FastifyInstance): void {
     app.register(websocket, {
-      options: {
-        maxPayload: env.websocketMaxPayloadBytes,
-      },
+      options: { maxPayload: env.websocketMaxPayloadBytes },
     })
 
-    app.get(WS_PATH, { websocket: true }, (socket) => {
-      this.attach(socket)
+    app.get(WS_PATH, { websocket: true }, async (socket, request) => {
+      if (this.options.authenticate) {
+        const principal = await this.options.authenticate(request)
+        if (!principal) {
+          socket.close(1008, 'Authentication required')
+          return
+        }
+        this.attach(socket, principal)
+        return
+      }
+
+      this.attach(socket, { userId: 'anonymous' })
     })
   }
 
   broadcastSerialized(message: string): void {
-    for (const socket of this.sockets) {
-      if (socket.readyState === 1) {
-        socket.send(message)
-      }
+    for (const socket of this.sockets.keys()) {
+      if (socket.readyState === 1) socket.send(message)
     }
   }
 
@@ -44,34 +55,27 @@ export class RealtimeGateway {
   }
 
   closeAll(): void {
-    for (const socket of this.sockets) {
-      socket.close(1001, 'Server shutting down')
-    }
-
-    for (const timer of this.heartbeatTimers.values()) {
-      clearInterval(timer)
-    }
-
+    for (const socket of this.sockets.keys()) socket.close(1001, 'Server shutting down')
+    for (const timer of this.heartbeatTimers.values()) clearInterval(timer)
     this.sockets.clear()
     this.heartbeatTimers.clear()
   }
 
-  private attach(socket: WebSocket): void {
-    this.sockets.add(socket)
+  private attach(socket: WebSocket, principal: AuthenticatedSocket): void {
+    this.sockets.set(socket, principal)
 
     socket.send(
       serializeRealtimeEvent(
         createRealtimeEvent('connection.ready', {
           version: 1,
           heartbeatMs: HEARTBEAT_MS,
+          authenticated: true,
         }),
       ),
     )
 
     const timer = setInterval(() => {
-      if (socket.readyState === 1) {
-        socket.ping()
-      }
+      if (socket.readyState === 1) socket.ping()
     }, HEARTBEAT_MS)
 
     timer.unref()
@@ -79,25 +83,17 @@ export class RealtimeGateway {
 
     socket.on('message', (raw) => {
       const message = raw.toString()
-
       if (message === 'ping') {
-        socket.send(
-          serializeRealtimeEvent(createRealtimeEvent('connection.pong', {})),
-        )
+        socket.send(serializeRealtimeEvent(createRealtimeEvent('connection.pong', {})))
         return
       }
 
       const event = parseRealtimeEvent(message)
-
-      if (event?.type === 'connection.pong') {
-        return
-      }
+      if (event?.type === 'connection.pong') return
 
       socket.send(
         serializeRealtimeEvent(
-          createRealtimeEvent('connection.pong', {
-            accepted: false,
-          }),
+          createRealtimeEvent('connection.pong', { accepted: false }),
         ),
       )
     })
@@ -108,13 +104,8 @@ export class RealtimeGateway {
 
   private remove(socket: WebSocket): void {
     this.sockets.delete(socket)
-
     const timer = this.heartbeatTimers.get(socket)
-
-    if (timer) {
-      clearInterval(timer)
-    }
-
+    if (timer) clearInterval(timer)
     this.heartbeatTimers.delete(socket)
   }
 }

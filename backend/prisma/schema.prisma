@@ -135,6 +135,11 @@ enum NotificationType {
   SYSTEM
 }
 
+enum AuthTokenType {
+  EMAIL_VERIFICATION
+  PASSWORD_RESET
+}
+
 model User {
   id            String       @id @default(uuid()) @db.Char(36)
   email         String       @unique @db.VarChar(191)
@@ -143,10 +148,12 @@ model User {
   countryCode   String?      @db.Char(2)
   createdAt     DateTime     @default(now()) @db.DateTime(3)
   updatedAt     DateTime     @updatedAt @db.DateTime(3)
-  lastLoginAt   DateTime?    @db.DateTime(3)
+  lastLoginAt       DateTime?    @db.DateTime(3)
+  emailVerifiedAt   DateTime?    @db.DateTime(3)
 
   sessions      Session[]
   devices       Device[]
+  authTokens    AuthToken[]
   accounts      Account[]
   orders        Order[]
   positions     Position[]
@@ -171,6 +178,21 @@ model Session {
 
   @@index([userId, expiresAt])
   @@index([userId, revokedAt])
+}
+
+model AuthToken {
+  id         String        @id @default(uuid()) @db.Char(36)
+  userId     String        @db.Char(36)
+  type       AuthTokenType
+  tokenHash  String        @unique @db.VarChar(191)
+  expiresAt  DateTime      @db.DateTime(3)
+  consumedAt DateTime?     @db.DateTime(3)
+  createdAt  DateTime      @default(now()) @db.DateTime(3)
+
+  user       User          @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([userId, type, expiresAt])
+  @@index([userId, type, consumedAt])
 }
 
 model Device {

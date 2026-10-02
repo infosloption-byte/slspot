@@ -1,4 +1,5 @@
 import { buildApp } from './app.js'
+import { AuthService } from './auth/service.js'
 import { env } from './config/env.js'
 import {
   checkRedis,
@@ -15,12 +16,16 @@ import {
   disconnectDatabase,
 } from './db/prisma.js'
 
-const realtimeGateway = new RealtimeGateway()
+const authService = new AuthService(prisma)
+const realtimeGateway = new RealtimeGateway({
+  authenticate: (request) => authService.authenticateWebSocket(request),
+})
 const app = buildApp({
   checkDatabase,
   checkRedis,
   redisRequired: env.redisRequired,
   realtimeGateway,
+  authService,
 })
 let shuttingDown = false
 
