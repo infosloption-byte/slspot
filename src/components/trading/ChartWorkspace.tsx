@@ -54,12 +54,17 @@ function calculateSma(candles: ReturnType<typeof generateMockCandles>, period = 
 function calculateRsi(candles: ReturnType<typeof generateMockCandles>, period = 14) {
   const points = candles.map((candle, index) => {
     if (index === 0) return 50
-    const change = candle.close - candles[index - 1].close
+    const previous = candles[index - 1]
+    if (!previous) return 50
+    const change = candle.close - previous.close
     const start = Math.max(1, index - period + 1)
     let gain = 0
     let loss = 0
     for (let cursor = start; cursor <= index; cursor += 1) {
-      const delta = candles[cursor].close - candles[cursor - 1].close
+      const current = candles[cursor]
+      const previous = candles[cursor - 1]
+      if (!current || !previous) continue
+      const delta = current.close - previous.close
       if (delta >= 0) gain += delta
       else loss += Math.abs(delta)
     }
