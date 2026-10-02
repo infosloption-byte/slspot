@@ -1,30 +1,107 @@
-import { Check, Crosshair, Grid2X2, Maximize2, Plus, Settings2 } from 'lucide-react'
+import {
+  AreaChart,
+  Check,
+  ChevronDown,
+  Crosshair,
+  Eraser,
+  Grid2X2,
+  LineChart,
+  Maximize2,
+  Minus,
+  Settings2,
+  Slash,
+  TrendingUp,
+} from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { CandlestickSeries, ColorType, CrosshairMode, createChart, type IChartApi } from 'lightweight-charts'
+import {
+  AreaSeries,
+  CandlestickSeries,
+  ColorType,
+  CrosshairMode,
+  LineSeries,
+  createChart,
+  type IChartApi,
+} from 'lightweight-charts'
 import type { MarketAsset } from '../../data/mockMarket'
 import { generateMockCandles } from '../../data/mockCandles'
+import type { OpenTrade } from '../../types/trading'
+import { tradeProgress, tradeRemainingSeconds } from '../../types/trading'
 import { formatPercent, formatPrice } from '../../lib/format'
 import { IconButton } from '../ui/IconButton'
 
-type ChartWorkspaceProps = { asset: MarketAsset; onOpenMarkets: () => void }
+type ChartType = 'candles' | 'line' | 'area'
+type DrawingTool = 'none' | 'horizontal' | 'trend'
+
+type ChartWorkspaceProps = {
+  asset: MarketAsset
+  onOpenMarkets: () => void
+  openTrades: OpenTrade[]
+  now: number
+}
+
 const timeframes = ['1m', '5m', '15m', '30m', '1H', '4H', '1D']
+
+function calculateSma(candles: ReturnType<typeof generateMockCandles>, period = 14) {
+  return candles.map((candle, index) => {
+    const start = Math.max(0, index - period + 1)
+    const slice = candles.slice(start, index + 1)
+    const value = slice.reduce((sum, item) => sum + item.close, 0) / slice.length
+    return { time: candle.time, value }
+  })
+}
+
+function calculateRsi(candles: ReturnType<typeof generateMockCandles>, period = 14) {
+  const points = candles.map((candle, index) => {
+    if (index === 0) return 50
+    const change = candle.close - candles[index - 1].close
+    const start = Math.max(1, index - period + 1)
+    let gain = 0
+    let loss = 0
+    for (let cursor = start; cursor <= index; cursor += 1) {
+      const delta = candles[cursor].close - candles[cursor - 1].close
+      if (delta >= 0) gain += delta
+      else loss += Math.abs(delta)
+    }
+    const count = index - start + 1
+    gain /= Math.max(1, count)
+    loss /= Math.max(1, count)
+    if (loss === 0) return change > 0 ? 100 : 50
+    const rs = gain / loss
+    return 100 - 100 / (1 + rs)
+  })
+  return points
+}
+
+function formatCountdown(seconds: number) {
+  const safe = Math.max(0, seconds)
+  if (safe < 60) return safe + 's'
+  const minutes = Math.floor(safe / 60)
+  const remainder = safe % 60
+  return minutes + ':' + remainder.toString().padStart(2, '0')
+}
 
 function ChartCanvas({
   asset,
   timeframe,
+  chartType,
   crosshairEnabled,
   gridEnabled,
   priceLineEnabled,
+  maEnabled,
 }: {
   asset: MarketAsset
   timeframe: string
+  chartType: ChartType
   crosshairEnabled: boolean
   gridEnabled: boolean
   priceLineEnabled: boolean
+  maEnabled: boolean
 }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const chartRef = useRef<IChartApi | null>(null)
-  const candles = useMemo(() => generateMockCandles(asset, timeframe), [asset, timeframe])
+  const candles = useMemo(() => generateMockCandles(asset, timeframe), [asset.symbol, timeframe])
+  const closes = useMemo(() => candles.map((candle) => ({ time: candle.time, value: candle.close })), [candles])
+  const sma = useMemo(() => calculateSma(candles), [candles])
 
   useEffect(() => {
     const container = containerRef.current
@@ -32,36 +109,48 @@ function ChartCanvas({
 
     const chart = createChart(container, {
       width: container.clientWidth,
-      height: Math.max(container.clientHeight, 260),
-      layout: { background: { type: ColorType.Solid, color: 'transparent' }, textColor: '#6c6c76', attributionLogo: false },
+      height: Math.max(container.clientHeight, 240),
+      layout: { background: { type: ColorType.Solid, color: 'transparent' }, textColor: '#9a9aa4', attributionLogo: false },
       grid: {
-        vertLines: { color: gridEnabled ? 'rgba(255,255,255,.04)' : 'transparent' },
-        horzLines: { color: gridEnabled ? 'rgba(255,255,255,.04)' : 'transparent' },
+        vertLines: { color: gridEnabled ? 'rgba(255,255,255,.045)' : 'transparent' },
+        horzLines: { color: gridEnabled ? 'rgba(255,255,255,.045)' : 'transparent' },
       },
       crosshair: {
         mode: crosshairEnabled ? CrosshairMode.Normal : CrosshairMode.Hidden,
-        vertLine: { color: 'rgba(255,194,26,.4)', width: 1, labelBackgroundColor: '#2a2a31', labelVisible: crosshairEnabled },
-        horzLine: { color: 'rgba(255,194,26,.25)', width: 1, labelBackgroundColor: '#2a2a31', labelVisible: crosshairEnabled },
+        vertLine: { color: 'rgba(255,194,26,.28)', width: 1, labelVisible: crosshairEnabled },
+        horzLine: { color: 'rgba(255,194,26,.18)', width: 1, labelVisible: crosshairEnabled },
       },
-      rightPriceScale: { borderColor: 'rgba(255,255,255,.07)', scaleMargins: { top: 0.08, bottom: 0.1 } },
-      timeScale: { borderColor: 'rgba(255,255,255,.07)', timeVisible: true, secondsVisible: false, rightOffset: 5 },
+      rightPriceScale: { borderColor: 'rgba(255,255,255,.08)', scaleMargins: { top: 0.08, bottom: 0.1 } },
+      timeScale: { borderColor: 'rgba(255,255,255,.08)', timeVisible: true, secondsVisible: false, rightOffset: 5 },
       handleScale: { axisPressedMouseMove: true, mouseWheel: true, pinch: true },
       handleScroll: { mouseWheel: true, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: true },
     })
 
-    const series = chart.addSeries(CandlestickSeries, { upColor: '#1fd27a', downColor: '#ff4d5e', borderVisible: false, lastValueVisible: false, priceLineVisible: false, wickUpColor: '#1fd27a', wickDownColor: '#ff4d5e' })
-    series.setData(candles)
+    const commonLine = { color: '#ffc21a', lineWidth: 2 as const, lastValueVisible: false, priceLineVisible: false }
+    const series = chartType === 'candles'
+      ? chart.addSeries(CandlestickSeries, { upColor: '#1fd27a', downColor: '#ff4d5e', borderVisible: false, wickUpColor: '#1fd27a', wickDownColor: '#ff4d5e' })
+      : chartType === 'area'
+        ? chart.addSeries(AreaSeries, { topColor: 'rgba(255,194,26,.22)', bottomColor: 'rgba(255,194,26,.01)', lineColor: '#ffc21a', lineWidth: 2 })
+        : chart.addSeries(LineSeries, { color: '#ffc21a', lineWidth: 2 })
+
+    if (chartType === 'candles') series.setData(candles)
+    else series.setData(closes)
+
+    if (maEnabled) {
+      const maSeries = chart.addSeries(LineSeries, commonLine)
+      maSeries.setData(sma)
+    }
+
     if (priceLineEnabled) {
       series.createPriceLine({ price: asset.price, color: '#ffc21a', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'Last' })
     }
 
     chart.timeScale().fitContent()
     chartRef.current = chart
-
     const resizeObserver = new ResizeObserver((entries) => {
       const rect = entries[0]?.contentRect
       if (!rect) return
-      chart.applyOptions({ width: Math.floor(rect.width), height: Math.max(Math.floor(rect.height), 260) })
+      chart.applyOptions({ width: Math.floor(rect.width), height: Math.max(Math.floor(rect.height), 240) })
     })
     resizeObserver.observe(container)
 
@@ -70,39 +159,47 @@ function ChartCanvas({
       chartRef.current = null
       chart.remove()
     }
-  }, [asset, candles, crosshairEnabled, gridEnabled, priceLineEnabled])
+  }, [asset.symbol, timeframe, chartType, crosshairEnabled, gridEnabled, priceLineEnabled, maEnabled, candles, closes, sma])
+
+  useEffect(() => {
+    if (!chartRef.current) return
+    chartRef.current.timeScale().fitContent()
+  }, [asset.price])
 
   return (
     <div className="chart-canvas-shell">
-      <div ref={containerRef} className="chart-canvas" role="img" aria-label={asset.symbol + ' candlestick market chart'} />
+      <div ref={containerRef} className="chart-canvas" role="img" aria-label={asset.symbol + ' ' + chartType + ' market chart'} />
       <div className="chart-attribution">Demo OHLC</div>
     </div>
   )
 }
 
-export function ChartWorkspace({ asset, onOpenMarkets }: ChartWorkspaceProps) {
+export function ChartWorkspace({ asset, onOpenMarkets, openTrades, now }: ChartWorkspaceProps) {
   const [timeframe, setTimeframe] = useState('5m')
   const [crosshairEnabled, setCrosshairEnabled] = useState(true)
   const [gridEnabled, setGridEnabled] = useState(true)
   const [priceLineEnabled, setPriceLineEnabled] = useState(true)
+  const [maEnabled, setMaEnabled] = useState(true)
+  const [rsiEnabled, setRsiEnabled] = useState(false)
+  const [chartType, setChartType] = useState<ChartType>('candles')
   const [optionsOpen, setOptionsOpen] = useState(false)
+  const [drawingTool, setDrawingTool] = useState<DrawingTool>('none')
+  const [drawings, setDrawings] = useState<Array<{ type: DrawingTool; x1: number; y1: number; x2: number; y2: number }>>([])
+  const [activeDrawing, setActiveDrawing] = useState<{ type: DrawingTool; x1: number; y1: number; x2: number; y2: number } | null>(null)
   const workspaceRef = useRef<HTMLElement>(null)
   const optionsRef = useRef<HTMLDivElement>(null)
+  const stageRef = useRef<HTMLDivElement>(null)
   const price = formatPrice(asset.price, asset.price < 10 ? 5 : 2)
-  const changeClass = asset.change >= 0 ? 'text-positive' : 'text-negative'
+  const rsi = useMemo(() => calculateRsi(generateMockCandles(asset, timeframe)), [asset.symbol, asset.price, timeframe])
 
   useEffect(() => {
     if (!optionsOpen) return
-
     const handlePointerDown = (event: PointerEvent) => {
-      if (optionsRef.current && !optionsRef.current.contains(event.target as Node)) {
-        setOptionsOpen(false)
-      }
+      if (optionsRef.current && !optionsRef.current.contains(event.target as Node)) setOptionsOpen(false)
     }
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') setOptionsOpen(false)
     }
-
     document.addEventListener('pointerdown', handlePointerDown)
     document.addEventListener('keydown', handleKeyDown)
     return () => {
@@ -120,72 +217,98 @@ export function ChartWorkspace({ asset, onOpenMarkets }: ChartWorkspaceProps) {
     await workspaceRef.current.requestFullscreen()
   }
 
+  const toPercentPoint = (event: React.PointerEvent<HTMLDivElement>) => {
+    const rect = stageRef.current?.getBoundingClientRect()
+    if (!rect) return { x: 50, y: 50 }
+    return {
+      x: Math.max(0, Math.min(100, ((event.clientX - rect.left) / rect.width) * 100)),
+      y: Math.max(0, Math.min(100, ((event.clientY - rect.top) / rect.height) * 100)),
+    }
+  }
+
+  const handleDrawingStart = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (drawingTool === 'none') return
+    const point = toPercentPoint(event)
+    const next = { type: drawingTool, x1: point.x, y1: point.y, x2: point.x, y2: point.y }
+    setActiveDrawing(next)
+    event.currentTarget.setPointerCapture(event.pointerId)
+  }
+
+  const handleDrawingMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!activeDrawing) return
+    const point = toPercentPoint(event)
+    setActiveDrawing((current) => current ? { ...current, x2: point.x, y2: point.y } : current)
+  }
+
+  const handleDrawingEnd = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!activeDrawing) return
+    const point = toPercentPoint(event)
+    const completed = { ...activeDrawing, x2: point.x, y2: point.y }
+    setDrawings((current) => [...current, completed])
+    setActiveDrawing(null)
+    if (drawingTool === 'horizontal') setDrawingTool('none')
+    try { event.currentTarget.releasePointerCapture(event.pointerId) } catch {}
+  }
+
+  const indicatorData = rsi.slice(-50)
+  const rsiPolyline = indicatorData.map((value, index) => {
+    const x = indicatorData.length === 1 ? 50 : (index / (indicatorData.length - 1)) * 100
+    return x.toFixed(2) + ',' + (100 - value).toFixed(2)
+  }).join(' ')
+
   return (
     <section ref={workspaceRef} className="chart-workspace panel">
       <div className="simple-chart-toolbar">
-        <div className="asset-tabs">
-          <button className="market-trigger" type="button" onClick={onOpenMarkets} aria-label="Choose market" title="Choose market">
-            <span className={'asset-icon asset-icon--' + asset.accent} aria-hidden="true">{asset.symbol.slice(0, 1)}</span>
-            <span className="market-trigger__copy"><strong>{asset.symbol}</strong><small>{asset.category}</small></span>
-            <span className="market-trigger__price"><strong>{price}</strong><small className={changeClass}>{formatPercent(asset.change)}</small></span>
-          </button>
-          <button className="asset-tabs__add" type="button" onClick={onOpenMarkets} aria-label="Add or change market" title="Markets">
-            <Plus size={16} strokeWidth={2.4} />
-          </button>
-        </div>
+        <button className="market-trigger" type="button" onClick={onOpenMarkets} aria-label="Choose market" title="Choose market">
+          <span className={'asset-icon asset-icon--' + asset.accent} aria-hidden="true">{asset.symbol.slice(0, 1)}</span>
+          <span className="market-trigger__copy"><strong>{asset.symbol}</strong><small>{asset.name}</small></span>
+          <span className="market-trigger__price"><strong>{price}</strong><small className={asset.change >= 0 ? 'text-positive' : 'text-negative'}>{formatPercent(asset.change)} 24h</small></span>
+          <ChevronDown size={14} />
+        </button>
 
         <div className="chart-timeframes" aria-label="Chart timeframe">
           {timeframes.map((value) => (
-            <button
-              className={timeframe === value ? 'timeframe timeframe--active' : 'timeframe'}
-              key={value}
-              onClick={() => setTimeframe(value)}
-              type="button"
-              aria-pressed={timeframe === value}
-            >
-              {value}
-            </button>
+            <button className={timeframe === value ? 'timeframe timeframe--active' : 'timeframe'} key={value} onClick={() => setTimeframe(value)} type="button" aria-pressed={timeframe === value}>{value}</button>
           ))}
         </div>
 
         <div className="chart-tools" aria-label="Chart controls">
-          <IconButton
-            label={crosshairEnabled ? 'Disable crosshair' : 'Enable crosshair'}
-            active={crosshairEnabled}
-            className="chart-tool-icon"
-            onClick={() => setCrosshairEnabled((value) => !value)}
-          >
-            <Crosshair size={15} />
-          </IconButton>
+          <IconButton label={crosshairEnabled ? 'Disable crosshair' : 'Enable crosshair'} active={crosshairEnabled} onClick={() => setCrosshairEnabled((value) => !value)}><Crosshair size={16} /></IconButton>
           <div className="chart-options" ref={optionsRef}>
-            <IconButton
-              label="Chart options"
-              active={optionsOpen}
-              className="chart-tool-icon"
-              onClick={() => setOptionsOpen((value) => !value)}
-              aria-expanded={optionsOpen}
-              aria-haspopup="dialog"
-            >
-              <Settings2 size={15} />
-            </IconButton>
-
-            {optionsOpen && (
+            <IconButton label="Chart options" active={optionsOpen} onClick={() => setOptionsOpen((value) => !value)} aria-expanded={optionsOpen} aria-haspopup="dialog"><Settings2 size={16} /></IconButton>
+            {optionsOpen ? (
               <div className="chart-options__popover" role="dialog" aria-label="Chart options">
                 <div className="chart-options__header">
-                  <div>
-                    <span>Chart options</span>
-                    <small>Keep the chart clean</small>
+                  <div><span>Chart options</span><small>Keep the chart focused</small></div>
+                  <Settings2 size={15} />
+                </div>
+                <div className="chart-option-group">
+                  <span className="chart-option-group__label">Chart type</span>
+                  <div className="chart-type-switch">
+                    {([
+                      ['candles', 'Candles', TrendingUp],
+                      ['line', 'Line', LineChart],
+                      ['area', 'Area', AreaChart],
+                    ] as const).map(([value, label, Icon]) => (
+                      <button key={value} type="button" className={chartType === value ? 'chart-type chart-type--active' : 'chart-type'} onClick={() => setChartType(value)}>
+                        <Icon size={14} /><span>{label}</span>
+                      </button>
+                    ))}
                   </div>
-                  <Settings2 size={14} aria-hidden="true" />
                 </div>
 
-                <button className="chart-option" type="button" onClick={() => setCrosshairEnabled((value) => !value)}>
-                  <span><Crosshair size={14} /><span><strong>Crosshair</strong><small>Inspect exact candle values</small></span></span>
-                  <span className={crosshairEnabled ? 'chart-option__check chart-option__check--active' : 'chart-option__check'}>{crosshairEnabled && <Check size={12} />}</span>
+                <button className="chart-option" type="button" onClick={() => setMaEnabled((value) => !value)}>
+                  <span><TrendingUp size={14} /><span><strong>MA (14)</strong><small>Moving average overlay</small></span></span>
+                  <span className={maEnabled ? 'chart-option__check chart-option__check--active' : 'chart-option__check'}>{maEnabled && <Check size={12} />}</span>
+                </button>
+
+                <button className="chart-option" type="button" onClick={() => setRsiEnabled((value) => !value)}>
+                  <span><LineChart size={14} /><span><strong>RSI (14)</strong><small>Momentum panel below the chart</small></span></span>
+                  <span className={rsiEnabled ? 'chart-option__check chart-option__check--active' : 'chart-option__check'}>{rsiEnabled && <Check size={12} />}</span>
                 </button>
 
                 <button className="chart-option" type="button" onClick={() => setGridEnabled((value) => !value)}>
-                  <span><Grid2X2 size={14} /><span><strong>Grid</strong><small>Show chart guide lines</small></span></span>
+                  <span><Grid2X2 size={14} /><span><strong>Grid</strong><small>Show guide lines</small></span></span>
                   <span className={gridEnabled ? 'chart-option__check chart-option__check--active' : 'chart-option__check'}>{gridEnabled && <Check size={12} />}</span>
                 </button>
 
@@ -193,28 +316,78 @@ export function ChartWorkspace({ asset, onOpenMarkets }: ChartWorkspaceProps) {
                   <span><span className="chart-option__line-icon" /><span><strong>Last price</strong><small>Show the current-price marker</small></span></span>
                   <span className={priceLineEnabled ? 'chart-option__check chart-option__check--active' : 'chart-option__check'}>{priceLineEnabled && <Check size={12} />}</span>
                 </button>
+
+                <div className="chart-option-group">
+                  <span className="chart-option-group__label">Drawing tools</span>
+                  <div className="drawing-tools">
+                    <button type="button" className={drawingTool === 'horizontal' ? 'drawing-tool drawing-tool--active' : 'drawing-tool'} onClick={() => { setDrawingTool('horizontal'); setOptionsOpen(false) }}><Minus size={14} /> Horizontal</button>
+                    <button type="button" className={drawingTool === 'trend' ? 'drawing-tool drawing-tool--active' : 'drawing-tool'} onClick={() => { setDrawingTool('trend'); setOptionsOpen(false) }}><Slash size={14} /> Trend line</button>
+                    <button type="button" className="drawing-tool" onClick={() => setDrawings([])}><Eraser size={14} /> Clear</button>
+                  </div>
+                </div>
+
+                <div className="chart-options__footer">
+                  <button type="button" className="quiet-button" onClick={() => { setCrosshairEnabled(true); setGridEnabled(true); setPriceLineEnabled(true); setMaEnabled(true); setRsiEnabled(false); setChartType('candles'); setDrawingTool('none') }}>Reset chart</button>
+                </div>
               </div>
-            )}
+            ) : null}
           </div>
-          <IconButton label="Fullscreen chart" className="chart-tool-icon" onClick={handleFullscreen}>
-            <Maximize2 size={15} />
-          </IconButton>
+          <IconButton label="Fullscreen chart" onClick={handleFullscreen}><Maximize2 size={16} /></IconButton>
         </div>
       </div>
 
-      <div className="chart-stage">
-        <ChartCanvas
-          asset={asset}
-          timeframe={timeframe}
-          crosshairEnabled={crosshairEnabled}
-          gridEnabled={gridEnabled}
-          priceLineEnabled={priceLineEnabled}
-        />
+      <div className={rsiEnabled ? 'chart-stage chart-stage--rsi' : 'chart-stage'} ref={stageRef}>
+        <ChartCanvas asset={asset} timeframe={timeframe} chartType={chartType} crosshairEnabled={crosshairEnabled} gridEnabled={gridEnabled} priceLineEnabled={priceLineEnabled} maEnabled={maEnabled} />
+
+        <div className="trade-chart-markers" aria-hidden="true">
+          {openTrades.map((trade) => {
+            const remaining = tradeRemainingSeconds(trade, now)
+            const progress = tradeProgress(trade, now)
+            const priceDelta = asset.price > 0 ? (trade.entryPrice - asset.price) / (asset.price * 0.004) : 0
+            const y = Math.max(10, Math.min(88, 50 + priceDelta * 30))
+            const directionClass = trade.direction === 'UP' ? 'trade-chart-marker--up' : 'trade-chart-marker--down'
+            return (
+              <div key={trade.id} className={'trade-chart-marker ' + directionClass} style={{ top: y + '%' }}>
+                <span className="trade-chart-marker__line" />
+                <span className="trade-chart-marker__label"><b>{trade.direction}</b><small>{formatPrice(trade.entryPrice, trade.entryPrice < 10 ? 5 : 2)}</small><em>{formatCountdown(remaining)}</em></span>
+                <span className="trade-chart-marker__progress" style={{ width: (progress * 100) + '%' }} />
+              </div>
+            )
+          })}
+        </div>
+
+        {drawingTool !== 'none' ? (
+          <div className="drawing-layer" onPointerDown={handleDrawingStart} onPointerMove={handleDrawingMove} onPointerUp={handleDrawingEnd} onPointerCancel={handleDrawingEnd} role="application" aria-label="Drawing canvas">
+            <div className="drawing-layer__hint">{drawingTool === 'horizontal' ? 'Click to place a level' : 'Drag to draw a trend line'} · Esc to cancel</div>
+          </div>
+        ) : null}
+
+        <svg className="drawing-layer-svg" aria-hidden="true">
+          {[...drawings, ...(activeDrawing ? [activeDrawing] : [])].map((drawing, index) => (
+            drawing.type === 'horizontal'
+              ? <line key={index} x1="0" x2="100" y1={drawing.y1} y2={drawing.y1} pathLength="100" />
+              : <line key={index} x1={drawing.x1} y1={drawing.y1} x2={drawing.x2} y2={drawing.y2} pathLength="100" />
+          ))}
+        </svg>
+
+        {priceLineEnabled ? <div className="chart-price-tag"><span>{price}</span><small>{formatPercent(asset.change)}</small></div> : null}
+
+        {rsiEnabled ? (
+          <div className="chart-rsi-panel">
+            <div className="chart-rsi-panel__label"><span>RSI 14</span><strong>{Math.round(rsi[rsi.length - 1] ?? 50)}</strong></div>
+            <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-label="RSI indicator">
+              <line x1="0" x2="100" y1="30" y2="30" />
+              <line x1="0" x2="100" y1="70" y2="70" />
+              <polyline points={rsiPolyline} />
+            </svg>
+          </div>
+        ) : null}
       </div>
 
       <div className="chart-bottom-status">
-        <span><i className="live-dot" /> Demo market</span>
+        <span><i className="live-dot" /> Live demo</span>
         <span>{timeframe}</span>
+        <span>{chartType === 'candles' ? 'Candles' : chartType === 'line' ? 'Line' : 'Area'}</span>
         <span className="chart-bottom-status__spacer" />
         <span className="chart-help-text">Scroll to zoom · drag to pan</span>
       </div>
