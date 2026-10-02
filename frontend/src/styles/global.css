@@ -649,7 +649,15 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
 }
 .access-form input:focus { border-color:var(--accent); }
 .access-form__message { padding:10px 12px; border:1px solid var(--accent-line); border-radius:var(--radius-md); color:var(--accent); background:var(--accent-soft); font-size:12px; line-height:1.45; }
-.access-card__demo { width:100%; margin-top:10px; }
+.access-form__message--error { color:var(--red); border-color:rgba(255,77,94,.24); background:var(--red-soft); }
+.access-card__secondary { width:100%; margin-top:10px; }
+
+.route-loading { min-height:100dvh; display:grid; place-items:center; padding:24px; background:radial-gradient(circle at 50% -10%, rgba(255, 194, 26, 0.12), transparent 45%), var(--bg-0); }
+.route-loading__card { display:flex; align-items:center; gap:14px; width:min(420px, 100%); padding:20px; }
+.route-loading__mark { width:40px; height:40px; display:grid; place-items:center; flex:none; border-radius:11px; background:var(--accent); color:var(--accent-ink); font-weight:900; letter-spacing:-0.04em; }
+.route-loading__card strong, .route-loading__card small { display:block; }
+.route-loading__card strong { margin-top:2px; font-size:15px; }
+.route-loading__card small { margin-top:4px; color:var(--muted); font-size:12px; }
 .access-card__footer { display:flex; justify-content:space-between; gap:10px; margin-top:18px; color:var(--muted); font-size:12px; }
 .access-card__footer a { color:var(--accent); text-decoration:none; font-weight:700; }
 
