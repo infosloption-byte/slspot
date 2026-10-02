@@ -13,6 +13,7 @@ import {
   TrendingUp,
 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import type { PointerEvent as ReactPointerEvent } from 'react'
 import {
   AreaSeries,
   CandlestickSeries,
@@ -127,22 +128,23 @@ function ChartCanvas({
     })
 
     const commonLine = { color: '#ffc21a', lineWidth: 2 as const, lastValueVisible: false, priceLineVisible: false }
-    const series = chartType === 'candles'
-      ? chart.addSeries(CandlestickSeries, { upColor: '#1fd27a', downColor: '#ff4d5e', borderVisible: false, wickUpColor: '#1fd27a', wickDownColor: '#ff4d5e' })
-      : chartType === 'area'
-        ? chart.addSeries(AreaSeries, { topColor: 'rgba(255,194,26,.22)', bottomColor: 'rgba(255,194,26,.01)', lineColor: '#ffc21a', lineWidth: 2 })
-        : chart.addSeries(LineSeries, { color: '#ffc21a', lineWidth: 2 })
-
-    if (chartType === 'candles') series.setData(candles)
-    else series.setData(closes)
+    if (chartType === 'candles') {
+      const series = chart.addSeries(CandlestickSeries, { upColor: '#1fd27a', downColor: '#ff4d5e', borderVisible: false, wickUpColor: '#1fd27a', wickDownColor: '#ff4d5e' })
+      series.setData(candles)
+      if (priceLineEnabled) series.createPriceLine({ price: asset.price, color: '#ffc21a', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'Last' })
+    } else if (chartType === 'area') {
+      const series = chart.addSeries(AreaSeries, { topColor: 'rgba(255,194,26,.22)', bottomColor: 'rgba(255,194,26,.01)', lineColor: '#ffc21a', lineWidth: 2 })
+      series.setData(closes)
+      if (priceLineEnabled) series.createPriceLine({ price: asset.price, color: '#ffc21a', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'Last' })
+    } else {
+      const series = chart.addSeries(LineSeries, { color: '#ffc21a', lineWidth: 2 })
+      series.setData(closes)
+      if (priceLineEnabled) series.createPriceLine({ price: asset.price, color: '#ffc21a', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'Last' })
+    }
 
     if (maEnabled) {
       const maSeries = chart.addSeries(LineSeries, commonLine)
       maSeries.setData(sma)
-    }
-
-    if (priceLineEnabled) {
-      series.createPriceLine({ price: asset.price, color: '#ffc21a', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'Last' })
     }
 
     chart.timeScale().fitContent()
@@ -217,7 +219,7 @@ export function ChartWorkspace({ asset, onOpenMarkets, openTrades, now }: ChartW
     await workspaceRef.current.requestFullscreen()
   }
 
-  const toPercentPoint = (event: React.PointerEvent<HTMLDivElement>) => {
+  const toPercentPoint = (event: ReactPointerEvent<HTMLDivElement>) => {
     const rect = stageRef.current?.getBoundingClientRect()
     if (!rect) return { x: 50, y: 50 }
     return {
@@ -226,7 +228,7 @@ export function ChartWorkspace({ asset, onOpenMarkets, openTrades, now }: ChartW
     }
   }
 
-  const handleDrawingStart = (event: React.PointerEvent<HTMLDivElement>) => {
+  const handleDrawingStart = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (drawingTool === 'none') return
     const point = toPercentPoint(event)
     const next = { type: drawingTool, x1: point.x, y1: point.y, x2: point.x, y2: point.y }
@@ -234,13 +236,13 @@ export function ChartWorkspace({ asset, onOpenMarkets, openTrades, now }: ChartW
     event.currentTarget.setPointerCapture(event.pointerId)
   }
 
-  const handleDrawingMove = (event: React.PointerEvent<HTMLDivElement>) => {
+  const handleDrawingMove = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (!activeDrawing) return
     const point = toPercentPoint(event)
     setActiveDrawing((current) => current ? { ...current, x2: point.x, y2: point.y } : current)
   }
 
-  const handleDrawingEnd = (event: React.PointerEvent<HTMLDivElement>) => {
+  const handleDrawingEnd = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (!activeDrawing) return
     const point = toPercentPoint(event)
     const completed = { ...activeDrawing, x2: point.x, y2: point.y }
