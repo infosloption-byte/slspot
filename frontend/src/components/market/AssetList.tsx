@@ -73,7 +73,7 @@ export function AssetList({ open, selected, assets, onSelect, onClose }: AssetLi
 
       return matchesCategory && matchesQuery
     })
-  }, [category, favorites, query])
+  }, [assets, category, favorites, query])
 
   const toggleFavorite = (symbol: string) => {
     setFavorites((current) => (
@@ -181,8 +181,7 @@ export function AssetList({ open, selected, assets, onSelect, onClose }: AssetLi
                   <span className="asset-row__value">
                     <strong>{formatPrice(asset.price, asset.price < 10 ? 5 : 2)}</strong>
                     <small className={positive ? 'text-positive' : 'text-negative'}>{formatPercent(asset.change)} <span>24h</span></small>
-                    <small className="asset-row__payout">{asset.payout}% payout</small>
-                    <em className="asset-row__payout">{asset.payout}% payout</em>
+                    <small className="asset-row__payout">{asset.payout.toFixed(0)}% server payout</small>
                   </span>
                 </button>
 
