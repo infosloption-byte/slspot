@@ -20,6 +20,11 @@ export const notificationsApi = {
     apiClient
       .post<ApiSuccess<{ read: boolean }>>('/notifications/' + notificationId + '/read')
       .then((response) => response.data),
+
+  markAllRead: () =>
+    apiClient
+      .post<ApiSuccess<{ updated: number }>>('/notifications/read-all')
+      .then((response) => response.data),
 }
 
 function toQueryString(query: { page?: number; pageSize?: number; unreadOnly?: boolean }): string {
