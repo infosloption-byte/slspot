@@ -13,7 +13,7 @@ import {
   type TradeListQuery,
 } from '../api/trades'
 import type { OpenTrade } from '../types/trading'
-import { useAuth } from '../auth/AuthProvider'
+import { useAuth } from '../auth/useAuth'
 import { useWalletMode } from '../hooks/useWalletMode'
 import { useRealtime, useRealtimeState } from '../realtime/RealtimeProvider'
 import { userChannel } from '../realtime/subscriptions'
