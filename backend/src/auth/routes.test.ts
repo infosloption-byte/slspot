@@ -18,7 +18,15 @@ function createMockAuthService(): AuthServiceLike {
 
   return {
     register: async () => ({ created: true, user, verification: null }),
-    login: async () => ({ session: { ...user, sessionId, expiresAt }, sessionToken: token }),
+    login: async () => ({ requiresTwoFactor: false as const, session: { ...user, sessionId, expiresAt }, sessionToken: token }),
+    verifyTwoFactorChallenge: async () => ({ requiresTwoFactor: false as const, session: { ...user, sessionId, expiresAt }, sessionToken: token }),
+    getTwoFactorStatus: async () => ({ enabled: false, recoveryCodesRemaining: 0 }),
+    setupTwoFactor: async () => ({ enabled: false, secret: 'TESTSECRET', otpauthUri: 'otpauth://totp/test' }),
+    enableTwoFactor: async () => ({ enabled: true as const, recoveryCodes: ['AAAA-BBBB-CCCC-DDDD'] }),
+    disableTwoFactor: async () => undefined,
+    listDevices: async () => [],
+    listLoginHistory: async () => [],
+    listSecurityEvents: async () => [],
     authenticateSession: async (sessionToken) =>
       sessionToken === token ? { ...user, sessionId, expiresAt } : null,
     logout: async () => undefined,
@@ -31,6 +39,7 @@ function createMockAuthService(): AuthServiceLike {
       lastSeenAt: new Date('2026-10-02T00:00:00.000Z'),
       expiresAt,
       current: true,
+      deviceId: 'device-1',
     }],
     revokeSession: async () => undefined,
     verifyEmail: async () => user,
@@ -59,7 +68,7 @@ describe('authentication routes', () => {
     const response = await app.inject({
       method: 'POST',
       url: '/api/v1/auth/register',
-      payload: { email: user.email, password: 'A-strong-password-123' },
+      payload: { email: user.email, password: 'A-strong-password-123', acceptTerms: true },
     })
 
     assert.equal(response.statusCode, 202)
@@ -106,4 +115,45 @@ describe('authentication routes', () => {
     assert.equal(me.json<{ data: { user: { id: string } } }>().data.user.id, user.id)
     await app.close()
   })
+  it('routes a two-factor challenge before creating a session', async () => {
+    const app = buildApp({
+      logging: false,
+      authService: {
+        ...createMockAuthService(),
+        login: async () => ({
+          requiresTwoFactor: true as const,
+          user,
+          challengeToken: 'test-two-factor-challenge',
+          challengeExpiresAt: new Date(Date.now() + 300_000),
+        }),
+      },
+    })
+    await app.ready()
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/login',
+      payload: { email: user.email, password: 'A-strong-password-123', rememberDevice: true },
+    })
+
+    assert.equal(response.statusCode, 202)
+    assert.equal(response.headers['set-cookie'], undefined)
+    assert.equal(response.json<{ data: { requiresTwoFactor: boolean } }>().data.requiresTwoFactor, true)
+    await app.close()
+  })
+
+  it('requires registration consent', async () => {
+    const app = buildApp({ logging: false, authService: createMockAuthService() })
+    await app.ready()
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/register',
+      payload: { email: user.email, password: 'A-strong-password-123', acceptTerms: false },
+    })
+
+    assert.equal(response.statusCode, 400)
+    await app.close()
+  })
+
 })
