@@ -325,16 +325,16 @@ Create reusable primitives:
 - [x] Stocks filter.
 - [x] Commodities filter.
 - [x] Indices filter.
-- [ ] Recent assets.
-- [ ] Sorting.
+- [x] Recent assets.
+- [x] Sorting.
 - [x] Live price.
 - [x] Percentage change.
-- [ ] Volume.
+- [x] Volume.
 - [x] Market status.
 - [x] Mobile asset picker.
-- [ ] Loading state.
+- [x] Loading state.
 - [x] Empty state.
-- [ ] Error state.
+- [x] Error state.
 
 ## 4.3 Chart
 
@@ -353,50 +353,50 @@ Create reusable primitives:
 - [x] Crosshair.
 - [x] Zoom.
 - [x] Pan.
-- [ ] Volume.
+- [x] Volume.
 - [x] Fullscreen.
 - [x] Chart settings.
-- [ ] Connection status.
-- [ ] Stale-data indicator.
+- [x] Connection status.
+- [x] Stale-data indicator.
 
 ## 4.4 Indicators
 
 Initial:
 
-- [ ] EMA.
-- [ ] SMA.
-- [ ] RSI.
-- [ ] MACD.
-- [ ] Bollinger Bands.
-- [ ] Stochastic.
-- [ ] ATR.
-- [ ] Parabolic SAR.
-- [ ] Alligator.
-- [ ] Awesome Oscillator.
-- [ ] Fractals.
+- [x] EMA.
+- [x] SMA.
+- [x] RSI.
+- [x] MACD.
+- [x] Bollinger Bands.
+- [x] Stochastic.
+- [x] ATR.
+- [x] Parabolic SAR.
+- [x] Alligator.
+- [x] Awesome Oscillator.
+- [x] Fractals.
 
 Architecture:
 
-- [ ] Indicator registry.
-- [ ] Indicator settings.
-- [ ] Enable/disable.
-- [ ] Multiple indicators.
-- [ ] Indicator persistence.
-- [ ] Reset chart settings.
+- [x] Indicator registry.
+- [x] Indicator settings.
+- [x] Enable/disable.
+- [x] Multiple indicators.
+- [x] Indicator persistence.
+- [x] Reset chart settings.
 
 ## 4.5 Drawing tools
 
-- [ ] Trend line.
-- [ ] Horizontal line.
-- [ ] Vertical line.
-- [ ] Ray.
-- [ ] Fibonacci retracement.
-- [ ] Rectangle.
-- [ ] Price marker.
-- [ ] Text annotation.
-- [ ] Remove selected.
-- [ ] Remove all.
-- [ ] Drawing persistence.
+- [x] Trend line.
+- [x] Horizontal line.
+- [x] Vertical line.
+- [x] Ray.
+- [x] Fibonacci retracement.
+- [x] Rectangle.
+- [x] Price marker.
+- [x] Text annotation.
+- [x] Remove selected.
+- [x] Remove all.
+- [x] Drawing persistence.
 
 ---
 
@@ -439,15 +439,15 @@ Architecture:
 
 - [x] Draft.
 - [x] Confirming.
-- [ ] Pending.
-- [ ] Accepted.
-- [ ] Open.
-- [ ] Rejected.
-- [ ] Failed.
-- [ ] Won.
-- [ ] Lost.
-- [ ] Cancelled.
-- [ ] Expired.
+- [x] Pending.
+- [x] Accepted.
+- [x] Open.
+- [x] Rejected.
+- [x] Failed.
+- [x] Won.
+- [x] Lost.
+- [x] Cancelled.
+- [x] Expired.
 
 ## 5.5 Submission safety
 
@@ -455,7 +455,7 @@ Architecture:
 - [x] Client request ID.
 - [x] Server idempotency key.
 - [x] Pending/submitting state.
-- [ ] Retry policy.
+- [ ] Retry policy (later).
 - [x] Error recovery.
 - [x] Confirmation UI.
 
@@ -496,17 +496,17 @@ Architecture:
 
 ## 6.3 History UX
 
-- [ ] Search.
-- [ ] Status filter.
-- [ ] Asset filter.
-- [ ] Direction filter.
-- [ ] Date range.
-- [ ] Pagination.
-- [ ] Sort.
-- [ ] Export.
-- [ ] Empty state.
-- [ ] Loading state.
-- [ ] Error state.
+- [x] Search.
+- [x] Status filter.
+- [x] Asset filter.
+- [x] Direction filter.
+- [x] Date range.
+- [x] Pagination.
+- [x] Sort.
+- [x] Export.
+- [x] Empty state.
+- [x] Loading state.
+- [x] Error state.
 
 ---
 
@@ -607,7 +607,7 @@ Market events:
 - [x] Trade status.
 - [x] Position update.
 - [x] Wallet update.
-- [ ] Notification event.
+- [x] Notification event.
 
 ---
 
@@ -615,44 +615,44 @@ Market events:
 
 ## 10.1 Login
 
-- [ ] Email/username field.
-- [ ] Password field.
-- [ ] Validation.
-- [ ] Loading.
+- [x] Email/username field.
+- [x] Password field.
+- [x] Validation.
+- [x] Loading.
 - [x] Error.
-- [ ] Rate-limit state.
-- [ ] Locked-account state.
-- [ ] Remember-device behavior where appropriate.
+- [x] Rate-limit state.
+- [x] Locked-account state.
+- [x] Remember-device behavior where appropriate.
 
 ## 10.2 Registration
 
-- [ ] Registration fields.
-- [ ] Password rules.
-- [ ] Terms/consent.
-- [ ] Validation.
-- [ ] Email verification.
+- [x] Registration fields.
+- [x] Password rules.
+- [x] Terms/consent.
+- [x] Validation.
+- [x] Email verification.
 
 ## 10.3 Password recovery
 
-- [ ] Forgot password.
-- [ ] Reset password.
-- [ ] Expired-token state.
-- [ ] Success state.
+- [x] Forgot password.
+- [x] Reset password.
+- [x] Expired-token state.
+- [x] Success state.
 
 ## 10.4 2FA
 
-- [ ] Challenge.
-- [ ] Code validation.
-- [ ] Recovery code handling.
-- [ ] Rate limiting UX.
+- [x] Challenge.
+- [x] Code validation.
+- [x] Recovery code handling.
+- [x] Rate limiting UX.
 
 ## 10.5 Session/device
 
-- [ ] Active sessions.
-- [ ] Device list.
-- [ ] Revoke session.
-- [ ] Login history.
-- [ ] Security event list.
+- [x] Active sessions.
+- [x] Device list.
+- [x] Revoke session.
+- [x] Login history.
+- [x] Security event list.
 
 ---
 
@@ -1424,7 +1424,7 @@ Implemented in:
 - `frontend/src/components/routing/ProtectedRoute.tsx`
 - `frontend/src/components/layout/TopBar.tsx`
 
-SLSPOT-006 is complete. The next major dependency is server-authoritative trading and its financial controls; wallet mutations remain intentionally disabled until the ledger/payment milestones.
+SLSPOT-006 is complete. Demo wallet mutations and financial-ledger posting are now server-backed; real-money payment processing remains gated behind product, payment, KYC/AML, authorization and compliance milestones.
 
 ## Completed milestone
 
@@ -1449,7 +1449,7 @@ The trading engine milestone is complete for the currently defined server-side f
 
 ## Immediate next milestone
 
-Positions / History / Portfolio / Financial Ledger hardening
+Production hardening: testing, accessibility, admin, payments/KYC-AML, CI/CD, observability and release security
 
 ## Following milestones
 
@@ -1462,15 +1462,15 @@ Market Data Service ✅
         ↓
 Server-authoritative trading engine ✅
         ↓
-Positions / History / Portfolio hardening
+Positions / History / Portfolio / Financial Ledger ✅
         ↓
-Financial Ledger
+Wallet + demo funding ✅
         ↓
-Wallet + Payments
+Notifications core ✅
         ↓
-KYC / AML
+Production hardening
         ↓
-Notifications
+Payments + KYC / AML
         ↓
 Admin
         ↓
