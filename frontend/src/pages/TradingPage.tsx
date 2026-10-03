@@ -15,7 +15,7 @@ import {
 import type { OpenTrade } from '../types/trading'
 import { useAuth } from '../auth/useAuth'
 import { useWalletMode } from '../hooks/useWalletMode'
-import { useRealtime, useRealtimeState } from '../realtime/RealtimeProvider'
+import { useRealtime, useRealtimeState } from '../realtime/useRealtime'
 import { userChannel } from '../realtime/subscriptions'
 
 type ToastItem = {
