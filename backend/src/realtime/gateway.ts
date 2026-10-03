@@ -2,6 +2,8 @@ import websocket from '@fastify/websocket'
 import type { FastifyInstance, FastifyRequest } from 'fastify'
 import type { WebSocket } from 'ws'
 import { env } from '../config/env.js'
+import { assertTrustedWebSocketOrigin } from '../security/origin.js'
+import { enforceRateLimit } from '../security/rate-limit.js'
 import { isUserChannelAuthorized, type RealtimeChannel } from '../contracts/realtime.js'
 import {
   createRealtimeEvent,
@@ -33,6 +35,19 @@ export class RealtimeGateway {
     })
 
     app.get(WS_PATH, { websocket: true }, async (socket, request) => {
+      try {
+        assertTrustedWebSocketOrigin(request)
+        await enforceRateLimit({
+          key: 'ws:' + request.ip,
+          limit: env.security.rateLimit.generalLimit,
+          windowSeconds: env.security.rateLimit.generalWindowSeconds,
+        })
+      } catch (error) {
+        request.log.warn({ securityCode: error instanceof Error ? error.name : 'WS_SECURITY_REJECTED' }, 'WebSocket security check rejected connection')
+        socket.close(1008, 'Connection not allowed')
+        return
+      }
+
       if (this.options.authenticate) {
         const principal = await this.options.authenticate(request)
         if (!principal) {
