@@ -884,6 +884,17 @@ export class PlatformApiService {
     amount: Prisma.Decimal,
     description: string,
   ): Promise<void> {
+    const walletLedger = await this.ledger.ensureWalletLedgerAccounts(tx, accountId, currency)
+    const fundingCode = await this.ledger.ensureSystemLedgerAccount(
+      tx,
+      'SYSTEM:DEMO_FUNDING',
+      'Demo funding source',
+      'EQUITY',
+      currency,
+    )
+    const wallet = await tx.wallet.findUnique({ where: { id: walletId } })
+    if (!wallet) throw new FinanceError(409, 'WALLET_NOT_FOUND', 'Wallet not found while recording demo funding')
+
     const walletTransaction = await tx.walletTransaction.create({
       data: {
         walletId,
@@ -895,20 +906,33 @@ export class PlatformApiService {
         referenceType: 'DEMO_WALLET',
         referenceId: walletId,
         description,
+        availableBalanceAfter: wallet.availableBalance,
+        heldBalanceAfter: wallet.heldBalance,
       },
     })
 
-    await tx.ledgerEntry.create({
-      data: {
-        transactionId: walletTransaction.id,
-        accountId,
-        walletTransactionId: walletTransaction.id,
-        direction: 'CREDIT',
-        amount,
-        currency,
-        referenceType: 'DEMO_WALLET',
-        referenceId: walletId,
-      },
+    await this.ledger.postTransaction(tx, {
+      walletTransactionId: walletTransaction.id,
+      currency,
+      referenceType: 'DEMO_WALLET',
+      referenceId: walletId,
+      description,
+      lines: [
+        {
+          accountCode: fundingCode,
+          accountName: 'Demo funding source',
+          accountType: 'EQUITY',
+          direction: 'DEBIT',
+          amount,
+        },
+        {
+          accountCode: walletLedger.availableCode,
+          accountName: 'User available balance',
+          accountType: 'LIABILITY',
+          direction: 'CREDIT',
+          amount,
+        },
+      ],
     })
   }
 
