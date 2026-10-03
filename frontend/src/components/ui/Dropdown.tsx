@@ -13,6 +13,7 @@ type DropdownProps = {
 export function Dropdown({ trigger, children, label, align = 'end', className = '' }: DropdownProps) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
     if (!open) return undefined
@@ -20,7 +21,17 @@ export function Dropdown({ trigger, children, label, align = 'end', className = 
       if (!ref.current?.contains(event.target as Node)) setOpen(false)
     }
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setOpen(false)
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        setOpen(false)
+        triggerRef.current?.focus()
+        return
+      }
+      if ((event.key === 'ArrowDown' || event.key === 'Enter' || event.key === ' ') && document.activeElement === triggerRef.current) {
+        event.preventDefault()
+        const firstItem = ref.current?.querySelector<HTMLElement>('[role="menuitem"],[role="menuitemradio"],button,a')
+        firstItem?.focus()
+      }
     }
     document.addEventListener('pointerdown', onPointerDown)
     document.addEventListener('keydown', onKeyDown)
@@ -33,6 +44,7 @@ export function Dropdown({ trigger, children, label, align = 'end', className = 
   return (
     <div className={'ui-dropdown ui-dropdown--' + align + (className ? ' ' + className : '')} ref={ref}>
       <button
+        ref={triggerRef}
         type="button"
         className="ui-dropdown__trigger"
         aria-haspopup="menu"
