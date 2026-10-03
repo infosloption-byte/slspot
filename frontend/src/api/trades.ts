@@ -67,7 +67,7 @@ export const tradesApi = {
         settlementId: string | null
         settlementPrice: string | null
         settlementReference: string | null
-      }>('/trades', input, { idempotencyKey: input.clientRequestId })
+      }>>('/trades', input, { idempotencyKey: input.clientRequestId })
       .then(data),
 
   close: (tradeId: string) =>
