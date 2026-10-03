@@ -104,6 +104,7 @@ function ChartCanvas({
   priceLineEnabled,
   maEnabled,
   candles,
+  usingMockCandles,
 }: {
   asset: MarketAsset
   timeframe: string
@@ -113,6 +114,7 @@ function ChartCanvas({
   priceLineEnabled: boolean
   maEnabled: boolean
   candles: ChartCandle[]
+  usingMockCandles: boolean
 }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const chartRef = useRef<IChartApi | null>(null)
@@ -400,7 +402,7 @@ export function ChartWorkspace({ asset, onOpenMarkets, openTrades, now }: ChartW
       </div>
 
       <div className={rsiEnabled ? 'chart-stage chart-stage--rsi' : 'chart-stage'} ref={stageRef}>
-        <ChartCanvas asset={asset} timeframe={timeframe} chartType={chartType} crosshairEnabled={crosshairEnabled} gridEnabled={gridEnabled} priceLineEnabled={priceLineEnabled} maEnabled={maEnabled} candles={candles} />
+        <ChartCanvas asset={asset} timeframe={timeframe} chartType={chartType} crosshairEnabled={crosshairEnabled} gridEnabled={gridEnabled} priceLineEnabled={priceLineEnabled} maEnabled={maEnabled} candles={candles} usingMockCandles={usingMockCandles} />
 
         <div className="trade-chart-markers" aria-hidden="true">
           {openTrades.map((trade) => {
