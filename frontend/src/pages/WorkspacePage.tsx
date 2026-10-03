@@ -11,7 +11,7 @@ import { tradesApi } from '../api/trades'
 import { walletApi, type WalletTransactionFilters } from '../api/wallet'
 import { useAuth } from '../auth/useAuth'
 import { useWalletMode } from '../hooks/useWalletMode'
-import { useRealtime } from '../realtime/RealtimeProvider'
+import { useRealtime } from '../realtime/useRealtime'
 import { userChannel } from '../realtime/subscriptions'
 import { useAuthDevices, useAuthSessions, useLoginHistory, useMarketAssets, useNotifications, usePortfolioAnalytics, usePortfolioPositions, usePortfolioSummary, useSecurityEvents, useTrades, useTwoFactorStatus, useWallet, useWalletTransactions, useWallets } from '../hooks/useServerState'
 
