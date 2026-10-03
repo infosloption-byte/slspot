@@ -210,14 +210,18 @@ export function TradingPage() {
     return () => window.clearInterval(timer)
   }, [])
 
+  const reloadPositions = positions.reload
+  const reloadTrades = trades.reload
+  const reloadWallet = wallet.reload
+  const reloadWalletTransactions = walletTransactions.reload
   const reloadTradingState = useCallback(async () => {
     await Promise.all([
-      positions.reload(),
-      trades.reload(),
-      wallet.reload(),
-      walletTransactions.reload(),
+      reloadPositions(),
+      reloadTrades(),
+      reloadWallet(),
+      reloadWalletTransactions(),
     ])
-  }, [positions.reload, trades.reload, wallet.reload, walletTransactions.reload])
+  }, [reloadPositions, reloadTrades, reloadWallet, reloadWalletTransactions])
 
   useEffect(() => {
     if (!user?.id) return
@@ -375,6 +379,7 @@ export function TradingPage() {
     <main className="trading-room">
       <div className="trading-room__main">
         <ChartWorkspace
+          key={selectedAsset.assetId + ':' + selectedAsset.symbol}
           asset={selectedAsset}
           onOpenMarkets={() => setMarketPickerOpen(true)}
           openTrades={openTrades}
