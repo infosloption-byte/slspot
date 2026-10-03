@@ -1,6 +1,6 @@
 import { useCallback, useEffect } from 'react'
 import { useWalletMode } from './useWalletMode'
-import { authApi } from '../api/auth'
+import { authApi, type AccountCapabilities } from '../api/auth'
 import { marketApi } from '../api/market'
 import { notificationsApi } from '../api/notifications'
 import { portfolioApi } from '../api/portfolio'
@@ -8,7 +8,6 @@ import type { WalletTransactionFilters } from '../api/wallet'
 import { tradesApi, type TradeHistorySortBy, type TradeHistorySortOrder, type TradeRecord } from '../api/trades'
 import { walletApi } from '../api/wallet'
 import { useAsyncResource } from './useAsyncResource'
-import { authApi, type AccountCapabilities } from '../api/auth'
 import { setPortfolioAnalytics, setPortfolioPositions, setPortfolioSummary } from '../state/portfolioStore'
 
 export function useTradingCapabilities() {
