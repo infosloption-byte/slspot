@@ -74,6 +74,7 @@ export function useLiveMarketAssets() {
         assetId: asset.assetId,
         symbol: asset.symbol,
         name: asset.name,
+        quoteCurrency: asset.quoteCurrency ?? 'USD',
         category: categoryLabel(asset.type),
         price: Number.isFinite(price) ? price : 0,
         change: Number.isFinite(change) ? change : 0,
