@@ -11,6 +11,19 @@ type ApiEnvelope<T> = {
 
 export type TradeHistorySortBy = 'openedAt' | 'closedAt' | 'amount' | 'netPnl'
 export type TradeHistorySortOrder = 'asc' | 'desc'
+export type TradeHistoryStatus = '' | 'WON' | 'LOST' | 'CANCELLED' | 'EXPIRED'
+export type TradeHistoryDirection = '' | 'UP' | 'DOWN'
+
+export type TradeHistoryFilters = {
+  search: string
+  assetId: string
+  direction: TradeHistoryDirection
+  status: TradeHistoryStatus
+  from: string
+  to: string
+  sortBy: TradeHistorySortBy
+  sortOrder: TradeHistorySortOrder
+}
 
 export type TradeListFilters = {
   search?: string
@@ -98,9 +111,15 @@ function unwrap<T>(response: ApiEnvelope<T>): T {
   return response.data
 }
 
+export type TradeListQuery = {
+  page?: number
+  pageSize?: number
+  status?: string
+} & TradeListFilters
+
 export const tradesApi = {
   list: (
-    query: { page?: number; pageSize?: number; status?: TradeRecord['status'] } & TradeListFilters = {},
+    query: TradeListQuery = {},
     mode: WalletMode = 'DEMO',
   ) =>
     apiClient
