@@ -79,6 +79,18 @@ function parseBoolean(name: string, value: string | undefined, fallback: boolean
   throw new Error(name + ' must be true or false')
 }
 
+function parseHexSecret(name: string, value: string | undefined, nodeEnv: NodeEnv): string {
+  const fallback = '00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff'
+  const secret = (value ?? fallback).trim().toLowerCase()
+  if (nodeEnv === 'production' && value === undefined) {
+    throw new Error(name + ' must be explicitly configured in production')
+  }
+  if (!/^[0-9a-f]{64}$/.test(secret)) {
+    throw new Error(name + ' must be a 32-byte secret encoded as 64 hexadecimal characters')
+  }
+  return secret
+}
+
 function parseDecimalString(
   name: string,
   value: string | undefined,
@@ -321,6 +333,12 @@ export const env = {
   ),
   auth: {
     sessionTtlSeconds: parsePositiveInteger('AUTH_SESSION_TTL_SECONDS', process.env.AUTH_SESSION_TTL_SECONDS, 2_592_000, 900, 7_776_000),
+    shortSessionTtlSeconds: parsePositiveInteger('AUTH_SHORT_SESSION_TTL_SECONDS', process.env.AUTH_SHORT_SESSION_TTL_SECONDS, 43_200, 900, 2_592_000),
+    loginMaxAttempts: parsePositiveInteger('AUTH_LOGIN_MAX_ATTEMPTS', process.env.AUTH_LOGIN_MAX_ATTEMPTS, 5, 3, 20),
+    loginLockSeconds: parsePositiveInteger('AUTH_LOGIN_LOCK_SECONDS', process.env.AUTH_LOGIN_LOCK_SECONDS, 900, 60, 86_400),
+    twoFactorChallengeTtlSeconds: parsePositiveInteger('AUTH_2FA_CHALLENGE_TTL_SECONDS', process.env.AUTH_2FA_CHALLENGE_TTL_SECONDS, 300, 60, 900),
+    twoFactorMaxAttempts: parsePositiveInteger('AUTH_2FA_MAX_ATTEMPTS', process.env.AUTH_2FA_MAX_ATTEMPTS, 5, 3, 10),
+    twoFactorEncryptionKey: parseHexSecret('AUTH_2FA_ENCRYPTION_KEY', process.env.AUTH_2FA_ENCRYPTION_KEY, nodeEnv),
     verificationTtlSeconds: parsePositiveInteger('AUTH_VERIFICATION_TTL_SECONDS', process.env.AUTH_VERIFICATION_TTL_SECONDS, 86_400, 600, 604_800),
     passwordResetTtlSeconds: parsePositiveInteger('AUTH_PASSWORD_RESET_TTL_SECONDS', process.env.AUTH_PASSWORD_RESET_TTL_SECONDS, 3_600, 600, 86_400),
     passwordMinLength: parsePositiveInteger('AUTH_PASSWORD_MIN_LENGTH', process.env.AUTH_PASSWORD_MIN_LENGTH, 12, 10, 128),
