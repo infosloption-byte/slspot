@@ -636,6 +636,8 @@ function NotificationsPage() {
   const notifications = useNotifications(page, 15, unreadOnly)
   const unread = useNotifications(1, 1, true)
   const unreadCount = unread.data?.pagination.total ?? 0
+  const reloadNotifications = notifications.reload
+  const reloadUnread = unread.reload
   const [toast, setToast] = useState<{ title: string; message: string } | null>(null)
 
   useEffect(() => {
@@ -652,10 +654,10 @@ function NotificationsPage() {
         message: typeof data.body === 'string' ? data.body : 'You have a new account notification.',
       })
       window.setTimeout(() => setToast(null), 4500)
-      void notifications.reload()
-      void unread.reload()
+      void reloadNotifications()
+      void reloadUnread()
     })
-  }, [notifications.reload, realtime, unread.reload])
+  }, [reloadNotifications, reloadUnread, realtime])
 
   const markRead = async (id: string) => {
     await notificationsApi.markRead(id)
