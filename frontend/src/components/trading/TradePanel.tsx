@@ -32,17 +32,19 @@ export function TradePanel({ asset, balance, walletMode, soundEnabled, onToggleS
   const [mobileConfigOpen, setMobileConfigOpen] = useState(false)
   const [mobileDurationOpen, setMobileDurationOpen] = useState(false)
   const [failedRequest, setFailedRequest] = useState<FailedTradeRequest | null>(null)
-  const [now, setNow] = useState(() => Date.now())
+  const [now, setNow] = useState<number | null>(null)
   const durationRef = useRef<HTMLDivElement>(null)
   const payoutRate = Number(asset.payoutRate)
   const estimatedPayout = amount * payoutRate
   const feeRate = Number(asset.feeRate)
   const estimatedFee = Number.isFinite(feeRate) && feeRate > 0 ? amount * feeRate : 0
   const totalReturn = amount + estimatedPayout - estimatedFee
-  const expiryPreview = new Date(now + duration * 1000)
+  const expiryPreview = now === null ? null : new Date(now + duration * 1000)
 
   useEffect(() => {
-    const timer = window.setInterval(() => setNow(Date.now()), 1000)
+    const updateClock = () => setNow(Date.now())
+    updateClock()
+    const timer = window.setInterval(updateClock, 1000)
     return () => window.clearInterval(timer)
   }, [])
 
@@ -207,7 +209,7 @@ export function TradePanel({ asset, balance, walletMode, soundEnabled, onToggleS
             <div><span>Total at expiry</span><strong>{formatCurrency(totalReturn, asset.quoteCurrency)}</strong></div>
             <small>{asset.payout}% server payout · {((Number(asset.feeRate) || 0) * 100).toFixed(2)}% fee · {asset.quoteCurrency}</small>
           </div>
-          <div className="expiry-preview"><Timer size={13} /><span>Expiry</span><strong>{expiryPreview.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</strong><small>in {formatDuration(duration)}</small></div>
+          <div className="expiry-preview"><Timer size={13} /><span>Expiry</span><strong>{expiryPreview ? expiryPreview.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : 'Calculating…'}</strong><small>in {formatDuration(duration)}</small></div>
 
           {renderActions()}
 
@@ -234,7 +236,7 @@ export function TradePanel({ asset, balance, walletMode, soundEnabled, onToggleS
                   {mobileDurationOpen ? <div className="mobile-duration-options">{asset.durationsSeconds.map((value) => <button key={value} type="button" className={duration === value ? 'duration-option duration-option--active' : 'duration-option'} onClick={() => { chooseDuration(value); setMobileDurationOpen(false) }}>{formatDuration(value)}</button>)}</div> : null}
                 </label>
               </div>
-              <div className="payout-card"><div><span>Potential return</span><strong>{formatCurrency(estimatedPayout, asset.quoteCurrency)}</strong></div><div><span>Estimated fee</span><strong>-{formatCurrency(estimatedFee, asset.quoteCurrency)}</strong></div><small>{formatCurrency(totalReturn, asset.quoteCurrency)} total · expiry {expiryPreview.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</small></div>
+              <div className="payout-card"><div><span>Potential return</span><strong>{formatCurrency(estimatedPayout, asset.quoteCurrency)}</strong></div><div><span>Estimated fee</span><strong>-{formatCurrency(estimatedFee, asset.quoteCurrency)}</strong></div><small>{formatCurrency(totalReturn, asset.quoteCurrency)} total · expiry {expiryPreview ? expiryPreview.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Calculating…'}</small></div>
               <button type="button" className="trade-panel__sound-button" onClick={onToggleSound}>{soundEnabled ? <Volume2 size={14} /> : <VolumeX size={14} />} {soundEnabled ? 'Sounds on' : 'Sounds off'}</button>
             </div>
           ) : null}
