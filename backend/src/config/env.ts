@@ -244,6 +244,10 @@ const marketDataEnabled = parseBoolean('MARKET_DATA_ENABLED', process.env.MARKET
 const marketDataApiKey = process.env.MARKET_DATA_API_KEY?.trim() || undefined
 const marketDataBootstrapAssets = parseBoolean('MARKET_DATA_BOOTSTRAP_ASSETS', process.env.MARKET_DATA_BOOTSTRAP_ASSETS, nodeEnv !== 'production')
 const adminBootstrapEmails = [...new Set((process.env.ADMIN_BOOTSTRAP_EMAILS ?? '').split(',').map((value) => value.trim().toLowerCase()).filter(Boolean))]
+const authCookieName = parseCookieName(process.env.AUTH_COOKIE_NAME, nodeEnv, nodeEnv === 'production' ? '__Host-slspot_session' : 'slspot_session')
+const csrfCookieName = parseCookieName(process.env.CSRF_COOKIE_NAME, nodeEnv, nodeEnv === 'production' ? '__Host-slspot_csrf' : 'slspot_csrf')
+const csrfSecret = parseHexSecret('CSRF_SECRET', process.env.CSRF_SECRET, nodeEnv)
+const webhookSigningSecret = parseHexSecret('WEBHOOK_SIGNING_SECRET', process.env.WEBHOOK_SIGNING_SECRET, nodeEnv)
 
 if (nodeEnv === 'production' && !authCookieSecure) {
   throw new Error('AUTH_COOKIE_SECURE must be true in production')
@@ -251,6 +255,14 @@ if (nodeEnv === 'production' && !authCookieSecure) {
 
 if (nodeEnv === 'production' && exposeDevTokens) {
   throw new Error('AUTH_EXPOSE_DEV_TOKENS must be false in production')
+}
+
+if (nodeEnv === 'production' && process.env.AUTH_COOKIE_DOMAIN?.trim()) {
+  throw new Error('AUTH_COOKIE_DOMAIN must not be set in production; use host-only __Host- cookies')
+}
+
+if (process.env.AUTH_COOKIE_SAMESITE?.trim().toLowerCase() === 'none' && !authCookieSecure) {
+  throw new Error('AUTH_COOKIE_SAMESITE=none requires AUTH_COOKIE_SECURE=true')
 }
 
 if (nodeEnv === 'production' && marketDataEnabled && marketDataProvider === 'twelve-data' && !marketDataApiKey) {
@@ -261,16 +273,9 @@ export const env = {
   nodeEnv,
   host: process.env.HOST?.trim() || '0.0.0.0',
   port: parsePort(process.env.PORT),
-  corsOrigins: parseCorsOrigins(process.env.CORS_ORIGIN, nodeEnv),
-  adminBootstrapEmails,
-  logLevel: parseLogLevel(process.env.LOG_LEVEL),
-  trustProxy: parseBoolean('TRUST_PROXY', process.env.TRUST_PROXY, false),
-  requestTimeoutMs: parsePositiveInteger(
-    'REQUEST_TIMEOUT_MS',
-    process.env.REQUEST_TIMEOUT_MS,
-    30_000,
-    1_000,
-    120_000,
+  corsOrigins: parseCorsOrigins(
+    process.env.CORS_ORIGIN ?? 'http://localhost:5173,http://localhost:5174',
+    nodeEnv,
   ),
   shutdownTimeoutMs: parsePositiveInteger(
     'SHUTDOWN_TIMEOUT_MS',
@@ -326,6 +331,18 @@ export const env = {
     marketMaxAgeMs: parsePositiveInteger('TRADING_MARKET_MAX_AGE_MS', process.env.TRADING_MARKET_MAX_AGE_MS, 120_000, 5_000, 3_600_000),
     settlementIntervalMs: parsePositiveInteger('TRADING_SETTLEMENT_INTERVAL_MS', process.env.TRADING_SETTLEMENT_INTERVAL_MS, 1_000, 250, 60_000),
   },
+  security: {
+    csrfSecret,
+    webhookSigningSecret,
+    rateLimit: {
+      generalLimit: parsePositiveInteger('RATE_LIMIT_GENERAL_LIMIT', process.env.RATE_LIMIT_GENERAL_LIMIT, 120, 30, 1000),
+      generalWindowSeconds: parsePositiveInteger('RATE_LIMIT_GENERAL_WINDOW_SECONDS', process.env.RATE_LIMIT_GENERAL_WINDOW_SECONDS, 60, 10, 3600),
+      authLimit: parsePositiveInteger('RATE_LIMIT_AUTH_LIMIT', process.env.RATE_LIMIT_AUTH_LIMIT, 10, 3, 100),
+      authWindowSeconds: parsePositiveInteger('RATE_LIMIT_AUTH_WINDOW_SECONDS', process.env.RATE_LIMIT_AUTH_WINDOW_SECONDS, 300, 30, 3600),
+      tradingLimit: parsePositiveInteger('RATE_LIMIT_TRADING_LIMIT', process.env.RATE_LIMIT_TRADING_LIMIT, 30, 5, 300),
+      tradingWindowSeconds: parsePositiveInteger('RATE_LIMIT_TRADING_WINDOW_SECONDS', process.env.RATE_LIMIT_TRADING_WINDOW_SECONDS, 60, 10, 3600),
+    },
+  },
   websocketMaxPayloadBytes: parsePositiveInteger(
     'WEBSOCKET_MAX_PAYLOAD_BYTES',
     process.env.WEBSOCKET_MAX_PAYLOAD_BYTES,
@@ -344,10 +361,11 @@ export const env = {
     verificationTtlSeconds: parsePositiveInteger('AUTH_VERIFICATION_TTL_SECONDS', process.env.AUTH_VERIFICATION_TTL_SECONDS, 86_400, 600, 604_800),
     passwordResetTtlSeconds: parsePositiveInteger('AUTH_PASSWORD_RESET_TTL_SECONDS', process.env.AUTH_PASSWORD_RESET_TTL_SECONDS, 3_600, 600, 86_400),
     passwordMinLength: parsePositiveInteger('AUTH_PASSWORD_MIN_LENGTH', process.env.AUTH_PASSWORD_MIN_LENGTH, 12, 10, 128),
-    cookieName: parseCookieName(process.env.AUTH_COOKIE_NAME),
+    cookieName: authCookieName,
+    csrfCookieName,
     cookieSameSite: parseAuthSameSite(process.env.AUTH_COOKIE_SAMESITE),
     cookieSecure: authCookieSecure,
-    cookieDomain: process.env.AUTH_COOKIE_DOMAIN?.trim() || undefined,
+    csrfSecret,
     exposeDevTokens,
   },
 } as const
