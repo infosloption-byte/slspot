@@ -259,6 +259,42 @@ describe('platform API routes', () => {
   })
 
 
+  it('forwards trade history filters and pagination controls', async () => {
+    let requestedInput: Parameters<PlatformApiService['listTrades']>[1] | null = null
+    let requestedMode = ''
+
+    const scoped = {
+      ...apiService,
+      listTrades: async (_userId: string, input: Parameters<PlatformApiService['listTrades']>[1], mode: 'DEMO' | 'REAL') => {
+        requestedInput = input
+        requestedMode = mode
+        return { items: [], pagination: { page: input.page ?? 1, pageSize: input.pageSize ?? 25, total: 0, totalPages: 1 } }
+      },
+    } as unknown as PlatformApiService
+
+    const app = buildApp({ logging: false, authService, apiService: scoped, marketDataService })
+    await app.ready()
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/v1/trades?page=2&pageSize=25&status=WON,LOST&search=BTC&assetId=asset-1&direction=UP&from=2026-10-01T00:00:00.000Z&to=2026-10-03T23:59:59.999Z&sortBy=netPnl&sortOrder=asc&settledOnly=true',
+      headers: { cookie: 'slspot_session=test-session', 'x-wallet-mode': 'DEMO' },
+    })
+
+    assert.equal(response.statusCode, 200)
+    assert.deepEqual(requestedInput?.statuses, ['WON', 'LOST'])
+    assert.equal(requestedInput?.page, 2)
+    assert.equal(requestedInput?.pageSize, 25)
+    assert.equal(requestedInput?.search, 'BTC')
+    assert.equal(requestedInput?.assetId, 'asset-1')
+    assert.equal(requestedInput?.direction, 'UP')
+    assert.equal(requestedInput?.sortBy, 'netPnl')
+    assert.equal(requestedInput?.sortOrder, 'asc')
+    assert.equal(requestedInput?.settledOnly, true)
+    assert.equal(requestedMode, 'DEMO')
+    await app.close()
+  })
+
   it('registers the complete platform API route surface', async () => {
     const app = buildApp({ logging: false, authService, apiService, marketDataService })
     await app.ready()
