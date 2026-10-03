@@ -46,7 +46,7 @@ The latest frontend theme is **Black Gold / SL Spot** and is now the active desi
 
 ### Missing screens and shared UI
 - [x] Login/register/forgot/reset/email verification/2FA forms.
-- [x] Wallet deposit/withdraw demo forms and transaction table.
+- [x] Wallet deposit/withdraw demo forms, server-backed demo funding, and transaction table.
 - [x] 404 page.
 - [x] Protected-route boundary.
 - [x] Toast.
@@ -58,7 +58,7 @@ The latest frontend theme is **Black Gold / SL Spot** and is now the active desi
 - [x] Pagination.
 - [x] Custom SL Spot brand mark and favicon.
 
-These items are implemented as demo/frontend behavior. Server-authoritative authentication, market data, balances, orders, settlement and wallet operations remain backend integration work and must not be moved into frontend authority.
+These UI items are now wired to server-authoritative authentication, market data, balances, orders, settlement and demo wallet operations. Real-money payment processing remains a separate production milestone.
 # Current Frontend Implementation Update — 2026-10-02
 
 The frontend theme was audited before the latest implementation work. The current visual system is **Black Gold**: true-black surfaces, yellow brand accent, green/red reserved for market direction, compact rail/topbar, and denser controls. New UI work in this milestone follows those tokens rather than the earlier cyan/graphite styling.
