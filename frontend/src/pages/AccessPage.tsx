@@ -145,6 +145,9 @@ export function AccessPage() {
   })()
 
   const challengeToken = routeState.challengeToken ?? storedChallenge?.challengeToken ?? ''
+  const initialChallengeRememberDevice = routeState.rememberDevice ?? storedChallenge?.rememberDevice ?? false
+  // Seed the local control from the server-directed challenge state once.
+  useMemo(() => { if (location.pathname === '/2fa') setRememberDevice(initialChallengeRememberDevice) }, [initialChallengeRememberDevice, location.pathname])
   const destination = typeof routeState.from === 'string' && routeState.from.startsWith('/app/')
     ? routeState.from
     : typeof storedChallenge?.from === 'string' && storedChallenge.from.startsWith('/app/')
@@ -229,7 +232,7 @@ export function AccessPage() {
           challengeToken,
           useRecoveryCode ? undefined : values.code,
           useRecoveryCode ? values.recoveryCode : undefined,
-          routeState.rememberDevice ?? storedChallenge?.rememberDevice ?? false,
+          rememberDevice,
         )
         if (result.requiresTwoFactor) {
           setError('A second verification step is still required. Start the sign-in flow again.')
@@ -329,7 +332,7 @@ export function AccessPage() {
           <div className="two-factor-help">
             <div className="two-factor-help__row">
               <CheckCircle2 size={16} />
-              <span>Challenge expires {routeState.challengeExpiresAt ?? storedChallenge?.challengeExpiresAt ? new Date(routeState.challengeExpiresAt ?? storedChallenge!.challengeExpiresAt!).toLocaleTimeString() : 'soon'}.</span>
+              <span>Challenge expires {(() => { const value = routeState.challengeExpiresAt ?? storedChallenge?.challengeExpiresAt; return value ? new Date(value).toLocaleTimeString() : 'soon' })()}.</span>
             </div>
             <button type="button" className="quiet-button" onClick={() => setUseRecoveryCode((value) => !value)}>
               {useRecoveryCode ? 'Use authenticator code' : 'Use recovery code'}
@@ -389,11 +392,7 @@ export function AccessPage() {
 
           {location.pathname === '/2fa' ? (
             <label className="access-check">
-              <input type="checkbox" checked={routeState.rememberDevice ?? storedChallenge?.rememberDevice ?? false} onChange={(event) => {
-                const next = event.target.checked
-                if (routeState.challengeToken) window.history.replaceState(null, '', window.location.href)
-                setRememberDevice(next)
-              }} />
+              <input type="checkbox" checked={routeState.rememberDevice ?? storedChallenge?.rememberDevice ?? rememberDevice} onChange={(event) => setRememberDevice(event.target.checked)} />
               <span>Remember this device for longer sessions</span>
             </label>
           ) : null}
