@@ -15,7 +15,7 @@ type TradePanelProps = {
   onOpenTrade: (trade: { direction: TradeDirection; amount: number; durationSeconds: number; entryPrice: number; payoutRate: number }) => Promise<TradeCreateResult>
 }
 
-type OrderStage = 'draft' | 'pending' | 'accepted' | 'open' | 'rejected' | 'failed'
+type OrderStage = 'draft' | 'submitting' | 'pending' | 'accepted' | 'open' | 'rejected' | 'failed'
 
 function formatDuration(value: number) {
   return value < 60 ? value + 's' : value / 60 + 'm'
