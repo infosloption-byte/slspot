@@ -378,6 +378,7 @@ export function TradingPage() {
           onOpenMarkets={() => setMarketPickerOpen(true)}
           openTrades={openTrades}
           now={now}
+          realtimeState={realtimeState}
         />
 
         <BottomPanel
@@ -424,6 +425,9 @@ export function TradingPage() {
           setMarketPickerOpen(false)
         }}
         onClose={() => setMarketPickerOpen(false)}
+        loading={market.loading}
+        errorMessage={market.error?.message ?? null}
+        onRetry={() => void market.reload()}
       />
 
       <div className="toast-viewport" aria-live="polite">
