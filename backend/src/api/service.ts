@@ -484,8 +484,8 @@ export class PlatformApiService {
 
     const where: Prisma.WalletTransactionWhereInput = {
       walletId: wallet.id,
-      ...(input.types?.length ? { type: { in: input.types as Prisma.EnumWalletTransactionTypeFilter['in'] } } : {}),
-      ...(input.statuses?.length ? { status: { in: input.statuses as Prisma.EnumWalletTransactionStatusFilter['in'] } } : {}),
+      ...(input.types?.length ? { type: { in: input.types } } : {}),
+      ...(input.statuses?.length ? { status: { in: input.statuses } } : {}),
       ...(input.search?.trim()
         ? {
             OR: [
