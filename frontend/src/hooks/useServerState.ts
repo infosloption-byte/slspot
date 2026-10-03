@@ -36,6 +36,7 @@ export function usePortfolioPositions(page: number, pageSize = 25) {
 }
 
 export type TradeHistoryQuery = {
+  status?: string
   search?: string
   assetId?: string
   direction?: 'UP' | 'DOWN'
@@ -48,10 +49,10 @@ export type TradeHistoryQuery = {
 
 export function useTrades(page: number, pageSize = 25, status?: TradeRecord['status'], filters: TradeHistoryQuery = {}) {
   const { mode } = useWalletMode()
-  const { search, assetId, direction, from, to, sortBy, sortOrder, settledOnly } = filters
+  const { status: filterStatus, search, assetId, direction, from, to, sortBy, sortOrder, settledOnly } = filters
   const load = useCallback(
-    () => tradesApi.list({ page, pageSize, status, search, assetId, direction, from, to, sortBy, sortOrder, settledOnly }, mode),
-    [page, pageSize, status, search, assetId, direction, from, to, sortBy, sortOrder, settledOnly, mode],
+    () => tradesApi.list({ page, pageSize, status: status ?? filterStatus, search, assetId, direction, from, to, sortBy, sortOrder, settledOnly }, mode),
+    [page, pageSize, status, filterStatus, search, assetId, direction, from, to, sortBy, sortOrder, settledOnly, mode],
   )
   return useAsyncResource(load)
 }
