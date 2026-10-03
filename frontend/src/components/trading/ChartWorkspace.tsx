@@ -24,6 +24,7 @@ import {
   type IChartApi,
 } from 'lightweight-charts'
 import type { MarketAsset } from '../../data/mockMarket'
+import { generateMockCandles } from '../../data/mockCandles'
 import type { MarketCandle } from '../../api/contracts'
 import { useMarketCandles } from '../../hooks/useServerState'
 import type { OpenTrade } from '../../types/trading'
@@ -185,7 +186,7 @@ function ChartCanvas({
   return (
     <div className="chart-canvas-shell">
       <div ref={containerRef} className="chart-canvas" role="img" aria-label={asset.symbol + ' ' + chartType + ' market chart'} />
-      <div className="chart-attribution">Server OHLC</div>
+      <div className="chart-attribution">{usingMockCandles ? 'Demo fallback' : 'Server OHLC'}</div>
     </div>
   )
 }
@@ -231,9 +232,27 @@ export function ChartWorkspace({ asset, onOpenMarkets, openTrades, now }: ChartW
   const price = formatPrice(asset.price, asset.price < 10 ? 5 : 2)
   const marketInterval = timeframeToApiInterval(timeframe)
   const candleResource = useMarketCandles(asset.assetId, marketInterval, 200)
-  const candles = useMemo<ChartCandle[]>(() => (
-    candleResource.data ? toChartCandles(candleResource.data.candles) : []
-  ), [candleResource.data])
+  const usingMockCandles = import.meta.env.DEV && (
+    Boolean(candleResource.error) ||
+    (candleResource.data !== null && candleResource.data.candles.length === 0)
+  )
+  const candles = useMemo<ChartCandle[]>(() => {
+    if (candleResource.data?.candles.length) {
+      return toChartCandles(candleResource.data.candles)
+    }
+
+    if (usingMockCandles) {
+      return generateMockCandles(asset, timeframe).map((candle) => ({
+        time: candle.time,
+        open: candle.open,
+        high: candle.high,
+        low: candle.low,
+        close: candle.close,
+      }))
+    }
+
+    return []
+  }, [asset, candleResource.data, timeframe, usingMockCandles])
   const rsi = useMemo(() => calculateRsi(candles), [candles])
 
   useEffect(() => {
@@ -429,7 +448,7 @@ export function ChartWorkspace({ asset, onOpenMarkets, openTrades, now }: ChartW
       </div>
 
       <div className="chart-bottom-status">
-        <span><i className="live-dot" /> {candleResource.data?.candles.length ? 'Live market data' : 'Waiting for market data'}</span>
+        <span><i className="live-dot" /> {candleResource.data?.candles.length ? 'Live market data' : usingMockCandles ? 'Demo market data' : 'Waiting for market data'}</span>
         <span>{timeframe}</span>
         <span>{chartType === 'candles' ? 'Candles' : chartType === 'line' ? 'Line' : 'Area'}</span>
         <span className="chart-bottom-status__spacer" />
