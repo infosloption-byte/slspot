@@ -334,6 +334,31 @@ function DashboardPage() {
               <div><span>Loss rate</span><strong>{analytics.data?.lossRate ?? '0'}%</strong></div>
             </div>
           </section>
+          <section className="dashboard-card panel">
+            <div className="dashboard-card__header">
+              <div><span className="eyebrow">Watchlist</span><h2>Favorite assets</h2></div>
+              <Link to="/app/trading" className="dashboard-link">Manage <ArrowUpRight size={13} /></Link>
+            </div>
+            {favoriteMarkets.length ? (
+              <div className="favorite-assets">
+                {favoriteMarkets.slice(0, 6).map((asset) => (
+                  <div className="favorite-asset" key={asset.assetId}>
+                    <span className="favorite-asset__icon"><Star size={12} fill="currentColor" /></span>
+                    <div>
+                      <strong>{asset.symbol}</strong>
+                      <small>{asset.name}</small>
+                    </div>
+                    <div className="favorite-asset__quote">
+                      <strong>{asset.market?.lastPrice ? formatPrice(Number(asset.market.lastPrice), asset.priceScale > 4 ? 5 : 2) : '—'}</strong>
+                      <small>{asset.market?.lastChangePct ?? '0'}%</small>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="dashboard-note"><Star size={14} /> No favorite assets yet. Star a market from the Trading Room watchlist.</div>
+            )}
+          </section>
         </div>
       </ApiState>
     </div>
@@ -425,31 +450,6 @@ function PortfolioPage() {
               {positions.data?.items.length === 0 ? <div className="dashboard-note">No positions have been recorded yet.</div> : null}
             </div>
             {positions.data ? <Pagination page={page} totalPages={positions.data.pagination.totalPages} onChange={setPage} /> : null}
-          </section>
-          <section className="dashboard-card panel">
-            <div className="dashboard-card__header">
-              <div><span className="eyebrow">Watchlist</span><h2>Favorite assets</h2></div>
-              <Link to="/app/trading" className="dashboard-link">Manage <ArrowUpRight size={13} /></Link>
-            </div>
-            {favoriteMarkets.length ? (
-              <div className="favorite-assets">
-                {favoriteMarkets.slice(0, 6).map((asset) => (
-                  <div className="favorite-asset" key={asset.assetId}>
-                    <span className="favorite-asset__icon"><Star size={12} fill="currentColor" /></span>
-                    <div>
-                      <strong>{asset.symbol}</strong>
-                      <small>{asset.name}</small>
-                    </div>
-                    <div className="favorite-asset__quote">
-                      <strong>{asset.market?.lastPrice ? formatPrice(Number(asset.market.lastPrice), asset.priceScale > 4 ? 5 : 2) : '—'}</strong>
-                      <small>{asset.market?.lastChangePct ?? '0'}%</small>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="dashboard-note"><Star size={14} /> No favorite assets yet. Star a market from the Trading Room watchlist.</div>
-            )}
           </section>
         </div>
       </ApiState>
