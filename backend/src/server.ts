@@ -4,6 +4,7 @@ import { createMarketDataProvider } from './market/index.js'
 import { MarketDataService } from './market/service.js'
 import { TradingService } from './trading/service.js'
 import { AuthService } from './auth/service.js'
+import { AdminService } from './admin/service.js'
 import { env } from './config/env.js'
 import { prisma } from './db/prisma.js'
 import {
@@ -22,6 +23,7 @@ import {
 } from './db/prisma.js'
 
 const authService = new AuthService(prisma)
+const adminService = new AdminService(prisma)
 const apiService = new PlatformApiService(prisma)
 const marketDataProvider = createMarketDataProvider()
 const marketDataService = new MarketDataService(prisma, marketDataProvider)
@@ -38,6 +40,7 @@ const app = buildApp({
   apiService,
   marketDataService,
   tradingService,
+  adminService,
 })
 let shuttingDown = false
 
@@ -81,6 +84,8 @@ process.once('SIGTERM', () => {
 
 try {
   await connectDatabase()
+  const bootstrappedAdmins = await adminService.bootstrapConfiguredAdmins()
+  if (bootstrappedAdmins > 0) app.log.info({ count: bootstrappedAdmins }, 'Configured administrator access bootstrapped')
 
   try {
     await connectRedis()
