@@ -106,7 +106,7 @@ export function TradingPage() {
 
   const updateHistoryFilters = useCallback((patch: Partial<TradeHistoryFilters>) => {
     setTradingUiState({ historyFilters: { ...historyFilters, ...patch }, historyPage: 1 })
-  }, [])
+  }, [historyFilters])
 
   const resetHistoryFilters = useCallback(() => {
     setTradingUiState({ historyFilters: { ...defaultHistoryFilters }, historyPage: 1 })
