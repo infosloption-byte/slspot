@@ -269,7 +269,9 @@ function ChartCanvas({
   crosshairEnabled,
   gridEnabled,
   priceLineEnabled,
-  maEnabled,
+  enabledIndicators,
+  indicatorPeriod,
+  volumeEnabled,
   candles,
   usingMockCandles,
 }: {
@@ -279,14 +281,17 @@ function ChartCanvas({
   crosshairEnabled: boolean
   gridEnabled: boolean
   priceLineEnabled: boolean
-  maEnabled: boolean
+  enabledIndicators: IndicatorId[]
+  indicatorPeriod: number
+  volumeEnabled: boolean
   candles: ChartCandle[]
   usingMockCandles: boolean
 }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const chartRef = useRef<IChartApi | null>(null)
   const primarySeriesRef = useRef<unknown>(null)
-  const maSeriesRef = useRef<unknown>(null)
+  const indicatorSeriesRef = useRef<Map<string, unknown>>(new Map())
+  const volumeSeriesRef = useRef<unknown>(null)
   const priceLineRef = useRef<{ applyOptions: (options: { price: number }) => void } | null>(null)
   const fittedDatasetRef = useRef<string | null>(null)
   const closes = useMemo(
@@ -365,7 +370,8 @@ function ChartCanvas({
       resizeObserver.disconnect()
       if (chartRef.current === chart) chartRef.current = null
       primarySeriesRef.current = null
-      maSeriesRef.current = null
+      indicatorSeriesRef.current.clear()
+      volumeSeriesRef.current = null
       priceLineRef.current = null
       chart.remove()
     }
@@ -419,34 +425,43 @@ function ChartCanvas({
     const chart = chartRef.current
     if (!chart) return
 
-    const currentMa = maSeriesRef.current as {
-      setData: (data: unknown[]) => void
-      update: (data: unknown) => void
-    } | null
+    const bollinger = calculateBollinger(candles, Math.max(5, indicatorPeriod))
+    const overlayDefinitions: Array<[string, OverlayPoint[], string, number]> = []
 
-    if (!maEnabled) {
-      if (currentMa) {
-        chart.removeSeries(currentMa as never)
-        maSeriesRef.current = null
-      }
-      return
+    if (enabledIndicators.includes('sma')) overlayDefinitions.push(['sma', sma, '#ffc21a', 2])
+    if (enabledIndicators.includes('ema')) overlayDefinitions.push(['ema', calculateEma(candles, indicatorPeriod), '#7dd3fc', 2])
+    if (enabledIndicators.includes('bollinger')) {
+      overlayDefinitions.push(['bollinger-upper', bollinger.upper, '#9a9aa4', 1])
+      overlayDefinitions.push(['bollinger-middle', bollinger.middle, '#ffc21a', 1])
+      overlayDefinitions.push(['bollinger-lower', bollinger.lower, '#9a9aa4', 1])
+    }
+    if (enabledIndicators.includes('psar')) overlayDefinitions.push(['psar', calculatePsar(candles), '#fbbf24', 1])
+    if (enabledIndicators.includes('alligator')) {
+      const alligator = calculateAlligator(candles)
+      overlayDefinitions.push(['alligator-jaw', alligator.jaw, '#f59e0b', 1])
+      overlayDefinitions.push(['alligator-teeth', alligator.teeth, '#22d3ee', 1])
+      overlayDefinitions.push(['alligator-lips', alligator.lips, '#34d399', 1])
+    }
+    if (enabledIndicators.includes('fractal')) {
+      const fractals = calculateFractals(candles)
+      overlayDefinitions.push(['fractal-high', fractals.highs, '#ef4444', 2])
+      overlayDefinitions.push(['fractal-low', fractals.lows, '#22c55e', 2])
     }
 
-    if (!currentMa) {
-      const nextMa = chart.addSeries(LineSeries, {
-        color: '#ffc21a',
-        lineWidth: 2,
+    indicatorSeriesRef.current.forEach((series) => chart.removeSeries(series as never))
+    indicatorSeriesRef.current.clear()
+
+    for (const [key, data, color, lineWidth] of overlayDefinitions) {
+      const series = chart.addSeries(LineSeries, {
+        color,
+        lineWidth,
         lastValueVisible: false,
         priceLineVisible: false,
       })
-      maSeriesRef.current = nextMa
+      series.setData(data)
+      indicatorSeriesRef.current.set(key, series)
     }
-
-    const maSeries = maSeriesRef.current as {
-      setData: (data: unknown[]) => void
-    }
-    maSeries.setData(sma)
-  }, [chartType, maEnabled, sma])
+  }, [candles, chartType, enabledIndicators, indicatorPeriod, sma])
 
   useEffect(() => {
     const chart = chartRef.current
@@ -479,6 +494,39 @@ function ChartCanvas({
 
     priceLineRef.current.applyOptions({ price: asset.price })
   }, [asset.price, chartType, priceLineEnabled])
+
+  useEffect(() => {
+    const chart = chartRef.current
+    if (!chart) return
+
+    const existing = volumeSeriesRef.current as { setData: (data: unknown[]) => void } | null
+    if (!volumeEnabled) {
+      if (existing) {
+        chart.removeSeries(existing as never)
+        volumeSeriesRef.current = null
+      }
+      return
+    }
+
+    const series = existing ?? chart.addSeries(HistogramSeries, {
+      priceFormat: { type: 'volume' },
+      priceScaleId: 'volume',
+      color: 'rgba(255,194,26,.28)',
+      base: 0,
+      priceLineVisible: false,
+      lastValueVisible: false,
+    })
+    chart.priceScale('volume').applyOptions({
+      scaleMargins: { top: 0.78, bottom: 0 },
+      visible: false,
+    })
+    volumeSeriesRef.current = series
+    series.setData(candles.map((candle) => ({
+      time: candle.time,
+      value: Number.isFinite(candle.volume) ? candle.volume : 0,
+      color: candle.close >= candle.open ? 'rgba(31,210,122,.25)' : 'rgba(255,77,94,.25)',
+    })))
+  }, [candles, chartType, volumeEnabled])
 
   useEffect(() => {
     const price = asset.price
@@ -516,7 +564,7 @@ function ChartCanvas({
       ).at(-1)
       if (nextSma) maSeries.update(nextSma)
     }
-  }, [asset.price, candles, chartType, maEnabled])
+  }, [asset.price, candles, chartType, enabledIndicators, indicatorPeriod])
 
   return (
     <div className="chart-canvas-shell">
@@ -526,7 +574,7 @@ function ChartCanvas({
         role="img"
         aria-label={asset.symbol + ' ' + chartType + ' market chart'}
       />
-      <div className="chart-attribution">{usingMockCandles ? 'Demo fallback' : 'Server OHLC'}</div>
+      <div className="chart-attribution">{usingMockCandles ? 'Demo fallback' : 'Server OHLC'} · Volume {volumeEnabled ? 'on' : 'off'}</div>
     </div>
   )
 }
@@ -551,6 +599,7 @@ function toChartCandles(candles: MarketCandle[]) {
     high: Number(candle.high),
     low: Number(candle.low),
     close: Number(candle.close),
+    volume: Number(candle.volume),
   }))
 }
 
