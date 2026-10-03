@@ -27,7 +27,8 @@ export function TradePanel({ asset, balance, soundEnabled, onToggleSound, onOpen
   const [mobileConfigOpen, setMobileConfigOpen] = useState(false)
   const [mobileDurationOpen, setMobileDurationOpen] = useState(false)
   const durationRef = useRef<HTMLDivElement>(null)
-  const estimatedPayout = amount * asset.payoutRate
+  const payoutRate = Number(asset.payoutRate)
+  const estimatedPayout = amount * payoutRate
   const totalReturn = amount + estimatedPayout
 
   useEffect(() => {
@@ -101,7 +102,7 @@ export function TradePanel({ asset, balance, soundEnabled, onToggleSound, onOpen
     if (!direction) return
     setStage('submitting')
     try {
-      await onOpenTrade({ direction, amount, durationSeconds: duration, entryPrice: asset.price, payoutRate: asset.payoutRate })
+      await onOpenTrade({ direction, amount, durationSeconds: duration, entryPrice: asset.price, payoutRate })
       setStage('opened')
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Trade submission failed')
@@ -221,7 +222,7 @@ export function TradePanel({ asset, balance, soundEnabled, onToggleSound, onOpen
 
       {error ? <div className="trade-modal-backdrop"><div className="trade-modal trade-modal--error" role="alertdialog" aria-modal="true"><div className="trade-modal__icon"><ShieldAlert size={18} /></div><div><span>Check your trade</span><strong>{error}</strong></div><button className="icon-button" type="button" onClick={() => setError('')} aria-label="Close error"><X size={15} /></button></div></div> : null}
 
-      {stage === 'confirming' && direction ? (
+      {(stage === 'confirming' || stage === 'submitting') && direction ? (
         <div className="trade-modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) resetOrder() }}>
           <div className="trade-modal" role="dialog" aria-modal="true" aria-label="Confirm trade">
             <div className="trade-modal__header"><div><span>Review trade</span><strong>{direction} · {asset.symbol}</strong></div><button className="icon-button" type="button" onClick={resetOrder} aria-label="Cancel"><X size={15} /></button></div>
