@@ -162,6 +162,16 @@ export function TradingPage() {
       }))
   }, [positions.data])
 
+  useEffect(() => {
+    if (openTrades.length === 0) return undefined
+
+    const timer = window.setInterval(() => {
+      void reloadTradingState()
+    }, 2500)
+
+    return () => window.clearInterval(timer)
+  }, [openTrades.length, reloadTradingState])
+
   const settledTrades = useMemo<OpenTrade[]>(() => {
     return (trades.data?.items ?? [])
       .filter((trade) => trade.status !== 'OPEN')
