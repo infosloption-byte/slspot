@@ -248,7 +248,19 @@ export function registerPlatformApiRoutes(app: FastifyInstance, options: Platfor
 
   app.post<{
     Body: { amount: string | number; clientRequestId?: string }
-  }>(PREFIX + '/wallet/deposit', async (request) => {
+  }>(PREFIX + '/wallet/deposit', {
+    schema: {
+      body: {
+        type: 'object',
+        required: ['amount'],
+        additionalProperties: false,
+        properties: {
+          amount: { anyOf: [{ type: 'string', minLength: 1, maxLength: 64 }, { type: 'number', exclusiveMinimum: 0 }] },
+          clientRequestId: { type: 'string', minLength: 1, maxLength: 128 },
+        },
+      },
+    },
+  }, async (request) => {
     const session = await requireSession(request, options.authService)
     const mode = walletModeFromRequest(request)
     if (mode !== 'DEMO') throw new FinanceError(503, 'PAYMENT_PROVIDER_UNAVAILABLE', 'Real deposits are not enabled')
@@ -264,7 +276,20 @@ export function registerPlatformApiRoutes(app: FastifyInstance, options: Platfor
 
   app.post<{
     Body: { amount: string | number; destination: string; clientRequestId?: string }
-  }>(PREFIX + '/wallet/withdraw', async (request) => {
+  }>(PREFIX + '/wallet/withdraw', {
+    schema: {
+      body: {
+        type: 'object',
+        required: ['amount', 'destination'],
+        additionalProperties: false,
+        properties: {
+          amount: { anyOf: [{ type: 'string', minLength: 1, maxLength: 64 }, { type: 'number', exclusiveMinimum: 0 }] },
+          destination: { type: 'string', minLength: 1, maxLength: 255 },
+          clientRequestId: { type: 'string', minLength: 1, maxLength: 128 },
+        },
+      },
+    },
+  }, async (request) => {
     const session = await requireSession(request, options.authService)
     const mode = walletModeFromRequest(request)
     if (mode !== 'DEMO') throw new FinanceError(503, 'PAYMENT_PROVIDER_UNAVAILABLE', 'Real withdrawals are not enabled')
