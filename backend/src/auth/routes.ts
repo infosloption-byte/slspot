@@ -5,7 +5,8 @@ import { AuthError, type AuthSession, type AuthService } from './service.js'
 export type AuthServiceLike = Pick<AuthService,
   'register' | 'login' | 'authenticateSession' | 'logout' | 'logoutAll' |
   'listSessions' | 'revokeSession' | 'verifyEmail' | 'requestEmailVerification' |
-  'requestPasswordReset' | 'resetPassword'
+  'requestPasswordReset' | 'resetPassword' | 'verifyTwoFactorChallenge' | 'getTwoFactorStatus' |
+  'setupTwoFactor' | 'enableTwoFactor' | 'disableTwoFactor' | 'listDevices' | 'listLoginHistory' | 'listSecurityEvents'
 >
 
 const PREFIX='/api/v1/auth'
@@ -47,7 +48,7 @@ export function registerAuthRoutes(app: FastifyInstance, service: AuthServiceLik
     return reply.status(202).send(ok(request,data))
   })
 
-  app.post<{Body:{email:string;password:string}}>(PREFIX+'/login',{
+  app.post<{Body:{email:string;password:string;rememberDevice?:boolean}}>(PREFIX+'/login',{
     schema:{body:{type:'object',required:['email','password'],additionalProperties:false,properties:{
       email:{type:'string',minLength:3,maxLength:254},password:{type:'string',minLength:10,maxLength:128},
     }}},
@@ -55,6 +56,60 @@ export function registerAuthRoutes(app: FastifyInstance, service: AuthServiceLik
     const result=await service.login({...request.body,ipAddress:request.ip,userAgent:request.headers['user-agent']})
     setSessionCookie(reply,result.sessionToken,result.session.expiresAt)
     return reply.send(ok(request,{user:result.session,expiresAt:result.session.expiresAt}))
+  })
+
+  app.post<{Body:{challengeToken:string;code?:string;recoveryCode?:string;rememberDevice?:boolean}}>(PREFIX+'/2fa/verify',{
+    schema:{body:{type:'object',required:['challengeToken'],additionalProperties:false,properties:{
+      challengeToken:{type:'string',minLength:20,maxLength:256},
+      code:{type:'string',minLength:6,maxLength:6},
+      recoveryCode:{type:'string',minLength:8,maxLength:32},
+      rememberDevice:{type:'boolean'},
+    }}},
+  },async(request,reply)=>{
+    const result=await service.verifyTwoFactorChallenge({...request.body,ipAddress:request.ip,userAgent:request.headers['user-agent']})
+    if (result.requiresTwoFactor) return reply.status(202).send(ok(request,result))
+    setSessionCookie(reply,result.sessionToken,result.session.expiresAt)
+    return reply.send(ok(request,result))
+  })
+
+  app.get(PREFIX+'/2fa/status',async(request)=>{
+    const session=await requireSession(request,service)
+    return ok(request,await service.getTwoFactorStatus(session.id))
+  })
+
+  app.post(PREFIX+'/2fa/setup',async(request)=>{
+    const session=await requireSession(request,service)
+    return ok(request,await service.setupTwoFactor(session.id))
+  })
+
+  app.post<{Body:{code:string}}>(PREFIX+'/2fa/enable',{
+    schema:{body:{type:'object',required:['code'],additionalProperties:false,properties:{code:{type:'string',minLength:6,maxLength:6}}}},
+  },async(request)=>{
+    const session=await requireSession(request,service)
+    return ok(request,await service.enableTwoFactor(session.id,request.body.code))
+  })
+
+  app.post<{Body:{code:string}}>(PREFIX+'/2fa/disable',{
+    schema:{body:{type:'object',required:['code'],additionalProperties:false,properties:{code:{type:'string',minLength:6,maxLength:6}}}},
+  },async(request)=>{
+    const session=await requireSession(request,service)
+    await service.disableTwoFactor(session.id,request.body.code)
+    return ok(request,{disabled:true})
+  })
+
+  app.get(PREFIX+'/devices',async(request)=>{
+    const session=await requireSession(request,service)
+    return ok(request,{devices:await service.listDevices(session.id)})
+  })
+
+  app.get(PREFIX+'/login-history',async(request)=>{
+    const session=await requireSession(request,service)
+    return ok(request,{items:await service.listLoginHistory(session.id)})
+  })
+
+  app.get(PREFIX+'/security-events',async(request)=>{
+    const session=await requireSession(request,service)
+    return ok(request,{items:await service.listSecurityEvents(session.id)})
   })
 
   app.post(PREFIX+'/logout',async(request,reply)=>{
