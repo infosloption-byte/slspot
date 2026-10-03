@@ -161,12 +161,6 @@ function ChartCanvas({
     })
 
     let series: unknown
-    const commonLine = {
-      color: '#ffc21a',
-      lineWidth: 2 as const,
-      lastValueVisible: false,
-      priceLineVisible: false,
-    }
 
     if (chartType === 'candles') {
       series = chart.addSeries(CandlestickSeries, {
@@ -200,8 +194,6 @@ function ChartCanvas({
       })
     })
     resizeObserver.observe(container)
-
-    void commonLine
 
     return () => {
       resizeObserver.disconnect()
