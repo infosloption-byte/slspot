@@ -30,6 +30,7 @@ import { useMarketCandles } from '../../hooks/useServerState'
 import type { OpenTrade } from '../../types/trading'
 import { tradeProgress, tradeRemainingSeconds } from '../../types/trading'
 import { formatPercent, formatPrice } from '../../lib/format'
+import { ErrorState } from '../ui/ErrorState'
 import { IconButton } from '../ui/IconButton'
 
 type ChartType = 'candles' | 'line' | 'area'
@@ -97,7 +98,7 @@ function formatCountdown(seconds: number) {
 
 function ChartCanvas({
   asset,
-  timeframe,
+  datasetKey,
   chartType,
   crosshairEnabled,
   gridEnabled,
@@ -107,7 +108,7 @@ function ChartCanvas({
   usingMockCandles,
 }: {
   asset: MarketAsset
-  timeframe: string
+  datasetKey: string
   chartType: ChartType
   crosshairEnabled: boolean
   gridEnabled: boolean
@@ -118,7 +119,14 @@ function ChartCanvas({
 }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const chartRef = useRef<IChartApi | null>(null)
-  const closes = useMemo(() => candles.map((candle) => ({ time: candle.time, value: candle.close })), [candles])
+  const primarySeriesRef = useRef<unknown>(null)
+  const maSeriesRef = useRef<unknown>(null)
+  const priceLineRef = useRef<{ applyOptions: (options: { price: number }) => void } | null>(null)
+  const fittedDatasetRef = useRef<string | null>(null)
+  const closes = useMemo(
+    () => candles.map((candle) => ({ time: candle.time, value: candle.close })),
+    [candles],
+  )
   const sma = useMemo(() => calculateSma(candles), [candles])
 
   useEffect(() => {
@@ -128,66 +136,238 @@ function ChartCanvas({
     const chart = createChart(container, {
       width: container.clientWidth,
       height: Math.max(container.clientHeight, 240),
-      layout: { background: { type: ColorType.Solid, color: 'transparent' }, textColor: '#9a9aa4', attributionLogo: false },
+      layout: {
+        background: { type: ColorType.Solid, color: 'transparent' },
+        textColor: '#9a9aa4',
+        attributionLogo: false,
+      },
+      rightPriceScale: {
+        borderColor: 'rgba(255,255,255,.08)',
+        scaleMargins: { top: 0.08, bottom: 0.1 },
+      },
+      timeScale: {
+        borderColor: 'rgba(255,255,255,.08)',
+        timeVisible: true,
+        secondsVisible: false,
+        rightOffset: 5,
+      },
+      handleScale: { axisPressedMouseMove: true, mouseWheel: true, pinch: true },
+      handleScroll: {
+        mouseWheel: true,
+        pressedMouseMove: true,
+        horzTouchDrag: true,
+        vertTouchDrag: true,
+      },
+    })
+
+    let series: unknown
+    const commonLine = {
+      color: '#ffc21a',
+      lineWidth: 2 as const,
+      lastValueVisible: false,
+      priceLineVisible: false,
+    }
+
+    if (chartType === 'candles') {
+      series = chart.addSeries(CandlestickSeries, {
+        upColor: '#1fd27a',
+        downColor: '#ff4d5e',
+        borderVisible: false,
+        wickUpColor: '#1fd27a',
+        wickDownColor: '#ff4d5e',
+      })
+    } else if (chartType === 'area') {
+      series = chart.addSeries(AreaSeries, {
+        topColor: 'rgba(255,194,26,.22)',
+        bottomColor: 'rgba(255,194,26,.01)',
+        lineColor: '#ffc21a',
+        lineWidth: 2,
+      })
+    } else {
+      series = chart.addSeries(LineSeries, { color: '#ffc21a', lineWidth: 2 })
+    }
+
+    primarySeriesRef.current = series
+    chartRef.current = chart
+    fittedDatasetRef.current = null
+
+    const resizeObserver = new ResizeObserver((entries) => {
+      const rect = entries[0]?.contentRect
+      if (!rect) return
+      chart.applyOptions({
+        width: Math.floor(rect.width),
+        height: Math.max(Math.floor(rect.height), 240),
+      })
+    })
+    resizeObserver.observe(container)
+
+    void commonLine
+
+    return () => {
+      resizeObserver.disconnect()
+      if (chartRef.current === chart) chartRef.current = null
+      primarySeriesRef.current = null
+      maSeriesRef.current = null
+      priceLineRef.current = null
+      chart.remove()
+    }
+  }, [asset.symbol, chartType])
+
+  useEffect(() => {
+    const chart = chartRef.current
+    if (!chart) return
+
+    chart.applyOptions({
       grid: {
         vertLines: { color: gridEnabled ? 'rgba(255,255,255,.045)' : 'transparent' },
         horzLines: { color: gridEnabled ? 'rgba(255,255,255,.045)' : 'transparent' },
       },
       crosshair: {
         mode: crosshairEnabled ? CrosshairMode.Normal : CrosshairMode.Hidden,
-        vertLine: { color: 'rgba(255,194,26,.28)', width: 1, labelVisible: crosshairEnabled },
-        horzLine: { color: 'rgba(255,194,26,.18)', width: 1, labelVisible: crosshairEnabled },
+        vertLine: {
+          color: 'rgba(255,194,26,.28)',
+          width: 1,
+          labelVisible: crosshairEnabled,
+        },
+        horzLine: {
+          color: 'rgba(255,194,26,.18)',
+          width: 1,
+          labelVisible: crosshairEnabled,
+        },
       },
-      rightPriceScale: { borderColor: 'rgba(255,255,255,.08)', scaleMargins: { top: 0.08, bottom: 0.1 } },
-      timeScale: { borderColor: 'rgba(255,255,255,.08)', timeVisible: true, secondsVisible: false, rightOffset: 5 },
-      handleScale: { axisPressedMouseMove: true, mouseWheel: true, pinch: true },
-      handleScroll: { mouseWheel: true, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: true },
     })
-
-    const commonLine = { color: '#ffc21a', lineWidth: 2 as const, lastValueVisible: false, priceLineVisible: false }
-    if (chartType === 'candles') {
-      const series = chart.addSeries(CandlestickSeries, { upColor: '#1fd27a', downColor: '#ff4d5e', borderVisible: false, wickUpColor: '#1fd27a', wickDownColor: '#ff4d5e' })
-      series.setData(candles)
-      if (priceLineEnabled) series.createPriceLine({ price: asset.price, color: '#ffc21a', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'Last' })
-    } else if (chartType === 'area') {
-      const series = chart.addSeries(AreaSeries, { topColor: 'rgba(255,194,26,.22)', bottomColor: 'rgba(255,194,26,.01)', lineColor: '#ffc21a', lineWidth: 2 })
-      series.setData(closes)
-      if (priceLineEnabled) series.createPriceLine({ price: asset.price, color: '#ffc21a', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'Last' })
-    } else {
-      const series = chart.addSeries(LineSeries, { color: '#ffc21a', lineWidth: 2 })
-      series.setData(closes)
-      if (priceLineEnabled) series.createPriceLine({ price: asset.price, color: '#ffc21a', lineWidth: 1, lineStyle: 2, axisLabelVisible: true, title: 'Last' })
-    }
-
-    if (maEnabled) {
-      const maSeries = chart.addSeries(LineSeries, commonLine)
-      maSeries.setData(sma)
-    }
-
-    chart.timeScale().fitContent()
-    chartRef.current = chart
-    const resizeObserver = new ResizeObserver((entries) => {
-      const rect = entries[0]?.contentRect
-      if (!rect) return
-      chart.applyOptions({ width: Math.floor(rect.width), height: Math.max(Math.floor(rect.height), 240) })
-    })
-    resizeObserver.observe(container)
-
-    return () => {
-      resizeObserver.disconnect()
-      chartRef.current = null
-      chart.remove()
-    }
-  }, [asset.symbol, timeframe, chartType, crosshairEnabled, gridEnabled, priceLineEnabled, maEnabled, candles, closes, sma])
+  }, [crosshairEnabled, gridEnabled])
 
   useEffect(() => {
-    if (!chartRef.current) return
-    chartRef.current.timeScale().fitContent()
-  }, [asset.price])
+    const series = primarySeriesRef.current as {
+      setData: (data: unknown[]) => void
+    } | null
+
+    if (!series) return
+
+    if (chartType === 'candles') {
+      if (candles.length) series.setData(candles)
+    } else {
+      if (closes.length) series.setData(closes)
+    }
+
+    if (candles.length && fittedDatasetRef.current !== datasetKey) {
+      chartRef.current?.timeScale().fitContent()
+      fittedDatasetRef.current = datasetKey
+    }
+  }, [candles, chartType, closes, datasetKey])
+
+  useEffect(() => {
+    const chart = chartRef.current
+    if (!chart) return
+
+    const currentMa = maSeriesRef.current as {
+      setData: (data: unknown[]) => void
+      update: (data: unknown) => void
+    } | null
+
+    if (!maEnabled) {
+      if (currentMa) {
+        chart.removeSeries(currentMa as never)
+        maSeriesRef.current = null
+      }
+      return
+    }
+
+    if (!currentMa) {
+      const nextMa = chart.addSeries(LineSeries, {
+        color: '#ffc21a',
+        lineWidth: 2,
+        lastValueVisible: false,
+        priceLineVisible: false,
+      })
+      maSeriesRef.current = nextMa
+    }
+
+    const maSeries = maSeriesRef.current as {
+      setData: (data: unknown[]) => void
+    }
+    maSeries.setData(sma)
+  }, [chartType, maEnabled, sma])
+
+  useEffect(() => {
+    const chart = chartRef.current
+    const series = primarySeriesRef.current as {
+      createPriceLine: (options: unknown) => { applyOptions: (options: { price: number }) => void }
+      removePriceLine: (line: { applyOptions: (options: { price: number }) => void }) => void
+    } | null
+
+    if (!chart || !series) return
+
+    if (!priceLineEnabled) {
+      if (priceLineRef.current) {
+        series.removePriceLine(priceLineRef.current)
+        priceLineRef.current = null
+      }
+      return
+    }
+
+    if (!priceLineRef.current) {
+      priceLineRef.current = series.createPriceLine({
+        price: asset.price,
+        color: '#ffc21a',
+        lineWidth: 1,
+        lineStyle: 2,
+        axisLabelVisible: true,
+        title: 'Last',
+      })
+      return
+    }
+
+    priceLineRef.current.applyOptions({ price: asset.price })
+  }, [asset.price, chartType, priceLineEnabled])
+
+  useEffect(() => {
+    const price = asset.price
+    if (!Number.isFinite(price) || price <= 0 || candles.length === 0) return
+
+    const last = candles[candles.length - 1]
+    if (!last) return
+
+    const nextCandle = {
+      ...last,
+      close: price,
+      high: Math.max(last.high, price),
+      low: Math.min(last.low, price),
+    }
+
+    const primary = primarySeriesRef.current as {
+      update: (data: unknown) => void
+    } | null
+
+    if (primary) {
+      if (chartType === 'candles') {
+        primary.update(nextCandle)
+      } else {
+        primary.update({ time: last.time, value: price })
+      }
+    }
+
+    const maSeries = maSeriesRef.current as {
+      update: (data: unknown) => void
+    } | null
+
+    if (maSeries && maEnabled) {
+      const nextSma = calculateSma(
+        [...candles.slice(0, -1), nextCandle],
+      ).at(-1)
+      if (nextSma) maSeries.update(nextSma)
+    }
+  }, [asset.price, candles, chartType, maEnabled])
 
   return (
     <div className="chart-canvas-shell">
-      <div ref={containerRef} className="chart-canvas" role="img" aria-label={asset.symbol + ' ' + chartType + ' market chart'} />
+      <div
+        ref={containerRef}
+        className="chart-canvas"
+        role="img"
+        aria-label={asset.symbol + ' ' + chartType + ' market chart'}
+      />
       <div className="chart-attribution">{usingMockCandles ? 'Demo fallback' : 'Server OHLC'}</div>
     </div>
   )
@@ -238,23 +418,23 @@ export function ChartWorkspace({ asset, onOpenMarkets, openTrades, now }: ChartW
     Boolean(candleResource.error) ||
     (candleResource.data !== null && candleResource.data.candles.length === 0)
   )
+  const mockCandles = useMemo(
+    () => generateMockCandles(asset, timeframe).map((candle) => ({
+      time: candle.time,
+      open: candle.open,
+      high: candle.high,
+      low: candle.low,
+      close: candle.close,
+    })),
+    [asset.symbol, timeframe],
+  )
   const candles = useMemo<ChartCandle[]>(() => {
     if (candleResource.data?.candles.length) {
       return toChartCandles(candleResource.data.candles)
     }
 
-    if (usingMockCandles) {
-      return generateMockCandles(asset, timeframe).map((candle) => ({
-        time: candle.time,
-        open: candle.open,
-        high: candle.high,
-        low: candle.low,
-        close: candle.close,
-      }))
-    }
-
-    return []
-  }, [asset, candleResource.data, timeframe, usingMockCandles])
+    return usingMockCandles ? mockCandles : []
+  }, [candleResource.data, mockCandles, usingMockCandles])
   const rsi = useMemo(() => calculateRsi(candles), [candles])
 
   useEffect(() => {
@@ -312,7 +492,9 @@ export function ChartWorkspace({ asset, onOpenMarkets, openTrades, now }: ChartW
     setDrawings((current) => [...current, completed])
     setActiveDrawing(null)
     if (drawingTool === 'horizontal') setDrawingTool('none')
-    try { event.currentTarget.releasePointerCapture(event.pointerId) } catch {}
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId)
+    }
   }
 
   const indicatorData = rsi.slice(-50)
@@ -402,9 +584,42 @@ export function ChartWorkspace({ asset, onOpenMarkets, openTrades, now }: ChartW
       </div>
 
       <div className={rsiEnabled ? 'chart-stage chart-stage--rsi' : 'chart-stage'} ref={stageRef}>
-        <ChartCanvas asset={asset} timeframe={timeframe} chartType={chartType} crosshairEnabled={crosshairEnabled} gridEnabled={gridEnabled} priceLineEnabled={priceLineEnabled} maEnabled={maEnabled} candles={candles} usingMockCandles={usingMockCandles} />
+        {candleResource.loading ? (
+          <div className="chart-data-state">
+            <span className="loading-spinner" aria-hidden="true" />
+            <span>Loading market candles…</span>
+          </div>
+        ) : candleResource.error && !usingMockCandles ? (
+          <div className="chart-data-state">
+            <ErrorState
+              title="Market data unavailable"
+              message={candleResource.error.message}
+              action={<button type="button" className="btn btn--ghost" onClick={() => void candleResource.reload()}>Retry</button>}
+            />
+          </div>
+        ) : !candles.length ? (
+          <div className="chart-data-state">
+            <ErrorState
+              title="No chart data"
+              message="The market provider returned no candle data for this interval."
+              action={<button type="button" className="btn btn--ghost" onClick={() => void candleResource.reload()}>Retry</button>}
+            />
+          </div>
+        ) : (
+          <ChartCanvas
+            asset={asset}
+            datasetKey={asset.symbol + ':' + marketInterval}
+            chartType={chartType}
+            crosshairEnabled={crosshairEnabled}
+            gridEnabled={gridEnabled}
+            priceLineEnabled={priceLineEnabled}
+            maEnabled={maEnabled}
+            candles={candles}
+            usingMockCandles={usingMockCandles}
+          />
+        )}
 
-        <div className="trade-chart-markers" aria-hidden="true">
+        {candles.length ? <div className="trade-chart-markers" aria-hidden="true">
           {openTrades.map((trade) => {
             const remaining = tradeRemainingSeconds(trade, now)
             const progress = tradeProgress(trade, now)
@@ -419,9 +634,9 @@ export function ChartWorkspace({ asset, onOpenMarkets, openTrades, now }: ChartW
               </div>
             )
           })}
-        </div>
+        </div> : null}
 
-        {drawingTool !== 'none' ? (
+        {drawingTool !== 'none' && candles.length ? (
           <div className="drawing-layer" onPointerDown={handleDrawingStart} onPointerMove={handleDrawingMove} onPointerUp={handleDrawingEnd} onPointerCancel={handleDrawingEnd} role="application" aria-label="Drawing canvas">
             <div className="drawing-layer__hint">{drawingTool === 'horizontal' ? 'Click to place a level' : 'Drag to draw a trend line'} · Esc to cancel</div>
           </div>
@@ -435,7 +650,7 @@ export function ChartWorkspace({ asset, onOpenMarkets, openTrades, now }: ChartW
           ))}
         </svg>
 
-        {priceLineEnabled ? <div className="chart-price-tag"><span>{price}</span><small>{formatPercent(asset.change)}</small></div> : null}
+        {priceLineEnabled && candles.length ? <div className="chart-price-tag"><span>{price}</span><small>{formatPercent(asset.change)}</small></div> : null}
 
         {rsiEnabled ? (
           <div className="chart-rsi-panel">
