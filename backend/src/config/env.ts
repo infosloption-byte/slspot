@@ -295,8 +295,11 @@ if (nodeEnv === 'production' && marketDataEnabled && marketDataProvider === 'twe
 
 export const env = {
   nodeEnv,
+  logLevel: parseLogLevel(process.env.LOG_LEVEL),
   host: process.env.HOST?.trim() || '0.0.0.0',
   port: parsePort(process.env.PORT),
+  requestTimeoutMs: parsePositiveInteger('REQUEST_TIMEOUT_MS', process.env.REQUEST_TIMEOUT_MS, 30_000, 1_000, 120_000),
+  trustProxy: parseBoolean('TRUST_PROXY', process.env.TRUST_PROXY, false),
   corsOrigins: parseCorsOrigins(process.env.CORS_ORIGIN, nodeEnv),
   shutdownTimeoutMs: parsePositiveInteger(
     'SHUTDOWN_TIMEOUT_MS',
@@ -305,6 +308,7 @@ export const env = {
     1_000,
     30_000,
   ),
+  adminBootstrapEmails,
   bodyLimitBytes: parsePositiveInteger(
     'BODY_LIMIT_BYTES',
     process.env.BODY_LIMIT_BYTES,
