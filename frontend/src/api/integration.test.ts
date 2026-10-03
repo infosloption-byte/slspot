@@ -109,7 +109,7 @@ describe('frontend API bindings', () => {
 
     const { authApi } = await import('./auth')
     const result = await authApi.capabilities()
-    assert.match(requestedUrl, //auth/capabilities$/)
+    assert.match(requestedUrl, /\/auth\/capabilities$/)
     assert.equal(result.trading.DEMO.enabled, true)
     assert.equal(result.trading.REAL.enabled, false)
   })
