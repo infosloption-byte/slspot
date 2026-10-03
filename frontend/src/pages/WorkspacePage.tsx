@@ -2,7 +2,6 @@ import { ArrowUpRight, BarChart3, Bell, Check, Clock3, DollarSign, PieChart, Shi
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router'
 import { Pagination } from '../components/ui/Pagination'
-import { Select } from '../components/ui/Select'
 import { ApiState } from '../components/ui/ApiState'
 import { formatPercent, formatPrice } from '../lib/format'
 import { notificationsApi } from '../api/notifications'
