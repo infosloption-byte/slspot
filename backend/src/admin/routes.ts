@@ -12,7 +12,7 @@ const FUNDING_STATUSES = ['PENDING', 'PROCESSING', 'COMPLETED', 'FAILED', 'REJEC
 const MARKET_STATUSES = ['OPEN', 'CLOSED', 'HALTED', 'MAINTENANCE'] as const
 const ADMIN_ROLES = ['ADMIN', 'SUPER_ADMIN'] as const
 const UUID_PATTERN = '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}'
-type Query = { page?: string; pageSize?: string; search?: string; status?: string; action?: string; entityType?: string; mode?: string }type Query = { page?: string; pageSize?: string; search?: string; status?: string; action?: string; entityType?: string; mode?: string }
+type Query = { page?: string; pageSize?: string; search?: string; status?: string; action?: string; entityType?: string; mode?: string }
 
 
 function positive(value: string | undefined, fallback: number) {
