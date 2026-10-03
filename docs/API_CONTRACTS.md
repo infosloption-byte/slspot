@@ -107,6 +107,14 @@ Current endpoints:
 \`\`\`text
 POST   /auth/register
 POST   /auth/login
+POST   /auth/2fa/verify
+GET    /auth/2fa/status
+POST   /auth/2fa/setup
+POST   /auth/2fa/enable
+POST   /auth/2fa/disable
+GET    /auth/devices
+GET    /auth/login-history
+GET    /auth/security-events
 POST   /auth/logout
 POST   /auth/logout-all
 GET    /auth/me
@@ -243,7 +251,7 @@ Candles use the same decimal-string convention for OHLCV values.
 
 ## Out of scope
 
-Trading execution, settlement, wallet mutations, payment webhooks, financial ledger behavior, and full RBAC remain separate milestones. Market provider integration is implemented behind the backend market-data adapter.
+Real-money payment processing, payment webhooks, KYC/AML, full RBAC, and production compliance controls remain separate milestones. Demo trading and demo wallet funding are already server-authoritative and ledger-backed. Market provider integration is implemented behind the backend market-data adapter.
 
 
 ## Platform server-state endpoints
@@ -280,6 +288,12 @@ Authenticated:
 - `GET /notifications?page=&pageSize=&unreadOnly=`
 - `POST /notifications/:notificationId/read`
 - `POST /notifications/read-all`
+
+Market asset responses additionally expose the persisted `lastChangePct`, `lastVolume`, and `lastPriceAt` fields when the backend has a provider quote snapshot. The frontend uses these persisted values until a newer realtime `market.price` event arrives, and marks a feed stale when the quote timestamp is older than 45 seconds.
+
+Trade-create responses include both the trade lifecycle status and the authoritative `orderStatus` (`PENDING`, `ACCEPTED`, or `REJECTED`).
+
+Registration requires `acceptTerms=true` and optionally accepts a server-defined `termsVersion`; accepted consent is stored with the user record.
 
 Public market chart data:
 
