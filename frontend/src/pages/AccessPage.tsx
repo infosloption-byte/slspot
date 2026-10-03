@@ -75,7 +75,7 @@ const configByPath = {
   },
 } as const
 
-type Field = 'email' | 'password' | 'confirm' | 'token'
+type Field = 'email' | 'password' | 'confirm' | 'token' | 'code' | 'recoveryCode'
 
 type RouteState = {
   token?: string
