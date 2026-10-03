@@ -339,6 +339,7 @@ export function TradingPage() {
     )
 
     if (soundEnabled) playTradeSound('open')
+    return result
   }, [addToast, mode, reloadTradingState, selectedAsset, soundEnabled])
 
   const toggleSound = () => {
