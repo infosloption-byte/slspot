@@ -197,7 +197,8 @@ export class LedgerService {
     })
     if (!wallet || wallet.account.userId !== userId) throw new Error('Wallet not found')
 
-    const { availableCode, heldCode } = await this.ensureWalletLedgerAccounts(this.prisma as never, accountId, wallet.currency)
+    const availableCode = 'USER:' + accountId + ':AVAILABLE'
+    const heldCode = 'USER:' + accountId + ':HELD'
 
     const ledgerAccounts = await this.prisma.ledgerAccount.findMany({
       where: { code: { in: [availableCode, heldCode] } },
