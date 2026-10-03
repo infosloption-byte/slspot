@@ -518,7 +518,7 @@ export class TradingService {
       take: 50,
       orderBy: { openedAt: 'asc' },
       include: {
-        position: { include: { order: true } },
+        position: { include: { order: true, asset: true } },
       },
     })
 
