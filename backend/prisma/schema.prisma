@@ -7,6 +7,11 @@ datasource db {
   provider = "mysql"
 }
 
+enum AdminRole {
+  ADMIN
+  SUPER_ADMIN
+}
+
 enum UserStatus {
   PENDING_VERIFICATION
   ACTIVE
@@ -183,6 +188,19 @@ model User {
   notifications Notification[]
   recoveryCodes RecoveryCode[]
   auditLogs     AuditLog[]   @relation("AuditActor")
+  adminAccess   AdminAccess?
+}
+
+model AdminAccess {
+  id        String    @id @default(uuid()) @db.Char(36)
+  userId    String    @unique @db.Char(36)
+  role      AdminRole @default(ADMIN)
+  createdAt DateTime  @default(now()) @db.DateTime(3)
+  updatedAt DateTime  @updatedAt @db.DateTime(3)
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([role])
 }
 
 model Session {
