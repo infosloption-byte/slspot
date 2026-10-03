@@ -1,9 +1,9 @@
-import { ArrowDownCircle, ArrowDownToLine, ArrowUpCircle, ArrowUpRight, BarChart3, Bell, CalendarDays, Check, Clock3, Download, DollarSign, PieChart, Search, ShieldCheck, Smartphone, TrendingUp, WalletCards } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { ArrowDownCircle, ArrowUpCircle, ArrowUpRight, BarChart3, Bell, CalendarDays, Check, Clock3, Download, DollarSign, PieChart, Search, ShieldCheck, Smartphone, TrendingUp, WalletCards } from 'lucide-react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router'
 import { Pagination } from '../components/ui/Pagination'
 import { ApiState } from '../components/ui/ApiState'
-import { formatPercent, formatPrice } from '../lib/format'
+import { formatPrice } from '../lib/format'
 import { notificationsApi } from '../api/notifications'
 import { authApi } from '../api/auth'
 import { walletApi, type WalletTransactionFilters } from '../api/wallet'
@@ -469,8 +469,8 @@ function WalletPage() {
           </div>
           <div className="wallet-transaction-toolbar">
             <label className="wallet-search"><Search size={14} /><input type="search" placeholder="Search transaction, reference or description" value={filters.search ?? ''} onChange={(event) => updateFilters({ search: event.target.value })} /></label>
-            <label><span>Type</span><select value={filters.type ?? ''} onChange={(event) => updateFilters({ type: (event.target.value || undefined) })}><option value="">All types</option><option value="DEPOSIT">Deposit</option><option value="WITHDRAWAL">Withdrawal</option><option value="TRADE_HOLD">Trade hold</option><option value="SETTLEMENT">Settlement</option><option value="FEE">Fee</option><option value="ADJUSTMENT">Adjustment</option></select></label>
-            <label><span>Status</span><select value={filters.status ?? ''} onChange={(event) => updateFilters({ status: (event.target.value || undefined) })}><option value="">All statuses</option><option value="PENDING">Pending</option><option value="PROCESSING">Processing</option><option value="COMPLETED">Completed</option><option value="FAILED">Failed</option><option value="REJECTED">Rejected</option></select></label>
+            <label><span>Type</span><select value={filters.type ?? ''} onChange={(event) => updateFilters({ type: (event.target.value || undefined) as WalletTransactionFilters['type'] })}><option value="">All types</option><option value="DEPOSIT">Deposit</option><option value="WITHDRAWAL">Withdrawal</option><option value="TRADE_HOLD">Trade hold</option><option value="SETTLEMENT">Settlement</option><option value="FEE">Fee</option><option value="ADJUSTMENT">Adjustment</option></select></label>
+            <label><span>Status</span><select value={filters.status ?? ''} onChange={(event) => updateFilters({ status: (event.target.value || undefined) as WalletTransactionFilters['status'] })}><option value="">All statuses</option><option value="PENDING">Pending</option><option value="PROCESSING">Processing</option><option value="COMPLETED">Completed</option><option value="FAILED">Failed</option><option value="REJECTED">Rejected</option></select></label>
             <label><span><CalendarDays size={12} /> From</span><input type="date" value={filters.from ?? ''} max={filters.to || undefined} onChange={(event) => updateFilters({ from: event.target.value })} /></label>
             <label><span><CalendarDays size={12} /> To</span><input type="date" value={filters.to ?? ''} min={filters.from || undefined} onChange={(event) => updateFilters({ to: event.target.value })} /></label>
           </div>
