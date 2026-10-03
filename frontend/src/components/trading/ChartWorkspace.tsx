@@ -771,7 +771,9 @@ export function ChartWorkspace({ asset, onOpenMarkets, openTrades, now, realtime
     }
   }
 
-  const indicatorData = rsi.slice(-50)
+  const feedAgeMs = asset.lastUpdatedAt ? Math.max(0, now - Date.parse(asset.lastUpdatedAt)) : Number.POSITIVE_INFINITY
+  const feedAgeSeconds = Number.isFinite(feedAgeMs) ? Math.floor(feedAgeMs / 1000) : null
+  const feedStale = !Number.isFinite(feedAgeMs) || feedAgeMs > 45_000
   const hasOscillators = enabledIndicators.some((id) => id === 'rsi' || id === 'macd' || id === 'stochastic' || id === 'atr' || id === 'ao')
 
   return (
@@ -999,7 +1001,18 @@ export function ChartWorkspace({ asset, onOpenMarkets, openTrades, now, realtime
       </div>
 
       <div className="chart-bottom-status">
-        <span><i className={'live-dot ' + (realtimeState === 'connected' ? '' : 'live-dot--muted')} /> {realtimeState === 'connected' ? (candleResource.data?.candles.length ? 'Live market data' : usingMockCandles ? 'Demo market data' : 'Waiting for market data') : realtimeState === 'reconnecting' ? 'Reconnecting to live feed' : realtimeState === 'connecting' ? 'Connecting to live feed' : 'Live feed offline'}</span>
+        <span className={feedStale ? 'chart-feed-state chart-feed-state--stale' : 'chart-feed-state'}>
+          <i className={(feedStale || realtimeState !== 'connected') ? 'live-dot live-dot--muted' : 'live-dot'} />
+          {realtimeState === 'connected'
+            ? feedStale
+              ? 'Stale feed' + (feedAgeSeconds !== null ? ' · ' + feedAgeSeconds + 's' : '')
+              : candleResource.data?.candles.length ? 'Live market data' : usingMockCandles ? 'Demo market data' : 'Waiting for market data'
+            : realtimeState === 'reconnecting'
+              ? 'Reconnecting to live feed'
+              : realtimeState === 'connecting'
+                ? 'Connecting to live feed'
+                : 'Live feed offline'}
+        </span>
         <span>{timeframe}</span>
         <span>{chartType === 'candles' ? 'Candles' : chartType === 'line' ? 'Line' : 'Area'}</span>
         <span className="chart-bottom-status__spacer" />
