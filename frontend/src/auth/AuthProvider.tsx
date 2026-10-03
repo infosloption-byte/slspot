@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useSyncExte
 import type { PropsWithChildren } from 'react'
 import { ApiError } from '../api/client'
 import { authApi } from '../api/auth'
-import type { AuthSession, RegistrationResponse } from './types'
+import type { AuthSession, LoginResponse, RegistrationResponse } from './types'
 
 type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated'
 
@@ -11,8 +11,9 @@ type AuthContextValue = {
   user: AuthSession | null
   isAuthenticated: boolean
   refresh: () => Promise<AuthSession | null>
-  login: (email: string, password: string) => Promise<AuthSession>
-  register: (email: string, password: string) => Promise<RegistrationResponse>
+  login: (email: string, password: string, rememberDevice?: boolean) => Promise<LoginResponse>
+  verifyTwoFactor: (challengeToken: string, code?: string, recoveryCode?: string, rememberDevice?: boolean) => Promise<LoginResponse>
+  register: (email: string, password: string, acceptTerms: boolean, termsVersion?: string) => Promise<RegistrationResponse>
   logout: () => Promise<void>
   logoutAll: () => Promise<void>
 }
@@ -86,14 +87,20 @@ const authStore = {
     }
   },
 
-  async login(email: string, password: string): Promise<AuthSession> {
-    const result = await authApi.login({ email, password })
-    emit({ status: 'authenticated', user: result.user })
-    return result.user
+  async login(email: string, password: string, rememberDevice = false): Promise<LoginResponse> {
+    const result = await authApi.login({ email, password, rememberDevice })
+    if (!result.requiresTwoFactor) emit({ status: 'authenticated', user: result.user })
+    return result
   },
 
-  async register(email: string, password: string): Promise<RegistrationResponse> {
-    return authApi.register({ email, password })
+  async verifyTwoFactor(challengeToken: string, code?: string, recoveryCode?: string, rememberDevice = false): Promise<LoginResponse> {
+    const result = await authApi.verifyTwoFactor({ challengeToken, code, recoveryCode, rememberDevice })
+    if (!result.requiresTwoFactor) emit({ status: 'authenticated', user: result.user })
+    return result
+  },
+
+  async register(email: string, password: string, acceptTerms: boolean, termsVersion = '2026-10'): Promise<RegistrationResponse> {
+    return authApi.register({ email, password, acceptTerms, termsVersion })
   },
 
   async logout(): Promise<void> {
@@ -127,8 +134,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
   }, [clearSession])
 
   const refresh = useCallback(() => authStore.refresh(), [])
-  const login = useCallback((email: string, password: string) => authStore.login(email, password), [])
-  const register = useCallback((email: string, password: string) => authStore.register(email, password), [])
+  const login = useCallback((email: string, password: string, rememberDevice?: boolean) => authStore.login(email, password, rememberDevice), [])
+  const verifyTwoFactor = useCallback((challengeToken: string, code?: string, recoveryCode?: string, rememberDevice?: boolean) => authStore.verifyTwoFactor(challengeToken, code, recoveryCode, rememberDevice), [])
+  const register = useCallback((email: string, password: string, acceptTerms: boolean, termsVersion?: string) => authStore.register(email, password, acceptTerms, termsVersion), [])
   const logout = useCallback(() => authStore.logout(), [])
   const logoutAll = useCallback(() => authStore.logoutAll(), [])
 
@@ -138,10 +146,11 @@ export function AuthProvider({ children }: PropsWithChildren) {
     isAuthenticated: current.status === 'authenticated',
     refresh,
     login,
+    verifyTwoFactor,
     register,
     logout,
     logoutAll,
-  }), [current, refresh, login, register, logout, logoutAll])
+  }), [current, refresh, login, verifyTwoFactor, register, logout, logoutAll])
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
