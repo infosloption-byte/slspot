@@ -392,7 +392,16 @@ export function AccessPage() {
 
           {location.pathname === '/2fa' ? (
             <label className="access-check">
-              <input type="checkbox" checked={routeState.rememberDevice ?? storedChallenge?.rememberDevice ?? rememberDevice} onChange={(event) => setRememberDevice(event.target.checked)} />
+              <input type="checkbox" checked={rememberDevice} onChange={(event) => {
+                const next = event.target.checked
+                setRememberDevice(next)
+                try {
+                  const current = storedChallenge ?? routeState
+                  sessionStorage.setItem(challengeStorageKey, JSON.stringify({ ...current, rememberDevice: next }))
+                } catch {
+                  // Route state remains authoritative for the current tab.
+                }
+              }} />
               <span>Remember this device for longer sessions</span>
             </label>
           ) : null}
