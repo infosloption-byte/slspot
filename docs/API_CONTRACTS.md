@@ -258,7 +258,14 @@ Authenticated:
 
 - `GET /portfolio/summary`
 - `GET /portfolio/positions?page=&pageSize=`
-- `GET /trades?page=&pageSize=&status=`
+- `GET /trades?page=&pageSize=&status=&search=&assetId=&direction=&from=&to=&sortBy=&sortOrder=&settledOnly=`
+  - `status` may be a comma-separated list.
+  - `search` matches trade/position IDs and asset symbol/name.
+  - `assetId` and `direction` scope the trade set.
+  - `from` / `to` filter by trade open time using ISO-8601 timestamps.
+  - `sortBy` supports `openedAt`, `closedAt`, `amount`, and `netPnl`.
+  - `sortOrder` is `asc` or `desc`.
+  - `settledOnly=true` excludes open trades, which is used by the Trading Room history view.
 - `GET /wallet`
 - `GET /wallet/transactions?page=&pageSize=`
 - `GET /notifications?page=&pageSize=&unreadOnly=`
