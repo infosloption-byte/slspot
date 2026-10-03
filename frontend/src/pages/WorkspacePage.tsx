@@ -1,4 +1,4 @@
-import { ArrowDownCircle, ArrowUpCircle, ArrowUpRight, BarChart3, Bell, CalendarDays, Check, Clock3, Download, DollarSign, PieChart, Search, ShieldCheck, Smartphone, TrendingUp, WalletCards } from 'lucide-react'
+import { ArrowDownCircle, ArrowUpCircle, ArrowUpRight, BarChart3, Bell, CalendarDays, Check, Clock3, Download, DollarSign, PieChart, Search, ChevronDown, ShieldCheck, Smartphone, TrendingUp, WalletCards } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router'
 import { Pagination } from '../components/ui/Pagination'
@@ -107,7 +107,7 @@ function ThemedSelect({
           onClick={() => setOpen((current) => !current)}
         >
           <span>{selected?.label ?? 'Select'}</span>
-          <ArrowDownCircle size={14} aria-hidden="true" />
+          <ChevronDown size={14} aria-hidden="true" />
         </button>
         {open ? (
           <div className="trade-history-select__menu" role="listbox" aria-label={label}>
