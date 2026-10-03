@@ -1,3 +1,4 @@
+import { env } from '../config/env.js'
 import { incrementWithExpiry, isRedisReady } from '../realtime/redis.js'
 
 export class RateLimitError extends Error {
@@ -51,11 +52,21 @@ export async function enforceRateLimit(input: {
     try {
       count = await incrementWithExpiry('security:ratelimit:' + input.key, input.windowSeconds)
     } catch {
+      if (env.nodeEnv === 'production') {
+        const error = new Error('Rate limiting service is unavailable')
+        Object.assign(error, { statusCode: 503, code: 'RATE_LIMITER_UNAVAILABLE' })
+        throw error
+      }
       const bucket = consumeMemory(input.key, input.limit, input.windowSeconds)
       count = bucket.count
       retryAfterSeconds = Math.max(1, Math.ceil((bucket.resetAt - Date.now()) / 1000))
     }
   } else {
+    if (env.nodeEnv === 'production') {
+      const error = new Error('Rate limiting service is unavailable')
+      Object.assign(error, { statusCode: 503, code: 'RATE_LIMITER_UNAVAILABLE' })
+      throw error
+    }
     const bucket = consumeMemory(input.key, input.limit, input.windowSeconds)
     count = bucket.count
     retryAfterSeconds = Math.max(1, Math.ceil((bucket.resetAt - Date.now()) / 1000))
