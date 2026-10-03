@@ -8,6 +8,19 @@ import { isRedisReady, publish } from '../realtime/redis.js'
 
 export type WalletMode = 'DEMO' | 'REAL'
 
+export type ApiCapability = {
+  enabled: boolean
+  reason: string | null
+}
+
+export type ApiCapabilities = {
+  trading: Record<WalletMode, ApiCapability>
+  funding: {
+    deposit: Record<WalletMode, ApiCapability>
+    withdrawal: Record<WalletMode, ApiCapability>
+  }
+}
+
 export class FinanceError extends Error {
   readonly statusCode: number
   readonly code: string
@@ -216,6 +229,44 @@ export type ApiNotification = {
 
 export class PlatformApiService {
   private readonly ledger: LedgerService
+
+  async getCapabilities(userId: string): Promise<ApiCapabilities> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { status: true },
+    })
+    const userActive = user?.status === 'ACTIVE'
+    const wallets = await this.getWallets(userId)
+    const demoWallet = wallets.find((wallet) => wallet.mode === 'DEMO')
+    const realWallet = wallets.find((wallet) => wallet.mode === 'REAL')
+    const demoTradeReason = !userActive
+      ? 'Your account is not eligible for trading.'
+      : demoWallet?.status !== 'ACTIVE'
+        ? 'Your demo wallet is not active.'
+        : null
+
+    return {
+      trading: {
+        DEMO: { enabled: demoTradeReason === null, reason: demoTradeReason },
+        REAL: {
+          enabled: false,
+          reason: userActive && realWallet?.status === 'ACTIVE'
+            ? 'Real-money trading is not enabled on this platform.'
+            : 'A real trading wallet is not currently available for this account.',
+        },
+      },
+      funding: {
+        deposit: {
+          DEMO: { enabled: userActive, reason: userActive ? null : 'Your account is not eligible for wallet funding.' },
+          REAL: { enabled: false, reason: 'Real-money deposits are not enabled.' },
+        },
+        withdrawal: {
+          DEMO: { enabled: userActive && demoWallet?.status === 'ACTIVE', reason: userActive ? demoWallet?.status === 'ACTIVE' ? null : 'Your demo wallet is not active.' : 'Your account is not eligible for withdrawals.' },
+          REAL: { enabled: false, reason: 'Real-money withdrawals are not enabled.' },
+        },
+      },
+    }
+  }
 
   constructor(private readonly prisma: PrismaClient) {
     this.ledger = new LedgerService(prisma)
