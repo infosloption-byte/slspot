@@ -28,6 +28,13 @@ export function recordNotificationEvent(timestamp = new Date().toISOString()): v
   }))
 }
 
+export function decrementUnreadCount(): void {
+  notificationStore.setState((current) => ({
+    ...current,
+    unreadCount: Math.max(0, current.unreadCount - 1),
+  }))
+}
+
 export function clearNotificationCount(): void {
   notificationStore.setState((current) => ({ ...current, unreadCount: 0 }))
 }
