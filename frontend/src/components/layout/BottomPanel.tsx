@@ -1,6 +1,5 @@
 import {
   ArrowDownToLine,
-  ArrowUpDown,
   CalendarDays,
   Check,
   ChevronDown,
