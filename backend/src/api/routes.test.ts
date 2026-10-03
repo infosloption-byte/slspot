@@ -321,13 +321,18 @@ describe('platform API routes', () => {
       '/api/v1/market/assets',
       '/api/v1/market/assets/:assetId/candles',
       '/api/v1/portfolio/summary',
+      '/api/v1/portfolio/analytics',
       '/api/v1/portfolio/positions',
       '/api/v1/trades',
       '/api/v1/wallets',
       '/api/v1/wallet',
       '/api/v1/wallet/transactions',
+      '/api/v1/wallet/deposit',
+      '/api/v1/wallet/withdraw',
+      '/api/v1/ledger/reconcile',
       '/api/v1/notifications',
       '/api/v1/notifications/:notificationId/read',
+      '/api/v1/notifications/read-all',
     ]) {
       assert.equal(
         app.hasRoute({ method: url.endsWith('/read') ? 'POST' : 'GET', url }),
