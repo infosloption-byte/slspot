@@ -802,9 +802,14 @@ export class PlatformApiService {
 
       const existingTx = await tx.walletTransaction.findUnique({
         where: { idempotencyKey: 'withdrawal:' + requestId },
-        include: { withdrawal: true },
+        include: { withdrawal: { include: { wallet: { include: { account: { select: { userId: true } } } } } } },
       })
-      if (existingTx?.withdrawal) return existingTx.withdrawal
+      if (existingTx?.withdrawal) {
+        if (existingTx.withdrawal.wallet.account.userId !== userId) {
+          throw new FinanceError(409, 'IDEMPOTENCY_CONFLICT', 'The idempotency key is already associated with another user')
+        }
+        return existingTx.withdrawal
+      }
 
       const claimed = await tx.wallet.updateMany({
         where: {
