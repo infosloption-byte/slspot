@@ -56,7 +56,7 @@ export function TopBar() {
 
   useEffect(() => {
     const timer = window.setInterval(() => {
-      void wallets.reload()
+      void reloadWallets()
     }, 2500)
     return () => window.clearInterval(timer)
   }, [reloadWallets])
