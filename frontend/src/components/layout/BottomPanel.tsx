@@ -1,4 +1,4 @@
-import { ArrowDownToLine, ChevronDown, ChevronUp, Clock3, History, ShieldCheck, TimerReset, WalletCards, X } from 'lucide-react'
+import { ArrowDownToLine, ChevronDown, ChevronUp, Clock3, History, ShieldCheck, TimerReset, WalletCards } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import type { WalletTransaction } from '../../api/wallet'
 import type { OpenTrade } from '../../types/trading'
@@ -17,7 +17,6 @@ type BottomPanelProps = {
   now: number
   collapsed: boolean
   onToggle: () => void
-  onCloseTrade: (tradeId: string) => Promise<void>
 }
 
 const tabs = [
@@ -54,7 +53,6 @@ export function BottomPanel({
   now,
   collapsed,
   onToggle,
-  onCloseTrade,
 }: BottomPanelProps) {
   const [active, setActive] = useState<TabId>('open')
 
@@ -159,15 +157,7 @@ export function BottomPanel({
                       </span>
                     </span>
                     <span className="status-pill status-pill--pending">Unsettled</span>
-                    <button
-                      className="row-action row-action--icon"
-                      type="button"
-                      onClick={() => void onCloseTrade(trade.id)}
-                      aria-label={'Settle ' + trade.symbol + ' trade'}
-                      title="Settle at current server price"
-                    >
-                      <X size={15} />
-                    </button>
+                    <span className="status-pill status-pill--pending">Auto settlement</span>
                   </div>
                 )
               })}
