@@ -1,5 +1,7 @@
+
 import { apiClient } from './client'
 import type { ApiSuccess, PaginatedData } from './contracts'
+import type { WalletMode } from '../hooks/useWalletMode'
 
 export type PortfolioSummary = {
   currency: string | null
@@ -36,14 +38,16 @@ export type PortfolioPosition = {
 }
 
 export const portfolioApi = {
-  summary: () =>
+  summary: (mode: WalletMode = 'DEMO') =>
     apiClient
-      .get<ApiSuccess<PortfolioSummary>>('/portfolio/summary')
+      .get<ApiSuccess<PortfolioSummary>>('/portfolio/summary', { headers: { 'x-wallet-mode': mode } })
       .then((response) => response.data),
 
-  positions: (query: { page?: number; pageSize?: number } = {}) =>
+  positions: (query: { page?: number; pageSize?: number } = {}, mode: WalletMode = 'DEMO') =>
     apiClient
-      .get<ApiSuccess<PaginatedData<PortfolioPosition>>>('/portfolio/positions' + toQueryString(query))
+      .get<ApiSuccess<PaginatedData<PortfolioPosition>>>('/portfolio/positions' + toQueryString(query), {
+        headers: { 'x-wallet-mode': mode },
+      })
       .then((response) => response.data),
 }
 
