@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { beforeEach, afterEach, describe, it } from 'node:test'
+import { apiRequest } from './client'
 import { marketApi } from './market'
 import { portfolioApi } from './portfolio'
 import { tradesApi } from './trades'
@@ -108,4 +109,43 @@ describe('frontend API bindings', () => {
     await notificationsApi.markRead('notification-1')
     assert.equal(contentType, null)
   })
+
+  it('retries safe GET requests after transient server errors', async () => {
+    let attempts = 0
+    globalThis.fetch = async () => {
+      attempts += 1
+      if (attempts < 2) {
+        return new Response(JSON.stringify({ success: false, error: { code: 'TEMPORARY', message: 'Try again' }, requestId: 'request-1' }), {
+          status: 503,
+          headers: { 'content-type': 'application/json' },
+        })
+      }
+      return new Response(JSON.stringify({ success: true, data: { ok: true }, requestId: 'request-1' }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      })
+    }
+
+    const result = await apiRequest<{ success: boolean }>('/ready')
+    assert.equal(result.success, true)
+    assert.equal(attempts, 2)
+  })
+
+  it('does not retry a non-idempotent POST without an idempotency key', async () => {
+    let attempts = 0
+    globalThis.fetch = async () => {
+      attempts += 1
+      return new Response(JSON.stringify({ success: false, error: { code: 'TEMPORARY', message: 'Try again' }, requestId: 'request-1' }), {
+        status: 503,
+        headers: { 'content-type': 'application/json' },
+      })
+    }
+
+    await assert.rejects(
+      () => apiRequest('/trades', { method: 'POST', body: '{}', timeoutMs: 100 }),
+      /Try again/,
+    )
+    assert.equal(attempts, 1)
+  })
+
 })
