@@ -327,27 +327,31 @@ describe('platform API routes', () => {
     const app = buildApp({ logging: false, authService, apiService, marketDataService })
     await app.ready()
 
-    for (const url of [
-      '/api/v1/market/assets',
-      '/api/v1/market/assets/:assetId/candles',
-      '/api/v1/portfolio/summary',
-      '/api/v1/portfolio/analytics',
-      '/api/v1/portfolio/positions',
-      '/api/v1/trades',
-      '/api/v1/wallets',
-      '/api/v1/wallet',
-      '/api/v1/wallet/transactions',
-      '/api/v1/wallet/deposit',
-      '/api/v1/wallet/withdraw',
-      '/api/v1/ledger/reconcile',
-      '/api/v1/notifications',
-      '/api/v1/notifications/:notificationId/read',
-      '/api/v1/notifications/read-all',
-    ]) {
+    const routes: Array<{ method: 'GET' | 'POST'; url: string }> = [
+      { method: 'GET', url: '/api/v1/market/assets' },
+      { method: 'GET', url: '/api/v1/market/assets/:assetId/candles' },
+      { method: 'GET', url: '/api/v1/portfolio/summary' },
+      { method: 'GET', url: '/api/v1/portfolio/analytics' },
+      { method: 'GET', url: '/api/v1/portfolio/positions' },
+      { method: 'GET', url: '/api/v1/trades' },
+      { method: 'POST', url: '/api/v1/trades' },
+      { method: 'POST', url: '/api/v1/trades/:tradeId/close' },
+      { method: 'GET', url: '/api/v1/wallets' },
+      { method: 'GET', url: '/api/v1/wallet' },
+      { method: 'GET', url: '/api/v1/wallet/transactions' },
+      { method: 'POST', url: '/api/v1/wallet/deposit' },
+      { method: 'POST', url: '/api/v1/wallet/withdraw' },
+      { method: 'GET', url: '/api/v1/ledger/reconcile' },
+      { method: 'GET', url: '/api/v1/notifications' },
+      { method: 'POST', url: '/api/v1/notifications/:notificationId/read' },
+      { method: 'POST', url: '/api/v1/notifications/read-all' },
+    ]
+
+    for (const route of routes) {
       assert.equal(
-        app.hasRoute({ method: url.endsWith('/read') ? 'POST' : 'GET', url }),
+        app.hasRoute(route),
         true,
-        'missing registered route: ' + url,
+        'missing registered route: ' + route.method + ' ' + route.url,
       )
     }
 
