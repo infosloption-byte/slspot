@@ -1,9 +1,12 @@
 import { apiClient } from './client'
 import type { ApiSuccess, PaginatedData } from './contracts'
+import type { WalletMode } from '../hooks/useWalletMode'
 
 export type WalletSnapshot = {
   id: string
   accountId: string
+  mode: WalletMode
+  name: string
   currency: string
   status: 'ACTIVE' | 'SUSPENDED' | 'CLOSED'
   availableBalance: string
@@ -24,14 +27,22 @@ export type WalletTransaction = {
 }
 
 export const walletApi = {
-  get: () =>
+  list: () =>
     apiClient
-      .get<ApiSuccess<WalletSnapshot | null>>('/wallet')
+      .get<ApiSuccess<WalletSnapshot[]>>('/wallets')
       .then((response) => response.data),
 
-  transactions: (query: { page?: number; pageSize?: number } = {}) =>
+  get: (mode: WalletMode = 'DEMO') =>
     apiClient
-      .get<ApiSuccess<PaginatedData<WalletTransaction>>>('/wallet/transactions' + toQueryString(query))
+      .get<ApiSuccess<WalletSnapshot | null>>('/wallet', { headers: { 'x-wallet-mode': mode } })
+      .then((response) => response.data),
+
+  transactions: (query: { page?: number; pageSize?: number } = {}, mode: WalletMode = 'DEMO') =>
+    apiClient
+      .get<ApiSuccess<PaginatedData<WalletTransaction>>>(
+        '/wallet/transactions' + toQueryString(query),
+        { headers: { 'x-wallet-mode': mode } },
+      )
       .then((response) => response.data),
 }
 
