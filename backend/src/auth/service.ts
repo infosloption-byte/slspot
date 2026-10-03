@@ -87,7 +87,7 @@ export class AuthService {
         data: { email, passwordHash, countryCode, status: 'PENDING_VERIFICATION' },
       })
 
-      await this.ensureTradingAccount(tx, user.id, 'USD')
+      await this.ensureTradingAccounts(tx, user.id, 'USD')
 
       const token = createOpaqueToken()
       const expiresAt = new Date(now.getTime() + env.auth.verificationTtlSeconds * 1000)
@@ -151,7 +151,7 @@ export class AuthService {
       })
 
       await tx.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } })
-      await this.ensureTradingAccount(tx, user.id, 'USD')
+      await this.ensureTradingAccounts(tx, user.id, 'USD')
       await tx.auditLog.create({
         data: {
           actorUserId: user.id,
@@ -315,83 +315,88 @@ export class AuthService {
     })
   }
 
-  private async ensureTradingAccount(
+  private async ensureTradingAccounts(
     tx: Prisma.TransactionClient,
     userId: string,
     currency: string,
   ): Promise<void> {
     const normalizedCurrency = currency.slice(0, 3).toUpperCase()
-    const existingAccount = await tx.account.findUnique({
-      where: { userId_currency: { userId, currency: normalizedCurrency } },
-    })
 
-    if (existingAccount) {
-      if (existingAccount.status !== 'ACTIVE') {
-        return
+    for (const mode of ['DEMO', 'REAL'] as const) {
+      const existingAccount = await tx.account.findUnique({
+        where: { userId_currency_mode: { userId, currency: normalizedCurrency, mode } },
+      })
+
+      if (existingAccount) {
+        if (existingAccount.status !== 'ACTIVE') continue
+
+        const existingWallet = await tx.wallet.findUnique({ where: { accountId: existingAccount.id } })
+        if (!existingWallet) {
+          await tx.wallet.create({
+            data: {
+              accountId: existingAccount.id,
+              currency: existingAccount.currency,
+              status: 'ACTIVE',
+              availableBalance: mode === 'DEMO' ? new Prisma.Decimal(env.trading.initialBalance) : 0,
+              heldBalance: 0,
+            },
+          })
+        }
+        continue
       }
 
-      const existingWallet = await tx.wallet.findUnique({ where: { accountId: existingAccount.id } })
-      if (!existingWallet) {
-        await tx.wallet.create({
+      const account = await tx.account.create({
+        data: {
+          userId,
+          name: mode === 'DEMO' ? 'Demo Trading Account' : 'Real Trading Account',
+          currency: normalizedCurrency,
+          mode,
+          status: 'ACTIVE',
+        },
+      })
+
+      const initialBalance = mode === 'DEMO'
+        ? new Prisma.Decimal(env.trading.initialBalance)
+        : new Prisma.Decimal(0)
+
+      const wallet = await tx.wallet.create({
+        data: {
+          accountId: account.id,
+          currency: account.currency,
+          status: 'ACTIVE',
+          availableBalance: initialBalance,
+          heldBalance: 0,
+        },
+      })
+
+      if (initialBalance.gt(0)) {
+        const walletTransaction = await tx.walletTransaction.create({
           data: {
-            accountId: existingAccount.id,
-            currency: existingAccount.currency,
-            status: 'ACTIVE',
-            availableBalance: 0,
-            heldBalance: 0,
+            walletId: wallet.id,
+            type: 'ADJUSTMENT',
+            status: 'COMPLETED',
+            amount: initialBalance,
+            currency: account.currency,
+            idempotencyKey: 'wallet-initial:' + wallet.id,
+            referenceType: 'SYSTEM',
+            referenceId: wallet.id,
+            description: 'Initial demo trading balance',
+          },
+        })
+
+        await tx.ledgerEntry.create({
+          data: {
+            transactionId: walletTransaction.id,
+            accountId: account.id,
+            walletTransactionId: walletTransaction.id,
+            direction: 'CREDIT',
+            amount: initialBalance,
+            currency: account.currency,
+            referenceType: 'SYSTEM',
+            referenceId: wallet.id,
           },
         })
       }
-      return
-    }
-
-    const account = await tx.account.create({
-      data: {
-        userId,
-        name: 'Primary Trading Account',
-        currency: normalizedCurrency,
-        status: 'ACTIVE',
-      },
-    })
-
-    const initialBalance = new Prisma.Decimal(env.trading.initialBalance)
-    const wallet = await tx.wallet.create({
-      data: {
-        accountId: account.id,
-        currency: account.currency,
-        status: 'ACTIVE',
-        availableBalance: initialBalance,
-        heldBalance: 0,
-      },
-    })
-
-    if (initialBalance.gt(0)) {
-      const walletTransaction = await tx.walletTransaction.create({
-        data: {
-          walletId: wallet.id,
-          type: 'ADJUSTMENT',
-          status: 'COMPLETED',
-          amount: initialBalance,
-          currency: account.currency,
-          idempotencyKey: 'wallet-initial:' + wallet.id,
-          referenceType: 'SYSTEM',
-          referenceId: wallet.id,
-          description: 'Initial development trading balance',
-        },
-      })
-
-      await tx.ledgerEntry.create({
-        data: {
-          transactionId: walletTransaction.id,
-          accountId: account.id,
-          walletTransactionId: walletTransaction.id,
-          direction: 'CREDIT',
-          amount: initialBalance,
-          currency: account.currency,
-          referenceType: 'SYSTEM',
-          referenceId: wallet.id,
-        },
-      })
     }
   }
 
