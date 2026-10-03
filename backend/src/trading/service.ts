@@ -789,14 +789,8 @@ export class TradingService {
   private async ensureDemoBalance(
     tx: Prisma.TransactionClient,
     accountId: string,
-    wallet: {
-      id: string
-      currency: string
-      status: string
-      availableBalance: Prisma.Decimal
-      heldBalance: Prisma.Decimal
-    },
-  ) {
+    wallet: Prisma.Wallet,
+  ): Promise<Prisma.Wallet> {
     if (wallet.status !== 'ACTIVE' || wallet.availableBalance.gt(0) || wallet.heldBalance.gt(0)) return wallet
 
     const refillAmount = new Prisma.Decimal(env.trading.initialBalance)
