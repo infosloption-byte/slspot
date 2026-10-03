@@ -716,9 +716,17 @@ export function ChartWorkspace({ asset, onOpenMarkets, openTrades, now, realtime
   const candles = useMemo(() => {
     const updates = liveCandleUpdates.filter((item) => item.datasetKey === datasetKey)
     if (!updates.length) return baseCandles
-    const merged = new Map<number, ChartCandle>(baseCandles.map((item) => [Number(item.time), item]))
+    const merged = new Map<number, ChartCandle>()
+    for (const candle of baseCandles) merged.set(Number(candle.time), candle)
     for (const update of updates) {
-      const { datasetKey: _datasetKey, ...candle } = update
+      const candle: ChartCandle = {
+        time: update.time,
+        open: update.open,
+        high: update.high,
+        low: update.low,
+        close: update.close,
+        volume: update.volume,
+      }
       merged.set(Number(candle.time), candle)
     }
     return [...merged.values()].sort((left, right) => Number(left.time) - Number(right.time)).slice(-200)
