@@ -12,6 +12,7 @@ export type WalletSnapshot = {
   availableBalance: string
   heldBalance: string
   totalBalance: string
+  pendingFunds: string
 }
 
 export type WalletTransaction = {
