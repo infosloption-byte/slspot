@@ -7,6 +7,7 @@ import { Toast } from '../components/ui/Toast'
 import { formatPrice } from '../lib/format'
 import { notificationsApi } from '../api/notifications'
 import { authApi } from '../api/auth'
+import { tradesApi } from '../api/trades'
 import { walletApi, type WalletTransactionFilters } from '../api/wallet'
 import { useAuth } from '../auth/AuthProvider'
 import { useWalletMode } from '../hooks/useWalletMode'
@@ -504,22 +505,106 @@ function WalletPage() {
 function HistoryPage() {
   const [page, setPage] = useState(1)
   const [status, setStatus] = useState<'' | 'OPEN' | 'WON' | 'LOST' | 'CANCELLED' | 'EXPIRED'>('')
-  const trades = useTrades(page, 10, status || undefined)
+  const [search, setSearch] = useState('')
+  const [assetId, setAssetId] = useState('')
+  const [direction, setDirection] = useState<'' | 'UP' | 'DOWN'>('')
+  const [from, setFrom] = useState('')
+  const [to, setTo] = useState('')
+  const [sortBy, setSortBy] = useState<'openedAt' | 'closedAt' | 'amount' | 'netPnl'>('openedAt')
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
+  const [exporting, setExporting] = useState(false)
+  const [exportError, setExportError] = useState<string | null>(null)
+  const assets = useMarketAssets(100)
+
+  const trades = useTrades(page, 25, status || undefined, {
+    search: search.trim() || undefined,
+    assetId: assetId || undefined,
+    direction: direction || undefined,
+    from: from || undefined,
+    to: to || undefined,
+    sortBy,
+    sortOrder,
+  })
+
+  const resetPage = () => setPage(1)
+
+  const exportCsv = async () => {
+    setExporting(true)
+    setExportError(null)
+    try {
+      const filters = {
+        search: search.trim() || undefined,
+        assetId: assetId || undefined,
+        direction: direction || undefined,
+        from: from || undefined,
+        to: to || undefined,
+        sortBy,
+        sortOrder,
+      }
+      const rows: typeof trades.data extends null ? never[] : NonNullable<typeof trades.data>['items'] = []
+      let exportPage = 1
+      for (;;) {
+        const result = await tradesApi.list({ page: exportPage, pageSize: 100, status: status || undefined, ...filters })
+        rows.push(...result.items)
+        if (exportPage >= result.pagination.totalPages) break
+        exportPage += 1
+      }
+      const escapeCsv = (value: unknown) => {
+        const text = String(value ?? '')
+        return '"' + text.replaceAll('"', '""') + '"'
+      }
+      const lines = [
+        ['Trade ID', 'Asset', 'Direction', 'Entry', 'Exit', 'Amount', 'Result', 'Net P&L', 'Fee', 'Opened', 'Closed', 'Settlement reference'].map(escapeCsv).join(','),
+        ...rows.map((trade) => [
+          trade.id,
+          trade.position.asset.symbol,
+          trade.position.side === 'BUY' ? 'UP' : 'DOWN',
+          trade.position.entryPrice,
+          trade.position.exitPrice,
+          trade.position.amount,
+          trade.status,
+          trade.netPnl,
+          trade.fee,
+          trade.openedAt,
+          trade.closedAt,
+          trade.settlementReference,
+        ].map(escapeCsv).join(',')),
+      ]
+      const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8' })
+      const url = URL.createObjectURL(blob)
+      const anchor = document.createElement('a')
+      anchor.href = url
+      anchor.download = 'slspot-trade-history.csv'
+      anchor.click()
+      URL.revokeObjectURL(url)
+    } catch (error) {
+      setExportError(error instanceof Error ? error.message : 'Unable to export trade history')
+    } finally {
+      setExporting(false)
+    }
+  }
 
   return (
     <div className="workspace-page">
       <PageHeader eyebrow="Records" title="Trade history" description="Review server-recorded trades, outcomes and P&amp;L." />
-      <div className="history-toolbar panel">
-        <div className="history-filter">
-          <span>Status</span>
-          {(['', 'OPEN', 'WON', 'LOST', 'CANCELLED', 'EXPIRED'] as const).map((value) => (
-            <button key={value || 'ALL'} type="button" className={status === value ? 'filter-chip filter-chip--active' : 'filter-chip'} onClick={() => { setStatus(value); setPage(1) }}>
-              {value || 'All'}
-            </button>
-          ))}
+
+      <section className="history-toolbar panel">
+        <div className="history-toolbar__top">
+          <label className="history-search"><Search size={14} /><input value={search} onChange={(event) => { setSearch(event.target.value); resetPage() }} placeholder="Search trade, asset or ID" /></label>
+          <button type="button" className="quiet-button" onClick={() => { setSearch(''); setAssetId(''); setDirection(''); setStatus(''); setFrom(''); setTo(''); setSortBy('openedAt'); setSortOrder('desc'); resetPage() }}>Reset filters</button>
+          <button type="button" className="quiet-button" disabled={exporting} onClick={() => void exportCsv()}><Download size={14} /> {exporting ? 'Exporting…' : 'Export CSV'}</button>
         </div>
-        <span className="status-pill status-pill--pending">SERVER RECORDS</span>
-      </div>
+        <div className="history-filter-row">
+          <label><span>Status</span><select value={status} onChange={(event) => { setStatus(event.target.value as typeof status); resetPage() }}><option value="">All</option><option value="OPEN">Open</option><option value="WON">Won</option><option value="LOST">Lost</option><option value="CANCELLED">Cancelled</option><option value="EXPIRED">Expired</option></select></label>
+          <label><span>Asset</span><select value={assetId} onChange={(event) => { setAssetId(event.target.value); resetPage() }}><option value="">All assets</option>{(assets.data?.items ?? []).map((asset) => <option key={asset.assetId} value={asset.assetId}>{asset.symbol}</option>)}</select></label>
+          <label><span>Direction</span><select value={direction} onChange={(event) => { setDirection(event.target.value as typeof direction); resetPage() }}><option value="">Both</option><option value="UP">UP</option><option value="DOWN">DOWN</option></select></label>
+          <label><span>From</span><input type="date" value={from} onChange={(event) => { setFrom(event.target.value); resetPage() }} /></label>
+          <label><span>To</span><input type="date" value={to} onChange={(event) => { setTo(event.target.value); resetPage() }} /></label>
+          <label><span>Sort</span><select value={sortBy + ':' + sortOrder} onChange={(event) => { const [nextSort, nextOrder] = event.target.value.split(':'); setSortBy(nextSort as typeof sortBy); setSortOrder(nextOrder as typeof sortOrder); resetPage() }}><option value="openedAt:desc">Newest opened</option><option value="openedAt:asc">Oldest opened</option><option value="closedAt:desc">Newest closed</option><option value="amount:desc">Largest amount</option><option value="netPnl:desc">Highest P&amp;L</option><option value="netPnl:asc">Lowest P&amp;L</option></select></label>
+        </div>
+        {assets.loading ? <span className="dashboard-note">Loading asset filter…</span> : null}
+        {exportError ? <div className="dashboard-note dashboard-note--error" role="alert">{exportError}</div> : null}
+      </section>
 
       <ApiState loading={trades.loading} error={trades.error} onRetry={() => void trades.reload()}>
         <section className="dashboard-card panel">
@@ -528,14 +613,14 @@ function HistoryPage() {
             {(trades.data?.items ?? []).map((trade) => (
               <div className="data-table__row" key={trade.id}>
                 <div><strong>{trade.position.asset.symbol}</strong><small>{trade.id} · {formatDateTime(trade.openedAt)}</small></div>
-                <span className={trade.position.side === 'BUY' ? 'side-label side-label--up' : 'side-label side-label--down'}>{trade.position.side}</span>
+                <span className={trade.position.side === 'BUY' ? 'side-label side-label--up' : 'side-label side-label--down'}>{trade.position.side === 'BUY' ? 'UP' : 'DOWN'}</span>
                 <span>{formatMoney(trade.position.amount)}</span>
                 <span className={trade.status === 'WON' ? 'status-pill status-pill--positive' : trade.status === 'LOST' ? 'status-pill status-pill--negative' : 'status-pill status-pill--pending'}>{trade.status}</span>
                 <strong className={Number(trade.netPnl ?? 0) >= 0 ? 'text-positive' : 'text-negative'}>{signedMoney(trade.netPnl)}</strong>
               </div>
             ))}
           </div>
-          {trades.data?.items.length === 0 ? <div className="dashboard-note">No trades match the selected filter.</div> : null}
+          {trades.data?.items.length === 0 ? <div className="dashboard-note">No trades match the selected filters.</div> : null}
           {trades.data ? <Pagination page={page} totalPages={trades.data.pagination.totalPages} onChange={setPage} /> : null}
         </section>
       </ApiState>
