@@ -243,6 +243,7 @@ const marketDataProvider = parseMarketProvider(process.env.MARKET_DATA_PROVIDER)
 const marketDataEnabled = parseBoolean('MARKET_DATA_ENABLED', process.env.MARKET_DATA_ENABLED, marketDataProvider !== 'disabled')
 const marketDataApiKey = process.env.MARKET_DATA_API_KEY?.trim() || undefined
 const marketDataBootstrapAssets = parseBoolean('MARKET_DATA_BOOTSTRAP_ASSETS', process.env.MARKET_DATA_BOOTSTRAP_ASSETS, nodeEnv !== 'production')
+const adminBootstrapEmails = [...new Set((process.env.ADMIN_BOOTSTRAP_EMAILS ?? '').split(',').map((value) => value.trim().toLowerCase()).filter(Boolean))]
 
 if (nodeEnv === 'production' && !authCookieSecure) {
   throw new Error('AUTH_COOKIE_SECURE must be true in production')
@@ -261,6 +262,7 @@ export const env = {
   host: process.env.HOST?.trim() || '0.0.0.0',
   port: parsePort(process.env.PORT),
   corsOrigins: parseCorsOrigins(process.env.CORS_ORIGIN, nodeEnv),
+  adminBootstrapEmails,
   logLevel: parseLogLevel(process.env.LOG_LEVEL),
   trustProxy: parseBoolean('TRUST_PROXY', process.env.TRUST_PROXY, false),
   requestTimeoutMs: parsePositiveInteger(
