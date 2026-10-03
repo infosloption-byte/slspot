@@ -4,7 +4,7 @@ import { authApi } from '../api/auth'
 import { marketApi } from '../api/market'
 import { notificationsApi } from '../api/notifications'
 import { portfolioApi } from '../api/portfolio'
-import { tradesApi, type TradeRecord } from '../api/trades'
+import { tradesApi, type TradeHistorySortBy, type TradeHistorySortOrder, type TradeRecord } from '../api/trades'
 import { walletApi } from '../api/wallet'
 import { useAsyncResource } from './useAsyncResource'
 
@@ -35,9 +35,24 @@ export function usePortfolioPositions(page: number, pageSize = 25) {
   return useAsyncResource(load)
 }
 
-export function useTrades(page: number, pageSize = 25, status?: TradeRecord['status']) {
+export type TradeHistoryQuery = {
+  search?: string
+  assetId?: string
+  direction?: 'UP' | 'DOWN'
+  from?: string
+  to?: string
+  sortBy?: TradeHistorySortBy
+  sortOrder?: TradeHistorySortOrder
+  settledOnly?: boolean
+}
+
+export function useTrades(page: number, pageSize = 25, status?: TradeRecord['status'], filters: TradeHistoryQuery = {}) {
   const { mode } = useWalletMode()
-  const load = useCallback(() => tradesApi.list({ page, pageSize, status }, mode), [page, pageSize, status, mode])
+  const { search, assetId, direction, from, to, sortBy, sortOrder, settledOnly } = filters
+  const load = useCallback(
+    () => tradesApi.list({ page, pageSize, status, search, assetId, direction, from, to, sortBy, sortOrder, settledOnly }, mode),
+    [page, pageSize, status, search, assetId, direction, from, to, sortBy, sortOrder, settledOnly, mode],
+  )
   return useAsyncResource(load)
 }
 
