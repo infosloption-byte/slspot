@@ -541,7 +541,7 @@ function HistoryPage() {
         sortBy,
         sortOrder,
       }
-      const rows: typeof trades.data extends null ? never[] : NonNullable<typeof trades.data>['items'] = []
+      const rows: Array<NonNullable<typeof trades.data>['items'][number]> = []
       let exportPage = 1
       for (;;) {
         const result = await tradesApi.list({ page: exportPage, pageSize: 100, status: status || undefined, ...filters })
