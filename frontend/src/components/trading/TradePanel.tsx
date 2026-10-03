@@ -118,12 +118,12 @@ export function TradePanel({ asset, balance, walletMode, soundEnabled, onToggleS
 
   const renderActions = (mobile = false) => (
     <div className={mobile ? 'trade-actions trade-actions--mobile' : 'trade-actions'} aria-label="Trade direction">
-      <button className="trade-btn trade-btn--up" type="button" onClick={() => void requestPreview('UP')} disabled={stage === 'confirming' || stage === 'submitting' || walletMode === 'REAL' || balance <= 0}>
+      <button className="trade-btn trade-btn--up" type="button" onClick={() => void requestPreview('UP')} disabled={stage === 'submitting' || walletMode === 'REAL' || balance <= 0}>
         <TrendingUp size={18} />
         <span>UP</span>
         {!mobile ? <small>Higher</small> : null}
       </button>
-      <button className="trade-btn trade-btn--down" type="button" onClick={() => void requestPreview('DOWN')} disabled={stage === 'confirming' || stage === 'submitting' || walletMode === 'REAL' || balance <= 0}>
+      <button className="trade-btn trade-btn--down" type="button" onClick={() => void requestPreview('DOWN')} disabled={stage === 'submitting' || walletMode === 'REAL' || balance <= 0}>
         <TrendingDown size={18} />
         <span>DOWN</span>
         {!mobile ? <small>Lower</small> : null}
