@@ -218,6 +218,11 @@ export function registerPlatformApiRoutes(app: FastifyInstance, options: Platfor
     return ok(request, await options.apiService.reconcileWallet(session.id, walletModeFromRequest(request)))
   })
 
+  app.get(PREFIX + '/auth/capabilities', async (request) => {
+    const session = await requireSession(request, options.authService)
+    return ok(request, await options.apiService.getCapabilities(session.id))
+  })
+
   app.get(PREFIX + '/wallets', async (request) => {
     const session = await requireSession(request, options.authService)
     return ok(request, await options.apiService.getWallets(session.id))
