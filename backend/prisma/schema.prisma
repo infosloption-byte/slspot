@@ -208,6 +208,7 @@ model AuthToken {
   expiresAt  DateTime      @db.DateTime(3)
   consumedAt DateTime?     @db.DateTime(3)
   createdAt  DateTime      @default(now()) @db.DateTime(3)
+  attempts   Int           @default(0)
 
   user       User          @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
