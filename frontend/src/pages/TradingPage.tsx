@@ -321,6 +321,7 @@ export function TradingPage() {
     durationSeconds: number
     entryPrice: number
     payoutRate: number
+    clientRequestId: string
   }) => {
     if (!selectedAsset?.assetId) {
       throw new Error('No market asset is selected')
@@ -331,7 +332,7 @@ export function TradingPage() {
       direction: request.direction,
       amount: request.amount.toFixed(8),
       durationSeconds: request.durationSeconds,
-      clientRequestId: crypto.randomUUID(),
+      clientRequestId: request.clientRequestId,
     }, mode)
 
     await reloadTradingState()
