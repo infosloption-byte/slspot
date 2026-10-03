@@ -93,7 +93,7 @@ export function AssetList({ open, selected, assets, onSelect, onClose, loading =
     })
 
     const recentRank = new Map(recentSymbols.map((symbol, index) => [symbol, index]))
-    return visible.toSorted((a, b) => {
+    return [...visible].sort((a, b) => {
       if (sortBy === 'recent') return (recentRank.get(a.symbol) ?? 99_999) - (recentRank.get(b.symbol) ?? 99_999)
       if (sortBy === 'symbol') return a.symbol.localeCompare(b.symbol)
       if (sortBy === 'price') return b.price - a.price
