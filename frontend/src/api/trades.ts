@@ -68,7 +68,7 @@ export const tradesApi = {
         settlementPrice: string | null
         settlementReference: string | null
       }>('/trades', input, { idempotencyKey: input.clientRequestId })
-      .then((response) => response.data),
+      .then(data),
 
   close: (tradeId: string) =>
     apiClient
@@ -80,7 +80,7 @@ export const tradesApi = {
         settlementId: string | null
         settlementPrice: string | null
       }>>('/trades/' + encodeURIComponent(tradeId) + '/close')
-      .then((response) => response.data),
+      .then(data),
 }
 
 function toQueryString(query: { page?: number; pageSize?: number; status?: string }): string {
