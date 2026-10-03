@@ -26,6 +26,30 @@ export type WalletTransaction = {
   createdAt: string
 }
 
+export type WalletTransactionFilters = {
+  search?: string
+  type?: WalletTransaction['type']
+  status?: WalletTransaction['status']
+  from?: string
+  to?: string
+}
+
+export type FundingResult = {
+  id: string
+  type: 'DEPOSIT' | 'WITHDRAWAL'
+  status: string
+  amount: string
+  currency: string
+  walletId: string
+  walletTransactionId: string | null
+  provider: string
+  providerReference: string | null
+  destination?: string | null
+  failureReason: string | null
+  requestedAt: string
+  completedAt: string | null
+}
+
 export const walletApi = {
   list: () =>
     apiClient
@@ -37,7 +61,7 @@ export const walletApi = {
       .get<ApiSuccess<WalletSnapshot | null>>('/wallet', { headers: { 'x-wallet-mode': mode } })
       .then((response) => response.data),
 
-  transactions: (query: { page?: number; pageSize?: number } = {}, mode: WalletMode = 'DEMO') =>
+  transactions: (query: { page?: number; pageSize?: number } & WalletTransactionFilters = {}, mode: WalletMode = 'DEMO') =>
     apiClient
       .get<ApiSuccess<PaginatedData<WalletTransaction>>>(
         '/wallet/transactions' + toQueryString(query),
@@ -46,10 +70,15 @@ export const walletApi = {
       .then((response) => response.data),
 }
 
-function toQueryString(query: { page?: number; pageSize?: number }): string {
+function toQueryString(query: { page?: number; pageSize?: number } & WalletTransactionFilters): string {
   const params = new URLSearchParams()
   if (query.page !== undefined) params.set('page', String(query.page))
   if (query.pageSize !== undefined) params.set('pageSize', String(query.pageSize))
+  if (query.type) params.set('type', query.type)
+  if (query.status) params.set('status', query.status)
+  if (query.search?.trim()) params.set('search', query.search.trim())
+  if (query.from) params.set('from', query.from)
+  if (query.to) params.set('to', query.to)
   const value = params.toString()
   return value ? '?' + value : ''
 }
