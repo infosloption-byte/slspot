@@ -658,16 +658,16 @@ Market events:
 
 # PHASE 11 — Dashboard
 
-- [ ] Portfolio value.
-- [ ] Trading balance.
-- [ ] Today's P&L.
-- [ ] Win/loss.
-- [ ] Trade count.
-- [ ] Volume.
-- [ ] Recent trades.
+- [x] Portfolio value.
+- [x] Trading balance.
+- [x] Today's P&L.
+- [x] Win/loss.
+- [x] Trade count.
+- [x] Volume.
+- [x] Recent trades.
 - [ ] Favorite assets.
-- [ ] Performance chart.
-- [ ] Loading.
+- [x] Performance chart.
+- [x] Loading.
 - [x] Empty.
 - [x] Error.
 
@@ -675,17 +675,17 @@ Market events:
 
 # PHASE 12 — Portfolio & Analytics
 
-- [ ] Performance chart.
-- [ ] Daily P&L.
-- [ ] Weekly P&L.
-- [ ] Monthly P&L.
-- [ ] Win rate.
-- [ ] Loss rate.
-- [ ] Trade count.
-- [ ] Volume.
-- [ ] Average trade.
-- [ ] Asset performance.
-- [ ] Export.
+- [x] Performance chart.
+- [x] Daily P&L.
+- [x] Weekly P&L.
+- [x] Monthly P&L.
+- [x] Win rate.
+- [x] Loss rate.
+- [x] Trade count.
+- [x] Volume.
+- [x] Average trade.
+- [x] Asset performance.
+- [x] Export.
 
 ---
 
@@ -693,46 +693,46 @@ Market events:
 
 ## 13.1 Wallet overview
 
-- [ ] Available balance.
-- [ ] Locked balance.
-- [ ] Total balance.
+- [x] Available balance.
+- [x] Locked balance.
+- [x] Total balance.
 - [ ] Pending funds.
-- [ ] Recent transactions.
+- [x] Recent transactions.
 
 ## 13.2 Deposit
 
-- [ ] Deposit methods.
-- [ ] Amount.
-- [ ] Limits.
-- [ ] Verification requirements.
-- [ ] Pending state.
-- [ ] Success.
-- [ ] Failure.
+- [x] Demo deposit method.
+- [x] Amount.
+- [x] Limits.
+- [ ] Verification requirements for real money.
+- [ ] Pending state for asynchronous provider processing.
+- [x] Success.
+- [x] Failure/error handling.
 
 ## 13.3 Withdrawal
 
-- [ ] Destination.
-- [ ] Amount.
-- [ ] Limits.
-- [ ] Fees.
-- [ ] Verification.
-- [ ] Confirmation.
-- [ ] Pending.
-- [ ] Rejected.
-- [ ] Completed.
+- [x] Destination.
+- [x] Amount.
+- [x] Limits.
+- [x] Demo fee handling.
+- [ ] Verification for real-money withdrawals.
+- [ ] Explicit confirmation step for real-money withdrawals.
+- [ ] Pending provider state.
+- [ ] Provider-rejected state.
+- [x] Completed demo withdrawal.
 
 ## 13.4 Transactions
 
-- [ ] Deposit.
-- [ ] Withdrawal.
-- [ ] Trade settlement.
-- [ ] Fee.
-- [ ] Adjustment.
-- [ ] Search.
-- [ ] Filter.
-- [ ] Date range.
-- [ ] Pagination.
-- [ ] Export.
+- [x] Deposit.
+- [x] Withdrawal.
+- [x] Trade settlement.
+- [x] Fee.
+- [x] Adjustment.
+- [x] Search.
+- [x] Filter.
+- [x] Date range.
+- [x] Pagination.
+- [x] Export.
 
 ---
 
@@ -869,17 +869,17 @@ Rules:
 
 Tasks:
 
-- [ ] Double-entry or equivalent auditable ledger design.
-- [ ] Immutable ledger entries.
-- [ ] Transaction IDs.
-- [ ] Reference IDs.
-- [ ] Currency.
-- [ ] Amount.
-- [ ] Direction.
-- [ ] Balance snapshot where required.
-- [ ] Audit metadata.
-- [ ] Database transaction boundaries.
-- [ ] Reconciliation process.
+- [x] Double-entry or equivalent auditable ledger design.
+- [x] Immutable ledger entries.
+- [x] Transaction IDs.
+- [x] Reference IDs.
+- [x] Currency.
+- [x] Amount.
+- [x] Direction.
+- [x] Balance snapshot where required.
+- [x] Audit metadata.
+- [x] Database transaction boundaries.
+- [x] Reconciliation process.
 
 Conceptual transaction:
 
@@ -929,19 +929,19 @@ COMMIT
 
 # PHASE 20 — Notifications
 
-- [ ] Notification entity.
-- [ ] Notification API.
-- [ ] WebSocket notification events.
-- [ ] Unread count.
-- [ ] Mark read.
-- [ ] Mark all read.
-- [ ] Notification center.
+- [x] Notification entity.
+- [x] Notification API.
+- [x] WebSocket notification events.
+- [x] Unread count.
+- [x] Mark read.
+- [x] Mark all read.
+- [x] Notification center.
 - [ ] Toast.
 - [ ] Email integration.
-- [ ] Security alerts.
-- [ ] Trade results.
-- [ ] Deposit status.
-- [ ] Withdrawal status.
+- [x] Security alerts.
+- [x] Trade results.
+- [x] Deposit status.
+- [x] Withdrawal status.
 - [ ] System announcements.
 
 ---
