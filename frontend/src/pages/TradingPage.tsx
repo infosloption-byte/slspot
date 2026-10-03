@@ -10,6 +10,7 @@ import { usePortfolioPositions, useTrades, useWallet, useWalletTransactions } fr
 import { tradesApi } from '../api/trades'
 import type { OpenTrade } from '../types/trading'
 import { useAuth } from '../auth/AuthProvider'
+import { useWalletMode } from '../hooks/useWalletMode'
 import { useRealtime, useRealtimeState } from '../realtime/RealtimeProvider'
 import { userChannel } from '../realtime/subscriptions'
 
@@ -50,6 +51,7 @@ declare global {
 
 export function TradingPage() {
   const { user } = useAuth()
+  const { mode } = useWalletMode()
   const realtime = useRealtime()
   const realtimeState = useRealtimeState()
   const market = useLiveMarketAssets()
@@ -197,7 +199,7 @@ export function TradingPage() {
       amount: request.amount.toFixed(8),
       durationSeconds: request.durationSeconds,
       clientRequestId: crypto.randomUUID(),
-    })
+    }, mode)
 
     await reloadTradingState()
 
@@ -208,7 +210,7 @@ export function TradingPage() {
     )
 
     if (soundEnabled) playTradeSound('open')
-  }, [addToast, reloadTradingState, selectedAsset, soundEnabled])
+  }, [addToast, mode, reloadTradingState, selectedAsset, soundEnabled])
 
   const toggleSound = () => {
     setSoundEnabled((current) => {
