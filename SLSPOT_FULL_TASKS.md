@@ -696,7 +696,7 @@ Market events:
 - [x] Available balance.
 - [x] Locked balance.
 - [x] Total balance.
-- [ ] Pending funds.
+- [x] Pending funds.
 - [x] Recent transactions.
 
 ## 13.2 Deposit
@@ -936,7 +936,7 @@ COMMIT
 - [x] Mark read.
 - [x] Mark all read.
 - [x] Notification center.
-- [ ] Toast.
+- [x] Toast.
 - [ ] Email integration.
 - [x] Security alerts.
 - [x] Trade results.
