@@ -17,6 +17,8 @@ type AuthContextValue = {
   logoutAll: () => Promise<void>
 }
 
+const AuthContext = createContext<AuthContextValue | null>(null)
+
 type AuthSnapshot = {
   status: AuthStatus
   user: AuthSession | null
