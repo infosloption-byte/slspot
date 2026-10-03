@@ -329,6 +329,7 @@ describe('platform API routes', () => {
 
     const routes: Array<{ method: 'GET' | 'POST'; url: string }> = [
       { method: 'GET', url: '/api/v1/market/assets' },
+      { method: 'GET', url: '/api/v1/auth/capabilities' },
       { method: 'GET', url: '/api/v1/market/assets/:assetId/candles' },
       { method: 'GET', url: '/api/v1/portfolio/summary' },
       { method: 'GET', url: '/api/v1/portfolio/analytics' },
@@ -355,6 +356,44 @@ describe('platform API routes', () => {
       )
     }
 
+    await app.close()
+  })
+
+  it('binds capabilities to the authenticated user', async () => {
+    let requestedUserId = ''
+    const scoped = {
+      ...apiService,
+      getCapabilities: async (userId: string) => {
+        requestedUserId = userId
+        return {
+          trading: {
+            DEMO: { enabled: true, reason: null },
+            REAL: { enabled: false, reason: 'Real trading is not enabled' },
+          },
+          funding: {
+            deposit: {
+              DEMO: { enabled: true, reason: null },
+              REAL: { enabled: false, reason: 'Real deposits are not enabled' },
+            },
+            withdrawal: {
+              DEMO: { enabled: true, reason: null },
+              REAL: { enabled: false, reason: 'Real withdrawals are not enabled' },
+            },
+          },
+        }
+      },
+    } as unknown as PlatformApiService
+
+    const app = buildApp({ logging: false, authService, apiService: scoped })
+    await app.ready()
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/v1/auth/capabilities',
+      headers: { cookie: 'slspot_session=test-session' },
+    })
+    assert.equal(response.statusCode, 200)
+    assert.equal(requestedUserId, 'user-1')
+    assert.equal(response.json<{ data: { trading: { REAL: { enabled: boolean } } } }>().data.trading.REAL.enabled, false)
     await app.close()
   })
 
