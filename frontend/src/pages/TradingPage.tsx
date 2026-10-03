@@ -7,7 +7,11 @@ import { Toast, type ToastTone } from '../components/ui/Toast'
 import { ApiState } from '../components/ui/ApiState'
 import { useLiveMarketAssets } from '../hooks/useMarketState'
 import { usePortfolioPositions, useTrades, useWallet, useWalletTransactions } from '../hooks/useServerState'
-import { tradesApi } from '../api/trades'
+import {
+  tradesApi,
+  type TradeHistoryFilters,
+  type TradeListQuery,
+} from '../api/trades'
 import type { OpenTrade } from '../types/trading'
 import { useAuth } from '../auth/AuthProvider'
 import { useWalletMode } from '../hooks/useWalletMode'
@@ -56,7 +60,44 @@ export function TradingPage() {
   const realtimeState = useRealtimeState()
   const market = useLiveMarketAssets()
   const positions = usePortfolioPositions(1, 50)
-  const trades = useTrades(1, 50)
+
+  const [historyPage, setHistoryPage] = useState(1)
+  const [historyFilters, setHistoryFilters] = useState<TradeHistoryFilters>({
+    search: '',
+    assetId: '',
+    direction: '',
+    status: '',
+    from: '',
+    to: '',
+    sortBy: 'openedAt',
+    sortOrder: 'desc',
+  })
+  const [historyExporting, setHistoryExporting] = useState(false)
+
+  const historyQuery = useMemo<TradeListQuery>(() => {
+    const from = historyFilters.from
+      ? new Date(historyFilters.from + 'T00:00:00').toISOString()
+      : undefined
+    const to = historyFilters.to
+      ? new Date(historyFilters.to + 'T23:59:59.999').toISOString()
+      : undefined
+
+    return {
+      page: historyPage,
+      pageSize: 25,
+      status: historyFilters.status || 'WON,LOST,CANCELLED,EXPIRED',
+      search: historyFilters.search.trim() || undefined,
+      assetId: historyFilters.assetId || undefined,
+      direction: historyFilters.direction || undefined,
+      from,
+      to,
+      sortBy: historyFilters.sortBy,
+      sortOrder: historyFilters.sortOrder,
+      settledOnly: true,
+    }
+  }, [historyFilters, historyPage])
+
+  const trades = useTrades(historyPage, 25, undefined, historyQuery)
   const wallet = useWallet()
   const walletTransactions = useWalletTransactions(1, 50)
 
@@ -69,6 +110,84 @@ export function TradingPage() {
   )
   const [toasts, setToasts] = useState<ToastItem[]>([])
   const eventRefreshTimer = useRef<number | null>(null)
+
+  const updateHistoryFilters = useCallback((patch: Partial<TradeHistoryFilters>) => {
+    setHistoryFilters((current) => ({ ...current, ...patch }))
+    setHistoryPage(1)
+  }, [])
+
+  const resetHistoryFilters = useCallback(() => {
+    setHistoryFilters({
+      search: '',
+      assetId: '',
+      direction: '',
+      status: '',
+      from: '',
+      to: '',
+      sortBy: 'openedAt',
+      sortOrder: 'desc',
+    })
+    setHistoryPage(1)
+  }, [])
+
+  const exportTradeHistory = useCallback(async () => {
+    setHistoryExporting(true)
+    try {
+      const baseQuery = { ...historyQuery, page: 1, pageSize: 100 }
+      const firstPage = await tradesApi.list(baseQuery, mode)
+      const rows = [...firstPage.items]
+
+      for (let page = 2; page <= firstPage.pagination.totalPages; page += 1) {
+        const pageResult = await tradesApi.list({ ...baseQuery, page }, mode)
+        rows.push(...pageResult.items)
+      }
+
+      if (rows.length === 0) {
+        addToast('info', 'Nothing to export', 'No trades match the current history filters.')
+        return
+      }
+
+      const escapeCsv = (value: string | number | null) => {
+        const textValue = value === null ? '' : String(value)
+        return '"' + textValue.replace(/"/g, '""') + '"'
+      }
+
+      const csvRows = [
+        ['Trade ID', 'Pair', 'Direction', 'Amount', 'Open Price', 'Closed Price', 'Result', 'Net P&L', 'Fee', 'Opened At', 'Closed At', 'Duration (s)', 'Settlement Reference'],
+        ...rows.map((trade) => [
+          trade.id,
+          trade.position.asset.symbol,
+          trade.direction,
+          trade.amount,
+          trade.position.entryPrice,
+          trade.position.exitPrice,
+          trade.status,
+          trade.netPnl,
+          trade.fee,
+          trade.openedAt,
+          trade.closedAt,
+          trade.durationSeconds,
+          trade.settlementReference,
+        ]),
+      ]
+      const csv = '\uFEFF' + csvRows.map((row) => row.map(escapeCsv).join(',')).join('\r\n')
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = 'slspot-trade-history-' + new Date().toISOString().slice(0, 10) + '.csv'
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      URL.revokeObjectURL(url)
+
+      addToast('success', 'History exported', rows.length + ' trade' + (rows.length === 1 ? '' : 's') + ' exported.')
+    } catch (error) {
+      addToast('error', 'Export failed', error instanceof Error ? error.message : 'Unable to export trade history.')
+    } finally {
+      setHistoryExporting(false)
+    }
+  }, [addToast, historyQuery, mode])
 
   const initialAsset = market.assets[0]
   const activeSymbol = selectedSymbol || initialAsset?.symbol || ''
@@ -269,6 +388,19 @@ export function TradingPage() {
           walletTransactions={walletTransactions.data?.items ?? []}
           now={now}
           collapsed={!activityOpen}
+          historyPage={historyPage}
+          historyTotalPages={trades.data?.pagination.totalPages ?? 1}
+          historyTotal={trades.data?.pagination.total ?? 0}
+          historyLoading={trades.loading}
+          historyError={trades.error?.message ?? null}
+          historyFilters={historyFilters}
+          historyAssets={market.assets.map((asset) => ({ id: asset.assetId, symbol: asset.symbol, name: asset.name }))}
+          historyExporting={historyExporting}
+          onHistoryPageChange={setHistoryPage}
+          onHistoryFiltersChange={updateHistoryFilters}
+          onHistoryReset={resetHistoryFilters}
+          onHistoryRetry={() => void trades.reload()}
+          onHistoryExport={() => void exportTradeHistory()}
           onToggle={() => setActivityOpen((current) => !current)}
         />
       </div>
