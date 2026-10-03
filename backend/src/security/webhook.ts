@@ -21,7 +21,7 @@ export function verifyWebhookSignature(input: {
   toleranceSeconds?: number
 }): void {
   const toleranceSeconds = input.toleranceSeconds ?? 300
-  if (!input.signature || !input.timestamp || !/^\\d{10,13}$/.test(input.timestamp)) throw new WebhookSecurityError()
+  if (!input.signature || !input.timestamp || !/^\d{10,13}$/.test(input.timestamp)) throw new WebhookSecurityError()
 
   const timestampMs = Number(input.timestamp) * (input.timestamp.length === 10 ? 1000 : 1)
   if (!Number.isFinite(timestampMs) || Math.abs(Date.now() - timestampMs) > toleranceSeconds * 1000) {
