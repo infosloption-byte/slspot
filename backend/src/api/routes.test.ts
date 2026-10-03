@@ -176,6 +176,41 @@ describe('platform API routes', () => {
     assert.equal(requestedUserId, 'user-1')
     await app.close()
   })
+  it('forwards the selected wallet mode to private account resources', async () => {
+    let requestedMode = ''
+    const scoped = {
+      ...apiService,
+      getPortfolioSummary: async (_userId: string, mode: string) => {
+        requestedMode = mode
+        return {
+          currency: 'USD',
+          availableBalance: '0',
+          heldBalance: '0',
+          totalBalance: '0',
+          openPositionCount: 0,
+          tradeCount: 0,
+          netPnl: '0',
+        }
+      },
+    } as unknown as PlatformApiService
+
+    const app = buildApp({ logging: false, authService, apiService: scoped })
+    await app.ready()
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/v1/portfolio/summary',
+      headers: {
+        cookie: 'slspot_session=test-session',
+        'x-wallet-mode': 'REAL',
+      },
+    })
+
+    assert.equal(response.statusCode, 200)
+    assert.equal(requestedMode, 'REAL')
+    await app.close()
+  })
+
   it('returns normalized market candles from the market data service', async () => {
     const app = buildApp({ logging: false, authService, apiService, marketDataService })
     await app.ready()
@@ -234,6 +269,7 @@ describe('platform API routes', () => {
       '/api/v1/portfolio/summary',
       '/api/v1/portfolio/positions',
       '/api/v1/trades',
+      '/api/v1/wallets',
       '/api/v1/wallet',
       '/api/v1/wallet/transactions',
       '/api/v1/notifications',
