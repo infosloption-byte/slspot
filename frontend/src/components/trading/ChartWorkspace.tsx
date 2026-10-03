@@ -1,5 +1,6 @@
 import {
   AreaChart,
+  BarChart3,
   Check,
   ChevronDown,
   Crosshair,
@@ -8,8 +9,10 @@ import {
   LineChart,
   Maximize2,
   Minus,
+  PenLine,
   Settings2,
   Slash,
+  Square,
   TrendingUp,
 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -19,6 +22,7 @@ import {
   CandlestickSeries,
   ColorType,
   CrosshairMode,
+  HistogramSeries,
   LineSeries,
   createChart,
   type IChartApi,
@@ -34,13 +38,34 @@ import { ErrorState } from '../ui/ErrorState'
 import { IconButton } from '../ui/IconButton'
 
 type ChartType = 'candles' | 'line' | 'area'
-type DrawingTool = 'none' | 'horizontal' | 'trend'
+type IndicatorId = 'sma' | 'ema' | 'rsi' | 'macd' | 'bollinger' | 'stochastic' | 'atr' | 'psar' | 'alligator' | 'ao' | 'fractal'
+type DrawingTool = 'none' | 'horizontal' | 'trend' | 'vertical' | 'ray' | 'fibonacci' | 'rectangle' | 'price' | 'text'
+type Drawing = { id: string; type: Exclude<DrawingTool, 'none'>; x1: number; y1: number; x2: number; y2: number; text?: string; price?: number }
+
+const indicatorDefinitions: Array<{ id: IndicatorId; label: string; description: string; group: 'overlay' | 'oscillator' }> = [
+  { id: 'sma', label: 'SMA (14)', description: 'Simple moving average', group: 'overlay' },
+  { id: 'ema', label: 'EMA (14)', description: 'Exponential moving average', group: 'overlay' },
+  { id: 'rsi', label: 'RSI (14)', description: 'Relative strength index', group: 'oscillator' },
+  { id: 'macd', label: 'MACD', description: 'Trend and momentum', group: 'oscillator' },
+  { id: 'bollinger', label: 'Bollinger Bands', description: 'Volatility envelope', group: 'overlay' },
+  { id: 'stochastic', label: 'Stochastic', description: 'Momentum oscillator', group: 'oscillator' },
+  { id: 'atr', label: 'ATR (14)', description: 'Average true range', group: 'oscillator' },
+  { id: 'psar', label: 'Parabolic SAR', description: 'Trend reversal guide', group: 'overlay' },
+  { id: 'alligator', label: 'Alligator', description: 'Three smoothed trend lines', group: 'overlay' },
+  { id: 'ao', label: 'Awesome Oscillator', description: 'Momentum oscillator', group: 'oscillator' },
+  { id: 'fractal', label: 'Fractals', description: 'Swing high and low markers', group: 'overlay' },
+]
+const defaultIndicators: IndicatorId[] = ['sma']
+const indicatorStorageKey = 'slspot.chart.indicators'
+const indicatorPeriodStorageKey = 'slspot.chart.indicator-period'
+const drawingStoragePrefix = 'slspot.chart.drawings:'
 type ChartCandle = {
   time: import('lightweight-charts').UTCTimestamp
   open: number
   high: number
   low: number
   close: number
+  volume: number
 }
 
 type ChartWorkspaceProps = {
