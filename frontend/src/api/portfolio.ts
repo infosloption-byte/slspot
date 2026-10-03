@@ -13,6 +13,21 @@ export type PortfolioSummary = {
   netPnl: string
 }
 
+export type PortfolioAnalytics = {
+  currency: string
+  dailyPnl: string
+  weeklyPnl: string
+  monthlyPnl: string
+  wins: number
+  losses: number
+  winRate: string
+  tradeCount: number
+  volume: string
+  averageTrade: string
+  series: Array<{ date: string; pnl: string; cumulativePnl: string; tradeCount: number }>
+  assets: Array<{ assetId: string; symbol: string; name: string; pnl: string; volume: string; trades: number; wins: number; losses: number }>
+}
+
 export type PortfolioPosition = {
   id: string
   tradeId: string | null
@@ -41,6 +56,11 @@ export const portfolioApi = {
   summary: (mode: WalletMode = 'DEMO') =>
     apiClient
       .get<ApiSuccess<PortfolioSummary>>('/portfolio/summary', { headers: { 'x-wallet-mode': mode } })
+      .then((response) => response.data),
+
+  analytics: (mode: WalletMode = 'DEMO') =>
+    apiClient
+      .get<ApiSuccess<PortfolioAnalytics>>('/portfolio/analytics', { headers: { 'x-wallet-mode': mode } })
       .then((response) => response.data),
 
   positions: (query: { page?: number; pageSize?: number } = {}, mode: WalletMode = 'DEMO') =>
