@@ -534,6 +534,7 @@ export class TradingService {
 
     const result = this.toTradingResult(outcome.trade, outcome.position, outcome.settlement)
     await this.publishTradeSettlement(userId, result)
+    await this.createTradeResultNotification(userId, result, outcome.position.asset.symbol)
     return result
   }
 
@@ -577,6 +578,7 @@ export class TradingService {
         if (outcome) {
           const result = this.toTradingResult(outcome.trade, outcome.position, outcome.settlement)
           await this.publishTradeSettlement(trade.userId, result)
+          await this.createTradeResultNotification(trade.userId, result, outcome.position.asset.symbol)
         }
       } catch (error) {
         this.logger.error({ err: error, tradeId: trade.id }, 'Expired trade settlement failed')
@@ -1031,6 +1033,39 @@ export class TradingService {
     await this.publishUserEvent(createRealtimeEvent('trade.status', { tradeId: result.tradeId, orderId: result.orderId, positionId: result.positionId, status: result.status, settlementId: result.settlementId }, channel))
     await this.publishUserEvent(createRealtimeEvent('position.update', result, channel))
     await this.publishWalletEvent(userId, result.tradeId, result.positionId, channel)
+  }
+
+  private async createTradeResultNotification(
+    userId: string,
+    result: ApiTradingResult,
+    symbol: string,
+  ): Promise<void> {
+    const won = result.status === 'WON'
+    const title = won ? 'Trade won' : 'Trade settled'
+    const pnl = result.netPnl ?? '0'
+    const message = symbol + ' · ' + result.direction + ' · P&L ' + (Number(pnl) >= 0 ? '+' : '') + pnl
+
+    try {
+      const notification = await this.prisma.notification.create({
+        data: {
+          userId,
+          type: 'TRADE_RESULT',
+          title,
+          body: message,
+        },
+      })
+      const channel = ('user:' + userId) as `user:${string}`
+      await this.publishUserEvent(createRealtimeEvent('notification.created', {
+        id: notification.id,
+        type: notification.type,
+        title: notification.title,
+        body: notification.body,
+        readAt: null,
+        createdAt: notification.createdAt.toISOString(),
+      }, channel))
+    } catch (error) {
+      this.logger.warn({ err: error, tradeId: result.tradeId }, 'Failed to create trade result notification')
+    }
   }
 
   private async publishWalletEvent(userId: string, tradeId: string, positionId: string, channel: `user:${string}`): Promise<void> {
