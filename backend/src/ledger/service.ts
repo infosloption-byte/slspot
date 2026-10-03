@@ -51,7 +51,7 @@ export function signedLedgerAmount(direction: LedgerDirection, amount: Prisma.De
 export function assertBalancedLedgerLines(lines: LedgerLine[], currency: string): void {
   if (lines.length < 2) throw new Error('A ledger transaction requires at least two entries')
 
-  const normalizedCurrency = currency.toUpperCase()
+  if (!currency.trim()) throw new Error('Ledger transaction currency is required')
   let debits = ZERO
   let credits = ZERO
 
