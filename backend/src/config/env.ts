@@ -106,6 +106,26 @@ function parseDecimalString(
   return normalized
 }
 
+function parseMarketDataBaseUrl(value: string | undefined, nodeEnv: NodeEnv, provider: 'disabled' | 'twelve-data'): string {
+  const raw = (value ?? 'https://api.twelvedata.com').trim()
+  let parsed: URL
+  try {
+    parsed = new URL(raw)
+  } catch {
+    throw new Error('MARKET_DATA_BASE_URL must be a valid URL')
+  }
+  if (!['http:', 'https:'].includes(parsed.protocol) || parsed.username || parsed.password || parsed.search || parsed.hash) {
+    throw new Error('MARKET_DATA_BASE_URL must be a clean HTTP(S) URL without credentials or query parameters')
+  }
+  if (nodeEnv === 'production' && parsed.protocol !== 'https:') {
+    throw new Error('MARKET_DATA_BASE_URL must use HTTPS in production')
+  }
+  if (nodeEnv === 'production' && provider === 'twelve-data' && parsed.hostname !== 'api.twelvedata.com') {
+    throw new Error('Production Twelve Data configuration must use api.twelvedata.com')
+  }
+  return parsed.origin
+}
+
 function parseMarketProvider(value: string | undefined): 'disabled' | 'twelve-data' {
   const provider = (value ?? 'twelve-data').trim().toLowerCase()
   if (provider !== 'disabled' && provider !== 'twelve-data') {
@@ -193,7 +213,11 @@ function parseRedisUrl(value: string | undefined, nodeEnv: NodeEnv): string {
 }
 
 function parseCorsOrigins(value: string | undefined, nodeEnv: NodeEnv): string[] {
-  const rawOrigins = (value ?? 'http://localhost:5173')
+  if (nodeEnv === 'production' && value === undefined) {
+    throw new Error('CORS_ORIGIN must be explicitly configured in production')
+  }
+
+  const rawOrigins = (value ?? 'http://localhost:5173,http://localhost:5174')
     .split(',')
     .map((item) => item.trim())
     .filter(Boolean)
@@ -222,10 +246,6 @@ function parseCorsOrigins(value: string | undefined, nodeEnv: NodeEnv): string[]
     return parsed.origin
   })
 
-  if (nodeEnv === 'production' && value === undefined) {
-    throw new Error('CORS_ORIGIN must be explicitly configured in production')
-  }
-
   return [...new Set(origins)]
 }
 
@@ -243,6 +263,7 @@ const exposeDevTokens = parseBoolean(
   false,
 )
 const marketDataProvider = parseMarketProvider(process.env.MARKET_DATA_PROVIDER)
+const marketDataBaseUrl = parseMarketDataBaseUrl(process.env.MARKET_DATA_BASE_URL, nodeEnv, marketDataProvider)
 const marketDataEnabled = parseBoolean('MARKET_DATA_ENABLED', process.env.MARKET_DATA_ENABLED, marketDataProvider !== 'disabled')
 const marketDataApiKey = process.env.MARKET_DATA_API_KEY?.trim() || undefined
 const marketDataBootstrapAssets = parseBoolean('MARKET_DATA_BOOTSTRAP_ASSETS', process.env.MARKET_DATA_BOOTSTRAP_ASSETS, nodeEnv !== 'production')
@@ -276,10 +297,7 @@ export const env = {
   nodeEnv,
   host: process.env.HOST?.trim() || '0.0.0.0',
   port: parsePort(process.env.PORT),
-  corsOrigins: parseCorsOrigins(
-    process.env.CORS_ORIGIN ?? 'http://localhost:5173,http://localhost:5174',
-    nodeEnv,
-  ),
+  corsOrigins: parseCorsOrigins(process.env.CORS_ORIGIN, nodeEnv),
   shutdownTimeoutMs: parsePositiveInteger(
     'SHUTDOWN_TIMEOUT_MS',
     process.env.SHUTDOWN_TIMEOUT_MS,
@@ -317,7 +335,7 @@ export const env = {
     provider: marketDataProvider,
     enabled: marketDataEnabled,
     apiKey: marketDataApiKey,
-    baseUrl: process.env.MARKET_DATA_BASE_URL?.trim() || 'https://api.twelvedata.com',
+    baseUrl: marketDataBaseUrl,
     pollIntervalMs: parsePositiveInteger('MARKET_DATA_POLL_INTERVAL_MS', process.env.MARKET_DATA_POLL_INTERVAL_MS, 15_000, 5_000, 300_000),
     requestTimeoutMs: parsePositiveInteger('MARKET_DATA_REQUEST_TIMEOUT_MS', process.env.MARKET_DATA_REQUEST_TIMEOUT_MS, 10_000, 1_000, 60_000),
     bootstrapAssets: marketDataBootstrapAssets,
