@@ -32,13 +32,19 @@ export function TradePanel({ asset, balance, walletMode, soundEnabled, onToggleS
   const [mobileConfigOpen, setMobileConfigOpen] = useState(false)
   const [mobileDurationOpen, setMobileDurationOpen] = useState(false)
   const [failedRequest, setFailedRequest] = useState<FailedTradeRequest | null>(null)
+  const [now, setNow] = useState(() => Date.now())
   const durationRef = useRef<HTMLDivElement>(null)
   const payoutRate = Number(asset.payoutRate)
   const estimatedPayout = amount * payoutRate
   const feeRate = Number(asset.feeRate)
   const estimatedFee = Number.isFinite(feeRate) && feeRate > 0 ? amount * feeRate : 0
   const totalReturn = amount + estimatedPayout - estimatedFee
-  const expiryPreview = new Date(Date.now() + duration * 1000)
+  const expiryPreview = new Date(now + duration * 1000)
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 1000)
+    return () => window.clearInterval(timer)
+  }, [])
 
   const validate = () => {
     if (!Number.isFinite(amount) || amount < asset.minAmount || amount > asset.maxAmount) {
@@ -82,7 +88,8 @@ export function TradePanel({ asset, balance, walletMode, soundEnabled, onToggleS
     setError('')
   }
 
-  const requestPreview = async (nextDirection: TradeDirection, clientRequestId = crypto.randomUUID()) => {
+  const requestPreview = async (nextDirection: TradeDirection, clientRequestId?: string) => {
+    const requestId = clientRequestId ?? crypto.randomUUID()
     const validationError = validate()
     if (validationError) {
       setError(validationError)
@@ -99,7 +106,7 @@ export function TradePanel({ asset, balance, walletMode, soundEnabled, onToggleS
         durationSeconds: duration,
         entryPrice: asset.price,
         payoutRate,
-        clientRequestId,
+        clientRequestId: requestId,
       })
       setLastOrder(result)
       setFailedRequest(null)
@@ -111,7 +118,7 @@ export function TradePanel({ asset, balance, walletMode, soundEnabled, onToggleS
         ? 'Trade rejected: ' + error.message
         : error instanceof Error ? error.message : 'Trade submission failed'
       setError(message)
-      setFailedRequest(rejected ? null : { direction: nextDirection, clientRequestId })
+      setFailedRequest(rejected ? null : { direction: nextDirection, clientRequestId: requestId })
       setStage(rejected ? 'rejected' : 'failed')
       window.setTimeout(() => setStage('draft'), 2200)
     }
