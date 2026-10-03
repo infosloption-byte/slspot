@@ -2,6 +2,7 @@ import { ArrowUpRight, BarChart3, Bell, Check, Clock3, DollarSign, PieChart, Shi
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router'
 import { Pagination } from '../components/ui/Pagination'
+import { Select } from '../components/ui/Select'
 import { ApiState } from '../components/ui/ApiState'
 import { formatPercent, formatPrice } from '../lib/format'
 import { notificationsApi } from '../api/notifications'
@@ -244,11 +245,40 @@ function WalletPage() {
   const wallet = useWallet()
   const [page, setPage] = useState(1)
   const transactions = useWalletTransactions(page, 10)
+  const [mode, setMode] = useState<'deposit' | 'withdraw'>('deposit')
+  const [amount, setAmount] = useState('250')
+  const [method, setMethod] = useState('card')
+  const [destination, setDestination] = useState('')
+  const [requestNotice, setRequestNotice] = useState<string | null>(null)
+
+  const submitFunding = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+
+    const numericAmount = Number(amount)
+    if (!Number.isFinite(numericAmount) || numericAmount <= 0) return
+
+    setRequestNotice(
+      (mode === 'deposit' ? 'Deposit' : 'Withdrawal') +
+      ' request created for ' +
+      formatMoney(numericAmount.toFixed(2), wallet.data?.currency),
+    )
+    setAmount('')
+    setDestination('')
+    setPage(1)
+  }
 
   return (
     <div className="workspace-page">
-      <PageHeader eyebrow="Funds" title="Wallet" description="View server-backed wallet balances and transaction history." action="Back to trading" />
-      <ApiState loading={wallet.loading || transactions.loading} error={wallet.error ?? transactions.error} onRetry={() => { void wallet.reload(); void transactions.reload() }}>
+      <PageHeader eyebrow="Funds" title="Wallet" description="View server-backed balances, funding requests and transaction history." action="Back to trading" />
+
+      <ApiState
+        loading={wallet.loading || transactions.loading}
+        error={wallet.error ?? transactions.error}
+        onRetry={() => {
+          void wallet.reload()
+          void transactions.reload()
+        }}
+      >
         <div className="dashboard-stats">
           <StatCard label="Available balance" value={formatMoney(wallet.data?.availableBalance, wallet.data?.currency)} change={wallet.data?.status ?? '—'} positive icon={WalletCards} />
           <StatCard label="Held balance" value={formatMoney(wallet.data?.heldBalance, wallet.data?.currency)} change="Reserved" positive icon={DollarSign} />
@@ -259,12 +289,69 @@ function WalletPage() {
         <div className="wallet-grid">
           <section className="dashboard-card panel wallet-funding-card">
             <div className="dashboard-card__header">
-              <div><span className="eyebrow">Funding</span><h2>Funding is server-gated</h2></div>
-              <span className="status-pill status-pill--pending">COMING SOON</span>
+              <div><span className="eyebrow">Funding</span><h2>{mode === 'deposit' ? 'Deposit funds' : 'Withdraw funds'}</h2></div>
+              <span className="status-pill status-pill--pending">DEMO REQUEST</span>
             </div>
-            <div className="wallet-form-note"><ShieldCheck size={15} /> No client-side balance mutation is performed. Deposit and withdrawal APIs belong to the ledger/payment milestone.</div>
-            <div className="setting-row"><div><strong>Available to trade</strong><small>Server-authoritative available balance.</small></div><strong>{formatMoney(wallet.data?.availableBalance, wallet.data?.currency)}</strong></div>
-            <div className="setting-row"><div><strong>Held</strong><small>Funds reserved by server workflows.</small></div><strong>{formatMoney(wallet.data?.heldBalance, wallet.data?.currency)}</strong></div>
+
+            <div className="wallet-mode-switch">
+              <button type="button" className={mode === 'deposit' ? 'wallet-mode wallet-mode--active' : 'wallet-mode'} onClick={() => setMode('deposit')}>Deposit</button>
+              <button type="button" className={mode === 'withdraw' ? 'wallet-mode wallet-mode--active' : 'wallet-mode'} onClick={() => setMode('withdraw')}>Withdraw</button>
+            </div>
+
+            <form className="wallet-funding-form" onSubmit={submitFunding}>
+              <label>
+                <span>Amount</span>
+                <div className="wallet-amount-input">
+                  <span>$</span>
+                  <input
+                    required
+                    inputMode="decimal"
+                    min="1"
+                    step="0.01"
+                    type="number"
+                    value={amount}
+                    onChange={(event) => setAmount(event.target.value)}
+                    placeholder="0.00"
+                  />
+                </div>
+              </label>
+
+              <Select
+                label={mode === 'deposit' ? 'Funding method' : 'Withdrawal method'}
+                value={method}
+                onChange={setMethod}
+                options={mode === 'deposit'
+                  ? [
+                      { value: 'card', label: 'Demo card' },
+                      { value: 'bank', label: 'Demo bank transfer' },
+                      { value: 'crypto', label: 'Demo crypto' },
+                    ]
+                  : [
+                      { value: 'bank', label: 'Demo bank account' },
+                      { value: 'crypto', label: 'Demo wallet address' },
+                    ]}
+              />
+
+              {mode === 'withdraw' ? (
+                <label>
+                  <span>Destination</span>
+                  <input required value={destination} onChange={(event) => setDestination(event.target.value)} placeholder="Demo destination" />
+                </label>
+              ) : (
+                <div className="wallet-form-note"><Check size={15} /> Demo funding requests do not change the server balance.</div>
+              )}
+
+              <button className="btn btn--primary" type="submit">
+                {mode === 'deposit' ? 'Create deposit request' : 'Create withdrawal request'}
+                <ArrowUpRight size={14} />
+              </button>
+            </form>
+
+            {requestNotice ? (
+              <div className="wallet-form-note wallet-form-note--success" role="status">
+                <Check size={15} /> {requestNotice}. Actual wallet mutations remain server-gated.
+              </div>
+            ) : null}
           </section>
 
           <section className="dashboard-card panel">
@@ -273,7 +360,7 @@ function WalletPage() {
               <ShieldCheck size={16} className="dashboard-muted-icon" />
             </div>
             <div className="setting-row"><div><strong>Withdrawal verification</strong><small>Production withdrawals require server-side verification.</small></div><span className="status-pill status-pill--pending">LOCKED</span></div>
-            <div className="setting-row"><div><strong>Ledger state</strong><small>Wallet mutation is disabled until the financial ledger is live.</small></div><span className="status-pill status-pill--positive">SERVER</span></div>
+            <div className="setting-row"><div><strong>Ledger state</strong><small>Balances and wallet mutations remain server-authoritative.</small></div><span className="status-pill status-pill--positive">SERVER</span></div>
           </section>
         </div>
 
