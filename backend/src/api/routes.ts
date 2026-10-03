@@ -83,7 +83,7 @@ function ok<T>(request: FastifyRequest, data: T) {
 }
 
 const IDEMPOTENCY_KEY_PATTERN = /^[A-Za-z0-9._:-]{1,128}$/
-const UUID_PATTERN = '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}
+const UUID_PATTERN = '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12'}
   const raw = request.headers['x-wallet-mode']
   const value = Array.isArray(raw) ? raw[0] : raw
   if (value === undefined) return 'DEMO'
