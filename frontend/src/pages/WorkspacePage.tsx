@@ -12,7 +12,7 @@ import { useAuth } from '../auth/AuthProvider'
 import { useWalletMode } from '../hooks/useWalletMode'
 import { useRealtime } from '../realtime/RealtimeProvider'
 import { userChannel } from '../realtime/subscriptions'
-import { useAuthSessions, useMarketAssets, useNotifications, usePortfolioAnalytics, usePortfolioPositions, usePortfolioSummary, useTrades, useWallet, useWalletTransactions, useWallets } from '../hooks/useServerState'
+import { useAuthDevices, useAuthSessions, useLoginHistory, useMarketAssets, useNotifications, usePortfolioAnalytics, usePortfolioPositions, usePortfolioSummary, useSecurityEvents, useTrades, useTwoFactorStatus, useWallet, useWalletTransactions, useWallets } from '../hooks/useServerState'
 
 type WorkspacePageProps = {
   eyebrow: string
@@ -623,53 +623,167 @@ function NotificationsPage() {
 
 function SecurityPage() {
   const sessions = useAuthSessions()
+  const devices = useAuthDevices()
+  const loginHistory = useLoginHistory()
+  const securityEvents = useSecurityEvents()
+  const twoFactor = useTwoFactorStatus()
   const { user, logoutAll } = useAuth()
   const [actionError, setActionError] = useState<string | null>(null)
+  const [setup, setSetup] = useState<{ secret: string; otpauthUri: string } | null>(null)
+  const [twoFactorCode, setTwoFactorCode] = useState('')
+  const [showRecoveryCodes, setShowRecoveryCodes] = useState<string[] | null>(null)
+  const [showTwoFactorForm, setShowTwoFactorForm] = useState(false)
+
+  const reloadSecurity = async () => {
+    await Promise.all([
+      sessions.reload(),
+      devices.reload(),
+      loginHistory.reload(),
+      securityEvents.reload(),
+      twoFactor.reload(),
+    ])
+  }
 
   const revoke = async (sessionId: string) => {
     setActionError(null)
     try {
       await authApi.revokeSession(sessionId)
       await sessions.reload()
+      await devices.reload()
     } catch (error) {
       setActionError(error instanceof Error ? error.message : 'Unable to revoke session')
     }
   }
 
+  const startTwoFactorSetup = async () => {
+    setActionError(null)
+    try {
+      const result = await authApi.setupTwoFactor()
+      setSetup(result)
+      setTwoFactorCode('')
+      setShowTwoFactorForm(true)
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Unable to start two-factor setup')
+    }
+  }
+
+  const enableTwoFactor = async () => {
+    setActionError(null)
+    try {
+      const result = await authApi.enableTwoFactor(twoFactorCode)
+      setShowRecoveryCodes(result.recoveryCodes)
+      setShowTwoFactorForm(false)
+      setSetup(null)
+      setTwoFactorCode('')
+      await reloadSecurity()
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Unable to enable two-factor authentication')
+    }
+  }
+
+  const disableTwoFactor = async () => {
+    setActionError(null)
+    const code = window.prompt('Enter your current authenticator code to disable two-factor authentication.')
+    if (!code) return
+    try {
+      await authApi.disableTwoFactor(code)
+      await reloadSecurity()
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Unable to disable two-factor authentication')
+    }
+  }
+
   return (
     <div className="workspace-page">
-      <PageHeader eyebrow="Account protection" title="Security" description="Manage authenticated sessions and sign-in protection." action="Account overview" />
+      <PageHeader eyebrow="Account protection" title="Security" description="Manage sessions, devices, two-factor authentication and security history." action="Account overview" />
 
       <div className="security-banner panel">
         <span className="security-banner__icon"><ShieldCheck size={17} /></span>
-        <div><strong>{user?.email ?? 'Authenticated account'}</strong><p>Server-backed session management is active.</p></div>
+        <div><strong>{user?.email ?? 'Authenticated account'}</strong><p>Security controls are server-backed.</p></div>
         <span className="status-pill status-pill--positive">{user?.emailVerifiedAt ? 'VERIFIED' : 'UNVERIFIED'}</span>
       </div>
 
       <div className="settings-grid">
         <section className="dashboard-card panel">
           <div className="dashboard-card__header"><div><span className="eyebrow">Sign-in</span><h2>Authentication</h2></div></div>
-          <div className="setting-row"><div><strong>Two-factor authentication</strong><small>MFA endpoints are planned for the security hardening phase.</small></div><button type="button" className="setting-button" disabled>Coming soon</button></div>
-          <div className="setting-row"><div><strong>Session cookie</strong><small>HttpOnly server session; no auth token is stored in localStorage.</small></div><span className="status-pill status-pill--positive">ACTIVE</span></div>
-          <div className="setting-row"><div><strong>Sign out all sessions</strong><small>Invalidates every active session, including this browser.</small></div><button type="button" className="setting-button setting-button--danger" onClick={() => void logoutAll()}>Sign out all</button></div>
+          <div className="setting-row">
+            <div><strong>Two-factor authentication</strong><small>{twoFactor.data?.enabled ? 'Authenticator verification is required after your password.' : 'Protect sign-in with a TOTP authenticator app.'}</small></div>
+            {twoFactor.data?.enabled
+              ? <button type="button" className="setting-button setting-button--danger" onClick={() => void disableTwoFactor()}>Disable</button>
+              : <button type="button" className="setting-button" onClick={() => void startTwoFactorSetup()}>{showTwoFactorForm ? 'Setup open' : 'Enable'}</button>}
+          </div>
+          <div className="setting-row"><div><strong>Recovery codes</strong><small>{twoFactor.data?.enabled ? (twoFactor.data.recoveryCodesRemaining + ' unused recovery codes remain.') : 'Recovery codes are generated when 2FA is enabled.'}</small></div><span className="status-pill status-pill--pending">{twoFactor.data?.recoveryCodesRemaining ?? 0}</span></div>
+          <div className="setting-row"><div><strong>Session cookie</strong><small>Authenticated session is stored in an HttpOnly cookie.</small></div><span className="status-pill status-pill--positive">ACTIVE</span></div>
+          <div className="setting-row"><div><strong>Sign out all sessions</strong><small>Invalidates every active browser session and tracked device.</small></div><button type="button" className="setting-button setting-button--danger" onClick={() => void logoutAll()}>Sign out all</button></div>
+
+          {showTwoFactorForm && setup ? (
+            <div className="two-factor-setup">
+              <div className="two-factor-setup__secret"><span>Authenticator secret</span><code>{setup.secret}</code></div>
+              <div className="dashboard-note">Add this secret to your authenticator app, then enter the six-digit code below. Provisioning URI: <code>{setup.otpauthUri}</code></div>
+              <label><span>Verification code</span><input inputMode="numeric" maxLength={6} value={twoFactorCode} onChange={(event) => setTwoFactorCode(event.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="123456" /></label>
+              <div className="security-actions"><button type="button" className="setting-button" disabled={twoFactorCode.length !== 6} onClick={() => void enableTwoFactor()}>Enable 2FA</button><button type="button" className="quiet-button" onClick={() => { setShowTwoFactorForm(false); setSetup(null) }}>Cancel</button></div>
+            </div>
+          ) : null}
+
+          {showRecoveryCodes ? (
+            <div className="two-factor-recovery" role="status">
+              <div className="dashboard-card__header"><div><span className="eyebrow">Save these now</span><h3>Recovery codes</h3></div></div>
+              <p>Each code can be used once when the authenticator is unavailable.</p>
+              <div className="recovery-code-grid">{showRecoveryCodes.map((code) => <code key={code}>{code}</code>)}</div>
+              <button type="button" className="quiet-button" onClick={() => setShowRecoveryCodes(null)}>I saved them</button>
+            </div>
+          ) : null}
+
+          {actionError ? <div className="dashboard-note dashboard-note--error" role="alert">{actionError}</div> : null}
         </section>
 
         <section className="dashboard-card panel">
-          <div className="dashboard-card__header"><div><span className="eyebrow">Sessions</span><h2>Active devices</h2></div><span className="status-pill status-pill--pending">{sessions.data?.sessions.length ?? 0}</span></div>
+          <div className="dashboard-card__header"><div><span className="eyebrow">Sessions</span><h2>Active sessions</h2></div><span className="status-pill status-pill--pending">{sessions.data?.sessions.length ?? 0}</span></div>
           <ApiState loading={sessions.loading} error={sessions.error} onRetry={() => void sessions.reload()}>
             {(sessions.data?.sessions ?? []).map((session) => (
               <div className="session-item" key={session.id}>
                 <span className="session-item__icon"><Smartphone size={15} /></span>
                 <div><strong>{session.userAgent ? session.userAgent.slice(0, 44) : 'Browser session'}</strong><small>{session.current ? 'Current session' : 'Active session'} · Last seen {formatDateTime(session.lastSeenAt)}</small></div>
-                {session.current
-                  ? <span className="status-pill status-pill--positive">CURRENT</span>
-                  : <button type="button" className="setting-button setting-button--danger" onClick={() => void revoke(session.id)}>Revoke</button>}
+                {session.current ? <span className="status-pill status-pill--positive">CURRENT</span> : <button type="button" className="setting-button setting-button--danger" onClick={() => void revoke(session.id)}>Revoke</button>}
               </div>
             ))}
           </ApiState>
-          {actionError ? <div className="dashboard-note" role="alert">{actionError}</div> : null}
         </section>
       </div>
+
+      <div className="settings-grid">
+        <section className="dashboard-card panel">
+          <div className="dashboard-card__header"><div><span className="eyebrow">Devices</span><h2>Tracked devices</h2></div><span className="status-pill status-pill--pending">{devices.data?.devices.length ?? 0}</span></div>
+          <ApiState loading={devices.loading} error={devices.error} onRetry={() => void devices.reload()}>
+            {(devices.data?.devices ?? []).map((device) => (
+              <div className="session-item" key={device.id}>
+                <span className="session-item__icon"><Smartphone size={15} /></span>
+                <div><strong>{device.deviceName ?? 'Browser session'}</strong><small>{device.userAgent?.slice(0, 55) ?? 'Unknown user agent'} · Last seen {formatDateTime(device.lastSeenAt)}</small></div>
+              </div>
+            ))}
+          </ApiState>
+        </section>
+
+        <section className="dashboard-card panel">
+          <div className="dashboard-card__header"><div><span className="eyebrow">Login history</span><h2>Recent sign-ins</h2></div></div>
+          <ApiState loading={loginHistory.loading} error={loginHistory.error} onRetry={() => void loginHistory.reload()}>
+            {(loginHistory.data?.items ?? []).map((event) => (
+              <div className="security-event-row" key={event.id}><span className={event.action === 'LOGIN_SUCCESS' ? 'status-pill status-pill--positive' : 'status-pill status-pill--danger'}>{event.action.replaceAll('_', ' ')}</span><div><strong>{event.ipAddress ?? 'Unknown IP'}</strong><small>{event.userAgent?.slice(0, 42) ?? 'Unknown device'} · {formatDateTime(event.createdAt)}</small></div></div>
+            ))}
+          </ApiState>
+        </section>
+      </div>
+
+      <section className="dashboard-card panel">
+        <div className="dashboard-card__header"><div><span className="eyebrow">Security events</span><h2>Account activity</h2></div></div>
+        <ApiState loading={securityEvents.loading} error={securityEvents.error} onRetry={() => void securityEvents.reload()}>
+          <div className="security-event-list">
+            {(securityEvents.data?.items ?? []).map((event) => (
+              <div className="security-event-row" key={event.id}><span className="status-pill status-pill--pending">{event.action.replaceAll('_', ' ')}</span><div><strong>{event.entityType}{event.entityId ? ' · ' + event.entityId.slice(0, 12) : ''}</strong><small>{event.ipAddress ?? 'No IP recorded'} · {formatDateTime(event.createdAt)}</small></div></div>
+            ))}
+          </div>
+        </ApiState>
+      </section>
     </div>
   )
 }
