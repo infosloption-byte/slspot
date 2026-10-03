@@ -10,9 +10,26 @@ import { registerAuthRoutes, type AuthServiceLike } from './auth/routes.js'
 import { registerAdminRoutes } from './admin/routes.js'
 import type { AdminService } from './admin/service.js'
 import type { ApiError, ApiSuccess } from './contracts/api.js'
+import { assertTrustedOrigin } from './security/origin.js'
+import { verifyCsrfToken } from './security/csrf.js'
+import { enforceRateLimit } from './security/rate-limit.js'
 
 const API_PREFIX = '/api/v1'
 const REQUEST_ID_PATTERN = /^[A-Za-z0-9._:-]{1,128}$/
+const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS'])
+const MAX_API_URL_LENGTH = 4_096
+
+class AppSecurityError extends Error {
+  readonly statusCode: number
+  readonly code: string
+
+  constructor(statusCode: number, code: string, message: string) {
+    super(message)
+    this.name = 'AppSecurityError'
+    this.statusCode = statusCode
+    this.code = code
+  }
+}
 
 type AppOptions = {
   checkDatabase?: () => Promise<boolean>
@@ -66,6 +83,44 @@ export function buildApp(options: AppOptions = {}) {
     origin: env.corsOrigins,
   })
 
+  app.addHook('onRequest', async (request) => {
+    if (!request.url.startsWith(API_PREFIX)) return
+    if (request.url.length > MAX_API_URL_LENGTH) {
+      throw new AppSecurityError(414, 'URI_TOO_LONG', 'Request URL is too long')
+    }
+
+    const path = request.url.split('?', 1)[0]
+    const isAuthRoute = path.startsWith(API_PREFIX + '/auth/')
+    const isTradingRoute = path.startsWith(API_PREFIX + '/trades') || path.startsWith(API_PREFIX + '/wallet')
+
+    await enforceRateLimit({
+      key: (isAuthRoute ? 'auth:' : isTradingRoute ? 'trading:' : 'api:') + request.ip,
+      limit: isAuthRoute ? env.security.rateLimit.authLimit : isTradingRoute ? env.security.rateLimit.tradingLimit : env.security.rateLimit.generalLimit,
+      windowSeconds: isAuthRoute ? env.security.rateLimit.authWindowSeconds : isTradingRoute ? env.security.rateLimit.tradingWindowSeconds : env.security.rateLimit.generalWindowSeconds,
+    })
+
+    if (SAFE_METHODS.has(request.method)) return
+
+    assertTrustedOrigin(request)
+
+    const contentType = request.headers['content-type']
+    const normalizedContentType = Array.isArray(contentType) ? contentType[0] : contentType
+    if (normalizedContentType?.toLowerCase().startsWith('multipart/form-data')) {
+      throw new AppSecurityError(415, 'FILE_UPLOAD_NOT_SUPPORTED', 'File uploads are not enabled on this API endpoint')
+    }
+    if (normalizedContentType && !normalizedContentType.toLowerCase().startsWith('application/json')) {
+      throw new AppSecurityError(415, 'UNSUPPORTED_CONTENT_TYPE', 'State-changing API requests must use application/json')
+    }
+
+    const sessionToken = request.cookies?.[env.auth.cookieName]
+    const csrfCookie = request.cookies?.[env.auth.csrfCookieName]
+    const csrfHeader = request.headers['x-csrf-token']
+    const csrfToken = Array.isArray(csrfHeader) ? csrfHeader[0] : csrfHeader
+    if (!verifyCsrfToken(csrfToken, sessionToken)) {
+      throw new AppSecurityError(403, 'CSRF_INVALID', 'CSRF validation failed')
+    }
+  })
+
   app.addHook('onSend', async (request, reply) => {
     reply.header('x-request-id', request.id)
     reply.header('x-content-type-options', 'nosniff')
@@ -73,6 +128,10 @@ export function buildApp(options: AppOptions = {}) {
     reply.header('referrer-policy', 'no-referrer')
     reply.header('permissions-policy', 'camera=(), microphone=(), geolocation=()')
     reply.header('cache-control', 'no-store')
+    reply.header('content-security-policy', "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'")
+    reply.header('cross-origin-opener-policy', 'same-origin')
+    reply.header('cross-origin-resource-policy', 'same-origin')
+    reply.header('x-permitted-cross-domain-policies', 'none')
 
     if (env.nodeEnv === 'production') {
       reply.header(
