@@ -2,10 +2,26 @@ import { Bell, LogOut, Plus } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { useAuth } from '../../auth/AuthProvider'
+import { useNotifications, useWallet } from '../../hooks/useServerState'
+
+function formatBalance(value: string | null | undefined, currency: string | null | undefined): string {
+  const amount = Number(value ?? 0)
+  if (!Number.isFinite(amount)) return '—'
+
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: currency ?? 'USD',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount)
+}
 
 export function TopBar() {
   const navigate = useNavigate()
   const { user, logout } = useAuth()
+  const wallet = useWallet()
+  const notifications = useNotifications(1, 1, true)
+  const unreadCount = notifications.data?.pagination.total ?? 0
   const [loggingOut, setLoggingOut] = useState(false)
   const [logoutError, setLogoutError] = useState('')
 
@@ -32,17 +48,23 @@ export function TopBar() {
 
       <div className="topbar__spacer" />
 
-      <Link to="/app/alerts" className="icon-button topbar__bell" aria-label="Notifications" title="Notifications">
+      <Link
+        to="/app/alerts"
+        className="icon-button topbar__bell"
+        aria-label={unreadCount > 0 ? unreadCount + ' unread notifications' : 'Notifications'}
+        title={unreadCount > 0 ? unreadCount + ' unread notifications' : 'Notifications'}
+      >
         <Bell size={18} />
-        <span className="topbar__bell-dot" />
+        {unreadCount > 0 ? <span className="topbar__bell-dot" /> : null}
       </Link>
 
-      <div className="account-chip" aria-label="Signed in account">
+      <Link to="/app/wallet" className="account-chip" aria-label="Open wallet">
         <span className="account-chip__body">
-          <small>{user?.email ?? 'Signed in'}</small>
-          <strong>{user?.status === 'ACTIVE' ? 'Account active' : 'Account'}</strong>
+          <small>Available balance</small>
+          <strong>{formatBalance(wallet.data?.availableBalance, wallet.data?.currency)}</strong>
+          <em>{user?.email ?? 'Signed in'}</em>
         </span>
-      </div>
+      </Link>
 
       {logoutError ? <span className="topbar__auth-error" role="alert">{logoutError}</span> : null}
 
