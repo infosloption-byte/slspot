@@ -1,6 +1,6 @@
 import { Outlet } from 'react-router'
 import { useEffect, useState } from 'react'
-import { useRealtimeState } from '../../realtime/RealtimeProvider'
+import { useRealtimeState } from '../../realtime/useRealtime'
 import { Sidebar } from './Sidebar'
 import { TopBar } from './TopBar'
 
