@@ -66,6 +66,12 @@ export class TradingError extends Error {
   }
 }
 
+export function assertManualSettlementAllowed(expiresAt: Date, now = new Date()): void {
+  if (expiresAt.getTime() > now.getTime()) {
+    throw new TradingError(409, 'TRADE_NOT_EXPIRED', 'Trade can only be settled after expiry')
+  }
+}
+
 export function evaluateTrade(direction: TradeDirection, entryPrice: string, exitPrice: string): boolean {
   const entry = new Prisma.Decimal(entryPrice)
   const exit = new Prisma.Decimal(exitPrice)
@@ -430,6 +436,8 @@ export class TradingService {
       throw new TradingError(409, 'TRADE_NOT_OPEN', 'Trade is no longer open')
     }
 
+    assertManualSettlementAllowed(details.position.order.expiresAt)
+
     const market = await this.prisma.market.findFirst({
       where: { assetId: details.position.assetId },
       orderBy: { updatedAt: 'desc' },
@@ -497,6 +505,10 @@ export class TradingService {
       })
 
       if (!details || details.status !== 'OPEN') return null
+
+      if (reason === 'MANUAL' && details.position.order.expiresAt) {
+        assertManualSettlementAllowed(details.position.order.expiresAt, new Date())
+      }
 
       const exitPrice = new Prisma.Decimal(settlementPrice)
       const direction = details.position.side === 'BUY' ? 'UP' : 'DOWN'
