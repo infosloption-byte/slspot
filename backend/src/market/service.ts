@@ -217,6 +217,8 @@ export class MarketDataService {
           status: quote.status,
           lastPrice: quote.last,
           lastPriceAt: new Date(quote.timestamp),
+          lastChangePct: quote.changePct,
+          lastVolume: quote.volume,
         },
       })
 
