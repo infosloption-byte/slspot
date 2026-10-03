@@ -160,6 +160,8 @@ export function buildApp(options: AppOptions = {}) {
       requestId: request.id,
     }
 
+    const retryAfterSeconds = (error as FastifyError & { retryAfterSeconds?: number }).retryAfterSeconds
+    if (retryAfterSeconds !== undefined) reply.header('retry-after', String(Math.ceil(retryAfterSeconds)))
     return reply.status(statusCode).send(response)
   })
 
