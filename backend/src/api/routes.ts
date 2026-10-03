@@ -6,6 +6,7 @@ import { PlatformApiService } from './service.js'
 import { isCandleInterval } from '../market/types.js'
 import type { MarketDataServiceLike } from '../market/service.js'
 import type { TradingService } from '../trading/service.js'
+import type { WalletMode } from './service.js'
 
 const PREFIX = '/api/v1'
 
@@ -40,6 +41,7 @@ function queryEnum(value: string | undefined, allowed: readonly string[], name: 
 
 const ASSET_TYPES = ['CRYPTO', 'FOREX', 'STOCK', 'COMMODITY', 'INDEX', 'OTHER'] as const
 const TRADE_STATUSES = ['OPEN', 'WON', 'LOST', 'CANCELLED', 'EXPIRED'] as const
+const WALLET_MODES = ['DEMO', 'REAL'] as const
 
 async function requireSession(request: FastifyRequest, authService: AuthServiceLike): Promise<AuthSession> {
   const session = await authService.authenticateSession(request.cookies?.[env.auth.cookieName])
@@ -49,6 +51,14 @@ async function requireSession(request: FastifyRequest, authService: AuthServiceL
 
 function ok<T>(request: FastifyRequest, data: T) {
   return { success: true as const, data, requestId: request.id }
+}
+
+function walletModeFromRequest(request: FastifyRequest): WalletMode {
+  const raw = request.headers['x-wallet-mode']
+  const value = Array.isArray(raw) ? raw[0] : raw
+  if (value === undefined) return 'DEMO'
+  if (!WALLET_MODES.includes(value as WalletMode)) throw new AuthError(400, 'INVALID_QUERY', 'Wallet mode is invalid')
+  return value as WalletMode
 }
 
 export type TradingServiceLike = Pick<TradingService, 'createTrade' | 'closeTrade'>
@@ -83,7 +93,7 @@ export function registerPlatformApiRoutes(app: FastifyInstance, options: Platfor
 
   app.get<{ Querystring: Query }>(PREFIX + '/portfolio/summary', async (request) => {
     const session = await requireSession(request, options.authService)
-    return ok(request, await options.apiService.getPortfolioSummary(session.id))
+    return ok(request, await options.apiService.getPortfolioSummary(session.id, walletModeFromRequest(request)))
   })
 
   app.get<{ Querystring: Query }>(PREFIX + '/portfolio/positions', async (request) => {
@@ -91,7 +101,7 @@ export function registerPlatformApiRoutes(app: FastifyInstance, options: Platfor
     return ok(request, await options.apiService.listPositions(session.id, {
       page: queryNumber(request.query.page),
       pageSize: queryNumber(request.query.pageSize),
-    }))
+    }, walletModeFromRequest(request)))
   })
 
   app.get<{ Querystring: Query }>(PREFIX + '/trades', async (request) => {
@@ -100,7 +110,7 @@ export function registerPlatformApiRoutes(app: FastifyInstance, options: Platfor
       page: queryNumber(request.query.page),
       pageSize: queryNumber(request.query.pageSize),
       status: queryEnum(request.query.status, TRADE_STATUSES, 'Trade status'),
-    }))
+    }, walletModeFromRequest(request)))
   })
 
   app.post<{
@@ -144,7 +154,7 @@ export function registerPlatformApiRoutes(app: FastifyInstance, options: Platfor
       amount: String(request.body.amount),
       durationSeconds: request.body.durationSeconds,
       clientRequestId,
-    }))
+    }, walletModeFromRequest(request)))
   })
 
   app.post<{ Params: { tradeId: string } }>(PREFIX + '/trades/:tradeId/close', async (request) => {
@@ -152,12 +162,17 @@ export function registerPlatformApiRoutes(app: FastifyInstance, options: Platfor
     if (!options.tradingService) {
       throw new AuthError(503, 'TRADING_UNAVAILABLE', 'Trading service is unavailable')
     }
-    return ok(request, await options.tradingService.closeTrade(session.id, request.params.tradeId))
+    return ok(request, await options.tradingService.closeTrade(session.id, request.params.tradeId, walletModeFromRequest(request)))
+  })
+
+  app.get(PREFIX + '/wallets', async (request) => {
+    const session = await requireSession(request, options.authService)
+    return ok(request, await options.apiService.getWallets(session.id))
   })
 
   app.get(PREFIX + '/wallet', async (request) => {
     const session = await requireSession(request, options.authService)
-    return ok(request, await options.apiService.getWallet(session.id))
+    return ok(request, await options.apiService.getWallet(session.id, walletModeFromRequest(request)))
   })
 
   app.get<{ Querystring: Query }>(PREFIX + '/wallet/transactions', async (request) => {
@@ -165,7 +180,7 @@ export function registerPlatformApiRoutes(app: FastifyInstance, options: Platfor
     return ok(request, await options.apiService.listWalletTransactions(session.id, {
       page: queryNumber(request.query.page),
       pageSize: queryNumber(request.query.pageSize),
-    }))
+    }, walletModeFromRequest(request)))
   })
 
   app.get<{ Querystring: Query }>(PREFIX + '/notifications', async (request) => {
