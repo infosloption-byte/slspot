@@ -10,7 +10,7 @@ type ApiStateProps = {
 
 export function ApiState({ loading, error, onRetry, children }: ApiStateProps) {
   if (loading) {
-    return <div className="dashboard-note"><span className="loading-spinner" aria-hidden="true" /> Loading live data…</div>
+    return <div className="dashboard-note" role="status" aria-live="polite"><span className="loading-spinner" aria-hidden="true" /> Loading live data…</div>
   }
 
   if (error) {
