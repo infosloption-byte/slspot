@@ -932,10 +932,11 @@ export class TradingService {
           { accountCode: ledgerAccounts.availableCode, accountName: 'User available balance', accountType: 'LIABILITY', direction: 'CREDIT', amount: initialBalance },
         ],
       })
+    }
     return wallet
   }
 
-  private async ensureDemoBalance(
+  private async ensureDemoBalance (
     tx: Prisma.TransactionClient,
     accountId: string,
     wallet: Wallet,
@@ -990,6 +991,7 @@ export class TradingService {
           { accountCode: ledgerAccounts.availableCode, accountName: 'User available balance', accountType: 'LIABILITY', direction: 'CREDIT', amount: refillAmount },
         ],
       })
+    }
     const refreshedWallet = await tx.wallet.findUnique({ where: { id: wallet.id } })
     if (!refreshedWallet) {
       throw new TradingError(409, 'WALLET_NOT_FOUND', 'Trading wallet disappeared during demo balance refill')
