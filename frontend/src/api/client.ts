@@ -102,20 +102,19 @@ export async function apiRequest<T>(
   const requestedAttempts = typeof retry === 'object' ? retry.maxAttempts ?? 3 : retry === false ? 1 : 3
   const maxAttempts = retryAllowed ? Math.max(1, Math.min(4, requestedAttempts)) : 1
 
-  const controller = new AbortController()
-  const forwardAbort = () => controller.abort()
-  if (callerSignal) {
-    if (callerSignal.aborted) {
-      controller.abort()
-    } else {
-      callerSignal.addEventListener('abort', forwardAbort, { once: true })
-    }
+  if (callerSignal?.aborted) {
+    throw new DOMException('The operation was aborted', 'AbortError')
   }
 
   emitNetworkEvent('start')
 
   try {
     for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+      const controller = new AbortController()
+      const forwardAbort = () => controller.abort()
+      if (callerSignal) {
+        callerSignal.addEventListener('abort', forwardAbort, { once: true })
+      }
       const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs)
       try {
         const hasBody = requestInit.body !== undefined && requestInit.body !== null
@@ -185,6 +184,7 @@ export async function apiRequest<T>(
         throw error
       } finally {
         window.clearTimeout(timeoutId)
+        callerSignal?.removeEventListener('abort', forwardAbort)
       }
     }
 
