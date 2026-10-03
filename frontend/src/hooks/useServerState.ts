@@ -1,4 +1,4 @@
-import { useCallback } from 'react'
+import { useCallback, useEffect } from 'react'
 import { useWalletMode } from './useWalletMode'
 import { authApi } from '../api/auth'
 import { marketApi } from '../api/market'
@@ -8,6 +8,13 @@ import type { WalletTransactionFilters } from '../api/wallet'
 import { tradesApi, type TradeHistorySortBy, type TradeHistorySortOrder, type TradeRecord } from '../api/trades'
 import { walletApi } from '../api/wallet'
 import { useAsyncResource } from './useAsyncResource'
+import { authApi, type AccountCapabilities } from '../api/auth'
+import { setPortfolioAnalytics, setPortfolioPositions, setPortfolioSummary } from '../state/portfolioStore'
+
+export function useTradingCapabilities() {
+  const load = useCallback(() => authApi.capabilities(), [])
+  return useAsyncResource<AccountCapabilities>(load)
+}
 
 export function useMarketAssets(pageSize = 100) {
   const load = useCallback(() => marketApi.listAssets({ pageSize }), [pageSize])
@@ -27,19 +34,25 @@ export function useMarketCandles(assetId: string | undefined, interval: string, 
 export function usePortfolioSummary() {
   const { mode } = useWalletMode()
   const load = useCallback(() => portfolioApi.summary(mode), [mode])
-  return useAsyncResource(load)
+  const resource = useAsyncResource(load)
+  useEffect(() => { if (resource.data) setPortfolioSummary(resource.data) }, [resource.data])
+  return resource
 }
 
 export function usePortfolioAnalytics() {
   const { mode } = useWalletMode()
   const load = useCallback(() => portfolioApi.analytics(mode), [mode])
-  return useAsyncResource(load)
+  const resource = useAsyncResource(load)
+  useEffect(() => { if (resource.data) setPortfolioAnalytics(resource.data) }, [resource.data])
+  return resource
 }
 
 export function usePortfolioPositions(page: number, pageSize = 25) {
   const { mode } = useWalletMode()
   const load = useCallback(() => portfolioApi.positions({ page, pageSize }, mode), [page, pageSize, mode])
-  return useAsyncResource(load)
+  const resource = useAsyncResource(load)
+  useEffect(() => { if (resource.data) setPortfolioPositions(resource.data.items) }, [resource.data])
+  return resource
 }
 
 export type TradeHistoryQuery = {
