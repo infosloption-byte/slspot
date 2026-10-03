@@ -81,6 +81,39 @@ describe('frontend API bindings', () => {
     assert.ok(urls.some((url) => url.includes('/notifications?page=1&pageSize=25')))
   })
 
+  it('loads server-authoritative account capabilities', async () => {
+    let requestedUrl = ''
+    globalThis.fetch = async (input) => {
+      requestedUrl = String(input)
+      return new Response(JSON.stringify({
+        success: true,
+        data: {
+          trading: {
+            DEMO: { enabled: true, reason: null },
+            REAL: { enabled: false, reason: 'Real trading is not enabled' },
+          },
+          funding: {
+            deposit: {
+              DEMO: { enabled: true, reason: null },
+              REAL: { enabled: false, reason: 'Real deposits are not enabled' },
+            },
+            withdrawal: {
+              DEMO: { enabled: true, reason: null },
+              REAL: { enabled: false, reason: 'Real withdrawals are not enabled' },
+            },
+          },
+        },
+        requestId: 'request-1',
+      }), { status: 200, headers: { 'content-type': 'application/json' } })
+    }
+
+    const { authApi } = await import('./auth')
+    const result = await authApi.capabilities()
+    assert.match(requestedUrl, //auth/capabilities$/)
+    assert.equal(result.trading.DEMO.enabled, true)
+    assert.equal(result.trading.REAL.enabled, false)
+  })
+
   it('sends the selected wallet mode to account-scoped APIs', async () => {
     let modeHeader = ''
     globalThis.fetch = async (_input, init) => {
