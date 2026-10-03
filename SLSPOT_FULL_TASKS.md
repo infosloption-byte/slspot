@@ -308,9 +308,9 @@ Create reusable primitives:
 - [x] Responsive base.
 - [x] Convert navigation buttons to real routes.
 - [x] Add mobile navigation behavior.
-- [ ] Add keyboard shortcuts.
-- [ ] Add global loading state.
-- [ ] Add global connection status.
+- [ ] Add keyboard shortcuts (later).
+- [x] Add global loading state.
+- [x] Add global connection status.
 
 ## 4.2 Asset watchlist
 
@@ -1328,7 +1328,7 @@ A production release is blocked until:
 
 ---
 
-# CURRENT STATUS — 2026-10-02
+# CURRENT STATUS — 2026-10-03
 
 ## Completed in the current backend milestone
 
@@ -1341,8 +1341,13 @@ A production release is blocked until:
 - [x] scrypt password hashing.
 - [x] HttpOnly session-cookie authentication.
 - [x] Registration and email-verification token lifecycle.
+- [x] Registration terms/consent persistence.
+- [x] Password lockout and `Retry-After` rate-limit contract.
 - [x] Login/logout/current-user/session-management APIs.
-- [x] Password reset token lifecycle with session revocation.
+- [x] TOTP two-factor challenge/setup/enable/disable and recovery-code lifecycle.
+- [x] Device tracking, login history, and security-event APIs.
+- [x] Remember-device session lifetime option.
+- [x] Password reset token lifecycle with session revocation and lockout reset.
 - [x] Authenticated WebSocket handshake.
 - [x] Authentication tests and backend documentation.
 
@@ -1358,7 +1363,8 @@ A production release is blocked until:
 - [x] Redis-backed market price/status events.
 - [x] Public market candle API.
 - [x] Provider failure isolation and exponential retry backoff.
-- [x] Trading Room server-state market/candle consumption.
+- [x] Provider quote change/volume persistence for server-backed asset and chart state.
+- [x] Trading Room server-state market/candle consumption with loading/error/reconnect/stale-feed feedback.
 
 Implemented in:
 - `backend/src/market/`
@@ -1441,6 +1447,7 @@ Phase 16 — Server-authoritative trading engine
 - [x] Realtime trade/position/wallet events with authenticated user-channel delivery.
 - [x] Trading UI no longer owns authoritative positions, settlement, balances, payout or demo trade state.
 - [x] Trading UI creates server orders with an idempotency key and reloads server state after mutations/events.
+- [x] Trading UI shows explicit submitting/accepted/open/rejected/failed lifecycle feedback.
 - [x] Unit coverage for core settlement direction and payout calculations.
 
 ### Required before real-money execution
