@@ -1,6 +1,8 @@
 import type { FastifyRequest } from 'fastify'
 import { Prisma, type PrismaClient } from '../generated/prisma/client.js'
 import { env } from '../config/env.js'
+import { createRealtimeEvent, serializeRealtimeEvent } from '../realtime/events.js'
+import { isRedisReady, publish } from '../realtime/redis.js'
 import { createOpaqueToken, hashOpaqueToken, hashPassword, verifyPassword } from './crypto.js'
 import { LedgerService } from '../ledger/service.js'
 
@@ -170,6 +172,8 @@ export class AuthService {
 
       return created
     })
+
+    await this.createSecurityNotification(user.id)
 
     return {
       session: { ...this.toUser(user), sessionId: session.id, expiresAt },
@@ -476,6 +480,35 @@ export class AuthService {
           ],
         })
       }
+    }
+  }
+
+  private async createSecurityNotification(userId: string): Promise<void> {
+    try {
+      const notification = await this.prisma.notification.create({
+        data: {
+          userId,
+          type: 'SECURITY',
+          title: 'New sign-in',
+          body: 'A new sign-in session was created for your SL Spot account.',
+        },
+      })
+      if (!isRedisReady()) return
+      await publish(
+        env.redisChannel,
+        serializeRealtimeEvent(
+          createRealtimeEvent('notification.created', {
+            id: notification.id,
+            type: notification.type,
+            title: notification.title,
+            body: notification.body,
+            readAt: null,
+            createdAt: notification.createdAt.toISOString(),
+          }, ('user:' + userId) as `user:${string}`),
+        ),
+      )
+    } catch {
+      // Security notification delivery is best-effort; login must remain available.
     }
   }
 
