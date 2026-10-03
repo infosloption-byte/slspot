@@ -38,8 +38,8 @@ export type LoginResult = {
 }
 
 export const adminApi = {
-  login: (email: string, password: string) => request<LoginResult>('/auth/login', { method: 'POST', body: JSON.stringify({ email, password, rememberDevice: true }) }),
-  verify2fa: (challengeToken: string, code: string) => request<LoginResult>('/auth/2fa/verify', { method: 'POST', body: JSON.stringify({ challengeToken, code, rememberDevice: true }) }),
+  login: (email: string, password: string) => request<LoginResult>('/auth/login', { method: 'POST', body: JSON.stringify({ email, password, rememberDevice: false }) }),
+  verify2fa: (challengeToken: string, code: string) => request<LoginResult>('/auth/2fa/verify', { method: 'POST', body: JSON.stringify({ challengeToken, code, rememberDevice: false }) }),
   logout: () => request<{ loggedOut: boolean }>('/auth/logout', { method: 'POST' }),
   me: () => request<{ id: string; email: string; role: 'ADMIN' | 'SUPER_ADMIN' }>('/admin/me'),
   dashboard: () => request<Dashboard>('/admin/dashboard'),
