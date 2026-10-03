@@ -50,12 +50,13 @@ export function registerAuthRoutes(app: FastifyInstance, service: AuthServiceLik
 
   app.post<{Body:{email:string;password:string;rememberDevice?:boolean}}>(PREFIX+'/login',{
     schema:{body:{type:'object',required:['email','password'],additionalProperties:false,properties:{
-      email:{type:'string',minLength:3,maxLength:254},password:{type:'string',minLength:10,maxLength:128},
+      email:{type:'string',minLength:3,maxLength:254},password:{type:'string',minLength:10,maxLength:128},rememberDevice:{type:'boolean'},
     }}},
   },async(request,reply)=>{
     const result=await service.login({...request.body,ipAddress:request.ip,userAgent:request.headers['user-agent']})
+    if (result.requiresTwoFactor) return reply.status(202).send(ok(request,result))
     setSessionCookie(reply,result.sessionToken,result.session.expiresAt)
-    return reply.send(ok(request,{user:result.session,expiresAt:result.session.expiresAt}))
+    return reply.send(ok(request,result))
   })
 
   app.post<{Body:{challengeToken:string;code?:string;recoveryCode?:string;rememberDevice?:boolean}}>(PREFIX+'/2fa/verify',{
