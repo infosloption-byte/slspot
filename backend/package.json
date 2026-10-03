@@ -4,11 +4,11 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/server.ts",
+    "dev": "npm run prisma:generate && tsx watch src/server.ts",
     "build": "npm run prisma:generate && tsc -p tsconfig.json",
     "start": "node dist/server.js",
     "typecheck": "npm run prisma:generate && tsc -p tsconfig.json --noEmit",
-    "test": "node --import tsx --test",
+    "test": "npm run prisma:generate && node --import tsx --test",
     "prisma:generate": "prisma --config prisma7.config.ts generate",
     "prisma:migrate": "prisma --config prisma7.config.ts migrate dev",
     "prisma:migrate:deploy": "prisma --config prisma7.config.ts migrate deploy",
