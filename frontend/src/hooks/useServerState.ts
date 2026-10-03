@@ -4,6 +4,7 @@ import { authApi } from '../api/auth'
 import { marketApi } from '../api/market'
 import { notificationsApi } from '../api/notifications'
 import { portfolioApi } from '../api/portfolio'
+import type { WalletTransactionFilters } from '../api/wallet'
 import { tradesApi, type TradeHistorySortBy, type TradeHistorySortOrder, type TradeRecord } from '../api/trades'
 import { walletApi } from '../api/wallet'
 import { useAsyncResource } from './useAsyncResource'
@@ -26,6 +27,12 @@ export function useMarketCandles(assetId: string | undefined, interval: string, 
 export function usePortfolioSummary() {
   const { mode } = useWalletMode()
   const load = useCallback(() => portfolioApi.summary(mode), [mode])
+  return useAsyncResource(load)
+}
+
+export function usePortfolioAnalytics() {
+  const { mode } = useWalletMode()
+  const load = useCallback(() => portfolioApi.analytics(mode), [mode])
   return useAsyncResource(load)
 }
 
@@ -68,9 +75,17 @@ export function useWallets() {
   return useAsyncResource(load)
 }
 
-export function useWalletTransactions(page: number, pageSize = 25) {
+export function useWalletTransactions(
+  page: number,
+  pageSize = 25,
+  filters: WalletTransactionFilters = {},
+) {
   const { mode } = useWalletMode()
-  const load = useCallback(() => walletApi.transactions({ page, pageSize }, mode), [page, pageSize, mode])
+  const { search, type, status, from, to } = filters
+  const load = useCallback(
+    () => walletApi.transactions({ page, pageSize, search, type, status, from, to }, mode),
+    [page, pageSize, search, type, status, from, to, mode],
+  )
   return useAsyncResource(load)
 }
 
