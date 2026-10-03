@@ -1,6 +1,7 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import { env } from '../config/env.js'
 import { AuthError, type AuthSession, type AuthService } from './service.js'
+import { createCsrfToken } from '../security/csrf.js'
 
 export type AuthServiceLike = Pick<AuthService,
   'register' | 'login' | 'authenticateSession' | 'logout' | 'logoutAll' |
@@ -24,18 +25,38 @@ async function requireSession(request: FastifyRequest, service: AuthServiceLike)
 function setSessionCookie(reply: FastifyReply, token: string, expiresAt: Date) {
   reply.setCookie(env.auth.cookieName, token, {
     path:'/', httpOnly:true, secure:env.auth.cookieSecure,
-    sameSite:env.auth.cookieSameSite, domain:env.auth.cookieDomain, expires:expiresAt,
+    sameSite:env.auth.cookieSameSite, expires:expiresAt,
+  })
+}
+
+function setCsrfCookie(reply: FastifyReply, token: string) {
+  reply.setCookie(env.auth.csrfCookieName, token, {
+    path:'/', httpOnly:false, secure:env.auth.cookieSecure,
+    sameSite:env.auth.cookieSameSite,
   })
 }
 
 function clearSessionCookie(reply: FastifyReply) {
   reply.clearCookie(env.auth.cookieName, {
     path:'/', httpOnly:true, secure:env.auth.cookieSecure,
-    sameSite:env.auth.cookieSameSite, domain:env.auth.cookieDomain,
+    sameSite:env.auth.cookieSameSite,
+  })
+}
+
+function clearCsrfCookie(reply: FastifyReply) {
+  reply.clearCookie(env.auth.csrfCookieName, {
+    path:'/', httpOnly:false, secure:env.auth.cookieSecure,
+    sameSite:env.auth.cookieSameSite,
   })
 }
 
 export function registerAuthRoutes(app: FastifyInstance, service: AuthServiceLike): void {
+  app.get(PREFIX+'/csrf',async(request,reply)=>{
+    const token=createCsrfToken(request.cookies?.[env.auth.cookieName])
+    setCsrfCookie(reply,token)
+    return ok(request,{csrfToken:token})
+  })
+
   app.post<{Body:{email:string;password:string;countryCode?:string;acceptTerms:boolean;termsVersion?:string}}>(PREFIX+'/register',{
     schema:{body:{type:'object',required:['email','password','acceptTerms'],additionalProperties:false,properties:{
       email:{type:'string',minLength:3,maxLength:254},password:{type:'string',minLength:10,maxLength:128},
@@ -54,9 +75,23 @@ export function registerAuthRoutes(app: FastifyInstance, service: AuthServiceLik
     }}},
   },async(request,reply)=>{
     const result=await service.login({...request.body,ipAddress:request.ip,userAgent:request.headers['user-agent']})
-    if (result.requiresTwoFactor) return reply.status(202).send(ok(request,result))
+    if (result.requiresTwoFactor) {
+      return reply.status(202).send(ok(request,{
+        requiresTwoFactor:true,
+        user:result.user,
+        challengeToken:result.challengeToken,
+        challengeExpiresAt:result.challengeExpiresAt,
+      }))
+    }
     setSessionCookie(reply,result.sessionToken,result.session.expiresAt)
-    return reply.send(ok(request,result))
+    const csrfToken=createCsrfToken(result.sessionToken)
+    setCsrfCookie(reply,csrfToken)
+    return reply.send(ok(request,{
+      requiresTwoFactor:false,
+      user:result.session,
+      expiresAt:result.session.expiresAt,
+      csrfToken,
+    }))
   })
 
   app.post<{Body:{challengeToken:string;code?:string;recoveryCode?:string;rememberDevice?:boolean}}>(PREFIX+'/2fa/verify',{
@@ -68,9 +103,23 @@ export function registerAuthRoutes(app: FastifyInstance, service: AuthServiceLik
     }}},
   },async(request,reply)=>{
     const result=await service.verifyTwoFactorChallenge({...request.body,ipAddress:request.ip,userAgent:request.headers['user-agent']})
-    if (result.requiresTwoFactor) return reply.status(202).send(ok(request,result))
+    if (result.requiresTwoFactor) {
+      return reply.status(202).send(ok(request,{
+        requiresTwoFactor:true,
+        user:result.user,
+        challengeToken:result.challengeToken,
+        challengeExpiresAt:result.challengeExpiresAt,
+      }))
+    }
     setSessionCookie(reply,result.sessionToken,result.session.expiresAt)
-    return reply.send(ok(request,result))
+    const csrfToken=createCsrfToken(result.sessionToken)
+    setCsrfCookie(reply,csrfToken)
+    return reply.send(ok(request,{
+      requiresTwoFactor:false,
+      user:result.session,
+      expiresAt:result.session.expiresAt,
+      csrfToken,
+    }))
   })
 
   app.get(PREFIX+'/2fa/status',async(request)=>{
@@ -116,13 +165,17 @@ export function registerAuthRoutes(app: FastifyInstance, service: AuthServiceLik
   app.post(PREFIX+'/logout',async(request,reply)=>{
     const session=await requireSession(request,service)
     await service.logout(session.sessionId); clearSessionCookie(reply)
-    return reply.send(ok(request,{loggedOut:true}))
+    const csrfToken=createCsrfToken()
+    setCsrfCookie(reply,csrfToken)
+    return reply.send(ok(request,{loggedOut:true,csrfToken}))
   })
 
   app.post(PREFIX+'/logout-all',async(request,reply)=>{
     const session=await requireSession(request,service)
     await service.logoutAll(session.id); clearSessionCookie(reply)
-    return reply.send(ok(request,{loggedOut:true}))
+    const csrfToken=createCsrfToken()
+    setCsrfCookie(reply,csrfToken)
+    return reply.send(ok(request,{loggedOut:true,csrfToken}))
   })
 
   app.get(PREFIX+'/me',async(request)=>{
@@ -138,7 +191,10 @@ export function registerAuthRoutes(app: FastifyInstance, service: AuthServiceLik
   app.delete<{Params:{sessionId:string}}>(PREFIX+'/sessions/:sessionId',async(request,reply)=>{
     const session=await requireSession(request,service)
     await service.revokeSession(session.id,request.params.sessionId)
-    if(request.params.sessionId===session.sessionId) clearSessionCookie(reply)
+    if(request.params.sessionId===session.sessionId) {
+      clearSessionCookie(reply)
+      clearCsrfCookie(reply)
+    }
     return reply.send(ok(request,{revoked:true}))
   })
 
@@ -167,6 +223,8 @@ export function registerAuthRoutes(app: FastifyInstance, service: AuthServiceLik
   },async(request,reply)=>{
     await service.resetPassword(request.body.token,request.body.password)
     clearSessionCookie(reply)
-    return reply.send(ok(request,{reset:true}))
+    const csrfToken=createCsrfToken()
+    setCsrfCookie(reply,csrfToken)
+    return reply.send(ok(request,{reset:true,csrfToken}))
   })
 }
