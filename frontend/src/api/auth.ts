@@ -53,6 +53,28 @@ export type LoginHistoryRecord = {
   metadata: unknown
 }
 
+export type Capability = {
+  enabled: boolean
+  reason: string | null
+}
+
+export type AccountCapabilities = {
+  trading: {
+    DEMO: Capability
+    REAL: Capability
+  }
+  funding: {
+    deposit: {
+      DEMO: Capability
+      REAL: Capability
+    }
+    withdrawal: {
+      DEMO: Capability
+      REAL: Capability
+    }
+  }
+}
+
 export type SecurityEventRecord = LoginHistoryRecord & {
   entityType: string
   entityId: string | null
@@ -76,6 +98,9 @@ export const authApi = {
 
   me: () =>
     apiClient.get<ApiSuccess<{ user: AuthSession; sessionId: string }>>('/auth/me').then(data),
+
+  capabilities: () =>
+    apiClient.get<ApiSuccess<AccountCapabilities>>('/auth/capabilities').then(data),
 
   sessions: () =>
     apiClient.get<ApiSuccess<{ sessions: AuthSessionRecord[] }>>('/auth/sessions').then(data),
