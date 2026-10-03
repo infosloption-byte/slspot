@@ -1,6 +1,6 @@
 import { X } from 'lucide-react'
 import type { ReactNode } from 'react'
-import { useEffect, useRef } from 'react'
+import { useEffect, useId, useRef } from 'react'
 import { createPortal } from 'react-dom'
 
 type ModalProps = {
@@ -16,6 +16,7 @@ type ModalProps = {
 
 export function Modal({ open, onClose, title, description, children, footer, size = 'md', closeLabel = 'Close dialog' }: ModalProps) {
   const panelRef = useRef<HTMLDivElement>(null)
+  const titleId = useId()
   const previousFocusRef = useRef<HTMLElement | null>(null)
 
   useEffect(() => {
@@ -61,10 +62,10 @@ export function Modal({ open, onClose, title, description, children, footer, siz
 
   return createPortal(
     <div className="ui-modal" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}>
-      <section ref={panelRef} className={'ui-modal__panel ui-modal__panel--' + size} role="dialog" aria-modal="true" aria-labelledby="ui-modal-title">
+      <section ref={panelRef} className={'ui-modal__panel ui-modal__panel--' + size} role="dialog" aria-modal="true" aria-labelledby={titleId}>
         <header className="ui-modal__header">
           <div>
-            <h2 id="ui-modal-title">{title}</h2>
+            <h2 id={titleId}>{title}</h2>
             {description ? <p>{description}</p> : null}
           </div>
           <button type="button" className="icon-button" onClick={onClose} aria-label={closeLabel}><X size={16} /></button>
