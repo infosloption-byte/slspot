@@ -1302,6 +1302,9 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
 
 /* ---------- Trade history page polish ---------- */
 .trade-history-toolbar {
+  position: relative;
+  z-index: 30;
+  overflow: visible;
   display: grid;
   grid-template-columns: 1fr;
   gap: 12px;
@@ -1614,7 +1617,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
   top: calc(100% + 6px);
   left: 0;
   right: 0;
-  z-index: 70;
+  z-index: 100;
+  isolation: isolate;
   display: grid;
   gap: 3px;
   padding: 5px;
