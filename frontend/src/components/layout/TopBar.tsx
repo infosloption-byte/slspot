@@ -34,6 +34,8 @@ export function TopBar() {
   const [logoutError, setLogoutError] = useState('')
 
   const selectedWallet = wallets.data?.find((wallet) => wallet.mode === mode) ?? null
+  const reloadWallets = wallets.reload
+  const reloadNotifications = notifications.reload
 
   useEffect(() => {
     if (!user?.id) return
@@ -43,21 +45,21 @@ export function TopBar() {
   useEffect(() => {
     return realtime.onEvent((event) => {
       if (event.type === 'wallet.update') {
-        void wallets.reload()
+        void reloadWallets()
         return
       }
       if (event.type === 'notification.created') {
-        void notifications.reload()
+        void reloadNotifications()
       }
     })
-  }, [notifications.reload, realtime, wallets.reload])
+  }, [reloadNotifications, reloadWallets, realtime])
 
   useEffect(() => {
     const timer = window.setInterval(() => {
       void wallets.reload()
     }, 2500)
     return () => window.clearInterval(timer)
-  }, [wallets.reload])
+  }, [reloadWallets])
 
   useEffect(() => {
     if (!walletMenuOpen) return
