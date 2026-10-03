@@ -1,4 +1,4 @@
-import { ChevronDown, Minus, Plus, ShieldAlert, Timer, TrendingDown, TrendingUp, Volume2, VolumeX, X } from 'lucide-react'
+import { ChevronDown, Minus, Plus, RefreshCcw, ShieldAlert, Timer, TrendingDown, TrendingUp, Volume2, VolumeX, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import type { MarketAsset } from '../../data/mockMarket'
 import type { TradeDirection } from '../../types/trading'
@@ -16,6 +16,7 @@ type TradePanelProps = {
 }
 
 type OrderStage = 'draft' | 'submitting' | 'pending' | 'accepted' | 'open' | 'rejected' | 'failed'
+type FailedTradeRequest = { direction: TradeDirection; clientRequestId: string }
 
 function formatDuration(value: number) {
   return value < 60 ? value + 's' : value / 60 + 'm'
@@ -30,10 +31,14 @@ export function TradePanel({ asset, balance, walletMode, soundEnabled, onToggleS
   const [lastOrder, setLastOrder] = useState<TradeCreateResult | null>(null)
   const [mobileConfigOpen, setMobileConfigOpen] = useState(false)
   const [mobileDurationOpen, setMobileDurationOpen] = useState(false)
+  const [failedRequest, setFailedRequest] = useState<FailedTradeRequest | null>(null)
   const durationRef = useRef<HTMLDivElement>(null)
   const payoutRate = Number(asset.payoutRate)
   const estimatedPayout = amount * payoutRate
-  const totalReturn = amount + estimatedPayout
+  const feeRate = Number(asset.feeRate)
+  const estimatedFee = Number.isFinite(feeRate) && feeRate > 0 ? amount * feeRate : 0
+  const totalReturn = amount + estimatedPayout - estimatedFee
+  const expiryPreview = new Date(Date.now() + duration * 1000)
 
   const validate = () => {
     if (!Number.isFinite(amount) || amount < asset.minAmount || amount > asset.maxAmount) {
@@ -77,7 +82,7 @@ export function TradePanel({ asset, balance, walletMode, soundEnabled, onToggleS
     setError('')
   }
 
-  const requestPreview = async (nextDirection: TradeDirection) => {
+  const requestPreview = async (nextDirection: TradeDirection, clientRequestId = crypto.randomUUID()) => {
     const validationError = validate()
     if (validationError) {
       setError(validationError)
@@ -94,8 +99,10 @@ export function TradePanel({ asset, balance, walletMode, soundEnabled, onToggleS
         durationSeconds: duration,
         entryPrice: asset.price,
         payoutRate,
+        clientRequestId,
       })
       setLastOrder(result)
+      setFailedRequest(null)
       setStage(result.orderStatus === 'PENDING' ? 'pending' : result.orderStatus === 'ACCEPTED' ? 'accepted' : 'open')
       window.setTimeout(() => setStage('draft'), 1600)
     } catch (error) {
@@ -104,6 +111,7 @@ export function TradePanel({ asset, balance, walletMode, soundEnabled, onToggleS
         ? 'Trade rejected: ' + error.message
         : error instanceof Error ? error.message : 'Trade submission failed'
       setError(message)
+      setFailedRequest(rejected ? null : { direction: nextDirection, clientRequestId })
       setStage(rejected ? 'rejected' : 'failed')
       window.setTimeout(() => setStage('draft'), 2200)
     }
@@ -187,10 +195,12 @@ export function TradePanel({ asset, balance, walletMode, soundEnabled, onToggleS
           </div>
 
           <div className="payout-card">
-            <div><span>Potential return</span><strong>+${estimatedPayout.toFixed(2)}</strong></div>
-            <div><span>Total at expiry</span><strong>${totalReturn.toFixed(2)}</strong></div>
-            <small>{asset.payout}% server payout on {asset.symbol}</small>
+            <div><span>Potential return</span><strong>{formatCurrency(estimatedPayout, asset.quoteCurrency)}</strong></div>
+            <div><span>Estimated fee</span><strong>-{formatCurrency(estimatedFee, asset.quoteCurrency)}</strong></div>
+            <div><span>Total at expiry</span><strong>{formatCurrency(totalReturn, asset.quoteCurrency)}</strong></div>
+            <small>{asset.payout}% server payout · {((Number(asset.feeRate) || 0) * 100).toFixed(2)}% fee · {asset.quoteCurrency}</small>
           </div>
+          <div className="expiry-preview"><Timer size={13} /><span>Expiry</span><strong>{expiryPreview.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</strong><small>in {formatDuration(duration)}</small></div>
 
           {renderActions()}
 
@@ -217,7 +227,7 @@ export function TradePanel({ asset, balance, walletMode, soundEnabled, onToggleS
                   {mobileDurationOpen ? <div className="mobile-duration-options">{asset.durationsSeconds.map((value) => <button key={value} type="button" className={duration === value ? 'duration-option duration-option--active' : 'duration-option'} onClick={() => { chooseDuration(value); setMobileDurationOpen(false) }}>{formatDuration(value)}</button>)}</div> : null}
                 </label>
               </div>
-              <div className="payout-card"><div><span>Potential return</span><strong>+${estimatedPayout.toFixed(2)}</strong></div><small>{asset.payout}% payout · ${totalReturn.toFixed(2)} total</small></div>
+              <div className="payout-card"><div><span>Potential return</span><strong>{formatCurrency(estimatedPayout, asset.quoteCurrency)}</strong></div><div><span>Estimated fee</span><strong>-{formatCurrency(estimatedFee, asset.quoteCurrency)}</strong></div><small>{formatCurrency(totalReturn, asset.quoteCurrency)} total · expiry {expiryPreview.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</small></div>
               <button type="button" className="trade-panel__sound-button" onClick={onToggleSound}>{soundEnabled ? <Volume2 size={14} /> : <VolumeX size={14} />} {soundEnabled ? 'Sounds on' : 'Sounds off'}</button>
             </div>
           ) : null}
@@ -225,8 +235,16 @@ export function TradePanel({ asset, balance, walletMode, soundEnabled, onToggleS
         </div>
       </aside>
 
-      {error ? <div className="trade-modal-backdrop"><div className="trade-modal trade-modal--error" role="alertdialog" aria-modal="true"><div className="trade-modal__icon"><ShieldAlert size={18} /></div><div><span>Check your trade</span><strong>{error}</strong></div><button className="icon-button" type="button" onClick={() => setError('')} aria-label="Close error"><X size={15} /></button></div></div> : null}
+      {error ? <div className="trade-modal-backdrop"><div className="trade-modal trade-modal--error" role="alertdialog" aria-modal="true"><div className="trade-modal__icon"><ShieldAlert size={18} /></div><div><span>Check your trade</span><strong>{error}</strong></div><div className="trade-modal__actions"><button className="btn btn--ghost" type="button" onClick={() => { setError(''); setStage('draft') }}>Close</button>{failedRequest ? <button className="btn btn--primary" type="button" onClick={() => { setError(''); void requestPreview(failedRequest.direction, failedRequest.clientRequestId) }}><RefreshCcw size={14} /> Retry</button> : null}</div></div></div> : null}
 
     </>
   )
+}
+
+function formatCurrency(value: number, currency: string): string {
+  try {
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency, minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value)
+  } catch {
+    return currency + ' ' + value.toFixed(2)
+  }
 }
