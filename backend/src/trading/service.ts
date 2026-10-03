@@ -38,6 +38,7 @@ export type ApiTradingPosition = {
 
 export type ApiTradingResult = {
   orderId: string
+  orderStatus: string
   tradeId: string
   positionId: string
   status: string
@@ -1033,6 +1034,7 @@ export class TradingService {
     const order = position.order
     return {
       orderId: order.id,
+      orderStatus: order.status,
       tradeId: trade.id,
       positionId: position.id,
       status: trade.status,
