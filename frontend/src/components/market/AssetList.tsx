@@ -236,7 +236,7 @@ export function AssetList({ open, selected, assets, onSelect, onClose, loading =
                   <span className="asset-row__value">
                     <strong>{formatPrice(asset.price, asset.price < 10 ? 5 : 2)}</strong>
                     <small className={positive ? 'text-positive' : 'text-negative'}>{formatPercent(asset.change)} <span>24h</span></small>
-                    <small className="asset-row__payout">{asset.payout.toFixed(0)}% server payout</small>
+                    <small className="asset-row__payout">{asset.payout.toFixed(0)}% server payout · {asset.marketStatus ?? 'UNKNOWN'}</small>
                   </span>
                 </button>
 
