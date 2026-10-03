@@ -1,5 +1,5 @@
 import { Bell, Check, ChevronDown, LogOut, WalletCards } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { useAuth } from '../../auth/useAuth'
 import { useNotifications, useWallets } from '../../hooks/useServerState'
@@ -31,6 +31,9 @@ export function TopBar() {
   const { unreadCount } = useNotificationStore()
   const [walletMenuOpen, setWalletMenuOpen] = useState(false)
   const walletSelectorRef = useRef<HTMLDivElement>(null)
+  const walletTriggerRef = useRef<HTMLButtonElement>(null)
+  const walletMenuRef = useRef<HTMLDivElement>(null)
+  const walletMenuId = useId()
   const [loggingOut, setLoggingOut] = useState(false)
   const [logoutError, setLogoutError] = useState('')
 
@@ -68,6 +71,7 @@ export function TopBar() {
 
   useEffect(() => {
     if (!walletMenuOpen) return
+    requestAnimationFrame(() => walletMenuRef.current?.querySelector<HTMLElement>('[role="menuitemradio"]')?.focus())
     const handlePointerDown = (event: PointerEvent) => {
       if (walletSelectorRef.current && !walletSelectorRef.current.contains(event.target as Node)) {
         setWalletMenuOpen(false)
@@ -124,10 +128,21 @@ export function TopBar() {
 
       <div className="wallet-selector" ref={walletSelectorRef}>
         <button
+          ref={walletTriggerRef}
           type="button"
           className={mode === 'DEMO' ? 'account-chip account-chip--demo' : 'account-chip account-chip--real'}
           aria-haspopup="menu"
           aria-expanded={walletMenuOpen}
+          aria-controls={walletMenuOpen ? walletMenuId : undefined}
+          onKeyDown={(event) => {
+            if (event.key === 'ArrowDown' || event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault()
+              setWalletMenuOpen(true)
+            } else if (event.key === 'Escape' && walletMenuOpen) {
+              event.preventDefault()
+              setWalletMenuOpen(false)
+            }
+          }}
           onClick={() => setWalletMenuOpen((open) => !open)}
         >
           <span className="account-chip__icon"><WalletCards size={15} /></span>
@@ -140,7 +155,7 @@ export function TopBar() {
         </button>
 
         {walletMenuOpen ? (
-          <div className="wallet-selector__menu" role="menu" aria-label="Select trading wallet">
+          <div ref={walletMenuRef} className="wallet-selector__menu" id={walletMenuId} role="menu" aria-label="Select trading wallet">
             <div className="wallet-selector__header">
               <span><WalletCards size={14} /> Trading wallet</span>
               <strong>{mode === 'DEMO' ? 'Practice mode' : 'Real account'}</strong>
@@ -160,6 +175,33 @@ export function TopBar() {
                   onClick={() => {
                     setMode(walletMode)
                     setWalletMenuOpen(false)
+                    walletTriggerRef.current?.focus()
+                  }}
+                  onKeyDown={(event) => {
+                    const options = walletMenuRef.current
+                      ? Array.from(walletMenuRef.current.querySelectorAll<HTMLElement>('[role="menuitemradio"]'))
+                      : []
+                    const index = options.indexOf(event.currentTarget)
+                    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+                      event.preventDefault()
+                      const delta = event.key === 'ArrowDown' ? 1 : -1
+                      options[(index + delta + options.length) % options.length]?.focus()
+                    } else if (event.key === 'Home') {
+                      event.preventDefault()
+                      options[0]?.focus()
+                    } else if (event.key === 'End') {
+                      event.preventDefault()
+                      options.at(-1)?.focus()
+                    } else if (event.key === 'Escape') {
+                      event.preventDefault()
+                      setWalletMenuOpen(false)
+                      walletTriggerRef.current?.focus()
+                    } else if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault()
+                      setMode(walletMode)
+                      setWalletMenuOpen(false)
+                      walletTriggerRef.current?.focus()
+                    }
                   }}
                 >
                   <span className={demo ? 'wallet-selector__badge wallet-selector__badge--demo' : 'wallet-selector__badge wallet-selector__badge--real'}>
