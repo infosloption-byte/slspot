@@ -4,7 +4,7 @@ import { Link, useNavigate } from 'react-router'
 import { useAuth } from '../../auth/AuthProvider'
 import { useNotifications, useWallets } from '../../hooks/useServerState'
 import { useWalletMode } from '../../hooks/useWalletMode'
-import { useRealtime } from '../../realtime/RealtimeProvider'
+import { useRealtime, useRealtimeState } from '../../realtime/RealtimeProvider'
 import { userChannel } from '../../realtime/subscriptions'
 
 function formatBalance(value: string | null | undefined, currency: string | null | undefined): string {
@@ -24,6 +24,7 @@ export function TopBar() {
   const { user, logout } = useAuth()
   const { mode, setMode } = useWalletMode()
   const realtime = useRealtime()
+  const realtimeState = useRealtimeState()
   const wallets = useWallets()
   const notifications = useNotifications(1, 1, true)
   const unreadCount = notifications.data?.pagination.total ?? 0
@@ -98,6 +99,11 @@ export function TopBar() {
       </Link>
 
       <div className="topbar__spacer" />
+
+      <div className={'topbar__connection topbar__connection--' + realtimeState} aria-live="polite" title="Realtime market and account connection">
+        <i className="live-dot" />
+        <span>{realtimeState === 'connected' ? 'Connected' : realtimeState === 'connecting' ? 'Connecting' : realtimeState === 'reconnecting' ? 'Reconnecting' : realtimeState === 'closed' ? 'Offline' : 'Starting'}</span>
+      </div>
 
       <Link
         to="/app/alerts"
