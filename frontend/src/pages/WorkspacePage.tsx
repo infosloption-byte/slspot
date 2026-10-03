@@ -1,5 +1,5 @@
 import { ArrowDownCircle, ArrowUpCircle, ArrowUpRight, BarChart3, Bell, CalendarDays, Check, Clock3, Download, DollarSign, PieChart, Search, ShieldCheck, Smartphone, TrendingUp, WalletCards } from 'lucide-react'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router'
 import { Pagination } from '../components/ui/Pagination'
 import { ApiState } from '../components/ui/ApiState'
@@ -52,6 +52,85 @@ function PageHeader({
         <BarChart3 size={15} /> {action} <ArrowUpRight size={14} />
       </Link>
     </header>
+  )
+}
+
+type ThemedSelectOption = {
+  value: string
+  label: string
+}
+
+function ThemedSelect({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string
+  value: string
+  options: ThemedSelectOption[]
+  onChange: (value: string) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const rootRef = useRef<HTMLDivElement>(null)
+  const selected = options.find((option) => option.value === value) ?? options[0]
+
+  useEffect(() => {
+    if (!open) return undefined
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (rootRef.current && !rootRef.current.contains(event.target as Node)) {
+        setOpen(false)
+      }
+    }
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false)
+    }
+
+    document.addEventListener('pointerdown', handlePointerDown)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [open])
+
+  return (
+    <div className="trade-history-control" ref={rootRef}>
+      <span>{label}</span>
+      <div className="trade-history-select">
+        <button
+          type="button"
+          className={open ? 'trade-history-select__trigger trade-history-select__trigger--open' : 'trade-history-select__trigger'}
+          aria-haspopup="listbox"
+          aria-expanded={open}
+          onClick={() => setOpen((current) => !current)}
+        >
+          <span>{selected?.label ?? 'Select'}</span>
+          <ArrowDownCircle size={14} aria-hidden="true" />
+        </button>
+        {open ? (
+          <div className="trade-history-select__menu" role="listbox" aria-label={label}>
+            {options.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                role="option"
+                aria-selected={option.value === value}
+                className={option.value === value ? 'trade-history-select__option trade-history-select__option--active' : 'trade-history-select__option'}
+                onClick={() => {
+                  onChange(option.value)
+                  setOpen(false)
+                }}
+              >
+                <span>{option.label}</span>
+                {option.value === value ? <Check size={13} aria-hidden="true" /> : null}
+              </button>
+            ))}
+          </div>
+        ) : null}
+      </div>
+    </div>
   )
 }
 
@@ -621,34 +700,40 @@ function HistoryPage() {
         </div>
 
         <div className="trade-history-toolbar__filters">
-          <label className="trade-history-control">
-            <span>Status</span>
-            <select value={status} onChange={(event) => { setStatus(event.target.value as typeof status); resetPage() }}>
-              <option value="">All</option>
-              <option value="OPEN">Open</option>
-              <option value="WON">Won</option>
-              <option value="LOST">Lost</option>
-              <option value="CANCELLED">Cancelled</option>
-              <option value="EXPIRED">Expired</option>
-            </select>
-          </label>
+          <ThemedSelect
+            label="Status"
+            value={status}
+            options={[
+              { value: '', label: 'All' },
+              { value: 'OPEN', label: 'Open' },
+              { value: 'WON', label: 'Won' },
+              { value: 'LOST', label: 'Lost' },
+              { value: 'CANCELLED', label: 'Cancelled' },
+              { value: 'EXPIRED', label: 'Expired' },
+            ]}
+            onChange={(value) => { setStatus(value as typeof status); resetPage() }}
+          />
 
-          <label className="trade-history-control">
-            <span>Asset</span>
-            <select value={assetId} onChange={(event) => { setAssetId(event.target.value); resetPage() }}>
-              <option value="">All assets</option>
-              {(assets.data?.items ?? []).map((asset) => <option key={asset.assetId} value={asset.assetId}>{asset.symbol}</option>)}
-            </select>
-          </label>
+          <ThemedSelect
+            label="Asset"
+            value={assetId}
+            options={[
+              { value: '', label: 'All assets' },
+              ...(assets.data?.items ?? []).map((asset) => ({ value: asset.assetId, label: asset.symbol })),
+            ]}
+            onChange={(value) => { setAssetId(value); resetPage() }}
+          />
 
-          <label className="trade-history-control">
-            <span>Direction</span>
-            <select value={direction} onChange={(event) => { setDirection(event.target.value as typeof direction); resetPage() }}>
-              <option value="">Both</option>
-              <option value="UP">UP</option>
-              <option value="DOWN">DOWN</option>
-            </select>
-          </label>
+          <ThemedSelect
+            label="Direction"
+            value={direction}
+            options={[
+              { value: '', label: 'Both' },
+              { value: 'UP', label: 'UP' },
+              { value: 'DOWN', label: 'DOWN' },
+            ]}
+            onChange={(value) => { setDirection(value as typeof direction); resetPage() }}
+          />
 
           <label className="trade-history-control trade-history-date">
             <span>From</span>
@@ -660,17 +745,24 @@ function HistoryPage() {
             <input type="date" value={to} min={from || undefined} onChange={(event) => { setTo(event.target.value); resetPage() }} />
           </label>
 
-          <label className="trade-history-control">
-            <span>Sort</span>
-            <select value={sortBy + ':' + sortOrder} onChange={(event) => { const [nextSort, nextOrder] = event.target.value.split(':'); setSortBy(nextSort as typeof sortBy); setSortOrder(nextOrder as typeof sortOrder); resetPage() }}>
-              <option value="openedAt:desc">Newest opened</option>
-              <option value="openedAt:asc">Oldest opened</option>
-              <option value="closedAt:desc">Newest closed</option>
-              <option value="amount:desc">Largest amount</option>
-              <option value="netPnl:desc">Highest P&amp;L</option>
-              <option value="netPnl:asc">Lowest P&amp;L</option>
-            </select>
-          </label>
+          <ThemedSelect
+            label="Sort"
+            value={sortBy + ':' + sortOrder}
+            options={[
+              { value: 'openedAt:desc', label: 'Newest opened' },
+              { value: 'openedAt:asc', label: 'Oldest opened' },
+              { value: 'closedAt:desc', label: 'Newest closed' },
+              { value: 'amount:desc', label: 'Largest amount' },
+              { value: 'netPnl:desc', label: 'Highest P&L' },
+              { value: 'netPnl:asc', label: 'Lowest P&L' },
+            ]}
+            onChange={(value) => {
+              const [nextSort, nextOrder] = value.split(':')
+              setSortBy(nextSort as typeof sortBy)
+              setSortOrder(nextOrder as typeof sortOrder)
+              resetPage()
+            }}
+          />
         </div>
 
         {assets.loading ? <div className="trade-history-progress"><span className="muted-dot" /> Loading asset filters…</div> : null}
