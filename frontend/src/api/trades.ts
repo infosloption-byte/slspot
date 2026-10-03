@@ -9,6 +9,20 @@ type ApiEnvelope<T> = {
   requestId: string
 }
 
+export type TradeHistorySortBy = 'openedAt' | 'closedAt' | 'amount' | 'netPnl'
+export type TradeHistorySortOrder = 'asc' | 'desc'
+
+export type TradeListFilters = {
+  search?: string
+  assetId?: string
+  direction?: 'UP' | 'DOWN'
+  from?: string
+  to?: string
+  sortBy?: TradeHistorySortBy
+  sortOrder?: TradeHistorySortOrder
+  settledOnly?: boolean
+}
+
 export type TradeRecord = {
   id: string
   orderId: string
@@ -85,7 +99,10 @@ function unwrap<T>(response: ApiEnvelope<T>): T {
 }
 
 export const tradesApi = {
-  list: (query: { page?: number; pageSize?: number; status?: TradeRecord['status'] } = {}, mode: WalletMode = 'DEMO') =>
+  list: (
+    query: { page?: number; pageSize?: number; status?: TradeRecord['status'] } & TradeListFilters = {},
+    mode: WalletMode = 'DEMO',
+  ) =>
     apiClient
       .get<ApiEnvelope<PaginatedData<TradeRecord>>>('/trades' + toQueryString(query), {
         headers: { 'x-wallet-mode': mode },
@@ -116,11 +133,23 @@ export const tradesApi = {
       .then(unwrap),
 }
 
-function toQueryString(query: { page?: number; pageSize?: number; status?: string }): string {
+function toQueryString(query: {
+  page?: number
+  pageSize?: number
+  status?: string
+} & TradeListFilters): string {
   const params = new URLSearchParams()
   if (query.page !== undefined) params.set('page', String(query.page))
   if (query.pageSize !== undefined) params.set('pageSize', String(query.pageSize))
   if (query.status) params.set('status', query.status)
+  if (query.search?.trim()) params.set('search', query.search.trim())
+  if (query.assetId) params.set('assetId', query.assetId)
+  if (query.direction) params.set('direction', query.direction)
+  if (query.from) params.set('from', query.from)
+  if (query.to) params.set('to', query.to)
+  if (query.sortBy) params.set('sortBy', query.sortBy)
+  if (query.sortOrder) params.set('sortOrder', query.sortOrder)
+  if (query.settledOnly !== undefined) params.set('settledOnly', String(query.settledOnly))
   const value = params.toString()
   return value ? '?' + value : ''
 }
