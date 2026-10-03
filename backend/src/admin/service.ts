@@ -51,10 +51,16 @@ export class AdminService {
     return created
   }
 
-  async requireAdmin(userId: string) {
-    const access = await this.prisma.adminAccess.findUnique({ where: { userId }, include: { user: { select: { id: true, email: true, status: true } } } })
+  async requireAdmin(userId: string, requiredRole: 'ADMIN' | 'SUPER_ADMIN' = 'ADMIN') {
+    const access = await this.prisma.adminAccess.findUnique({
+      where: { userId },
+      include: { user: { select: { id: true, email: true, status: true } } },
+    })
     if (!access || access.user.status !== 'ACTIVE') {
       throw new AdminError(403, 'ADMIN_ACCESS_REQUIRED', 'Administrator access is required')
+    }
+    if (requiredRole === 'SUPER_ADMIN' && access.role !== 'SUPER_ADMIN') {
+      throw new AdminError(403, 'SUPER_ADMIN_REQUIRED', 'Super administrator access is required')
     }
     return access
   }
@@ -145,17 +151,76 @@ export class AdminService {
   }
 
   async setUserStatus(actorUserId: string, userId: string, status: AdminStatus) {
-    await this.requireAdmin(actorUserId)
+    const actor = await this.requireAdmin(actorUserId)
     if (actorUserId === userId) throw new AdminError(400, 'SELF_STATUS_CHANGE', 'Administrators cannot change their own account status')
-    const user = await this.prisma.user.update({ where: { id: userId }, data: { status }, select: { id: true, email: true, status: true } }).catch(() => null)
-    if (!user) throw new AdminError(404, 'USER_NOT_FOUND', 'User was not found')
-    await this.prisma.auditLog.create({ data: { actorUserId, action: 'ADMIN_USER_STATUS_CHANGED', entityType: 'User', entityId: userId, metadata: { status } } })
+
+    const target = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, email: true, adminAccess: { select: { role: true } } },
+    })
+    if (!target) throw new AdminError(404, 'USER_NOT_FOUND', 'User was not found')
+    if (target.adminAccess?.role === 'SUPER_ADMIN' && actor.role !== 'SUPER_ADMIN') {
+      throw new AdminError(403, 'SUPER_ADMIN_PROTECTED', 'Only a super administrator can change a super administrator account')
+    }
+
+    const user = await this.prisma.$transaction(async (tx) => {
+      const updated = await tx.user.update({
+        where: { id: userId },
+        data: { status },
+        select: { id: true, email: true, status: true },
+      })
+      await tx.auditLog.create({
+        data: {
+          actorUserId,
+          action: 'ADMIN_USER_STATUS_CHANGED',
+          entityType: 'User',
+          entityId: userId,
+          metadata: { status, targetAdminRole: target.adminAccess?.role ?? null },
+        },
+      })
+      return updated
+    })
     return user
   }
 
+  async setAdminRole(actorUserId: string, userId: string, role: 'ADMIN' | 'SUPER_ADMIN') {
+    await this.requireAdmin(actorUserId, 'SUPER_ADMIN')
+    if (actorUserId === userId) throw new AdminError(400, 'SELF_ROLE_CHANGE', 'Administrators cannot change their own role')
+
+    const target = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, email: true, adminAccess: { select: { role: true } } },
+    })
+    if (!target) throw new AdminError(404, 'USER_NOT_FOUND', 'User was not found')
+
+    const result = await this.prisma.$transaction(async (tx) => {
+      const access = target.adminAccess
+        ? await tx.adminAccess.update({ where: { userId }, data: { role } })
+        : await tx.adminAccess.create({ data: { userId, role } })
+
+      await tx.auditLog.create({
+        data: {
+          actorUserId,
+          action: 'ADMIN_ROLE_CHANGED',
+          entityType: 'User',
+          entityId: userId,
+          metadata: { previousRole: target.adminAccess?.role ?? null, role },
+        },
+      })
+      return { id: target.id, email: target.email, role: access.role }
+    })
+
+    return result
+  }
+
   async revokeUserSessions(actorUserId: string, userId: string) {
-    await this.requireAdmin(actorUserId)
+    const actor = await this.requireAdmin(actorUserId)
     if (actorUserId === userId) throw new AdminError(400, 'SELF_SESSION_REVOKE', 'Administrators cannot revoke their own sessions from user management')
+    const target = await this.prisma.user.findUnique({ where: { id: userId }, select: { id: true, adminAccess: { select: { role: true } } } })
+    if (!target) throw new AdminError(404, 'USER_NOT_FOUND', 'User was not found')
+    if (target.adminAccess?.role === 'SUPER_ADMIN' && actor.role !== 'SUPER_ADMIN') {
+      throw new AdminError(403, 'SUPER_ADMIN_PROTECTED', 'Only a super administrator can revoke a super administrator session')
+    }
     const result = await this.prisma.session.updateMany({ where: { userId, revokedAt: null }, data: { revokedAt: new Date() } })
     await this.prisma.device.updateMany({ where: { userId, revokedAt: null }, data: { revokedAt: new Date() } })
     await this.prisma.auditLog.create({ data: { actorUserId, action: 'ADMIN_SESSIONS_REVOKED', entityType: 'User', entityId: userId, metadata: { count: result.count } } })
