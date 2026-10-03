@@ -78,7 +78,10 @@ function StatCard({
   )
 }
 
-function Sparkline({ series, currency }) {
+function Sparkline({ series, currency }: {
+  series: Array<{ date: string; cumulativePnl: string }>
+  currency: string
+}) {
   const values = series.map((point) => Number(point.cumulativePnl))
   const max = Math.max(...values, 0)
   const min = Math.min(...values, 0)
@@ -560,7 +563,7 @@ function NotificationsPage() {
     })
   }, [notifications.reload, realtime, unread.reload])
 
-  const markRead = async (id) => {
+  const markRead = async (id: string) => {
     await notificationsApi.markRead(id)
     await Promise.all([notifications.reload(), unread.reload()])
   }
