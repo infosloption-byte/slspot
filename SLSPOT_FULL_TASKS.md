@@ -983,57 +983,60 @@ COMMIT
 
 # PHASE 21 — Admin Application
 
+Implemented initial separate admin boundary. The backend now enforces admin access through `AdminAccess`, the admin console lives under `admin/`, and configured active users can be bootstrapped with `ADMIN_BOOTSTRAP_EMAILS`.
+
+
 Admin should be a separate application boundary.
 
 ## Dashboard
 
-- [ ] Users.
-- [ ] Active users.
-- [ ] Deposits.
-- [ ] Withdrawals.
-- [ ] Open trades.
-- [ ] Volume.
-- [ ] System health.
+- [x] Users.
+- [x] Active users.
+- [x] Deposits.
+- [x] Withdrawals.
+- [x] Open trades.
+- [x] Volume.
+- [x] System health.
 
 ## Users
 
-- [ ] Search.
-- [ ] View.
-- [ ] Restrict.
-- [ ] Suspend.
-- [ ] Session management.
-- [ ] KYC status.
+- [x] Search.
+- [x] View.
+- [x] Restrict.
+- [x] Suspend.
+- [x] Session management.
+- [x] KYC status.
 
 ## Trading
 
-- [ ] Trades.
-- [ ] Open positions.
-- [ ] Settlements.
-- [ ] Asset configuration.
+- [x] Trades.
+- [x] Open positions.
+- [x] Settlements.
+- [x] Asset configuration.
 - [x] Market status.
-- [ ] Rules.
+- [x] Rules.
 
 ## Finance
 
-- [ ] Wallets.
-- [ ] Deposits.
-- [ ] Withdrawals.
-- [ ] Reconciliation.
-- [ ] Ledger.
+- [x] Wallets.
+- [x] Deposits.
+- [x] Withdrawals.
+- [x] Reconciliation.
+- [x] Ledger.
 
 ## Risk
 
-- [ ] Limits.
-- [ ] Exposure.
-- [ ] Risk rules.
-- [ ] Monitoring.
+- [x] Limits.
+- [x] Exposure.
+- [x] Risk rules.
+- [x] Monitoring.
 
 ## Audit
 
-- [ ] Audit logs.
-- [ ] Admin actions.
-- [ ] Security events.
-- [ ] Export.
+- [x] Audit logs.
+- [x] Admin actions.
+- [x] Security events.
+- [x] Export.
 
 ---
 
