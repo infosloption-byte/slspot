@@ -89,7 +89,7 @@ export function buildApp(options: AppOptions = {}) {
       throw new AppSecurityError(414, 'URI_TOO_LONG', 'Request URL is too long')
     }
 
-    const path = request.url.split('?', 1)[0]
+    const path = request.url.split('?', 1)[0] ?? ''
     if (request.method === 'OPTIONS') return
 
     const isAuthRoute = path.startsWith(API_PREFIX + '/auth/')
@@ -109,7 +109,6 @@ export function buildApp(options: AppOptions = {}) {
       }
 
       const sessionToken = request.cookies?.[env.auth.cookieName]
-      const csrfCookie = request.cookies?.[env.auth.csrfCookieName]
       const csrfHeader = request.headers['x-csrf-token']
       const csrfToken = Array.isArray(csrfHeader) ? csrfHeader[0] : csrfHeader
       if (!verifyCsrfToken(csrfToken, sessionToken)) {
