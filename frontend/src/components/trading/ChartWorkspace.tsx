@@ -33,6 +33,7 @@ import type { MarketCandle } from '../../api/contracts'
 import { useMarketCandles } from '../../hooks/useServerState'
 import type { OpenTrade } from '../../types/trading'
 import { tradeProgress, tradeRemainingSeconds } from '../../types/trading'
+import type { RealtimeConnectionState } from '../../realtime/connection'
 import { formatPercent, formatPrice } from '../../lib/format'
 import { ErrorState } from '../ui/ErrorState'
 import { IconButton } from '../ui/IconButton'
@@ -73,6 +74,7 @@ type ChartWorkspaceProps = {
   onOpenMarkets: () => void
   openTrades: OpenTrade[]
   now: number
+  realtimeState: RealtimeConnectionState
 }
 
 const timeframes = ['1m', '5m', '15m', '30m', '1H', '4H', '1D']
@@ -593,7 +595,7 @@ function toChartCandles(candles: MarketCandle[]) {
   }))
 }
 
-export function ChartWorkspace({ asset, onOpenMarkets, openTrades, now }: ChartWorkspaceProps) {
+export function ChartWorkspace({ asset, onOpenMarkets, openTrades, now, realtimeState }: ChartWorkspaceProps) {
   const [timeframe, setTimeframe] = useState('5m')
   const [crosshairEnabled, setCrosshairEnabled] = useState(true)
   const [gridEnabled, setGridEnabled] = useState(true)
@@ -770,10 +772,7 @@ export function ChartWorkspace({ asset, onOpenMarkets, openTrades, now }: ChartW
   }
 
   const indicatorData = rsi.slice(-50)
-  const rsiPolyline = indicatorData.map((value, index) => {
-    const x = indicatorData.length === 1 ? 50 : (index / (indicatorData.length - 1)) * 100
-    return x.toFixed(2) + ',' + (100 - value).toFixed(2)
-  }).join(' ')
+  const hasOscillators = enabledIndicators.some((id) => id === 'rsi' || id === 'macd' || id === 'stochastic' || id === 'atr' || id === 'ao')
 
   return (
     <section ref={workspaceRef} className="chart-workspace panel">
@@ -877,7 +876,7 @@ export function ChartWorkspace({ asset, onOpenMarkets, openTrades, now }: ChartW
         </div>
       </div>
 
-      <div className={rsiEnabled ? 'chart-stage chart-stage--rsi' : 'chart-stage'} ref={stageRef}>
+      <div className={'chart-stage' + (hasOscillators ? ' chart-stage--oscillators' : '')} ref={stageRef}>
         {candleResource.loading ? (
           <div className="chart-data-state">
             <span className="loading-spinner" aria-hidden="true" />
@@ -938,30 +937,69 @@ export function ChartWorkspace({ asset, onOpenMarkets, openTrades, now }: ChartW
           </div>
         ) : null}
 
-        <svg className="drawing-layer-svg" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-          {[...drawings, ...(activeDrawing ? [activeDrawing] : [])].map((drawing, index) => (
-            drawing.type === 'horizontal'
-              ? <line key={index} x1="0" x2="100" y1={drawing.y1} y2={drawing.y1} pathLength="100" />
-              : <line key={index} x1={drawing.x1} y1={drawing.y1} x2={drawing.x2} y2={drawing.y2} pathLength="100" />
-          ))}
+        <svg className="drawing-layer-svg" viewBox="0 0 100 100" preserveAspectRatio="none" aria-label="Chart drawings">
+          {[...drawings, ...(activeDrawing ? [activeDrawing] : [])].map((drawing) => {
+            const selected = drawing.id === selectedDrawingId
+            const className = selected ? 'drawing-shape drawing-shape--selected' : 'drawing-shape'
+            const select = (event: React.PointerEvent) => { event.stopPropagation(); setSelectedDrawingId(drawing.id) }
+            if (drawing.type === 'horizontal' || drawing.type === 'price') {
+              return <line key={drawing.id} className={className} x1="0" x2="100" y1={drawing.y1} y2={drawing.y1} onPointerDown={select} />
+            }
+            if (drawing.type === 'vertical') {
+              return <line key={drawing.id} className={className} x1={drawing.x1} x2={drawing.x1} y1="0" y2="100" onPointerDown={select} />
+            }
+            if (drawing.type === 'rectangle') {
+              return <rect key={drawing.id} className={className} x={Math.min(drawing.x1, drawing.x2)} y={Math.min(drawing.y1, drawing.y2)} width={Math.abs(drawing.x2 - drawing.x1)} height={Math.abs(drawing.y2 - drawing.y1)} onPointerDown={select} />
+            }
+            if (drawing.type === 'fibonacci') {
+              return <g key={drawing.id} className={className} onPointerDown={select}>{[0, .236, .382, .5, .618, 1].map((ratio) => { const y = drawing.y1 + (drawing.y2 - drawing.y1) * ratio; return <line key={ratio} x1={Math.min(drawing.x1, drawing.x2)} x2={Math.max(drawing.x1, drawing.x2)} y1={y} y2={y} /> })}</g>
+            }
+            if (drawing.type === 'ray') {
+              const dx = drawing.x2 - drawing.x1
+              const dy = drawing.y2 - drawing.y1
+              const endX = dx >= 0 ? 100 : 0
+              const endY = Math.abs(dx) < 0.001 ? drawing.y1 : drawing.y1 + (endX - drawing.x1) * (dy / dx)
+              return <line key={drawing.id} className={className} x1={drawing.x1} y1={drawing.y1} x2={endX} y2={Math.max(-200, Math.min(300, endY))} onPointerDown={select} />
+            }
+            if (drawing.type === 'text') {
+              return <text key={drawing.id} className={selected ? 'drawing-text drawing-text--selected' : 'drawing-text'} x={drawing.x1} y={drawing.y1} onPointerDown={select}>{drawing.text ?? 'Note'}</text>
+            }
+            return <line key={drawing.id} className={className} x1={drawing.x1} y1={drawing.y1} x2={drawing.x2} y2={drawing.y2} onPointerDown={select} />
+          })}
         </svg>
 
         {priceLineEnabled && candles.length ? <div className="chart-price-tag"><span>{price}</span><small>{formatPercent(asset.change)}</small></div> : null}
 
-        {rsiEnabled && candles.length ? (
-          <div className="chart-rsi-panel">
-            <div className="chart-rsi-panel__label"><span>RSI 14</span><strong>{Math.round(rsi[rsi.length - 1] ?? 50)}</strong></div>
-            <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-label="RSI indicator">
-              <line x1="0" x2="100" y1="30" y2="30" />
-              <line x1="0" x2="100" y1="70" y2="70" />
-              <polyline points={rsiPolyline} />
-            </svg>
+        {hasOscillators && candles.length ? (
+          <div className="chart-indicator-stack">
+            {enabledIndicators.filter((id) => id === 'rsi' || id === 'macd' || id === 'stochastic' || id === 'atr' || id === 'ao').map((id) => {
+              const values = id === 'rsi' ? rsi : id === 'macd' ? macd.macd : id === 'stochastic' ? stochastic : id === 'atr' ? atr : ao
+              const visible = values.slice(-80)
+              const normalized = id === 'rsi' || id === 'stochastic' ? visible.map((value) => 10 + value * 0.8) : normalizeOscillator(visible)
+              const points = visible.map((_, index) => {
+                const x = visible.length <= 1 ? 50 : (index / (visible.length - 1)) * 100
+                const y = 100 - (normalized[index] ?? 50)
+                return x.toFixed(2) + ',' + y.toFixed(2)
+              }).join(' ')
+              const label = id === 'rsi' ? 'RSI 14' : id === 'macd' ? 'MACD' : id === 'stochastic' ? 'Stochastic' : id === 'atr' ? 'ATR 14' : 'Awesome Oscillator'
+              return (
+                <div className="chart-indicator-panel" key={id}>
+                  <div className="chart-indicator-panel__label"><span>{label}</span><strong>{(values.at(-1) ?? 0).toFixed(2)}</strong></div>
+                  <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-label={label + ' indicator'}>
+                    <line x1="0" x2="100" y1="30" y2="30" />
+                    <line x1="0" x2="100" y1="70" y2="70" />
+                    <polyline points={points} />
+                  </svg>
+                  {id === 'macd' ? <small>Signal {(macd.signal.at(-1) ?? 0).toFixed(2)}</small> : null}
+                </div>
+              )
+            })}
           </div>
         ) : null}
       </div>
 
       <div className="chart-bottom-status">
-        <span><i className="live-dot" /> {candleResource.error && !usingMockCandles ? 'Market data unavailable' : candleResource.data?.candles.length ? 'Live market data' : usingMockCandles ? 'Demo market data' : 'Waiting for market data'}</span>
+        <span><i className={'live-dot ' + (realtimeState === 'connected' ? '' : 'live-dot--muted')} /> {realtimeState === 'connected' ? (candleResource.data?.candles.length ? 'Live market data' : usingMockCandles ? 'Demo market data' : 'Waiting for market data') : realtimeState === 'reconnecting' ? 'Reconnecting to live feed' : realtimeState === 'connecting' ? 'Connecting to live feed' : 'Live feed offline'}</span>
         <span>{timeframe}</span>
         <span>{chartType === 'candles' ? 'Candles' : chartType === 'line' ? 'Line' : 'Area'}</span>
         <span className="chart-bottom-status__spacer" />
