@@ -106,6 +106,7 @@ Current endpoints:
 
 \`\`\`text
 POST   /auth/register
+  - Requires `acceptTerms=true`; stores the accepted terms version server-side.
 POST   /auth/login
 POST   /auth/2fa/verify
 GET    /auth/2fa/status
@@ -304,3 +305,11 @@ The candle endpoint returns normalized OHLCV decimal strings. The Trading Room u
 All private resources derive the user ID from the authenticated HttpOnly session cookie. Client-supplied user IDs are not accepted.
 
 Financial quantities are transported as decimal strings. Date/time fields are ISO-8601 strings.
+
+## Authentication hardening
+
+- Password login enforces server-side failed-attempt lockout. Locked responses use HTTP 429 and a `Retry-After` header.
+- `rememberDevice` selects the server session lifetime; the browser never stores the session token.
+- Enabled TOTP is completed with `POST /auth/2fa/verify` using either a six-digit authenticator code or one unused recovery code.
+- TOTP secrets are encrypted at rest. Recovery codes are stored hashed and are single-use.
+- Devices, sessions, login history, and security events are server-backed and scoped to the authenticated user.
