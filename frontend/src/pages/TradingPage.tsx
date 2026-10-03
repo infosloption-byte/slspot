@@ -306,8 +306,8 @@ export function TradingPage() {
         payoutRate: Number(trade.payoutRate),
         status: trade.status === 'WON' ? 'WON' : trade.status === 'LOST' ? 'LOST' : 'CLOSED',
         closedAt: trade.closedAt ? Date.parse(trade.closedAt) : undefined,
-        exitPrice: trade.position.exitPrice ? Number(trade.position.exitPrice) : undefined,
-        netPnl: trade.netPnl ? Number(trade.netPnl) : undefined,
+        exitPrice: trade.position.exitPrice !== null ? Number(trade.position.exitPrice) : undefined,
+        netPnl: trade.netPnl !== null ? Number(trade.netPnl) : undefined,
       }))
   }, [trades.data])
 
