@@ -241,6 +241,30 @@ export class MarketDataService {
         status: quote.status.toLowerCase(),
         timestamp: quote.timestamp,
       }, channel))
+
+      try {
+        const candles = await this.provider!.candles(definition, '5min', 1)
+        const candle = candles.at(-1)
+        if (candle) {
+          await this.publishEvent(createRealtimeEvent('market.candle', {
+            assetId: market.assetId,
+            symbol: market.asset.symbol,
+            interval: candle.interval,
+            openTime: candle.openTime,
+            closeTime: candle.closeTime,
+            open: candle.open,
+            high: candle.high,
+            low: candle.low,
+            close: candle.close,
+            volume: candle.volume,
+          }, channel))
+        }
+      } catch (error) {
+        this.logger.warn(
+          { err: error, assetId: market.assetId, symbol: market.asset.symbol },
+          'Market candle realtime update failed',
+        )
+      }
     } catch (error) {
       await this.prisma.market.update({
         where: {
