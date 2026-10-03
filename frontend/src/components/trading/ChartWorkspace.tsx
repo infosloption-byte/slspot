@@ -61,6 +61,22 @@ const defaultIndicators: IndicatorId[] = ['sma']
 const indicatorStorageKey = 'slspot.chart.indicators'
 const indicatorPeriodStorageKey = 'slspot.chart.indicator-period'
 const drawingStoragePrefix = 'slspot.chart.drawings:'
+
+function readStoredDrawings(storageKey: string): Drawing[] {
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(storageKey) ?? '[]')
+    return Array.isArray(parsed)
+      ? parsed.filter((item): item is Drawing => Boolean(
+        item &&
+        typeof item === 'object' &&
+        typeof item.id === 'string' &&
+        typeof item.type === 'string',
+      ))
+      : []
+  } catch {
+    return []
+  }
+}
 type ChartCandle = {
   time: import('lightweight-charts').UTCTimestamp
   open: number
@@ -314,6 +330,7 @@ function ChartCanvas({
   const sma = useMemo(() => calculateSma(candles), [candles])
 
   useEffect(() => {
+    const indicatorSeries = indicatorSeriesRef.current
     const container = containerRef.current
     if (!container) return
 
@@ -383,7 +400,7 @@ function ChartCanvas({
       resizeObserver.disconnect()
       if (chartRef.current === chart) chartRef.current = null
       primarySeriesRef.current = null
-      indicatorSeriesRef.current.clear()
+      indicatorSeries.clear()
       volumeSeriesRef.current = null
       priceLineRef.current = null
       chart.remove()
@@ -627,7 +644,8 @@ export function ChartWorkspace({ asset, onOpenMarkets, openTrades, now, realtime
   const [chartType, setChartType] = useState<ChartType>('candles')
   const [optionsOpen, setOptionsOpen] = useState(false)
   const [drawingTool, setDrawingTool] = useState<DrawingTool>('none')
-  const [drawings, setDrawings] = useState<Drawing[]>([])
+  const drawingStorageKey = drawingStoragePrefix + asset.symbol + ':' + timeframe
+  const [drawings, setDrawings] = useState<Drawing[]>(() => readStoredDrawings(drawingStorageKey))
   const [selectedDrawingId, setSelectedDrawingId] = useState<string | null>(null)
   const [activeDrawing, setActiveDrawing] = useState<Drawing | null>(null)
   const workspaceRef = useRef<HTMLElement>(null)
@@ -649,7 +667,7 @@ export function ChartWorkspace({ asset, onOpenMarkets, openTrades, now, realtime
       close: candle.close,
       volume: 0,
     })),
-    [asset.symbol, timeframe],
+    [asset, timeframe],
   )
   const candles = useMemo<ChartCandle[]>(() => {
     if (candleResource.data?.candles.length) {
@@ -668,18 +686,6 @@ export function ChartWorkspace({ asset, onOpenMarkets, openTrades, now, realtime
     window.localStorage.setItem(indicatorStorageKey, JSON.stringify(enabledIndicators))
     window.localStorage.setItem(indicatorPeriodStorageKey, String(indicatorPeriod))
   }, [enabledIndicators, indicatorPeriod])
-
-  const drawingStorageKey = drawingStoragePrefix + asset.symbol + ':' + timeframe
-  useEffect(() => {
-    try {
-      const parsed = JSON.parse(window.localStorage.getItem(drawingStorageKey) ?? '[]')
-      setDrawings(Array.isArray(parsed) ? parsed.filter((item): item is Drawing => Boolean(item && typeof item === 'object' && typeof item.id === 'string' && typeof item.type === 'string')) : [])
-    } catch {
-      setDrawings([])
-    }
-    setSelectedDrawingId(null)
-    setActiveDrawing(null)
-  }, [drawingStorageKey])
 
   useEffect(() => {
     window.localStorage.setItem(drawingStorageKey, JSON.stringify(drawings))
@@ -799,7 +805,12 @@ export function ChartWorkspace({ asset, onOpenMarkets, openTrades, now, realtime
 
         <div className="chart-timeframes" aria-label="Chart timeframe">
           {timeframes.map((value) => (
-            <button className={timeframe === value ? 'timeframe timeframe--active' : 'timeframe'} key={value} onClick={() => setTimeframe(value)} type="button" aria-pressed={timeframe === value}>{value}</button>
+            <button className={timeframe === value ? 'timeframe timeframe--active' : 'timeframe'} key={value} onClick={() => {
+              setTimeframe(value)
+              setDrawings(readStoredDrawings(drawingStoragePrefix + asset.symbol + ':' + value))
+              setSelectedDrawingId(null)
+              setActiveDrawing(null)
+            }} type="button" aria-pressed={timeframe === value}>{value}</button>
           ))}
         </div>
 
