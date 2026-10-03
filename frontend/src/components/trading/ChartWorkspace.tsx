@@ -941,7 +941,7 @@ export function ChartWorkspace({ asset, onOpenMarkets, openTrades, now, realtime
           {[...drawings, ...(activeDrawing ? [activeDrawing] : [])].map((drawing) => {
             const selected = drawing.id === selectedDrawingId
             const className = selected ? 'drawing-shape drawing-shape--selected' : 'drawing-shape'
-            const select = (event: React.PointerEvent) => { event.stopPropagation(); setSelectedDrawingId(drawing.id) }
+            const select = (event: ReactPointerEvent<SVGElement>) => { event.stopPropagation(); setSelectedDrawingId(drawing.id) }
             if (drawing.type === 'horizontal' || drawing.type === 'price') {
               return <line key={drawing.id} className={className} x1="0" x2="100" y1={drawing.y1} y2={drawing.y1} onPointerDown={select} />
             }
@@ -981,7 +981,7 @@ export function ChartWorkspace({ asset, onOpenMarkets, openTrades, now, realtime
                 const y = 100 - (normalized[index] ?? 50)
                 return x.toFixed(2) + ',' + y.toFixed(2)
               }).join(' ')
-              const label = id === 'rsi' ? 'RSI 14' : id === 'macd' ? 'MACD' : id === 'stochastic' ? 'Stochastic' : id === 'atr' ? 'ATR 14' : 'Awesome Oscillator'
+                        const label = id === 'rsi' ? 'RSI 14' : id === 'macd' ? 'MACD' : id === 'stochastic' ? 'Stochastic' : id === 'atr' ? 'ATR 14' : 'Awesome Oscillator'
               return (
                 <div className="chart-indicator-panel" key={id}>
                   <div className="chart-indicator-panel__label"><span>{label}</span><strong>{(values.at(-1) ?? 0).toFixed(2)}</strong></div>
