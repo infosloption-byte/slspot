@@ -107,6 +107,7 @@ Trading Room history hardening completed in the current implementation:
 - [~] Full accessibility audit and focus trapping (shared Select/Modal/Drawer coverage added; full feature audit remains).
 - [~] Unit/component/E2E test suite (shared UI, realtime parsing, API retry coverage added; broader component/E2E coverage remains).
 - [x] CI quality gates.
+- [~] Latest frontend fix commits are ready for local validation; GitHub Actions has not returned a workflow run for these commits yet.
 
 
 ## Reconciliation audit — 2026-10-03
@@ -130,6 +131,18 @@ The checklist was reconciled against the current main implementation before cont
 - [x] Realtime reconnect handling includes reconnect state and subscription recovery.
 
 The remaining unchecked production-hardening, compliance, accessibility, testing, CI/CD, admin, payments and infrastructure items remain intentionally open.
+
+## Hardening milestone update — 2026-10-04
+
+Implemented on `main`:
+
+- [x] Frontend React/TypeScript hardening fixes for API abort handling, DataTable generics, React purity lint rules, Select state management, chart candle derivation, and trade expiry clock handling.
+- [x] Six dedicated frontend stores: session, market, trading UI, notification, wallet, and portfolio.
+- [x] Server-authoritative account capability endpoint at `GET /api/v1/auth/capabilities`.
+- [x] Trading and wallet funding UI now consumes server-provided capability state rather than hard-coded authorization rules.
+- [x] Focused mobile UX pass for positions, history, wallet, account and notifications, plus narrow-screen layout refinements.
+- [x] Focused accessibility pass covering shared keyboard interaction, focus management, reduced motion, ARIA/status announcements, modal focus handling, screen-reader labels, and mobile touch sizing.
+- [~] Full manual accessibility/device QA and broad E2E coverage remain release-quality validation work.
 
 # SL Spot / SL Option — Full Implementation Task File
 
@@ -544,19 +557,19 @@ Architecture:
 
 ## 7.2 Define stores/services
 
-- [ ] Session store.
-- [ ] Market store.
-- [ ] Trading UI store.
-- [ ] Notification store.
-- [ ] Wallet store.
-- [ ] Portfolio store.
+- [x] Session store.
+- [x] Market store.
+- [x] Trading UI store.
+- [x] Notification store.
+- [x] Wallet store.
+- [x] Portfolio store.
 
 ## 7.3 Prevent authority leaks
 
 - [x] No authoritative balance in local state.
 - [x] No authoritative payout in local state.
 - [x] No authoritative settlement in local state.
-- [ ] No authorization decisions in UI components.
+- [x] No authorization decisions in UI components. Frontend action gating now consumes server-provided `/auth/capabilities`; final server-security review remains part of Phase 29.
 
 ---
 
@@ -1026,17 +1039,17 @@ Admin should be a separate application boundary.
 
 # PHASE 22 — Accessibility
 
-- [ ] Keyboard navigation.
-- [ ] Focus management.
-- [ ] Modal focus trap.
-- [ ] Screen-reader labels.
-- [ ] ARIA states.
-- [ ] Contrast.
-- [ ] Reduced motion.
-- [ ] Touch targets.
-- [ ] Error announcements.
-- [ ] Table semantics.
-- [ ] Form semantics.
+- [~] Keyboard navigation — shared Select, Dropdown and wallet menu covered; full application keyboard walkthrough remains QA.
+- [x] Focus management.
+- [x] Modal focus trap.
+- [x] Screen-reader labels.
+- [x] ARIA states.
+- [x] Contrast requirements documented and focus-visible styling applied.
+- [x] Reduced motion support.
+- [x] Touch targets for primary mobile controls.
+- [x] Error/loading announcements on shared async/error states and trade dialogs.
+- [x] Table semantics in reusable DataTable and preserved contextual mobile tables.
+- [x] Form semantics in shared controls and existing labelled forms.
 
 ---
 
@@ -1051,11 +1064,12 @@ Do not simply shrink desktop.
 - [x] Chart toolbar.
 - [x] Order panel layout.
 - [x] Trade confirmation.
-- [ ] Positions.
-- [ ] History.
-- [ ] Wallet.
-- [ ] Account.
-- [ ] Notifications.
+- [x] Positions.
+- [x] History.
+- [x] Wallet.
+- [x] Account.
+- [x] Notifications.
+- [~] Final device/browser matrix validation remains QA.
 
 Test at:
 
@@ -1076,15 +1090,15 @@ Test at:
 
 Every major feature:
 
-- [ ] Loading.
+- [x] Loading.
 - [x] Empty.
 - [x] Error.
-- [ ] Offline.
-- [ ] Reconnecting.
-- [ ] Unauthorized.
-- [ ] Forbidden.
-- [ ] Maintenance.
-- [ ] Unavailable.
+- [~] Offline — global banner and Trading Room fallback covered; per-feature verification remains.
+- [~] Reconnecting — realtime connection/status recovery covered; per-feature verification remains.
+- [x] Unauthorized.
+- [x] Forbidden.
+- [x] Maintenance.
+- [x] Unavailable.
 
 ---
 
