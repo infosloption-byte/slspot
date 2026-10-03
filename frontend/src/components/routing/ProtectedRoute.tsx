@@ -1,5 +1,5 @@
 import { Navigate, Outlet, useLocation } from 'react-router'
-import { useAuth } from '../../auth/AuthProvider'
+import { useAuth } from '../../auth/useAuth'
 
 function SessionLoading() {
   return (
