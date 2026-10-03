@@ -875,10 +875,14 @@ function NotificationsPage() {
   const [unreadOnly, setUnreadOnly] = useState(false)
   const notifications = useNotifications(page, 15, unreadOnly)
   const unread = useNotifications(1, 1, true)
-  const unreadCount = unread.data?.pagination.total ?? 0
+  const { unreadCount } = useNotificationStore()
   const reloadNotifications = notifications.reload
   const reloadUnread = unread.reload
   const [toast, setToast] = useState<{ title: string; message: string } | null>(null)
+
+  useEffect(() => {
+    if (unread.data) setUnreadCount(unread.data.pagination.total)
+  }, [unread.data])
 
   useEffect(() => {
     if (!user?.id) return
@@ -895,6 +899,7 @@ function NotificationsPage() {
       })
       window.setTimeout(() => setToast(null), 4500)
       void reloadNotifications()
+      setUnreadCount(unreadCount + 1)
       void reloadUnread()
     })
   }, [reloadNotifications, reloadUnread, realtime])
@@ -907,6 +912,7 @@ function NotificationsPage() {
   const markAllRead = async () => {
     if (!unreadCount) return
     await notificationsApi.markAllRead()
+    setUnreadCount(0)
     await Promise.all([notifications.reload(), unread.reload()])
   }
 
