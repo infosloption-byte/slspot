@@ -17,6 +17,7 @@ import {
   ArrowRight,
 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useRealtime } from '../../realtime/useRealtime'
 import type { PointerEvent as ReactPointerEvent } from 'react'
 import {
   AreaSeries,
@@ -653,6 +654,7 @@ export function ChartWorkspace({ asset, onOpenMarkets, openTrades, now, realtime
   const stageRef = useRef<HTMLDivElement>(null)
   const price = formatPrice(asset.price, asset.price < 10 ? 5 : 2)
   const marketInterval = timeframeToApiInterval(timeframe)
+  const realtime = useRealtime()
   const candleResource = useMarketCandles(asset.assetId, marketInterval, 200)
   const usingMockCandles = import.meta.env.DEV && (
     Boolean(candleResource.error) ||
@@ -669,13 +671,56 @@ export function ChartWorkspace({ asset, onOpenMarkets, openTrades, now, realtime
     })),
     [asset, timeframe],
   )
-  const candles = useMemo<ChartCandle[]>(() => {
-    if (candleResource.data?.candles.length) {
-      return toChartCandles(candleResource.data.candles)
-    }
+  const [liveCandles, setLiveCandles] = useState<ChartCandle[]>([])
 
-    return usingMockCandles ? mockCandles : []
-  }, [candleResource.data, mockCandles, usingMockCandles])
+  useEffect(() => {
+    if (candleResource.data?.candles.length) {
+      setLiveCandles(toChartCandles(candleResource.data.candles))
+      return
+    }
+    setLiveCandles(usingMockCandles ? mockCandles : [])
+  }, [candleResource.data, marketInterval, mockCandles, usingMockCandles])
+
+  useEffect(() => {
+    return realtime.onEvent((event) => {
+      if (event.type !== 'market.candle') return
+      const data = event.data as Partial<MarketCandle>
+      if (
+        data.assetId !== asset.assetId ||
+        data.symbol !== asset.symbol ||
+        data.interval !== marketInterval ||
+        typeof data.openTime !== 'string' ||
+        typeof data.closeTime !== 'string' ||
+        typeof data.open !== 'string' ||
+        typeof data.high !== 'string' ||
+        typeof data.low !== 'string' ||
+        typeof data.close !== 'string' ||
+        typeof data.volume !== 'string'
+      ) return
+
+      const next = {
+        time: Math.floor(Date.parse(data.openTime) / 1000) as import('lightweight-charts').UTCTimestamp,
+        open: Number(data.open),
+        high: Number(data.high),
+        low: Number(data.low),
+        close: Number(data.close),
+        volume: Number(data.volume),
+      }
+      if (!Number.isFinite(next.time) || !Number.isFinite(next.open) || !Number.isFinite(next.high) || !Number.isFinite(next.low) || !Number.isFinite(next.close)) return
+
+      setLiveCandles((current) => {
+        const index = current.findIndex((item) => Number(item.time) === Number(next.time))
+        if (index >= 0) {
+          const updated = [...current]
+          updated[index] = next
+          return updated
+        }
+        return [...current, next].slice(-200)
+      })
+    })
+  }, [asset.assetId, asset.symbol, marketInterval, realtime])
+
+  const candles = liveCandles
   const rsi = useMemo(() => calculateRsi(candles, indicatorPeriod), [candles, indicatorPeriod])
   const macd = useMemo(() => calculateMacd(candles), [candles])
   const stochastic = useMemo(() => calculateStochastic(candles, indicatorPeriod), [candles, indicatorPeriod])
