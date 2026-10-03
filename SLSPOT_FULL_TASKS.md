@@ -26,7 +26,7 @@ slspot/
 └── repository-level docs/config
 ```
 
-## Current Frontend Task Audit — 2026-10-02
+## Current Frontend Task Audit — 2026-10-03
 
 The latest frontend theme is **Black Gold / SL Spot** and is now the active design direction. The requested frontend work below is implemented on `main`:
 
@@ -46,7 +46,7 @@ The latest frontend theme is **Black Gold / SL Spot** and is now the active desi
 
 ### Missing screens and shared UI
 - [x] Login/register/forgot/reset/email verification/2FA forms.
-- [x] Wallet deposit/withdraw demo forms, server-backed demo funding, and transaction table.
+- [x] Wallet deposit/withdraw demo forms with server-backed demo funding and transaction table.
 - [x] 404 page.
 - [x] Protected-route boundary.
 - [x] Toast.
@@ -82,7 +82,7 @@ Completed in this milestone:
 - [x] Login / register / recovery / reset / verification / 2FA forms.
 - [x] Demo protected-route boundary.
 - [x] Dedicated 404 page.
-- [x] Wallet deposit / withdrawal forms retained as UI-only flows; authoritative wallet mutations remain a later payments milestone.
+- [x] Wallet deposit / withdrawal demo flows are server-backed for DEMO mode; real-money payment processing remains a later milestone.
 - [x] Wallet transaction table and pagination.
 - [x] Shared Toast / Tooltip / Skeleton / EmptyState / ErrorState / Select / Pagination components.
 - [x] Black Gold branded mark and favicon.
@@ -113,7 +113,7 @@ Trading Room history hardening completed in the current implementation:
 
 **Repository:** `infosloption-byte/slspot`  
 **Branch:** `main`  
-**Current status:** Frontend + backend foundation + persistence + realtime + authentication + server-authoritative trading engine  
+**Current status:** Frontend + backend foundation + persistence + realtime + authentication + server-authoritative trading engine + server-backed DEMO wallet  
 **Target:** Production-ready original trading platform, subject to product/legal decisions
 
 ---
@@ -288,8 +288,8 @@ Create reusable primitives:
 - [x] Active navigation state.
 - [x] Not-found page.
 - [x] Unauthorized state.
-- [ ] Forbidden state.
-- [ ] Loading route state.
+- [x] Forbidden state.
+- [x] Loading route state.
 - [x] Protected route boundary.
 - [x] Redirect rules.
 
