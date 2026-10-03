@@ -608,13 +608,25 @@ export function ChartWorkspace({ asset, onOpenMarkets, openTrades, now }: ChartW
   const [crosshairEnabled, setCrosshairEnabled] = useState(true)
   const [gridEnabled, setGridEnabled] = useState(true)
   const [priceLineEnabled, setPriceLineEnabled] = useState(true)
-  const [maEnabled, setMaEnabled] = useState(true)
-  const [rsiEnabled, setRsiEnabled] = useState(false)
+  const [enabledIndicators, setEnabledIndicators] = useState<IndicatorId[]>(() => {
+    try {
+      const parsed = JSON.parse(window.localStorage.getItem(indicatorStorageKey) ?? 'null')
+      return Array.isArray(parsed) ? parsed.filter((id): id is IndicatorId => indicatorDefinitions.some((item) => item.id === id)) : defaultIndicators
+    } catch {
+      return defaultIndicators
+    }
+  })
+  const [indicatorPeriod, setIndicatorPeriod] = useState(() => {
+    const value = Number(window.localStorage.getItem(indicatorPeriodStorageKey) ?? '14')
+    return Number.isFinite(value) ? Math.min(100, Math.max(5, Math.round(value))) : 14
+  })
+  const [volumeEnabled, setVolumeEnabled] = useState(true)
   const [chartType, setChartType] = useState<ChartType>('candles')
   const [optionsOpen, setOptionsOpen] = useState(false)
   const [drawingTool, setDrawingTool] = useState<DrawingTool>('none')
-  const [drawings, setDrawings] = useState<Array<{ type: DrawingTool; x1: number; y1: number; x2: number; y2: number }>>([])
-  const [activeDrawing, setActiveDrawing] = useState<{ type: DrawingTool; x1: number; y1: number; x2: number; y2: number } | null>(null)
+  const [drawings, setDrawings] = useState<Drawing[]>([])
+  const [selectedDrawingId, setSelectedDrawingId] = useState<string | null>(null)
+  const [activeDrawing, setActiveDrawing] = useState<Drawing | null>(null)
   const workspaceRef = useRef<HTMLElement>(null)
   const optionsRef = useRef<HTMLDivElement>(null)
   const stageRef = useRef<HTMLDivElement>(null)
@@ -642,7 +654,32 @@ export function ChartWorkspace({ asset, onOpenMarkets, openTrades, now }: ChartW
 
     return usingMockCandles ? mockCandles : []
   }, [candleResource.data, mockCandles, usingMockCandles])
-  const rsi = useMemo(() => calculateRsi(candles), [candles])
+  const rsi = useMemo(() => calculateRsi(candles, indicatorPeriod), [candles, indicatorPeriod])
+  const macd = useMemo(() => calculateMacd(candles), [candles])
+  const stochastic = useMemo(() => calculateStochastic(candles, indicatorPeriod), [candles, indicatorPeriod])
+  const atr = useMemo(() => calculateAtr(candles, indicatorPeriod), [candles, indicatorPeriod])
+  const ao = useMemo(() => calculateAwesomeOscillator(candles), [candles])
+
+  useEffect(() => {
+    window.localStorage.setItem(indicatorStorageKey, JSON.stringify(enabledIndicators))
+    window.localStorage.setItem(indicatorPeriodStorageKey, String(indicatorPeriod))
+  }, [enabledIndicators, indicatorPeriod])
+
+  const drawingStorageKey = drawingStoragePrefix + asset.symbol + ':' + timeframe
+  useEffect(() => {
+    try {
+      const parsed = JSON.parse(window.localStorage.getItem(drawingStorageKey) ?? '[]')
+      setDrawings(Array.isArray(parsed) ? parsed.filter((item): item is Drawing => Boolean(item && typeof item === 'object' && typeof item.id === 'string' && typeof item.type === 'string')) : [])
+    } catch {
+      setDrawings([])
+    }
+    setSelectedDrawingId(null)
+    setActiveDrawing(null)
+  }, [drawingStorageKey])
+
+  useEffect(() => {
+    window.localStorage.setItem(drawingStorageKey, JSON.stringify(drawings))
+  }, [drawingStorageKey, drawings])
 
   useEffect(() => {
     if (!optionsOpen) return
@@ -678,10 +715,47 @@ export function ChartWorkspace({ asset, onOpenMarkets, openTrades, now }: ChartW
     }
   }
 
+  const priceFromPoint = (y: number) => {
+    if (!candles.length) return asset.price
+    const high = Math.max(...candles.map((item) => item.high))
+    const low = Math.min(...candles.map((item) => item.low))
+    return high - (y / 100) * (high - low)
+  }
+
+  useEffect(() => {
+    if (drawingTool === 'none') return
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setActiveDrawing(null)
+        setDrawingTool('none')
+      }
+      if ((event.key === 'Delete' || event.key === 'Backspace') && selectedDrawingId) {
+        setDrawings((current) => current.filter((item) => item.id !== selectedDrawingId))
+        setSelectedDrawingId(null)
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [drawingTool, selectedDrawingId])
+
   const handleDrawingStart = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (drawingTool === 'none') return
     const point = toPercentPoint(event)
-    const next = { type: drawingTool, x1: point.x, y1: point.y, x2: point.x, y2: point.y }
+    const next: Drawing = {
+      id: crypto.randomUUID(),
+      type: drawingTool,
+      x1: point.x,
+      y1: point.y,
+      x2: point.x,
+      y2: point.y,
+      ...(drawingTool === 'price' ? { price: priceFromPoint(point.y) } : {}),
+    }
+    if (drawingTool === 'text') {
+      const text = window.prompt('Annotation text', 'Note')
+      setDrawingTool('none')
+      if (text?.trim()) setDrawings((current) => [...current, { ...next, text: text.trim() }])
+      return
+    }
     setActiveDrawing(next)
     event.currentTarget.setPointerCapture(event.pointerId)
   }
@@ -698,7 +772,7 @@ export function ChartWorkspace({ asset, onOpenMarkets, openTrades, now }: ChartW
     const completed = { ...activeDrawing, x2: point.x, y2: point.y }
     setDrawings((current) => [...current, completed])
     setActiveDrawing(null)
-    if (drawingTool === 'horizontal') setDrawingTool('none')
+    if (['horizontal', 'vertical', 'price'].includes(drawingTool)) setDrawingTool('none')
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId)
     }
@@ -751,14 +825,25 @@ export function ChartWorkspace({ asset, onOpenMarkets, openTrades, now }: ChartW
                   </div>
                 </div>
 
-                <button className="chart-option" type="button" onClick={() => setMaEnabled((value) => !value)}>
-                  <span><TrendingUp size={14} /><span><strong>MA (14)</strong><small>Moving average overlay</small></span></span>
-                  <span className={maEnabled ? 'chart-option__check chart-option__check--active' : 'chart-option__check'}>{maEnabled && <Check size={12} />}</span>
-                </button>
+                <div className="chart-indicator-section">
+                  <div className="chart-option-group__label">Indicators</div>
+                  <label className="indicator-period-control"><span>Default period</span><input type="number" min={5} max={100} value={indicatorPeriod} onChange={(event) => setIndicatorPeriod(Math.min(100, Math.max(5, Number(event.target.value) || 14)))} /></label>
+                  <div className="chart-indicator-grid">
+                    {indicatorDefinitions.map((indicator) => {
+                      const active = enabledIndicators.includes(indicator.id)
+                      return (
+                        <button className={active ? 'chart-indicator chart-indicator--active' : 'chart-indicator'} type="button" key={indicator.id} onClick={() => setEnabledIndicators((current) => active ? current.filter((id) => id !== indicator.id) : [...current, indicator.id])}>
+                          <span><strong>{indicator.label}</strong><small>{indicator.description}</small></span>
+                          <span className={active ? 'chart-option__check chart-option__check--active' : 'chart-option__check'}>{active && <Check size={12} />}</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
 
-                <button className="chart-option" type="button" onClick={() => setRsiEnabled((value) => !value)}>
-                  <span><LineChart size={14} /><span><strong>RSI (14)</strong><small>Momentum panel below the chart</small></span></span>
-                  <span className={rsiEnabled ? 'chart-option__check chart-option__check--active' : 'chart-option__check'}>{rsiEnabled && <Check size={12} />}</span>
+                <button className="chart-option" type="button" onClick={() => setVolumeEnabled((value) => !value)}>
+                  <span><BarChart3 size={14} /><span><strong>Volume</strong><small>Server OHLC volume histogram</small></span></span>
+                  <span className={volumeEnabled ? 'chart-option__check chart-option__check--active' : 'chart-option__check'}>{volumeEnabled && <Check size={12} />}</span>
                 </button>
 
                 <button className="chart-option" type="button" onClick={() => setGridEnabled((value) => !value)}>
@@ -774,14 +859,25 @@ export function ChartWorkspace({ asset, onOpenMarkets, openTrades, now }: ChartW
                 <div className="chart-option-group">
                   <span className="chart-option-group__label">Drawing tools</span>
                   <div className="drawing-tools">
-                    <button type="button" className={drawingTool === 'horizontal' ? 'drawing-tool drawing-tool--active' : 'drawing-tool'} onClick={() => { setDrawingTool('horizontal'); setOptionsOpen(false) }}><Minus size={14} /> Horizontal</button>
-                    <button type="button" className={drawingTool === 'trend' ? 'drawing-tool drawing-tool--active' : 'drawing-tool'} onClick={() => { setDrawingTool('trend'); setOptionsOpen(false) }}><Slash size={14} /> Trend line</button>
-                    <button type="button" className="drawing-tool" onClick={() => setDrawings([])}><Eraser size={14} /> Clear</button>
+                    {([
+                      ['horizontal', 'Horizontal', Minus],
+                      ['trend', 'Trend', Slash],
+                      ['vertical', 'Vertical', Minus],
+                      ['ray', 'Ray', ArrowRight],
+                      ['fibonacci', 'Fibonacci', TrendingUp],
+                      ['rectangle', 'Rectangle', Square],
+                      ['price', 'Price marker', PenLine],
+                      ['text', 'Text note', PenLine],
+                    ] as const).map(([value, label, Icon]) => (
+                      <button type="button" key={value} className={drawingTool === value ? 'drawing-tool drawing-tool--active' : 'drawing-tool'} onClick={() => { setDrawingTool(value); setOptionsOpen(false) }}><Icon size={14} /> {label}</button>
+                    ))}
+                    <button type="button" className="drawing-tool" disabled={!selectedDrawingId} onClick={() => { if (!selectedDrawingId) return; setDrawings((current) => current.filter((item) => item.id !== selectedDrawingId)); setSelectedDrawingId(null) }}><Eraser size={14} /> Remove selected</button>
+                    <button type="button" className="drawing-tool" disabled={!drawings.length} onClick={() => { setDrawings([]); setSelectedDrawingId(null) }}><Eraser size={14} /> Remove all</button>
                   </div>
                 </div>
 
                 <div className="chart-options__footer">
-                  <button type="button" className="quiet-button" onClick={() => { setCrosshairEnabled(true); setGridEnabled(true); setPriceLineEnabled(true); setMaEnabled(true); setRsiEnabled(false); setChartType('candles'); setDrawingTool('none') }}>Reset chart</button>
+                  <button type="button" className="quiet-button" onClick={() => { setCrosshairEnabled(true); setGridEnabled(true); setPriceLineEnabled(true); setEnabledIndicators(defaultIndicators); setIndicatorPeriod(14); setVolumeEnabled(true); setChartType('candles'); setDrawingTool('none'); setSelectedDrawingId(null) }}>Reset chart</button>
                 </div>
               </div>
             ) : null}
@@ -820,7 +916,9 @@ export function ChartWorkspace({ asset, onOpenMarkets, openTrades, now }: ChartW
             crosshairEnabled={crosshairEnabled}
             gridEnabled={gridEnabled}
             priceLineEnabled={priceLineEnabled}
-            maEnabled={maEnabled}
+            enabledIndicators={enabledIndicators}
+            indicatorPeriod={indicatorPeriod}
+            volumeEnabled={volumeEnabled}
             candles={candles}
             usingMockCandles={usingMockCandles}
           />
