@@ -35,6 +35,7 @@ export class ApiError extends Error {
 
 const viteEnv = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env
 const apiBaseUrl = (viteEnv?.VITE_API_BASE_URL || DEFAULT_API_BASE_URL).replace(/\/$/, '')
+const apiOrigin = new URL(apiBaseUrl, window.location.origin).origin
 
 function createRequestId(): string {
   return crypto.randomUUID()
@@ -140,6 +141,11 @@ export async function apiRequest<T>(
     ? path
     : apiBaseUrl + (path.startsWith('/') ? path : '/' + path)
   const method = String(requestInit.method ?? 'GET').toUpperCase()
+  const requestOrigin = new URL(url, window.location.origin).origin
+  const usesApiSecurity = requestOrigin === apiOrigin
+  if (!usesApiSecurity && isUnsafeMethod(method)) {
+    throw new ApiError(400, 'Unsafe cross-origin API requests are not permitted', 'CROSS_ORIGIN_REQUEST_BLOCKED', requestId)
+  }
   const retryAllowed = requestCanRetry(method, idempotencyKey)
   const requestedAttempts = typeof retry === 'object' ? retry.maxAttempts ?? 3 : retry === false ? 1 : 3
   const maxAttempts = retryAllowed ? Math.max(1, Math.min(4, requestedAttempts)) : 1
@@ -153,7 +159,7 @@ export async function apiRequest<T>(
 
   try {
     for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-      if (isUnsafeMethod(method) && !url.endsWith('/auth/csrf')) {
+      if (isUnsafeMethod(method) && usesApiSecurity && !url.endsWith('/auth/csrf')) {
         const token = await ensureCsrfToken()
         if (!token) {
           throw new ApiError(403, 'CSRF protection token is unavailable', 'CSRF_UNAVAILABLE', requestId)
@@ -175,7 +181,7 @@ export async function apiRequest<T>(
           headers: {
             Accept: 'application/json',
             ...(hasBody ? { 'Content-Type': 'application/json' } : {}),
-            ...(isUnsafeMethod(method) && csrfToken ? { 'x-csrf-token': csrfToken } : {}),
+            ...(isUnsafeMethod(method) && usesApiSecurity && csrfToken ? { 'x-csrf-token': csrfToken } : {}),
             'x-request-id': requestId,
             ...(idempotencyKey ? { 'idempotency-key': idempotencyKey } : {}),
             ...requestInit.headers,
@@ -215,7 +221,7 @@ export async function apiRequest<T>(
           retryAfterSeconds,
         )
 
-        if (isUnsafeMethod(method) && error.code === 'CSRF_INVALID' && !csrfRetryUsed) {
+        if (isUnsafeMethod(method) && usesApiSecurity && error.code === 'CSRF_INVALID' && !csrfRetryUsed) {
           csrfRetryUsed = true
           csrfToken = null
           await ensureCsrfToken()
