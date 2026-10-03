@@ -1,4 +1,5 @@
 import { useCallback } from 'react'
+import { useWalletMode } from './useWalletMode'
 import { authApi } from '../api/auth'
 import { marketApi } from '../api/market'
 import { notificationsApi } from '../api/notifications'
@@ -23,27 +24,37 @@ export function useMarketCandles(assetId: string | undefined, interval: string, 
 }
 
 export function usePortfolioSummary() {
-  const load = useCallback(() => portfolioApi.summary(), [])
+  const { mode } = useWalletMode()
+  const load = useCallback(() => portfolioApi.summary(mode), [mode])
   return useAsyncResource(load)
 }
 
 export function usePortfolioPositions(page: number, pageSize = 25) {
-  const load = useCallback(() => portfolioApi.positions({ page, pageSize }), [page, pageSize])
+  const { mode } = useWalletMode()
+  const load = useCallback(() => portfolioApi.positions({ page, pageSize }, mode), [page, pageSize, mode])
   return useAsyncResource(load)
 }
 
 export function useTrades(page: number, pageSize = 25, status?: TradeRecord['status']) {
-  const load = useCallback(() => tradesApi.list({ page, pageSize, status }), [page, pageSize, status])
+  const { mode } = useWalletMode()
+  const load = useCallback(() => tradesApi.list({ page, pageSize, status }, mode), [page, pageSize, status, mode])
   return useAsyncResource(load)
 }
 
 export function useWallet() {
-  const load = useCallback(() => walletApi.get(), [])
+  const { mode } = useWalletMode()
+  const load = useCallback(() => walletApi.get(mode), [mode])
+  return useAsyncResource(load)
+}
+
+export function useWallets() {
+  const load = useCallback(() => walletApi.list(), [])
   return useAsyncResource(load)
 }
 
 export function useWalletTransactions(page: number, pageSize = 25) {
-  const load = useCallback(() => walletApi.transactions({ page, pageSize }), [page, pageSize])
+  const { mode } = useWalletMode()
+  const load = useCallback(() => walletApi.transactions({ page, pageSize }, mode), [page, pageSize, mode])
   return useAsyncResource(load)
 }
 
