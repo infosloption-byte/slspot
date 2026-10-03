@@ -54,7 +54,7 @@ export function TradePanel({ asset, balance, walletMode, soundEnabled, onToggleS
       return 'Real-money trading is not available yet. Switch to Demo Wallet to practise trading.'
     }
     if (!asset.tradingEnabled) {
-      return ''
+      return 'This market is currently unavailable for trading.'
     }
     return ''
   }
