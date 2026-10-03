@@ -554,16 +554,6 @@ function ChartCanvas({
       }
     }
 
-    const maSeries = maSeriesRef.current as {
-      update: (data: unknown) => void
-    } | null
-
-    if (maSeries && maEnabled) {
-      const nextSma = calculateSma(
-        [...candles.slice(0, -1), nextCandle],
-      ).at(-1)
-      if (nextSma) maSeries.update(nextSma)
-    }
   }, [asset.price, candles, chartType, enabledIndicators, indicatorPeriod])
 
   return (
@@ -644,6 +634,7 @@ export function ChartWorkspace({ asset, onOpenMarkets, openTrades, now }: ChartW
       high: candle.high,
       low: candle.low,
       close: candle.close,
+      volume: 0,
     })),
     [asset.symbol, timeframe],
   )
