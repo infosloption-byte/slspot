@@ -5,6 +5,7 @@ import { isRedisReady, publish } from '../realtime/redis.js'
 import { getTradingRules, TRADING_RULES } from './config.js'
 
 export type TradeDirection = 'UP' | 'DOWN'
+export type WalletMode = 'DEMO' | 'REAL'
 
 export type CreateTradeInput = {
   clientRequestId: string
@@ -180,7 +181,7 @@ export class TradingService {
     }
   }
 
-  async createTrade(userId: string, input: CreateTradeInput): Promise<ApiTradingResult> {
+  async createTrade(userId: string, input: CreateTradeInput, mode: WalletMode = 'DEMO'): Promise<ApiTradingResult> {
     const requestId = input.clientRequestId.trim()
     if (!/^[A-Za-z0-9._:-]{1,128}$/.test(requestId)) {
       throw new TradingError(400, 'INVALID_IDEMPOTENCY_KEY', 'clientRequestId must be 1-128 safe characters')
@@ -230,8 +231,9 @@ export class TradingService {
         const market = asset.markets[0]
         const now = new Date()
         const rules = getTradingRules(asset.symbol, Boolean(market && market.status === 'OPEN'))
-        const account = await this.ensureAccount(tx, userId, asset.quoteCurrency ?? 'USD')
-        const wallet = await this.ensureWallet(tx, account.id, account.currency, false)
+        const account = await this.ensureAccount(tx, userId, asset.quoteCurrency ?? 'USD', mode)
+        let wallet = await this.ensureWallet(tx, account.id, account.currency, mode === 'DEMO')
+        if (mode === 'DEMO') wallet = await this.ensureDemoBalance(tx, account.id, wallet)
         if (wallet.status !== 'ACTIVE') {
           throw new TradingError(403, 'WALLET_NOT_ELIGIBLE', 'The trading wallet is not active')
         }
@@ -242,7 +244,7 @@ export class TradingService {
         const holdAmount = amount
 
         const openPositionTotals = await tx.position.aggregate({
-          where: { userId, status: 'OPEN' },
+          where: { userId, status: 'OPEN', account: { mode } },
           _count: { _all: true },
           _sum: { amount: true },
         })
@@ -426,9 +428,13 @@ export class TradingService {
     }
   }
 
-  async closeTrade(userId: string, tradeId: string): Promise<ApiTradingResult> {
+  async closeTrade(userId: string, tradeId: string, mode: WalletMode = 'DEMO'): Promise<ApiTradingResult> {
     const details = await this.loadTrade(tradeId)
     if (!details || details.trade.userId !== userId) {
+      throw new TradingError(404, 'TRADE_NOT_FOUND', 'Trade was not found')
+    }
+    const tradeAccount = await this.prisma.account.findUnique({ where: { id: details.position.accountId }, select: { mode: true } })
+    if (!tradeAccount || tradeAccount.mode !== mode) {
       throw new TradingError(404, 'TRADE_NOT_FOUND', 'Trade was not found')
     }
     if (details.trade.status !== 'OPEN' || !details.position.order.expiresAt) {
@@ -703,10 +709,11 @@ export class TradingService {
     tx: Prisma.TransactionClient,
     userId: string,
     currency: string,
+    mode: WalletMode,
   ) {
     const normalizedCurrency = currency.slice(0, 3).toUpperCase()
     const existing = await tx.account.findUnique({
-      where: { userId_currency: { userId, currency: normalizedCurrency } },
+      where: { userId_currency_mode: { userId, currency: normalizedCurrency, mode } },
     })
 
     if (existing) {
@@ -719,8 +726,9 @@ export class TradingService {
     return tx.account.create({
       data: {
         userId,
-        name: 'Primary Trading Account',
+        name: mode === 'DEMO' ? 'Demo Trading Account' : 'Real Trading Account',
         currency: normalizedCurrency,
+        mode,
         status: 'ACTIVE',
       },
     })
@@ -769,6 +777,63 @@ export class TradingService {
     return wallet
   }
 
+  private async ensureDemoBalance(
+    tx: Prisma.TransactionClient,
+    accountId: string,
+    wallet: {
+      id: string
+      currency: string
+      status: string
+      availableBalance: Prisma.Decimal
+      heldBalance: Prisma.Decimal
+    },
+  ) {
+    if (wallet.status !== 'ACTIVE' || wallet.availableBalance.gt(0) || wallet.heldBalance.gt(0)) return wallet
+
+    const refillAmount = new Prisma.Decimal(env.trading.initialBalance)
+    if (!refillAmount.gt(0)) return wallet
+
+    const claimed = await tx.wallet.updateMany({
+      where: {
+        id: wallet.id,
+        status: 'ACTIVE',
+        availableBalance: { lte: 0 },
+        heldBalance: { lte: 0 },
+      },
+      data: { availableBalance: { increment: refillAmount } },
+    })
+
+    if (claimed.count === 1) {
+      const walletTransaction = await tx.walletTransaction.create({
+        data: {
+          walletId: wallet.id,
+          type: 'ADJUSTMENT',
+          status: 'COMPLETED',
+          amount: refillAmount,
+          currency: wallet.currency,
+          idempotencyKey: 'demo-trading-refill:' + wallet.id + ':' + crypto.randomUUID(),
+          referenceType: 'DEMO_WALLET',
+          referenceId: wallet.id,
+          description: 'Demo wallet auto-refill',
+        },
+      })
+      await tx.ledgerEntry.create({
+        data: {
+          transactionId: walletTransaction.id,
+          accountId,
+          walletTransactionId: walletTransaction.id,
+          direction: 'CREDIT',
+          amount: refillAmount,
+          currency: wallet.currency,
+          referenceType: 'DEMO_WALLET',
+          referenceId: wallet.id,
+        },
+      })
+    }
+
+    return await tx.wallet.findUnique({ where: { id: wallet.id } }) ?? wallet
+  }
+
   private toTradingResult(trade: TradingTradeRecord, position: TradingPositionRecord, settlement: TradingSettlementRecord | null): ApiTradingResult {
     const order = position.order
     return {
@@ -797,18 +862,20 @@ export class TradingService {
     const channel = ('user:' + userId) as `user:${string}`
     await this.publishUserEvent(createRealtimeEvent('trade.status', { tradeId: result.tradeId, orderId: result.orderId, positionId: result.positionId, status: result.status }, channel))
     await this.publishUserEvent(createRealtimeEvent('position.update', result, channel))
-    await this.publishWalletEvent(userId, result.tradeId, channel)
+    await this.publishWalletEvent(userId, result.tradeId, result.positionId, channel)
   }
 
   private async publishTradeSettlement(userId: string, result: ApiTradingResult): Promise<void> {
     const channel = ('user:' + userId) as `user:${string}`
     await this.publishUserEvent(createRealtimeEvent('trade.status', { tradeId: result.tradeId, orderId: result.orderId, positionId: result.positionId, status: result.status, settlementId: result.settlementId }, channel))
     await this.publishUserEvent(createRealtimeEvent('position.update', result, channel))
-    await this.publishWalletEvent(userId, result.tradeId, channel)
+    await this.publishWalletEvent(userId, result.tradeId, result.positionId, channel)
   }
 
-  private async publishWalletEvent(userId: string, tradeId: string, channel: `user:${string}`): Promise<void> {
-    const wallet = await this.prisma.wallet.findFirst({ where: { account: { userId }, status: { not: 'CLOSED' } } })
+  private async publishWalletEvent(userId: string, tradeId: string, positionId: string, channel: `user:${string}`): Promise<void> {
+    const position = await this.prisma.position.findUnique({ where: { id: positionId }, select: { accountId: true, userId: true } })
+    if (!position || position.userId !== userId) return
+    const wallet = await this.prisma.wallet.findUnique({ where: { accountId: position.accountId } })
     if (!wallet) return
     await this.publishUserEvent(createRealtimeEvent('wallet.update', {
       tradeId,
