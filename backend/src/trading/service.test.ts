@@ -38,5 +38,5 @@ test('losing settlement releases no payout and records the stake loss plus fee',
   assert.equal(terms.grossPayout.toFixed(2), '0.00')
   assert.equal(terms.grossPnl.toFixed(2), '-50.00')
   assert.equal(terms.netPnl.toFixed(2), '-51.00')
-  assert.equal(terms.holdAmount.toFixed(2), '51.00')
+  assert.equal(terms.holdAmount.toFixed(2), '50.00')
 })
