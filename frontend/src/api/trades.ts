@@ -1,8 +1,10 @@
 import { apiClient } from './client'
-import type { ApiSuccess, PaginatedData } from './contracts'
+import type { PaginatedData } from './contracts'
 
-function data<T>(response: ApiSuccess<T>): T {
-  return response.data
+type ApiEnvelope<T> = {
+  success: true
+  data: T
+  requestId: string
 }
 
 export type TradeRecord = {
@@ -34,11 +36,57 @@ export type TradeRecord = {
   }
 }
 
+export type TradeCreateResult = {
+  orderId: string
+  tradeId: string
+  positionId: string
+  status: string
+  direction: 'UP' | 'DOWN'
+  amount: string
+  entryPrice: string
+  exitPrice: string | null
+  payoutRate: string
+  fee: string
+  grossPnl: string | null
+  netPnl: string | null
+  openedAt: string
+  closedAt: string | null
+  expiresAt: string | null
+  settlementId: string | null
+  settlementPrice: string | null
+  settlementReference: string | null
+}
+
+export type TradeCloseResult = {
+  orderId?: string
+  tradeId: string
+  positionId?: string
+  status: string
+  direction?: 'UP' | 'DOWN'
+  amount?: string
+  entryPrice?: string
+  exitPrice?: string | null
+  payoutRate?: string
+  fee?: string
+  grossPnl: string | null
+  netPnl: string | null
+  openedAt?: string
+  closedAt?: string | null
+  expiresAt?: string | null
+  settlementId: string | null
+  settlementPrice: string | null
+  settlementReference?: string | null
+}
+
+function unwrap<T>(response: ApiEnvelope<T>): T {
+  return response.data
+}
+
 export const tradesApi = {
   list: (query: { page?: number; pageSize?: number; status?: TradeRecord['status'] } = {}) =>
     apiClient
-      .get<ApiSuccess<PaginatedData<TradeRecord>>>('/trades' + toQueryString(query))
-      .then(data),
+      .get<ApiEnvelope<PaginatedData<TradeRecord>>>('/trades' + toQueryString(query))
+      .then(unwrap),
 
   create: (input: {
     assetId: string
@@ -46,41 +94,15 @@ export const tradesApi = {
     amount: string
     durationSeconds: number
     clientRequestId: string
-  }) =>
+  }): Promise<TradeCreateResult> =>
     apiClient
-      .post<ApiSuccess<{
-        orderId: string
-        tradeId: string
-        positionId: string
-        status: string
-        direction: 'UP' | 'DOWN'
-        amount: string
-        entryPrice: string
-        exitPrice: string | null
-        payoutRate: string
-        fee: string
-        grossPnl: string | null
-        netPnl: string | null
-        openedAt: string
-        closedAt: string | null
-        expiresAt: string | null
-        settlementId: string | null
-        settlementPrice: string | null
-        settlementReference: string | null
-      }>>('/trades', input, { idempotencyKey: input.clientRequestId })
-      .then(data),
+      .post<ApiEnvelope<TradeCreateResult>>('/trades', input, { idempotencyKey: input.clientRequestId })
+      .then(unwrap),
 
-  close: (tradeId: string) =>
+  close: (tradeId: string): Promise<TradeCloseResult> =>
     apiClient
-      .post<ApiSuccess<{
-        tradeId: string
-        status: string
-        grossPnl: string | null
-        netPnl: string | null
-        settlementId: string | null
-        settlementPrice: string | null
-      }>>('/trades/' + encodeURIComponent(tradeId) + '/close')
-      .then(data),
+      .post<ApiEnvelope<TradeCloseResult>>('/trades/' + encodeURIComponent(tradeId) + '/close')
+      .then(unwrap),
 }
 
 function toQueryString(query: { page?: number; pageSize?: number; status?: string }): string {
