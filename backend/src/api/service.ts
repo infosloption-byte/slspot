@@ -1,4 +1,4 @@
-import type { PrismaClient, Prisma } from '../generated/prisma/client.js'
+import { Prisma, type PrismaClient } from '../generated/prisma/client.js'
 import { env } from '../config/env.js'
 import { getTradingRules } from '../trading/config.js'
 
