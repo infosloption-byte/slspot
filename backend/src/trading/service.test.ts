@@ -1,6 +1,11 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { calculateSettlementTerms, evaluateTrade } from './service.js'
+import {
+  assertManualSettlementAllowed,
+  calculateSettlementTerms,
+  evaluateTrade,
+  TradingError,
+} from './service.js'
 
 test('UP wins when settlement price is equal to entry', () => {
   assert.equal(evaluateTrade('UP', '100', '100'), true)
@@ -39,4 +44,21 @@ test('losing settlement releases no payout and records the stake loss plus fee',
   assert.equal(terms.grossPnl.toFixed(2), '-50.00')
   assert.equal(terms.netPnl.toFixed(2), '-51.00')
   assert.equal(terms.holdAmount.toFixed(2), '50.00')
+})
+
+
+test('manual settlement is rejected before expiry', () => {
+  assert.throws(
+    () => assertManualSettlementAllowed(new Date('2026-10-03T12:05:00.000Z'), new Date('2026-10-03T12:04:59.000Z')),
+    (error: unknown) => error instanceof TradingError
+      && error.code === 'TRADE_NOT_EXPIRED'
+      && error.statusCode === 409,
+  )
+})
+
+test('manual settlement is allowed at and after expiry', () => {
+  assert.doesNotThrow(() => {
+    assertManualSettlementAllowed(new Date('2026-10-03T12:05:00.000Z'), new Date('2026-10-03T12:05:00.000Z'))
+    assertManualSettlementAllowed(new Date('2026-10-03T12:05:00.000Z'), new Date('2026-10-03T12:05:01.000Z'))
+  })
 })
