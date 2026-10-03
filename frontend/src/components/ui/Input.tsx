@@ -1,3 +1,4 @@
+import { useId } from 'react'
 import type { InputHTMLAttributes, ReactNode } from 'react'
 
 type InputProps = InputHTMLAttributes<HTMLInputElement> & {
@@ -8,7 +9,8 @@ type InputProps = InputHTMLAttributes<HTMLInputElement> & {
 }
 
 export function Input({ label, hint, error, leading, id, className = '', ...props }: InputProps) {
-  const inputId = id ?? 'input-' + Math.random().toString(36).slice(2, 9)
+  const generatedId = useId()
+  const inputId = id ?? 'ui-input-' + generatedId.replace(/:/g, '')
   const describedBy = [
     hint ? inputId + '-hint' : '',
     error ? inputId + '-error' : '',
