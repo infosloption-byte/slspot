@@ -13,7 +13,7 @@ type TradePanelProps = {
   onOpenTrade: (trade: { direction: TradeDirection; amount: number; durationSeconds: number; entryPrice: number; payoutRate: number }) => Promise<void>
 }
 
-type OrderStage = 'draft' | 'confirming' | 'submitting' | 'opened'
+type OrderStage = 'draft' | 'submitting' | 'opened'
 
 function formatDuration(value: number) {
   return value < 60 ? value + 's' : value / 60 + 'm'
@@ -52,14 +52,11 @@ export function TradePanel({ asset, balance, walletMode, soundEnabled, onToggleS
     return ''
   }
   useEffect(() => {
-    if (!durationOpen && stage !== 'confirming' && stage !== 'submitting' && !error) return
+    if (!durationOpen && stage !== 'submitting' && !error) return
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return
       if (durationOpen) setDurationOpen(false)
-      if (stage === 'confirming' || stage === 'submitting') {
-        setDirection(null)
-        setStage('draft')
-      }
+      if (stage === 'submitting') return
       if (error) setError('')
     }
     const handlePointerDown = (event: PointerEvent) => {
@@ -79,23 +76,26 @@ export function TradePanel({ asset, balance, walletMode, soundEnabled, onToggleS
     setError('')
   }
 
-  const requestPreview = (nextDirection: TradeDirection) => {
+  const requestPreview = async (nextDirection: TradeDirection) => {
     const validationError = validate()
     if (validationError) {
       setError(validationError)
       setStage('draft')
       return
     }
+
     setError('')
     setDirection(nextDirection)
-    setStage('confirming')
-  }
-
-  const confirmTrade = async () => {
-    if (!direction) return
     setStage('submitting')
+
     try {
-      await onOpenTrade({ direction, amount, durationSeconds: duration, entryPrice: asset.price, payoutRate })
+      await onOpenTrade({
+        direction: nextDirection,
+        amount,
+        durationSeconds: duration,
+        entryPrice: asset.price,
+        payoutRate,
+      })
       setStage('opened')
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Trade submission failed')
@@ -117,12 +117,12 @@ export function TradePanel({ asset, balance, walletMode, soundEnabled, onToggleS
 
   const renderActions = (mobile = false) => (
     <div className={mobile ? 'trade-actions trade-actions--mobile' : 'trade-actions'} aria-label="Trade direction">
-      <button className="trade-btn trade-btn--up" type="button" onClick={() => requestPreview('UP')} disabled={stage === 'confirming' || stage === 'submitting' || walletMode === 'REAL' || balance <= 0}>
+      <button className="trade-btn trade-btn--up" type="button" onClick={() => void requestPreview('UP')} disabled={stage === 'confirming' || stage === 'submitting' || walletMode === 'REAL' || balance <= 0}>
         <TrendingUp size={18} />
         <span>UP</span>
         {!mobile ? <small>Higher</small> : null}
       </button>
-      <button className="trade-btn trade-btn--down" type="button" onClick={() => requestPreview('DOWN')} disabled={stage === 'confirming' || stage === 'submitting' || walletMode === 'REAL' || balance <= 0}>
+      <button className="trade-btn trade-btn--down" type="button" onClick={() => void requestPreview('DOWN')} disabled={stage === 'confirming' || stage === 'submitting' || walletMode === 'REAL' || balance <= 0}>
         <TrendingDown size={18} />
         <span>DOWN</span>
         {!mobile ? <small>Lower</small> : null}
@@ -214,17 +214,6 @@ export function TradePanel({ asset, balance, walletMode, soundEnabled, onToggleS
       </aside>
 
       {error ? <div className="trade-modal-backdrop"><div className="trade-modal trade-modal--error" role="alertdialog" aria-modal="true"><div className="trade-modal__icon"><ShieldAlert size={18} /></div><div><span>Check your trade</span><strong>{error}</strong></div><button className="icon-button" type="button" onClick={() => setError('')} aria-label="Close error"><X size={15} /></button></div></div> : null}
-
-      {(stage === 'confirming' || stage === 'submitting') && direction ? (
-        <div className="trade-modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) resetOrder() }}>
-          <div className="trade-modal" role="dialog" aria-modal="true" aria-label="Confirm trade">
-            <div className="trade-modal__header"><div><span>Review trade</span><strong>{direction} · {asset.symbol}</strong></div><button className="icon-button" type="button" onClick={resetOrder} aria-label="Cancel"><X size={15} /></button></div>
-            <div className="trade-modal__summary"><div><span>Stake</span><strong>${amount.toFixed(2)}</strong></div><div><span>Duration</span><strong>{formatDuration(duration)}</strong></div><div><span>Payout</span><strong>{asset.payout}%</strong></div><div><span>Potential return</span><strong>+${estimatedPayout.toFixed(2)}</strong></div></div>
-            <p>The server will validate the market, balance, limits and risk rules before opening the position.</p>
-            <div className="trade-modal__actions"><button type="button" className="btn btn--ghost" onClick={resetOrder}>Cancel</button><button type="button" className="btn btn--primary" onClick={() => void confirmTrade()} disabled={stage === 'submitting'}>{stage === 'submitting' ? 'Submitting…' : <><CheckCircle2 size={15} /> Place trade</>}</button></div>
-          </div>
-        </div>
-      ) : null}
 
       {stage === 'opened' && direction ? (
         <div className="trade-modal-backdrop">
