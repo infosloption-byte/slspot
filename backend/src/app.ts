@@ -91,35 +91,37 @@ export function buildApp(options: AppOptions = {}) {
 
     const path = request.url.split('?', 1)[0]
     if (request.method === 'OPTIONS') return
+
     const isAuthRoute = path.startsWith(API_PREFIX + '/auth/')
     const isTradingRoute = path.startsWith(API_PREFIX + '/trades') || path.startsWith(API_PREFIX + '/wallet')
+    const isUnsafe = !SAFE_METHODS.has(request.method)
+
+    if (isUnsafe) {
+      assertTrustedOrigin(request)
+
+      const contentType = request.headers['content-type']
+      const normalizedContentType = Array.isArray(contentType) ? contentType[0] : contentType
+      if (normalizedContentType?.toLowerCase().startsWith('multipart/form-data')) {
+        throw new AppSecurityError(415, 'FILE_UPLOAD_NOT_SUPPORTED', 'File uploads are not enabled on this API endpoint')
+      }
+      if (normalizedContentType && !normalizedContentType.toLowerCase().startsWith('application/json')) {
+        throw new AppSecurityError(415, 'UNSUPPORTED_CONTENT_TYPE', 'State-changing API requests must use application/json')
+      }
+
+      const sessionToken = request.cookies?.[env.auth.cookieName]
+      const csrfCookie = request.cookies?.[env.auth.csrfCookieName]
+      const csrfHeader = request.headers['x-csrf-token']
+      const csrfToken = Array.isArray(csrfHeader) ? csrfHeader[0] : csrfHeader
+      if (!verifyCsrfToken(csrfToken, sessionToken)) {
+        throw new AppSecurityError(403, 'CSRF_INVALID', 'CSRF validation failed')
+      }
+    }
 
     await enforceRateLimit({
       key: (isAuthRoute ? 'auth:' : isTradingRoute ? 'trading:' : 'api:') + request.ip,
       limit: isAuthRoute ? env.security.rateLimit.authLimit : isTradingRoute ? env.security.rateLimit.tradingLimit : env.security.rateLimit.generalLimit,
       windowSeconds: isAuthRoute ? env.security.rateLimit.authWindowSeconds : isTradingRoute ? env.security.rateLimit.tradingWindowSeconds : env.security.rateLimit.generalWindowSeconds,
     })
-
-    if (SAFE_METHODS.has(request.method)) return
-
-    assertTrustedOrigin(request)
-
-    const contentType = request.headers['content-type']
-    const normalizedContentType = Array.isArray(contentType) ? contentType[0] : contentType
-    if (normalizedContentType?.toLowerCase().startsWith('multipart/form-data')) {
-      throw new AppSecurityError(415, 'FILE_UPLOAD_NOT_SUPPORTED', 'File uploads are not enabled on this API endpoint')
-    }
-    if (normalizedContentType && !normalizedContentType.toLowerCase().startsWith('application/json')) {
-      throw new AppSecurityError(415, 'UNSUPPORTED_CONTENT_TYPE', 'State-changing API requests must use application/json')
-    }
-
-    const sessionToken = request.cookies?.[env.auth.cookieName]
-    const csrfCookie = request.cookies?.[env.auth.csrfCookieName]
-    const csrfHeader = request.headers['x-csrf-token']
-    const csrfToken = Array.isArray(csrfHeader) ? csrfHeader[0] : csrfHeader
-    if (!verifyCsrfToken(csrfToken, sessionToken)) {
-      throw new AppSecurityError(403, 'CSRF_INVALID', 'CSRF validation failed')
-    }
   })
 
   app.addHook('onSend', async (request, reply) => {
