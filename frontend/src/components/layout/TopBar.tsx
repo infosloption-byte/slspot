@@ -4,7 +4,7 @@ import { Link, useNavigate } from 'react-router'
 import { useAuth } from '../../auth/useAuth'
 import { useNotifications, useWallets } from '../../hooks/useServerState'
 import { useWalletMode } from '../../hooks/useWalletMode'
-import { useRealtime, useRealtimeState } from '../../realtime/RealtimeProvider'
+import { useRealtime, useRealtimeState } from '../../realtime/useRealtime'
 import { userChannel } from '../../realtime/subscriptions'
 
 function formatBalance(value: string | null | undefined, currency: string | null | undefined): string {
