@@ -341,6 +341,36 @@ export class TradingService {
           return { kind: 'rejected' as const, order: rejected, asset }
         }
 
+        const updatedOrder = await tx.order.update({
+          where: { id: order.id },
+          data: {
+            status: 'ACCEPTED',
+            executedPrice: marketForTrade!.lastPrice!,
+            acceptedAt: now,
+          },
+        })
+
+        const position = await tx.position.create({
+          data: {
+            orderId: updatedOrder.id,
+            userId,
+            accountId: account.id,
+            assetId: asset.id,
+            side: updatedOrder.side,
+            amount,
+            entryPrice: marketForTrade!.lastPrice!,
+          },
+        })
+
+        const trade = await tx.trade.create({
+          data: {
+            positionId: position.id,
+            userId,
+            status: 'OPEN',
+            fee,
+          },
+        })
+
         const heldWallet = await tx.wallet.findUnique({ where: { id: wallet!.id } })
         if (!heldWallet) throw new TradingError(409, 'WALLET_NOT_FOUND', 'Trading wallet disappeared while holding funds')
 
