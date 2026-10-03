@@ -5,6 +5,41 @@ const AES_ALGORITHM = 'aes-256-gcm'
 const TOTP_DIGITS = 6
 const TOTP_STEP_SECONDS = 30
 
+function base32Encode(buffer: Buffer): string {
+  let bits = 0
+  let value = 0
+  let output = ''
+  for (const byte of buffer) {
+    value = (value << 8) | byte
+    bits += 8
+    while (bits >= 5) {
+      output += BASE32_ALPHABET[(value >>> (bits - 5)) & 31]!
+      bits -= 5
+    }
+  }
+  if (bits > 0) output += BASE32_ALPHABET[(value << (5 - bits)) & 31]!
+  return output
+}
+
+function base32Decode(value: string): Buffer {
+  const normalized = value.replace(/=+$/g, '').replace(/\s+/g, '').toUpperCase()
+  let bits = 0
+  let current = 0
+  const bytes: number[] = []
+  for (const char of normalized) {
+    const index = BASE32_ALPHABET.indexOf(char)
+    if (index < 0) throw new Error('Invalid Base32 secret')
+    current = (current << 5) | index
+    bits += 5
+    if (bits >= 8) {
+      bytes.push((current >>> (bits - 8)) & 0xff)
+      bits -= 8
+    }
+  }
+  if (bytes.length === 0) throw new Error('Invalid Base32 secret')
+  return Buffer.from(bytes)
+}
+
 export function generateTotpSecret(bytes = 20): string {
   return base32Encode(randomBytes(bytes))
 }
