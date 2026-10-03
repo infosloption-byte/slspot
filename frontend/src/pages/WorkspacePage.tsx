@@ -528,6 +528,18 @@ function HistoryPage() {
 
   const resetPage = () => setPage(1)
 
+  const resetFilters = () => {
+    setSearch('')
+    setAssetId('')
+    setDirection('')
+    setStatus('')
+    setFrom('')
+    setTo('')
+    setSortBy('openedAt')
+    setSortOrder('desc')
+    resetPage()
+  }
+
   const exportCsv = async () => {
     setExporting(true)
     setExportError(null)
@@ -588,46 +600,137 @@ function HistoryPage() {
     <div className="workspace-page">
       <PageHeader eyebrow="Records" title="Trade history" description="Review server-recorded trades, outcomes and P&amp;L." />
 
-      <section className="history-toolbar panel">
-        <div className="history-toolbar__top">
-          <label className="history-search"><Search size={14} /><input value={search} onChange={(event) => { setSearch(event.target.value); resetPage() }} placeholder="Search trade, asset or ID" /></label>
-          <button type="button" className="quiet-button" onClick={() => { setSearch(''); setAssetId(''); setDirection(''); setStatus(''); setFrom(''); setTo(''); setSortBy('openedAt'); setSortOrder('desc'); resetPage() }}>Reset filters</button>
-          <button type="button" className="quiet-button" disabled={exporting} onClick={() => void exportCsv()}><Download size={14} /> {exporting ? 'Exporting…' : 'Export CSV'}</button>
+      <section className="trade-history-toolbar panel">
+        <div className="trade-history-toolbar__top">
+          <label className="trade-history-search">
+            <Search size={14} />
+            <input
+              value={search}
+              onChange={(event) => { setSearch(event.target.value); resetPage() }}
+              placeholder="Search trade, asset or ID"
+              aria-label="Search trade history"
+            />
+          </label>
+          <button type="button" className="quiet-button trade-history-reset" onClick={resetFilters}>
+            Reset filters
+          </button>
+          <button type="button" className="quiet-button trade-history-export" disabled={exporting} onClick={() => void exportCsv()}>
+            <Download size={14} />
+            {exporting ? 'Exporting…' : 'Export CSV'}
+          </button>
         </div>
-        <div className="history-filter-row">
-          <label><span>Status</span><select value={status} onChange={(event) => { setStatus(event.target.value as typeof status); resetPage() }}><option value="">All</option><option value="OPEN">Open</option><option value="WON">Won</option><option value="LOST">Lost</option><option value="CANCELLED">Cancelled</option><option value="EXPIRED">Expired</option></select></label>
-          <label><span>Asset</span><select value={assetId} onChange={(event) => { setAssetId(event.target.value); resetPage() }}><option value="">All assets</option>{(assets.data?.items ?? []).map((asset) => <option key={asset.assetId} value={asset.assetId}>{asset.symbol}</option>)}</select></label>
-          <label><span>Direction</span><select value={direction} onChange={(event) => { setDirection(event.target.value as typeof direction); resetPage() }}><option value="">Both</option><option value="UP">UP</option><option value="DOWN">DOWN</option></select></label>
-          <label><span>From</span><input type="date" value={from} onChange={(event) => { setFrom(event.target.value); resetPage() }} /></label>
-          <label><span>To</span><input type="date" value={to} onChange={(event) => { setTo(event.target.value); resetPage() }} /></label>
-          <label><span>Sort</span><select value={sortBy + ':' + sortOrder} onChange={(event) => { const [nextSort, nextOrder] = event.target.value.split(':'); setSortBy(nextSort as typeof sortBy); setSortOrder(nextOrder as typeof sortOrder); resetPage() }}><option value="openedAt:desc">Newest opened</option><option value="openedAt:asc">Oldest opened</option><option value="closedAt:desc">Newest closed</option><option value="amount:desc">Largest amount</option><option value="netPnl:desc">Highest P&amp;L</option><option value="netPnl:asc">Lowest P&amp;L</option></select></label>
+
+        <div className="trade-history-toolbar__filters">
+          <label className="trade-history-control">
+            <span>Status</span>
+            <select value={status} onChange={(event) => { setStatus(event.target.value as typeof status); resetPage() }}>
+              <option value="">All</option>
+              <option value="OPEN">Open</option>
+              <option value="WON">Won</option>
+              <option value="LOST">Lost</option>
+              <option value="CANCELLED">Cancelled</option>
+              <option value="EXPIRED">Expired</option>
+            </select>
+          </label>
+
+          <label className="trade-history-control">
+            <span>Asset</span>
+            <select value={assetId} onChange={(event) => { setAssetId(event.target.value); resetPage() }}>
+              <option value="">All assets</option>
+              {(assets.data?.items ?? []).map((asset) => <option key={asset.assetId} value={asset.assetId}>{asset.symbol}</option>)}
+            </select>
+          </label>
+
+          <label className="trade-history-control">
+            <span>Direction</span>
+            <select value={direction} onChange={(event) => { setDirection(event.target.value as typeof direction); resetPage() }}>
+              <option value="">Both</option>
+              <option value="UP">UP</option>
+              <option value="DOWN">DOWN</option>
+            </select>
+          </label>
+
+          <label className="trade-history-control trade-history-date">
+            <span>From</span>
+            <input type="date" value={from} max={to || undefined} onChange={(event) => { setFrom(event.target.value); resetPage() }} />
+          </label>
+
+          <label className="trade-history-control trade-history-date">
+            <span>To</span>
+            <input type="date" value={to} min={from || undefined} onChange={(event) => { setTo(event.target.value); resetPage() }} />
+          </label>
+
+          <label className="trade-history-control">
+            <span>Sort</span>
+            <select value={sortBy + ':' + sortOrder} onChange={(event) => { const [nextSort, nextOrder] = event.target.value.split(':'); setSortBy(nextSort as typeof sortBy); setSortOrder(nextOrder as typeof sortOrder); resetPage() }}>
+              <option value="openedAt:desc">Newest opened</option>
+              <option value="openedAt:asc">Oldest opened</option>
+              <option value="closedAt:desc">Newest closed</option>
+              <option value="amount:desc">Largest amount</option>
+              <option value="netPnl:desc">Highest P&amp;L</option>
+              <option value="netPnl:asc">Lowest P&amp;L</option>
+            </select>
+          </label>
         </div>
-        {assets.loading ? <span className="dashboard-note">Loading asset filter…</span> : null}
-        {exportError ? <div className="dashboard-note dashboard-note--error" role="alert">{exportError}</div> : null}
+
+        {assets.loading ? <div className="trade-history-progress"><span className="muted-dot" /> Loading asset filters…</div> : null}
+        {exportError ? <div className="trade-history-error" role="alert"><strong>Export failed.</strong> {exportError}</div> : null}
       </section>
 
-      <ApiState loading={trades.loading} error={trades.error} onRetry={() => void trades.reload()}>
-        <section className="dashboard-card panel">
-          <div className="data-table">
-            <div className="data-table__row data-table__row--header"><span>Trade</span><span>Side</span><span>Amount</span><span>Result</span><span>P&amp;L</span></div>
+      <section className="dashboard-card panel trade-history-card">
+        <div className="dashboard-card__header trade-history-card__header">
+          <div>
+            <span className="eyebrow">Results</span>
+            <h2>Recorded trades</h2>
+          </div>
+          <span className="status-pill status-pill--pending">
+            {trades.data?.pagination.total ?? 0} RECORDS
+          </span>
+        </div>
+
+        <ApiState loading={trades.loading} error={trades.error} onRetry={() => void trades.reload()}>
+          <div className="data-table trade-history-table">
+            <div className="data-table__row data-table__row--header">
+              <span>Trade</span>
+              <span>Side</span>
+              <span>Amount</span>
+              <span>Result</span>
+              <span>P&amp;L</span>
+            </div>
+
             {(trades.data?.items ?? []).map((trade) => (
-              <div className="data-table__row" key={trade.id}>
-                <div><strong>{trade.position.asset.symbol}</strong><small>{trade.id} · {formatDateTime(trade.openedAt)}</small></div>
-                <span className={trade.position.side === 'BUY' ? 'side-label side-label--up' : 'side-label side-label--down'}>{trade.position.side === 'BUY' ? 'UP' : 'DOWN'}</span>
+              <div className="data-table__row trade-history-table__row" key={trade.id}>
+                <div>
+                  <strong>{trade.position.asset.symbol}</strong>
+                  <small>{trade.id} · {formatDateTime(trade.openedAt)}</small>
+                </div>
+                <span className={trade.position.side === 'BUY' ? 'side-label side-label--up' : 'side-label side-label--down'}>
+                  {trade.position.side === 'BUY' ? 'UP' : 'DOWN'}
+                </span>
                 <span>{formatMoney(trade.position.amount)}</span>
-                <span className={trade.status === 'WON' ? 'status-pill status-pill--positive' : trade.status === 'LOST' ? 'status-pill status-pill--negative' : 'status-pill status-pill--pending'}>{trade.status}</span>
-                <strong className={Number(trade.netPnl ?? 0) >= 0 ? 'text-positive' : 'text-negative'}>{signedMoney(trade.netPnl)}</strong>
+                <span className={trade.status === 'WON' ? 'status-pill status-pill--positive' : trade.status === 'LOST' ? 'status-pill status-pill--negative' : 'status-pill status-pill--pending'}>
+                  {trade.status}
+                </span>
+                <strong className={Number(trade.netPnl ?? 0) >= 0 ? 'text-positive' : 'text-negative'}>
+                  {signedMoney(trade.netPnl)}
+                </strong>
               </div>
             ))}
+
+            {trades.data?.items.length === 0 ? <div className="dashboard-note trade-history-empty">No trades match the selected filters.</div> : null}
           </div>
-          {trades.data?.items.length === 0 ? <div className="dashboard-note">No trades match the selected filters.</div> : null}
-          {trades.data ? <Pagination page={page} totalPages={trades.data.pagination.totalPages} onChange={setPage} /> : null}
-        </section>
-      </ApiState>
+
+          {trades.data ? (
+            <div className="trade-history-footer">
+              <span>{trades.data.pagination.total} total record{trades.data.pagination.total === 1 ? '' : 's'}</span>
+              <Pagination page={page} totalPages={trades.data.pagination.totalPages} onChange={setPage} />
+            </div>
+          ) : null}
+        </ApiState>
+      </section>
     </div>
   )
 }
-
 function NotificationsPage() {
   const { user } = useAuth()
   const realtime = useRealtime()
