@@ -2,6 +2,7 @@ import {
   ArrowDownToLine,
   ArrowUpDown,
   CalendarDays,
+  Check,
   ChevronDown,
   ChevronUp,
   Clock3,
@@ -12,7 +13,7 @@ import {
   TimerReset,
   WalletCards,
 } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { TradeHistoryFilters } from '../../api/trades'
 import type { WalletTransaction } from '../../api/wallet'
 import type { OpenTrade } from '../../types/trading'
@@ -52,6 +53,75 @@ const tabs = [
   { id: 'history' as const, label: 'Trade history', icon: History },
   { id: 'wallet' as const, label: 'Wallet activity', icon: WalletCards },
 ]
+
+type BottomThemedSelectProps = {
+  label: string
+  value: string
+  options: Array<{ value: string; label: string }>
+  onChange: (value: string) => void
+}
+
+function BottomThemedSelect({ label, value, options, onChange }: BottomThemedSelectProps) {
+  const [open, setOpen] = useState(false)
+  const rootRef = useRef<HTMLDivElement>(null)
+  const selected = options.find((option) => option.value === value) ?? options[0]
+
+  useEffect(() => {
+    if (!open) return undefined
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (rootRef.current && !rootRef.current.contains(event.target as Node)) setOpen(false)
+    }
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false)
+    }
+
+    document.addEventListener('pointerdown', handlePointerDown)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [open])
+
+  return (
+    <div className="trade-history-control" ref={rootRef}>
+      <span>{label}</span>
+      <div className="trade-history-select">
+        <button
+          type="button"
+          className={open ? 'trade-history-select__trigger trade-history-select__trigger--open' : 'trade-history-select__trigger'}
+          aria-haspopup="listbox"
+          aria-expanded={open}
+          onClick={() => setOpen((current) => !current)}
+        >
+          <span>{selected?.label ?? 'Select'}</span>
+          <ChevronDown size={14} aria-hidden="true" />
+        </button>
+        {open ? (
+          <div className="trade-history-select__menu" role="listbox" aria-label={label}>
+            {options.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                role="option"
+                aria-selected={option.value === value}
+                className={option.value === value ? 'trade-history-select__option trade-history-select__option--active' : 'trade-history-select__option'}
+                onClick={() => {
+                  onChange(option.value)
+                  setOpen(false)
+                }}
+              >
+                <span>{option.label}</span>
+                {option.value === value ? <Check size={13} aria-hidden="true" /> : null}
+              </button>
+            ))}
+          </div>
+        ) : null}
+      </div>
+    </div>
+  )
+}
 
 function formatCountdown(seconds: number) {
   if (seconds < 60) return seconds + 's'
@@ -227,44 +297,39 @@ export function BottomPanel({
               />
             </label>
 
-            <label className="trade-history-control">
-              <span>Status</span>
-              <select
-                value={historyFilters.status}
-                onChange={(event) => onHistoryFiltersChange({ status: event.target.value as TradeHistoryFilters['status'] })}
-              >
-                <option value="">All settled</option>
-                <option value="WON">Won</option>
-                <option value="LOST">Lost</option>
-                <option value="CANCELLED">Cancelled</option>
-                <option value="EXPIRED">Expired</option>
-              </select>
-            </label>
+            <BottomThemedSelect
+              label="Status"
+              value={historyFilters.status}
+              options={[
+                { value: '', label: 'All settled' },
+                { value: 'WON', label: 'Won' },
+                { value: 'LOST', label: 'Lost' },
+                { value: 'CANCELLED', label: 'Cancelled' },
+                { value: 'EXPIRED', label: 'Expired' },
+              ]}
+              onChange={(value) => onHistoryFiltersChange({ status: value as TradeHistoryFilters['status'] })}
+            />
 
-            <label className="trade-history-control">
-              <span>Pair</span>
-              <select
-                value={historyFilters.assetId}
-                onChange={(event) => onHistoryFiltersChange({ assetId: event.target.value })}
-              >
-                <option value="">All pairs</option>
-                {historyAssets.map((asset) => (
-                  <option key={asset.id} value={asset.id}>{asset.symbol}</option>
-                ))}
-              </select>
-            </label>
+            <BottomThemedSelect
+              label="Pair"
+              value={historyFilters.assetId}
+              options={[
+                { value: '', label: 'All pairs' },
+                ...historyAssets.map((asset) => ({ value: asset.id, label: asset.symbol })),
+              ]}
+              onChange={(value) => onHistoryFiltersChange({ assetId: value })}
+            />
 
-            <label className="trade-history-control">
-              <span>Direction</span>
-              <select
-                value={historyFilters.direction}
-                onChange={(event) => onHistoryFiltersChange({ direction: event.target.value as TradeHistoryFilters['direction'] })}
-              >
-                <option value="">Both</option>
-                <option value="UP">UP</option>
-                <option value="DOWN">DOWN</option>
-              </select>
-            </label>
+            <BottomThemedSelect
+              label="Direction"
+              value={historyFilters.direction}
+              options={[
+                { value: '', label: 'Both' },
+                { value: 'UP', label: 'UP' },
+                { value: 'DOWN', label: 'DOWN' },
+              ]}
+              onChange={(value) => onHistoryFiltersChange({ direction: value as TradeHistoryFilters['direction'] })}
+            />
 
             <label className="trade-history-control trade-history-date">
               <span><CalendarDays size={12} /> From</span>
@@ -286,28 +351,27 @@ export function BottomPanel({
               />
             </label>
 
-            <label className="trade-history-control trade-history-sort">
-              <span><ArrowUpDown size={12} /> Sort</span>
-              <select
-                value={historyFilters.sortBy + '_' + historyFilters.sortOrder}
-                onChange={(event) => {
-                  const [sortBy, sortOrder] = event.target.value.split('_') as [
-                    TradeHistoryFilters['sortBy'],
-                    TradeHistoryFilters['sortOrder'],
-                  ]
-                  onHistoryFiltersChange({ sortBy, sortOrder })
-                }}
-              >
-                <option value="openedAt_desc">Newest</option>
-                <option value="openedAt_asc">Oldest</option>
-                <option value="amount_desc">Amount: high to low</option>
-                <option value="amount_asc">Amount: low to high</option>
-                <option value="netPnl_desc">P&amp;L: high to low</option>
-                <option value="netPnl_asc">P&amp;L: low to high</option>
-                <option value="closedAt_desc">Closed: newest first</option>
-                <option value="closedAt_asc">Closed: oldest first</option>
-              </select>
-            </label>
+            <BottomThemedSelect
+              label="Sort"
+              value={historyFilters.sortBy + '_' + historyFilters.sortOrder}
+              options={[
+                { value: 'openedAt_desc', label: 'Newest' },
+                { value: 'openedAt_asc', label: 'Oldest' },
+                { value: 'amount_desc', label: 'Amount: high to low' },
+                { value: 'amount_asc', label: 'Amount: low to high' },
+                { value: 'netPnl_desc', label: 'P&L: high to low' },
+                { value: 'netPnl_asc', label: 'P&L: low to high' },
+                { value: 'closedAt_desc', label: 'Closed: newest first' },
+                { value: 'closedAt_asc', label: 'Closed: oldest first' },
+              ]}
+              onChange={(value) => {
+                const [sortBy, sortOrder] = value.split('_') as [
+                  TradeHistoryFilters['sortBy'],
+                  TradeHistoryFilters['sortOrder'],
+                ]
+                onHistoryFiltersChange({ sortBy, sortOrder })
+              }}
+            />
 
             <button className="quiet-button trade-history-reset" type="button" onClick={onHistoryReset}>
               <RotateCcw size={14} />
