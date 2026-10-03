@@ -759,7 +759,7 @@ export class TradingService {
           idempotencyKey: 'wallet-initial:' + wallet.id,
           referenceType: 'SYSTEM',
           referenceId: wallet.id,
-          description: 'Initial development trading balance',
+          description: 'Initial demo trading balance',
         },
       })
       await tx.ledgerEntry.create({
