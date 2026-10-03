@@ -335,6 +335,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
 .position-row, .activity-row { display: grid; align-items: center; gap: 10px; padding: 10px 8px; border-radius: var(--radius-sm); font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .position-row { grid-template-columns: 1.4fr 0.7fr 1fr 1fr 0.7fr 0.9fr 40px; min-width: 640px; }
 .activity-row { grid-template-columns: 1.5fr 0.9fr 0.9fr 0.9fr 1fr; min-width: 600px; }
+.activity-row--trade-history { grid-template-columns: 1.4fr 0.65fr 0.8fr 1fr 1fr 0.85fr 1fr; min-width: 860px; }
 .position-row:not(.position-row--header):hover, .activity-row:not(.activity-row--header):hover { background: var(--bg-2); }
 .position-row--selected { background: var(--accent-soft); }
 .position-row--header, .activity-row--header { color: var(--muted-2); font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700; }
