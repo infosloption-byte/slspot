@@ -48,7 +48,7 @@ function Table({ children }: { children: ReactNode }) {
 }
 
 function ErrorNotice({ message, onRetry }: { message: string; onRetry: () => void }) {
-  return <div className="notice notice--error" role="alert"><XCircle size={17} /><span>{message}</span><button className="button button--ghost button--small" onClick={onRetry}>Retry</button></div>
+  return <div className="notice notice--error" role="alert"><XCircle size={17} /><span>{message}</span><button type="button" className="button button--ghost button--small" onClick={onRetry}>Retry</button></div>
 }
 
 function Splash() {
