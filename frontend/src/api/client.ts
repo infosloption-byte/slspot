@@ -40,6 +40,47 @@ function createRequestId(): string {
   return crypto.randomUUID()
 }
 
+const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS'])
+let csrfToken: string | null = null
+let csrfFetchPromise: Promise<string | null> | null = null
+
+function isUnsafeMethod(method: string): boolean {
+  return !SAFE_METHODS.has(method.toUpperCase())
+}
+
+function extractCsrfToken(body: unknown): string | null {
+  if (!body || typeof body !== 'object') return null
+  const data = (body as { data?: unknown }).data
+  if (!data || typeof data !== 'object') return null
+  const token = (data as { csrfToken?: unknown }).csrfToken
+  return typeof token === 'string' && token.length > 0 ? token : null
+}
+
+async function ensureCsrfToken(): Promise<string | null> {
+  if (csrfToken) return csrfToken
+  if (csrfFetchPromise) return csrfFetchPromise
+
+  csrfFetchPromise = (async () => {
+    try {
+      const response = await fetch(apiBaseUrl + '/auth/csrf', {
+        method: 'GET',
+        credentials: 'include',
+        headers: { Accept: 'application/json', 'x-request-id': createRequestId() },
+      })
+      const body = await readResponseBody(response)
+      if (!response.ok) return null
+      csrfToken = extractCsrfToken(body)
+      return csrfToken
+    } catch {
+      return null
+    } finally {
+      csrfFetchPromise = null
+    }
+  })()
+
+  return csrfFetchPromise
+}
+
 async function readResponseBody(response: Response): Promise<unknown> {
   const contentType = response.headers.get('content-type') ?? ''
 
@@ -102,6 +143,7 @@ export async function apiRequest<T>(
   const retryAllowed = requestCanRetry(method, idempotencyKey)
   const requestedAttempts = typeof retry === 'object' ? retry.maxAttempts ?? 3 : retry === false ? 1 : 3
   const maxAttempts = retryAllowed ? Math.max(1, Math.min(4, requestedAttempts)) : 1
+  let csrfRetryUsed = false
 
   if (callerSignal?.aborted) {
     throw new DOMException('The operation was aborted', 'AbortError')
@@ -111,6 +153,13 @@ export async function apiRequest<T>(
 
   try {
     for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+      if (isUnsafeMethod(method) && !url.endsWith('/auth/csrf')) {
+        const token = await ensureCsrfToken()
+        if (!token) {
+          throw new ApiError(403, 'CSRF protection token is unavailable', 'CSRF_UNAVAILABLE', requestId)
+        }
+      }
+
       const controller = new AbortController()
       const forwardAbort = () => controller.abort()
       if (callerSignal) {
@@ -126,6 +175,7 @@ export async function apiRequest<T>(
           headers: {
             Accept: 'application/json',
             ...(hasBody ? { 'Content-Type': 'application/json' } : {}),
+            ...(isUnsafeMethod(method) && csrfToken ? { 'x-csrf-token': csrfToken } : {}),
             'x-request-id': requestId,
             ...(idempotencyKey ? { 'idempotency-key': idempotencyKey } : {}),
             ...requestInit.headers,
@@ -133,7 +183,11 @@ export async function apiRequest<T>(
         })
         const body = await readResponseBody(response)
 
-        if (response.ok) return body as T
+        if (response.ok) {
+          const responseCsrfToken = extractCsrfToken(body)
+          if (responseCsrfToken) csrfToken = responseCsrfToken
+          return body as T
+        }
 
         if (response.status === 401) {
           window.dispatchEvent(new Event('slspot:auth-expired'))
@@ -160,6 +214,13 @@ export async function apiRequest<T>(
           payload?.requestId,
           retryAfterSeconds,
         )
+
+        if (isUnsafeMethod(method) && error.code === 'CSRF_INVALID' && !csrfRetryUsed) {
+          csrfRetryUsed = true
+          csrfToken = null
+          await ensureCsrfToken()
+          continue
+        }
 
         if (attempt < maxAttempts && statusCanRetry(response.status)) {
           await sleep(retryDelayMs(attempt, retryAfterSeconds), callerSignal)
