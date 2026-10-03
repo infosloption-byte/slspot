@@ -262,6 +262,7 @@ export function TradingPage() {
       </div>
 
       <TradePanel
+        key={selectedAsset.assetId}
         asset={selectedAsset}
         balance={Number(wallet.data?.availableBalance ?? '0')}
         soundEnabled={soundEnabled}
