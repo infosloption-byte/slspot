@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import { Prisma, type PrismaClient } from '../generated/prisma/client.js'
 import { env } from '../config/env.js'
 import { createRealtimeEvent, serializeRealtimeEvent } from '../realtime/events.js'
@@ -811,7 +812,7 @@ export class TradingService {
           status: 'COMPLETED',
           amount: refillAmount,
           currency: wallet.currency,
-          idempotencyKey: 'demo-trading-refill:' + wallet.id + ':' + crypto.randomUUID(),
+          idempotencyKey: 'demo-trading-refill:' + wallet.id + ':' + randomUUID(),
           referenceType: 'DEMO_WALLET',
           referenceId: wallet.id,
           description: 'Demo wallet auto-refill',
