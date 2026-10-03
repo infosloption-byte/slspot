@@ -781,6 +781,15 @@ export class PlatformApiService {
       })
     })
 
+    await this.prisma.auditLog.create({
+      data: {
+        actorUserId: userId,
+        action: 'DEMO_DEPOSIT_COMPLETED',
+        entityType: 'Deposit',
+        entityId: result.id,
+        metadata: { amount: result.amount.toString(), currency: result.currency, clientRequestId: requestId },
+      },
+    })
     await this.createNotification(userId, 'DEPOSIT', 'Demo deposit completed', 'Demo wallet was credited with ' + amount.toString() + ' ' + result.currency + '.')
     return this.toApiDeposit(result)
   }
@@ -875,6 +884,15 @@ export class PlatformApiService {
       })
     })
 
+    await this.prisma.auditLog.create({
+      data: {
+        actorUserId: userId,
+        action: 'DEMO_WITHDRAWAL_COMPLETED',
+        entityType: 'Withdrawal',
+        entityId: result.id,
+        metadata: { amount: result.amount.toString(), currency: result.currency, clientRequestId: requestId },
+      },
+    })
     await this.createNotification(userId, 'WITHDRAWAL', 'Demo withdrawal completed', 'Demo wallet withdrawal of ' + result.amount.toString() + ' ' + result.currency + ' was completed.')
     return this.toApiWithdrawal(result)
   }
