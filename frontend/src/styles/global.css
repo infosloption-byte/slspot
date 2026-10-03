@@ -83,6 +83,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
 .topbar__auth-error { max-width: 190px; color: var(--red); font-size: 11px; line-height: 1.3; }
 .account-chip__body small { display: block; font-size: 11px; color: var(--muted); line-height: 1.1; }
 .account-chip__body strong { display: block; font-size: 15px; color: var(--text); font-variant-numeric: tabular-nums; }
+.topbar__account-email { display: block; margin-top: 2px; color: var(--muted-2); font-size: 10px; line-height: 1.1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 220px; }
 .topbar__deposit { height: 42px; }
 
 /* ---------- 3. Shared ---------- */
@@ -190,6 +191,17 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
 .chart-option__line-icon { width: 14px; border-top: 2px dashed var(--accent); }
 
 .chart-stage { position: relative; flex: 1; min-height: 240px; overflow: hidden; }
+.chart-data-state {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(13,13,16,.82);
+  z-index: 10;
+}
+.chart-data-state > .state-card { width: min(420px, 100%); }
+.chart-data-state > :not(.state-card) { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); font-size: 12px; }
 .chart-canvas-shell { position: absolute; inset: 0; }
 .chart-canvas { width: 100%; height: 100%; }
 .chart-attribution { position: absolute; left: 12px; top: 10px; z-index: 2; pointer-events: none; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted-2); }
