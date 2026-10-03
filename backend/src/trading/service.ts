@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { Prisma, type PrismaClient } from '../generated/prisma/client.js'
+import { Prisma, type PrismaClient, type Wallet } from '../generated/prisma/client.js'
 import { env } from '../config/env.js'
 import { createRealtimeEvent, serializeRealtimeEvent } from '../realtime/events.js'
 import { isRedisReady, publish } from '../realtime/redis.js'
@@ -789,8 +789,8 @@ export class TradingService {
   private async ensureDemoBalance(
     tx: Prisma.TransactionClient,
     accountId: string,
-    wallet: Prisma.Wallet,
-  ): Promise<Prisma.Wallet> {
+    wallet: Wallet,
+  ): Promise<Wallet> {
     if (wallet.status !== 'ACTIVE' || wallet.availableBalance.gt(0) || wallet.heldBalance.gt(0)) return wallet
 
     const refillAmount = new Prisma.Decimal(env.trading.initialBalance)
