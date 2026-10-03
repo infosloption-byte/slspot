@@ -331,7 +331,7 @@ function WalletPage() {
   const wallets = useWallets()
   const { mode, setMode } = useWalletMode()
   const [page, setPage] = useState(1)
-  const [filters, setFilters] = useState({ search: '', type: undefined, status: undefined, from: '', to: '' })
+  const [filters, setFilters] = useState<WalletTransactionFilters>({ search: '', type: undefined, status: undefined, from: '', to: '' })
   const transactions = useWalletTransactions(page, 10, filters)
   const [fundingAction, setFundingAction] = useState('deposit')
   const [amount, setAmount] = useState('')
@@ -621,7 +621,7 @@ function NotificationsPage() {
   )
 }
 
-function SecurityPage {
+function SecurityPage() {
   const sessions = useAuthSessions()
   const { user, logoutAll } = useAuth()
   const [actionError, setActionError] = useState<string | null>(null)
