@@ -286,19 +286,73 @@ export class PlatformApiService {
     }
   }
 
-  async listTrades(userId: string, input: { page?: number; pageSize?: number; status?: string }, mode: WalletMode = 'DEMO'): Promise<ApiListResult<ApiTrade>> {
+  async listTrades(
+    userId: string,
+    input: {
+      page?: number
+      pageSize?: number
+      statuses?: Array<'OPEN' | 'WON' | 'LOST' | 'CANCELLED' | 'EXPIRED'>
+      search?: string
+      assetId?: string
+      direction?: 'UP' | 'DOWN'
+      from?: Date
+      to?: Date
+      sortBy?: 'openedAt' | 'closedAt' | 'amount' | 'netPnl'
+      sortOrder?: 'asc' | 'desc'
+      settledOnly?: boolean
+    },
+    mode: WalletMode = 'DEMO',
+  ): Promise<ApiListResult<ApiTrade>> {
     const paging = normalizePage(input.page, input.pageSize)
-    const where = {
-      userId,
-      position: { account: { mode } },
-      ...(input.status ? { status: input.status as 'OPEN' | 'WON' | 'LOST' | 'CANCELLED' | 'EXPIRED' } : {}),
+    const statusWhere = input.statuses?.length
+      ? { in: input.statuses }
+      : input.settledOnly
+        ? { not: 'OPEN' as const }
+        : undefined
+    const positionWhere = {
+      account: { mode },
+      ...(input.assetId ? { assetId: input.assetId } : {}),
+      ...(input.direction ? { side: input.direction === 'UP' ? 'BUY' as const : 'SELL' as const } : {}),
     }
+    const where: Prisma.TradeWhereInput = {
+      userId,
+      ...(statusWhere ? { status: statusWhere } : {}),
+      ...(input.from || input.to
+        ? {
+            openedAt: {
+              ...(input.from ? { gte: input.from } : {}),
+              ...(input.to ? { lte: input.to } : {}),
+            },
+          }
+        : {}),
+      position: positionWhere,
+      ...(input.search
+        ? {
+            OR: [
+              { id: { contains: input.search } },
+              { position: { id: { contains: input.search } } },
+              { position: { asset: { symbol: { contains: input.search } } } },
+              { position: { asset: { name: { contains: input.search } } } },
+            ],
+          }
+        : {}),
+    }
+
+    const sortOrder = input.sortOrder ?? 'desc'
+    const orderBy: Prisma.TradeOrderByWithRelationInput =
+      input.sortBy === 'closedAt'
+        ? { closedAt: sortOrder }
+        : input.sortBy === 'amount'
+          ? { position: { amount: sortOrder } }
+          : input.sortBy === 'netPnl'
+            ? { netPnl: sortOrder }
+            : { openedAt: sortOrder }
 
     const [total, trades] = await this.prisma.$transaction([
       this.prisma.trade.count({ where }),
       this.prisma.trade.findMany({
         where,
-        orderBy: { openedAt: 'desc' },
+        orderBy,
         skip: (paging.page - 1) * paging.pageSize,
         take: paging.pageSize,
         include: {
