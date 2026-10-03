@@ -415,7 +415,7 @@ function WalletPage() {
           <StatCard label="Available" value={formatMoney(wallet.data?.availableBalance, wallet.data?.currency)} change={isDemo ? 'Demo wallet' : 'Real wallet'} positive icon={WalletCards} />
           <StatCard label="Held" value={formatMoney(wallet.data?.heldBalance, wallet.data?.currency)} change="Reserved" positive icon={DollarSign} />
           <StatCard label="Total" value={formatMoney(wallet.data?.totalBalance, wallet.data?.currency)} change="Available + held" positive icon={TrendingUp} />
-          <StatCard label="Transactions" value={String(transactions.data?.pagination.total ?? 0)} change="Filtered records" positive icon={Clock3} />
+          <StatCard label="Transactions" value={String(transactions.data?.pagination.total ?? 0)} change={formatMoney(wallet.data?.pendingFunds, wallet.data?.currency) + ' pending'} positive icon={Clock3} />
         </div>
 
         <div className="wallet-grid">
@@ -711,10 +711,10 @@ function AccountPage() {
 
 function SupportPage() {
   const faqs = [
-    ['How do I place a trade?', 'The Trading Room currently runs demo execution locally; server-authoritative trading follows the market-data milestone.'],
-    ['Where can I see open positions?', 'Open positions are now read from the authenticated portfolio API.'],
-    ['Are the displayed balances real?', 'Dashboard and Wallet balances now come from server state.'],
-    ['When will deposits be available?', 'Funding mutations are deferred until the ledger and payment services are implemented.'],
+    ['How do I place a trade?', 'The Trading Room now uses server-authoritative demo execution and settlement.'],
+    ['Where can I see open positions?', 'Open positions are read from the authenticated portfolio API.'],
+    ['Are the displayed balances real?', 'Dashboard and Wallet balances come from server state. Demo funds are simulated.'],
+    ['When will real deposits be available?', 'Real-money funding remains gated until a payment provider, KYC controls and reconciliation flow are selected and connected.'],
   ]
 
   return (
