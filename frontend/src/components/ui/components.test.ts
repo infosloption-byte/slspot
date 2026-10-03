@@ -33,7 +33,7 @@ test('shared Tabs uses tab semantics', () => {
 })
 
 test('shared DataTable renders semantic table markup', () => {
-  const html = renderToStaticMarkup(createElement(DataTable, {
+  const html = renderToStaticMarkup(createElement(DataTable<{ id: string; name: string }>, {
     columns: [{ key: 'name', header: 'Name', render: (row: { name: string }) => row.name }],
     rows: [{ id: '1', name: 'BTC/USD' }],
     getRowKey: (row: { id: string }) => row.id,
