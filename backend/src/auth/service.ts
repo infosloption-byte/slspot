@@ -1,11 +1,9 @@
-import { createHash } from 'node:crypto'
 import type { FastifyRequest } from 'fastify'
 import { Prisma, type PrismaClient } from '../generated/prisma/client.js'
 import { env } from '../config/env.js'
 import { createRealtimeEvent, serializeRealtimeEvent } from '../realtime/events.js'
 import { isRedisReady, publish } from '../realtime/redis.js'
 import { createOpaqueToken, hashOpaqueToken, hashPassword, verifyPassword } from './crypto.js'
-import { createOtpAuthUri, createRecoveryCodes, decryptTotpSecret, encryptTotpSecret, generateTotpSecret, normalizeRecoveryCode, verifyTotpCode } from './totp.js'
 import { createOtpAuthUri, createRecoveryCodes, decryptTotpSecret, encryptTotpSecret, generateTotpSecret, normalizeRecoveryCode, verifyTotpCode } from './totp.js'
 import { LedgerService } from '../ledger/service.js'
 
@@ -73,6 +71,16 @@ function validateCountryCode(value: string | undefined): string | null {
     throw new AuthError(400, 'INVALID_COUNTRY_CODE', 'Country code must be a 2-letter ISO code')
   }
   return countryCode
+}
+
+function describeUserAgent(userAgent?: string): string {
+  if (!userAgent) return 'Unknown browser'
+  if (/Edg\//i.test(userAgent)) return 'Microsoft Edge'
+  if (/Chrome\//i.test(userAgent)) return 'Google Chrome'
+  if (/Firefox\//i.test(userAgent)) return 'Mozilla Firefox'
+  if (/Safari\//i.test(userAgent) && !/Chrome\//i.test(userAgent)) return 'Safari'
+  if (/Mobile/i.test(userAgent)) return 'Mobile browser'
+  return 'Browser session'
 }
 
 export class AuthService {
@@ -200,10 +208,6 @@ export class AuthService {
     if (user.status !== 'ACTIVE') {
       throw new AuthError(403, 'ACCOUNT_UNAVAILABLE', 'This account is not available for login')
     }
-
-    const sessionToken = createOpaqueToken(48)
-    const sessionTtl = input.rememberDevice ? env.auth.sessionTtlSeconds : env.auth.shortSessionTtlSeconds
-    const expiresAt = new Date(now.getTime() + sessionTtl * 1000)
 
     if (user.twoFactorEnabled) {
       if (!user.twoFactorSecretEnc) {
@@ -463,16 +467,17 @@ export class AuthService {
   }
 
   async logout(sessionId: string): Promise<void> {
-    await this.prisma.session.updateMany({
-      where: { id: sessionId, revokedAt: null },
-      data: { revokedAt: new Date() },
-    })
+    const now = new Date()
+    const session = await this.prisma.session.findUnique({ where: { id: sessionId }, select: { userId: true, deviceId: true } })
+    await this.prisma.session.updateMany({ where: { id: sessionId, revokedAt: null }, data: { revokedAt: now } })
+    if (session?.deviceId) await this.prisma.device.update({ where: { id: session.deviceId }, data: { revokedAt: now } })
   }
 
   async logoutAll(userId: string): Promise<void> {
-    await this.prisma.session.updateMany({
-      where: { userId, revokedAt: null },
-      data: { revokedAt: new Date() },
+    const now = new Date()
+    await this.prisma.$transaction(async (tx) => {
+      await tx.session.updateMany({ where: { userId, revokedAt: null }, data: { revokedAt: now } })
+      await tx.device.updateMany({ where: { userId, revokedAt: null }, data: { revokedAt: now } })
     })
   }
 
@@ -485,6 +490,7 @@ export class AuthService {
 
     return sessions.map((session) => ({
       id: session.id,
+      deviceId: session.deviceId,
       ipAddress: session.ipAddress,
       userAgent: session.userAgent,
       createdAt: session.createdAt,
@@ -495,11 +501,12 @@ export class AuthService {
   }
 
   async revokeSession(userId: string, sessionId: string): Promise<void> {
-    const result = await this.prisma.session.updateMany({
-      where: { id: sessionId, userId, revokedAt: null },
-      data: { revokedAt: new Date() },
-    })
+    const now = new Date()
+    const session = await this.prisma.session.findFirst({ where: { id: sessionId, userId, revokedAt: null }, select: { deviceId: true } })
+    const result = await this.prisma.session.updateMany({ where: { id: sessionId, userId, revokedAt: null }, data: { revokedAt: now } })
     if (result.count === 0) throw new AuthError(404, 'SESSION_NOT_FOUND', 'Session was not found')
+    if (session?.deviceId) await this.prisma.device.update({ where: { id: session.deviceId }, data: { revokedAt: now } })
+    await this.writeAudit('SESSION_REVOKED', sessionId, userId)
   }
 
   async verifyEmail(token: string): Promise<AuthUser> {
