@@ -1,0 +1,3 @@
+ALTER TABLE `Market`
+  ADD COLUMN `lastChangePct` DECIMAL(18,8) NULL,
+  ADD COLUMN `lastVolume` DECIMAL(30,8) NULL;
