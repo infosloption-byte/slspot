@@ -63,10 +63,13 @@ function parseAuthSameSite(value: string | undefined): AuthSameSite {
   }
   return sameSite as AuthSameSite
 }
-function parseCookieName(value: string | undefined): string {
-  const name = value?.trim() || 'slspot_session'
+function parseCookieName(value: string | undefined, nodeEnv: NodeEnv, defaultName: string): string {
+  const name = value?.trim() || defaultName
   if (!/^[A-Za-z0-9!#$%&'*+.^_`|~-]{1,64}$/.test(name)) {
-    throw new Error('AUTH_COOKIE_NAME must be a valid cookie name')
+    throw new Error('Cookie name must be a valid cookie name')
+  }
+  if (nodeEnv === 'production' && !name.startsWith('__Host-')) {
+    throw new Error('Production authentication/CSRF cookies must use the __Host- prefix')
   }
   return name
 }
@@ -365,7 +368,6 @@ export const env = {
     csrfCookieName,
     cookieSameSite: parseAuthSameSite(process.env.AUTH_COOKIE_SAMESITE),
     cookieSecure: authCookieSecure,
-    csrfSecret,
     exposeDevTokens,
   },
 } as const
