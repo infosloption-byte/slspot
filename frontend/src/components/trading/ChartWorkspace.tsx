@@ -671,15 +671,12 @@ export function ChartWorkspace({ asset, onOpenMarkets, openTrades, now, realtime
     })),
     [asset, timeframe],
   )
-  const [liveCandles, setLiveCandles] = useState<ChartCandle[]>([])
-
-  useEffect(() => {
-    if (candleResource.data?.candles.length) {
-      setLiveCandles(toChartCandles(candleResource.data.candles))
-      return
-    }
-    setLiveCandles(usingMockCandles ? mockCandles : [])
-  }, [candleResource.data, marketInterval, mockCandles, usingMockCandles])
+  const datasetKey = asset.symbol + ':' + marketInterval
+  const [liveCandleUpdates, setLiveCandleUpdates] = useState<Array<ChartCandle & { datasetKey: string }>>([])
+  const baseCandles = useMemo(
+    () => candleResource.data?.candles.length ? toChartCandles(candleResource.data.candles) : usingMockCandles ? mockCandles : [],
+    [candleResource.data, mockCandles, usingMockCandles],
+  )
 
   useEffect(() => {
     return realtime.onEvent((event) => {
@@ -708,19 +705,24 @@ export function ChartWorkspace({ asset, onOpenMarkets, openTrades, now, realtime
       }
       if (!Number.isFinite(next.time) || !Number.isFinite(next.open) || !Number.isFinite(next.high) || !Number.isFinite(next.low) || !Number.isFinite(next.close)) return
 
-      setLiveCandles((current) => {
-        const index = current.findIndex((item) => Number(item.time) === Number(next.time))
-        if (index >= 0) {
-          const updated = [...current]
-          updated[index] = next
-          return updated
-        }
-        return [...current, next].slice(-200)
+      setLiveCandleUpdates((current) => {
+        const nextUpdate = { ...next, datasetKey }
+        const withoutSame = current.filter((item) => !(item.datasetKey === datasetKey && Number(item.time) === Number(next.time)))
+        return [...withoutSame, nextUpdate].slice(-200)
       })
     })
-  }, [asset.assetId, asset.symbol, marketInterval, realtime])
+  }, [asset.assetId, asset.symbol, datasetKey, marketInterval, realtime])
 
-  const candles = liveCandles
+  const candles = useMemo(() => {
+    const updates = liveCandleUpdates.filter((item) => item.datasetKey === datasetKey)
+    if (!updates.length) return baseCandles
+    const merged = new Map<number, ChartCandle>(baseCandles.map((item) => [Number(item.time), item]))
+    for (const update of updates) {
+      const { datasetKey: _datasetKey, ...candle } = update
+      merged.set(Number(candle.time), candle)
+    }
+    return [...merged.values()].sort((left, right) => Number(left.time) - Number(right.time)).slice(-200)
+  }, [baseCandles, datasetKey, liveCandleUpdates])
   const rsi = useMemo(() => calculateRsi(candles, indicatorPeriod), [candles, indicatorPeriod])
   const macd = useMemo(() => calculateMacd(candles), [candles])
   const stochastic = useMemo(() => calculateStochastic(candles, indicatorPeriod), [candles, indicatorPeriod])
