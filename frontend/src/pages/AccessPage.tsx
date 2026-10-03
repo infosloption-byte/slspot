@@ -1,5 +1,5 @@
 import { ArrowRight, CheckCircle2, KeyRound, MailCheck, ShieldCheck } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router'
 import { ApiError } from '../api/client'
@@ -147,7 +147,7 @@ export function AccessPage() {
   const challengeToken = routeState.challengeToken ?? storedChallenge?.challengeToken ?? ''
   const initialChallengeRememberDevice = routeState.rememberDevice ?? storedChallenge?.rememberDevice ?? false
   // Seed the local control from the server-directed challenge state once.
-  useMemo(() => { if (location.pathname === '/2fa') setRememberDevice(initialChallengeRememberDevice) }, [initialChallengeRememberDevice, location.pathname])
+  useEffect(() => { if (location.pathname === '/2fa') setRememberDevice(initialChallengeRememberDevice) }, [initialChallengeRememberDevice, location.pathname])
   const destination = typeof routeState.from === 'string' && routeState.from.startsWith('/app/')
     ? routeState.from
     : typeof storedChallenge?.from === 'string' && storedChallenge.from.startsWith('/app/')
