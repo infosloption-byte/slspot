@@ -428,6 +428,7 @@ export class AuthService {
     if (!user.twoFactorEnabled || !user.twoFactorSecretEnc) throw new AuthError(409, 'TWO_FACTOR_NOT_ENABLED', 'Two-factor authentication is not enabled')
     let secret: string
     try { secret = decryptTotpSecret(user.twoFactorSecretEnc, env.auth.twoFactorEncryptionKey) } catch { throw new AuthError(503, 'TWO_FACTOR_UNAVAILABLE', 'Two-factor configuration is not available') }
+    if (!/^\d{6}$/.test(code)) throw new AuthError(400, 'INVALID_TWO_FACTOR_CODE', 'Authenticator code must contain exactly six digits')
     if (!verifyTotpCode(secret, code)) throw new AuthError(401, 'INVALID_TWO_FACTOR_CODE', 'The authenticator code is incorrect')
     await this.prisma.$transaction(async (tx) => {
       await tx.user.update({ where: { id: userId }, data: { twoFactorEnabled: false, twoFactorSecretEnc: null, twoFactorPendingSecretEnc: null } })
