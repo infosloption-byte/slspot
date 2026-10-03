@@ -116,10 +116,36 @@ export function Select({ value, options, onChange, label, className = '' }: Sele
             type="button"
             role="option"
             aria-selected={option.value === value}
-            className={option.value === value ? 'select-field__option select-field__option--active' : 'select-field__option'}
+            className={index === highlightedIndex ? 'select-field__option select-field__option--highlighted' : option.value === value ? 'select-field__option select-field__option--active' : 'select-field__option'}
+            onMouseEnter={() => setHighlightedIndex(index)}
             onClick={() => {
               onChange(option.value)
               setOpen(false)
+              triggerRef.current?.focus()
+            }}
+            onKeyDown={(event) => {
+              if (event.key === 'ArrowDown') {
+                event.preventDefault()
+                setHighlightedIndex((current) => Math.min(options.length - 1, current + 1))
+              } else if (event.key === 'ArrowUp') {
+                event.preventDefault()
+                setHighlightedIndex((current) => Math.max(0, current - 1))
+              } else if (event.key === 'Home') {
+                event.preventDefault()
+                setHighlightedIndex(0)
+              } else if (event.key === 'End') {
+                event.preventDefault()
+                setHighlightedIndex(Math.max(0, options.length - 1))
+              } else if (event.key === 'Escape') {
+                event.preventDefault()
+                setOpen(false)
+                triggerRef.current?.focus()
+              } else if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault()
+                onChange(option.value)
+                setOpen(false)
+                triggerRef.current?.focus()
+              }
             }}
           >
             <span>{option.label}</span>
