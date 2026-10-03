@@ -1,14 +1,15 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo } from 'react'
 import type { MarketPrice } from '../api/contracts'
 import type { MarketAsset } from '../data/mockMarket'
 import { useRealtime } from '../realtime/useRealtime'
 import { marketChannel } from '../realtime/subscriptions'
 import { useMarketAssets } from './useServerState'
+import { setMarketQuote, useMarketStore } from '../state/marketStore'
 
 export function useLiveMarketAssets() {
   const resource = useMarketAssets(100)
   const realtime = useRealtime()
-  const [quotes, setQuotes] = useState<Record<string, MarketPrice>>({})
+  const { quotes } = useMarketStore()
 
   useEffect(() => {
     if (!resource.data) return
@@ -55,10 +56,7 @@ export function useLiveMarketAssets() {
         timestamp,
       }
 
-      setQuotes((current) => ({
-        ...current,
-        [assetId]: quote,
-      }))
+      setMarketQuote(quote)
     })
   }, [realtime])
 
