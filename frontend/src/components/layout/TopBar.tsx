@@ -135,7 +135,7 @@ export function TopBar() {
           aria-expanded={walletMenuOpen}
           aria-controls={walletMenuOpen ? walletMenuId : undefined}
           onKeyDown={(event) => {
-            if (event.key === 'ArrowDown' || event.key === 'Enter' || event.key === ' ') {
+            if (event.key === 'ArrowDown') {
               event.preventDefault()
               setWalletMenuOpen(true)
             } else if (event.key === 'Escape' && walletMenuOpen) {
