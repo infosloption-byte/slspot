@@ -2448,28 +2448,6 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
     flex-direction: column;
   }
 
-  .data-table {
-    margin-inline: -2px;
-  }
-
-  .data-table__row {
-    min-width: 0;
-    grid-template-columns: 1fr auto;
-    gap: 8px;
-  }
-
-  .data-table__row--header {
-    display: none;
-  }
-
-  .data-table__row > *:nth-child(2),
-  .data-table__row > *:nth-child(3),
-  .data-table__row > *:nth-child(4),
-  .data-table__row > *:nth-child(5) {
-    grid-column: 2;
-    text-align: right;
-  }
-
   .notification-actions {
     gap: 6px;
   }
