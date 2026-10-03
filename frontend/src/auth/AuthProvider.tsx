@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useSyncExternalStore } from 'react'
 import type { PropsWithChildren } from 'react'
 import { ApiError } from '../api/client'
 import { authApi } from '../api/auth'
@@ -17,39 +17,111 @@ type AuthContextValue = {
   logoutAll: () => Promise<void>
 }
 
-const AuthContext = createContext<AuthContextValue | null>(null)
+type AuthSnapshot = {
+  status: AuthStatus
+  user: AuthSession | null
+}
 
 const AUTH_EXPIRED_EVENT = 'slspot:auth-expired'
 
-export function AuthProvider({ children }: PropsWithChildren) {
-  const [status, setStatus] = useState<AuthStatus>('loading')
-  const [user, setUser] = useState<AuthSession | null>(null)
+let snapshot: AuthSnapshot = {
+  status: 'loading',
+  user: null,
+}
 
-  const clearSession = useCallback(() => {
-    setUser(null)
-    setStatus('unauthenticated')
-  }, [])
+const listeners = new Set<() => void>()
+let bootstrapPromise: Promise<AuthSession | null> | null = null
 
-  const refresh = useCallback(async () => {
+function emit(next: AuthSnapshot): void {
+  snapshot = next
+  listeners.forEach((listener) => listener())
+}
+
+const authStore = {
+  subscribe(listener: () => void): () => void {
+    listeners.add(listener)
+    return () => listeners.delete(listener)
+  },
+
+  getSnapshot(): AuthSnapshot {
+    return snapshot
+  },
+
+  clear(): void {
+    emit({ status: 'unauthenticated', user: null })
+  },
+
+  async bootstrap(): Promise<AuthSession | null> {
+    if (snapshot.status !== 'loading') return snapshot.user
+    if (bootstrapPromise) return bootstrapPromise
+
+    bootstrapPromise = (async () => {
+      try {
+        const result = await authApi.me()
+        emit({ status: 'authenticated', user: result.user })
+        return result.user
+      } catch (error) {
+        if (error instanceof ApiError && error.status !== 401) {
+          emit({ status: 'unauthenticated', user: null })
+          return null
+        }
+
+        emit({ status: 'unauthenticated', user: null })
+        return null
+      } finally {
+        bootstrapPromise = null
+      }
+    })()
+
+    return bootstrapPromise
+  },
+
+  async refresh(): Promise<AuthSession | null> {
     try {
       const result = await authApi.me()
-      setUser(result.user)
-      setStatus('authenticated')
+      emit({ status: 'authenticated', user: result.user })
       return result.user
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {
-        clearSession()
-        return null
+        emit({ status: 'unauthenticated', user: null })
       }
-
-      setStatus((current) => current === 'loading' ? 'unauthenticated' : current)
       return null
     }
-  }, [clearSession])
+  },
+
+  async login(email: string, password: string): Promise<AuthSession> {
+    const result = await authApi.login({ email, password })
+    emit({ status: 'authenticated', user: result.user })
+    return result.user
+  },
+
+  async register(email: string, password: string): Promise<RegistrationResponse> {
+    return authApi.register({ email, password })
+  },
+
+  async logout(): Promise<void> {
+    await authApi.logout()
+    authStore.clear()
+  },
+
+  async logoutAll(): Promise<void> {
+    await authApi.logoutAll()
+    authStore.clear()
+  },
+}
+
+export function AuthProvider({ children }: PropsWithChildren) {
+  const current = useSyncExternalStore(
+    authStore.subscribe,
+    authStore.getSnapshot,
+    authStore.getSnapshot,
+  )
 
   useEffect(() => {
-    void refresh()
-  }, [refresh])
+    void authStore.bootstrap()
+  }, [])
+
+  const clearSession = useCallback(() => authStore.clear(), [])
 
   useEffect(() => {
     const handleExpired = () => clearSession()
@@ -57,37 +129,22 @@ export function AuthProvider({ children }: PropsWithChildren) {
     return () => window.removeEventListener(AUTH_EXPIRED_EVENT, handleExpired)
   }, [clearSession])
 
-  const login = useCallback(async (email: string, password: string) => {
-    const result = await authApi.login({ email, password })
-    setUser(result.user)
-    setStatus('authenticated')
-    return result.user
-  }, [])
-
-  const register = useCallback(async (email: string, password: string) => {
-    return authApi.register({ email, password })
-  }, [])
-
-  const logout = useCallback(async () => {
-    await authApi.logout()
-    clearSession()
-  }, [clearSession])
-
-  const logoutAll = useCallback(async () => {
-    await authApi.logoutAll()
-    clearSession()
-  }, [clearSession])
+  const refresh = useCallback(() => authStore.refresh(), [])
+  const login = useCallback((email: string, password: string) => authStore.login(email, password), [])
+  const register = useCallback((email: string, password: string) => authStore.register(email, password), [])
+  const logout = useCallback(() => authStore.logout(), [])
+  const logoutAll = useCallback(() => authStore.logoutAll(), [])
 
   const value = useMemo<AuthContextValue>(() => ({
-    status,
-    user,
-    isAuthenticated: status === 'authenticated',
+    status: current.status,
+    user: current.user,
+    isAuthenticated: current.status === 'authenticated',
     refresh,
     login,
     register,
     logout,
     logoutAll,
-  }), [status, user, refresh, login, register, logout, logoutAll])
+  }), [current, refresh, login, register, logout, logoutAll])
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
