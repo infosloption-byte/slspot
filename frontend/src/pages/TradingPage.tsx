@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AssetList } from '../components/market/AssetList'
 import { BottomPanel } from '../components/layout/BottomPanel'
 import { TradePanel } from '../components/trading/TradePanel'
@@ -10,7 +10,7 @@ import { usePortfolioPositions, useTrades, useWallet, useWalletTransactions } fr
 import { tradesApi } from '../api/trades'
 import type { OpenTrade } from '../types/trading'
 import { useAuth } from '../auth/AuthProvider'
-import { useRealtime } from '../realtime/RealtimeProvider'
+import { useRealtime, useRealtimeState } from '../realtime/RealtimeProvider'
 import { userChannel } from '../realtime/subscriptions'
 
 type ToastItem = {
@@ -51,6 +51,7 @@ declare global {
 export function TradingPage() {
   const { user } = useAuth()
   const realtime = useRealtime()
+  const realtimeState = useRealtimeState()
   const market = useLiveMarketAssets()
   const positions = usePortfolioPositions(1, 50)
   const trades = useTrades(1, 50)
@@ -65,18 +66,14 @@ export function TradingPage() {
     () => window.localStorage.getItem('slspot.trade-sounds') === 'on',
   )
   const [toasts, setToasts] = useState<ToastItem[]>([])
+  const eventRefreshTimer = useRef<number | null>(null)
 
   const initialAsset = market.assets[0]
-
-  useEffect(() => {
-    if (!selectedSymbol && initialAsset) {
-      setSelectedSymbol(initialAsset.symbol)
-    }
-  }, [initialAsset, selectedSymbol])
+  const activeSymbol = selectedSymbol || initialAsset?.symbol || ''
 
   const selectedAsset = useMemo(
-    () => market.assets.find((asset) => asset.symbol === selectedSymbol) ?? initialAsset,
-    [initialAsset, market.assets, selectedSymbol],
+    () => market.assets.find((asset) => asset.symbol === activeSymbol) ?? initialAsset,
+    [activeSymbol, initialAsset, market.assets],
   )
 
   useEffect(() => {
@@ -94,14 +91,6 @@ export function TradingPage() {
   }, [positions.reload, trades.reload, wallet.reload, walletTransactions.reload])
 
   useEffect(() => {
-    const timer = window.setInterval(() => {
-      void reloadTradingState()
-    }, 3000)
-
-    return () => window.clearInterval(timer)
-  }, [reloadTradingState])
-
-  useEffect(() => {
     if (!user?.id) return
     return realtime.subscribe(userChannel(user.id))
   }, [realtime, user?.id])
@@ -116,9 +105,35 @@ export function TradingPage() {
         return
       }
 
-      void reloadTradingState()
+      if (eventRefreshTimer.current !== null) {
+        window.clearTimeout(eventRefreshTimer.current)
+      }
+
+      eventRefreshTimer.current = window.setTimeout(() => {
+        eventRefreshTimer.current = null
+        void reloadTradingState()
+      }, 150)
     })
   }, [realtime, reloadTradingState])
+
+  useEffect(() => {
+    return () => {
+      if (eventRefreshTimer.current !== null) {
+        window.clearTimeout(eventRefreshTimer.current)
+        eventRefreshTimer.current = null
+      }
+    }
+  }, [])
+
+  useEffect(() => {
+    if (realtimeState === 'connected' || realtimeState === 'connecting') return undefined
+
+    const timer = window.setInterval(() => {
+      void reloadTradingState()
+    }, 5000)
+
+    return () => window.clearInterval(timer)
+  }, [realtimeState, reloadTradingState])
 
   const addToast = useCallback((tone: ToastTone, title: string, message: string) => {
     const id = Date.now() + Math.floor(Math.random() * 1000)
@@ -195,20 +210,6 @@ export function TradingPage() {
     if (soundEnabled) playTradeSound('open')
   }, [addToast, reloadTradingState, selectedAsset, soundEnabled])
 
-  const closeTrade = useCallback(async (tradeId: string) => {
-    const result = await tradesApi.close(tradeId)
-    await reloadTradingState()
-
-    const won = result.status === 'WON'
-    addToast(
-      won ? 'success' : 'error',
-      won ? 'Trade won' : 'Trade settled',
-      'Server settlement · ' + result.tradeId,
-    )
-
-    if (soundEnabled) playTradeSound(won ? 'win' : 'lose')
-  }, [addToast, reloadTradingState, soundEnabled])
-
   const toggleSound = () => {
     setSoundEnabled((current) => {
       const next = !current
@@ -249,7 +250,7 @@ export function TradingPage() {
         />
 
         <BottomPanel
-          selectedSymbol={selectedSymbol}
+          selectedSymbol={activeSymbol}
           currentPrice={selectedAsset.price}
           openTrades={openTrades}
           settledTrades={settledTrades}
@@ -257,7 +258,6 @@ export function TradingPage() {
           now={now}
           collapsed={!activityOpen}
           onToggle={() => setActivityOpen((current) => !current)}
-          onCloseTrade={closeTrade}
         />
       </div>
 
@@ -271,7 +271,7 @@ export function TradingPage() {
 
       <AssetList
         open={marketPickerOpen}
-        selected={selectedSymbol}
+        selected={activeSymbol}
         assets={market.assets}
         onSelect={(asset) => {
           setSelectedSymbol(asset.symbol)
