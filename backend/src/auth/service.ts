@@ -556,7 +556,7 @@ export class AuthService {
     const passwordHash = await hashPassword(password)
 
     await this.prisma.$transaction(async (tx) => {
-      await tx.user.update({ where: { id: record.userId }, data: { passwordHash } })
+      await tx.user.update({ where: { id: record.userId }, data: { passwordHash, loginFailedCount: 0, loginLockedUntil: null } })
       await tx.authToken.update({ where: { id: record.id }, data: { consumedAt: now } })
       await tx.session.updateMany({
         where: { userId: record.userId, revokedAt: null },
