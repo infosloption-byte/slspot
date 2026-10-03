@@ -107,6 +107,14 @@ enum LedgerDirection {
   CREDIT
 }
 
+enum LedgerAccountType {
+  ASSET
+  LIABILITY
+  EQUITY
+  REVENUE
+  EXPENSE
+}
+
 enum DepositStatus {
   PENDING
   PROCESSING
