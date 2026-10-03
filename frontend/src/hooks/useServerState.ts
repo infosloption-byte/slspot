@@ -98,3 +98,23 @@ export function useAuthSessions() {
   const load = useCallback(() => authApi.sessions(), [])
   return useAsyncResource(load)
 }
+
+export function useTwoFactorStatus() {
+  const load = useCallback(() => authApi.twoFactorStatus(), [])
+  return useAsyncResource(load)
+}
+
+export function useAuthDevices() {
+  const load = useCallback(() => authApi.devices(), [])
+  return useAsyncResource(load)
+}
+
+export function useLoginHistory() {
+  const load = useCallback(() => authApi.loginHistory(), [])
+  return useAsyncResource(load)
+}
+
+export function useSecurityEvents() {
+  const load = useCallback(() => authApi.securityEvents(), [])
+  return useAsyncResource(load)
+}
