@@ -218,23 +218,3 @@ const marketIdParams = {
   properties: { marketId: { type: 'string', pattern: UUID_PATTERN } },
 } as const
 
-function positive(value: string | undefined, fallback: number) {
-  const parsed = value === undefined ? fallback : Number(value)
-  if (!Number.isInteger(parsed) || parsed < 1) throw new AuthError(400, 'INVALID_QUERY', 'Pagination values must be positive integers')
-  return parsed
-}
-
-function enumValue(value: string | undefined, allowed: readonly string[], name: string) {
-  if (value === undefined || allowed.includes(value)) return value
-  throw new AuthError(400, 'INVALID_QUERY', name + ' is invalid')
-}
-
-async function requireAdmin(request: FastifyRequest, authService: AuthServiceLike, adminService: AdminService): Promise<AuthSession> {
-  const session = await authService.authenticateSession(request.cookies?.[env.auth.cookieName])
-  if (!session) throw new AuthError(401, 'UNAUTHENTICATED', 'Authentication is required')
-  await adminService.requireAdmin(session.id)
-  return session
-}
-
-function ok<T>(request: FastifyRequest, data: T) { return { success: true as const, data, requestId: request.id } }
-
