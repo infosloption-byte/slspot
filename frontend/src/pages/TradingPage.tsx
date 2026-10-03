@@ -111,6 +111,14 @@ export function TradingPage() {
   const [toasts, setToasts] = useState<ToastItem[]>([])
   const eventRefreshTimer = useRef<number | null>(null)
 
+  const addToast = useCallback((tone: ToastTone, title: string, message: string) => {
+    const id = Date.now() + Math.floor(Math.random() * 1000)
+    setToasts((items) => [{ id, tone, title, message }, ...items].slice(0, 4))
+    window.setTimeout(() => {
+      setToasts((items) => items.filter((item) => item.id !== id))
+    }, 4500)
+  }, [])
+
   const updateHistoryFilters = useCallback((patch: Partial<TradeHistoryFilters>) => {
     setHistoryFilters((current) => ({ ...current, ...patch }))
     setHistoryPage(1)
@@ -255,14 +263,6 @@ export function TradingPage() {
 
     return () => window.clearInterval(timer)
   }, [realtimeState, reloadTradingState])
-
-  const addToast = useCallback((tone: ToastTone, title: string, message: string) => {
-    const id = Date.now() + Math.floor(Math.random() * 1000)
-    setToasts((items) => [{ id, tone, title, message }, ...items].slice(0, 4))
-    window.setTimeout(() => {
-      setToasts((items) => items.filter((item) => item.id !== id))
-    }, 4500)
-  }, [])
 
   const openTrades = useMemo<OpenTrade[]>(() => {
     return (positions.data?.items ?? [])
