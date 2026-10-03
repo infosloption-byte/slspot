@@ -80,7 +80,7 @@ export function useLiveMarketAssets() {
         volume: volume > 0 ? compactVolume(volume) : '—',
         volumeValue: Number.isFinite(volume) && volume > 0 ? volume : null,
         lastUpdatedAt,
-        marketStatus: asset.market?.status ?? null,
+        marketStatus: normalizeMarketStatus(asset.market?.status),
         accent: accentForSymbol(asset.symbol),
         payout: Number(asset.trading.payoutRate) * 100,
         payoutRate: asset.trading.payoutRate,
@@ -108,6 +108,11 @@ function categoryLabel(type: string): string {
 function accentForSymbol(symbol: string): string {
   const value = symbol.split('/')[0]?.toLowerCase() ?? 'asset'
   return value === 'nas100' ? 'nas' : value
+}
+
+function normalizeMarketStatus(value: string | null | undefined): MarketAsset['marketStatus'] {
+  if (value === 'OPEN' || value === 'CLOSED' || value === 'HALTED' || value === 'MAINTENANCE') return value
+  return null
 }
 
 function compactVolume(value: number): string {
