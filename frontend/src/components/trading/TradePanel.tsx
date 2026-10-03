@@ -1,4 +1,4 @@
-import { CheckCircle2, ChevronDown, Minus, Plus, ShieldAlert, Timer, TrendingDown, TrendingUp, Volume2, VolumeX, X } from 'lucide-react'
+import { ChevronDown, Minus, Plus, ShieldAlert, Timer, TrendingDown, TrendingUp, Volume2, VolumeX, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import type { MarketAsset } from '../../data/mockMarket'
 import type { TradeDirection } from '../../types/trading'
@@ -13,7 +13,7 @@ type TradePanelProps = {
   onOpenTrade: (trade: { direction: TradeDirection; amount: number; durationSeconds: number; entryPrice: number; payoutRate: number }) => Promise<void>
 }
 
-type OrderStage = 'draft' | 'submitting' | 'opened'
+type OrderStage = 'draft' | 'submitting'
 
 function formatDuration(value: number) {
   return value < 60 ? value + 's' : value / 60 + 'm'
@@ -96,7 +96,8 @@ export function TradePanel({ asset, balance, walletMode, soundEnabled, onToggleS
         entryPrice: asset.price,
         payoutRate,
       })
-      setStage('opened')
+      setStage('draft')
+      setDirection(null)
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Trade submission failed')
       setStage('draft')
@@ -215,15 +216,6 @@ export function TradePanel({ asset, balance, walletMode, soundEnabled, onToggleS
 
       {error ? <div className="trade-modal-backdrop"><div className="trade-modal trade-modal--error" role="alertdialog" aria-modal="true"><div className="trade-modal__icon"><ShieldAlert size={18} /></div><div><span>Check your trade</span><strong>{error}</strong></div><button className="icon-button" type="button" onClick={() => setError('')} aria-label="Close error"><X size={15} /></button></div></div> : null}
 
-      {stage === 'opened' && direction ? (
-        <div className="trade-modal-backdrop">
-          <div className="trade-modal trade-modal--success" role="status">
-            <div className="trade-modal__icon"><CheckCircle2 size={18} /></div>
-            <div><span>Trade opened</span><strong>{direction} · {asset.symbol}</strong><p>The server position is now visible below the chart and will settle automatically at expiry.</p></div>
-            <button className="btn btn--primary" type="button" onClick={resetOrder}>Done</button>
-          </div>
-        </div>
-      ) : null}
     </>
   )
 }
