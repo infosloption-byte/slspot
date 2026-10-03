@@ -840,7 +840,11 @@ export class TradingService {
       })
     }
 
-    return await tx.wallet.findUnique({ where: { id: wallet.id } }) ?? wallet
+    const refreshedWallet = await tx.wallet.findUnique({ where: { id: wallet.id } })
+    if (!refreshedWallet) {
+      throw new TradingError(409, 'WALLET_NOT_FOUND', 'Trading wallet disappeared during demo balance refill')
+    }
+    return refreshedWallet
   }
 
   private toTradingResult(trade: TradingTradeRecord, position: TradingPositionRecord, settlement: TradingSettlementRecord | null): ApiTradingResult {
