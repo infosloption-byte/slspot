@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { MarketPrice } from '../api/contracts'
 import type { MarketAsset } from '../data/mockMarket'
-import { useRealtime } from '../realtime/RealtimeProvider'
+import { useRealtime } from '../realtime/useRealtime'
 import { marketChannel } from '../realtime/subscriptions'
 import { useMarketAssets } from './useServerState'
 
