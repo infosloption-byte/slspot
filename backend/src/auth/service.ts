@@ -309,6 +309,9 @@ export class AuthService {
     if (hasCode === hasRecoveryCode) {
       throw new AuthError(400, 'TWO_FACTOR_INPUT_REQUIRED', 'Provide a six-digit authenticator code or a recovery code')
     }
+    if (hasCode && !/^\d{6}$/.test(input.code ?? '')) {
+      throw new AuthError(400, 'INVALID_TWO_FACTOR_CODE', 'Authenticator code must contain exactly six digits')
+    }
 
     let valid = false
     let recoveryRecordId: string | null = null
@@ -405,6 +408,7 @@ export class AuthService {
     if (!user.twoFactorPendingSecretEnc) throw new AuthError(409, 'TWO_FACTOR_SETUP_REQUIRED', 'Start two-factor setup before enabling it')
     let secret: string
     try { secret = decryptTotpSecret(user.twoFactorPendingSecretEnc, env.auth.twoFactorEncryptionKey) } catch { throw new AuthError(503, 'TWO_FACTOR_UNAVAILABLE', 'Two-factor setup is not available') }
+    if (!/^\d{6}$/.test(code)) throw new AuthError(400, 'INVALID_TWO_FACTOR_CODE', 'Authenticator code must contain exactly six digits')
     if (!verifyTotpCode(secret, code)) throw new AuthError(401, 'INVALID_TWO_FACTOR_CODE', 'The authenticator code is incorrect')
     const recoveryCodes = createRecoveryCodes(8)
     await this.prisma.$transaction(async (tx) => {
@@ -451,6 +455,10 @@ export class AuthService {
         tokenHash: hashOpaqueToken(sessionToken),
         revokedAt: null,
         expiresAt: { gt: new Date() },
+        OR: [
+          { deviceId: null },
+          { device: { revokedAt: null } },
+        ],
       },
       include: { user: true, device: true },
     })
