@@ -66,6 +66,7 @@ describe('frontend API bindings', () => {
     await portfolioApi.summary()
     await portfolioApi.positions({ page: 1, pageSize: 25 })
     await tradesApi.list({ page: 1, pageSize: 25 })
+    await walletApi.list()
     await walletApi.get()
     await walletApi.transactions({ page: 1, pageSize: 25 })
     await notificationsApi.list({ page: 1, pageSize: 25 })
@@ -73,9 +74,25 @@ describe('frontend API bindings', () => {
     assert.ok(urls.some((url) => url.endsWith('/portfolio/summary')))
     assert.ok(urls.some((url) => url.includes('/portfolio/positions?page=1&pageSize=25')))
     assert.ok(urls.some((url) => url.includes('/trades?page=1&pageSize=25')))
+    assert.ok(urls.some((url) => url.endsWith('/wallets')))
     assert.ok(urls.some((url) => url.endsWith('/wallet')))
     assert.ok(urls.some((url) => url.includes('/wallet/transactions?page=1&pageSize=25')))
     assert.ok(urls.some((url) => url.includes('/notifications?page=1&pageSize=25')))
+  })
+
+  it('sends the selected wallet mode to account-scoped APIs', async () => {
+    let modeHeader = ''
+    globalThis.fetch = async (_input, init) => {
+      modeHeader = new Headers(init?.headers).get('x-wallet-mode') ?? ''
+      return new Response(JSON.stringify({
+        success: true,
+        data: { currency: 'USD', availableBalance: '100', heldBalance: '0', totalBalance: '100', openPositionCount: 0, tradeCount: 0, netPnl: '0' },
+        requestId: 'request-1',
+      }), { status: 200, headers: { 'content-type': 'application/json' } })
+    }
+
+    await walletApi.get('REAL')
+    assert.equal(modeHeader, 'REAL')
   })
 
   it('keeps bodyless POSTs free of a JSON content type', async () => {
