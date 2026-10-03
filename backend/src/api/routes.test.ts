@@ -28,6 +28,14 @@ const authService: AuthServiceLike = {
   requestEmailVerification: async () => null,
   requestPasswordReset: async () => null,
   resetPassword: async () => {},
+  verifyTwoFactorChallenge: async () => { throw new Error('not used') },
+  getTwoFactorStatus: async () => { throw new Error('not used') },
+  setupTwoFactor: async () => { throw new Error('not used') },
+  enableTwoFactor: async () => { throw new Error('not used') },
+  disableTwoFactor: async () => { throw new Error('not used') },
+  listDevices: async () => [],
+  listLoginHistory: async () => [],
+  listSecurityEvents: async () => [],
 }
 
 const apiService = {
@@ -73,6 +81,7 @@ const tradingService = {
     clientRequestId: string
   }) => ({
     orderId: 'order-1',
+    orderStatus: 'ACCEPTED',
     tradeId: 'trade-1',
     positionId: 'position-1',
     status: 'OPEN',
@@ -93,6 +102,7 @@ const tradingService = {
   }),
   closeTrade: async () => ({
     orderId: 'order-1',
+    orderStatus: 'ACCEPTED',
     tradeId: 'trade-1',
     positionId: 'position-1',
     status: 'WON',
