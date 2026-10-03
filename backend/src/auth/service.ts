@@ -90,11 +90,14 @@ export class AuthService {
     this.ledger = new LedgerService(prisma)
   }
 
-  async register(input: { email: string; password: string; countryCode?: string }) {
+  async register(input: { email: string; password: string; countryCode?: string; acceptTerms: boolean; termsVersion?: string }) {
     const email = normalizeEmail(input.email)
     validateEmail(email)
     validatePassword(input.password)
     const countryCode = validateCountryCode(input.countryCode)
+    if (!input.acceptTerms) throw new AuthError(400, 'TERMS_CONSENT_REQUIRED', 'You must accept the terms and privacy notice')
+    const termsVersion = input.termsVersion?.trim() || '2026-10'
+    if (termsVersion.length > 32) throw new AuthError(400, 'INVALID_TERMS_VERSION', 'Terms version is invalid')
 
     const existing = await this.prisma.user.findUnique({ where: { email } })
     if (existing) {
@@ -114,7 +117,7 @@ export class AuthService {
 
     const result = await this.prisma.$transaction(async (tx) => {
       const user = await tx.user.create({
-        data: { email, passwordHash, countryCode, status: 'PENDING_VERIFICATION' },
+        data: { email, passwordHash, countryCode, status: 'PENDING_VERIFICATION', termsAcceptedAt: now, termsVersion },
       })
 
       await this.ensureTradingAccounts(tx, user.id, 'USD')
@@ -131,7 +134,7 @@ export class AuthService {
       })
 
       await tx.auditLog.create({
-        data: { actorUserId: user.id, action: 'REGISTER', entityType: 'User', entityId: user.id },
+        data: { actorUserId: user.id, action: 'REGISTER', entityType: 'User', entityId: user.id, metadata: { termsVersion } },
       })
 
       return { user, verification: { token, expiresAt } }
