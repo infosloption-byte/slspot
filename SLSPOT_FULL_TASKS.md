@@ -1,4 +1,4 @@
-## Current Architecture Milestone — 2026-10-02
+## Current Architecture Milestone — 2026-10-03
 
 The repository is now structured as a monorepo with explicit frontend and backend application boundaries.
 
@@ -59,7 +59,7 @@ The latest frontend theme is **Black Gold / SL Spot** and is now the active desi
 - [x] Custom SL Spot brand mark and favicon.
 
 These UI items are now wired to server-authoritative authentication, market data, balances, orders, settlement and demo wallet operations. Real-money payment processing remains a separate production milestone.
-# Current Frontend Implementation Update — 2026-10-02
+# Current Frontend Implementation Update — 2026-10-03
 
 The frontend theme was audited before the latest implementation work. The current visual system is **Black Gold**: true-black surfaces, yellow brand accent, green/red reserved for market direction, compact rail/topbar, and denser controls. New UI work in this milestone follows those tokens rather than the earlier cyan/graphite styling.
 
@@ -108,6 +108,21 @@ Trading Room history hardening completed in the current implementation:
 - [ ] Unit/component/E2E test suite.
 - [ ] CI quality gates.
 
+
+## Reconciliation audit — 2026-10-03
+
+The checklist was reconciled against the current main implementation before continuing feature work. Only repository-backed functionality is marked complete; production-only items remain open.
+
+- [x] Protected-route loading state is implemented by ProtectedRoute.
+- [x] Forbidden-state handling is implemented at the frontend API/state boundary.
+- [x] Server-backed DEMO wallet funding is implemented; real-money payment integration remains pending.
+- [x] Shared custom Select implementation is present and viewport-safe.
+- [x] Trade History standalone and Trading Room filters use themed custom dropdown panels.
+- [x] Trading Room embedded history retains its column-wise desktop layout independently from the standalone History page.
+- [x] Asset Picker Sort uses the shared themed selector and category filters use the responsive spacing grid.
+- [x] Realtime reconnect handling includes reconnect state and subscription recovery.
+
+The remaining unchecked production-hardening, compliance, accessibility, testing, CI/CD, admin, payments and infrastructure items remain intentionally open.
 
 # SL Spot / SL Option — Full Implementation Task File
 
