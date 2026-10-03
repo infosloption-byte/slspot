@@ -336,6 +336,133 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
 .position-row { grid-template-columns: 1.4fr 0.7fr 1fr 1fr 0.7fr 0.9fr 40px; min-width: 640px; }
 .activity-row { grid-template-columns: 1.5fr 0.9fr 0.9fr 0.9fr 1fr; min-width: 600px; }
 .activity-row--trade-history { grid-template-columns: 1.4fr 0.65fr 0.8fr 1fr 1fr 0.85fr 1fr; min-width: 860px; }
+
+.trade-history-panel { min-height: 0; }
+.trade-history-toolbar {
+  display: grid;
+  grid-template-columns: minmax(190px, 1.5fr) repeat(4, minmax(110px, .8fr)) repeat(2, minmax(130px, .9fr)) auto auto;
+  gap: 7px;
+  align-items: end;
+  padding: 2px 0 9px;
+}
+.trade-history-control {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+.trade-history-control > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--muted-2);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+.trade-history-control input,
+.trade-history-control select {
+  width: 100%;
+  height: 34px;
+  min-width: 0;
+  padding: 0 9px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg-2);
+  color: var(--text);
+  font: inherit;
+  font-size: 11px;
+  outline: 0;
+}
+.trade-history-control input:focus,
+.trade-history-control select:focus {
+  border-color: var(--accent-line);
+}
+.trade-history-search {
+  height: 34px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 9px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg-2);
+  color: var(--muted);
+}
+.trade-history-search:focus-within { border-color: var(--accent-line); }
+.trade-history-search input {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  outline: 0;
+}
+.trade-history-date input { color-scheme: dark; }
+.trade-history-reset,
+.trade-history-export {
+  height: 34px;
+  white-space: nowrap;
+}
+.trade-history-export {
+  color: var(--accent);
+  border-color: var(--accent-line);
+}
+.trade-history-progress {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 2px 7px;
+  color: var(--muted-2);
+  font-size: 11px;
+}
+.trade-history-error {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin: 0 0 7px;
+  padding: 7px 9px;
+  border: 1px solid rgba(255,77,94,.22);
+  border-radius: 8px;
+  background: var(--red-soft);
+  color: var(--muted);
+  font-size: 11px;
+}
+.trade-history-error strong { color: var(--red); }
+.trade-history-error button { margin-left: auto; }
+.trade-history-state {
+  display: grid;
+  justify-items: center;
+  gap: 7px;
+  min-height: 90px;
+  padding: 22px 12px;
+  color: var(--muted);
+  text-align: center;
+  font-size: 12px;
+}
+.trade-history-state--error {
+  border: 1px dashed rgba(255,77,94,.28);
+  border-radius: 8px;
+  color: var(--muted);
+}
+.trade-history-state--error strong { color: var(--red); }
+.trade-history-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  padding-top: 3px;
+  color: var(--muted-2);
+  font-size: 11px;
+}
+.trade-history-footer .pagination {
+  padding: 0;
+}
+
 .position-row:not(.position-row--header):hover, .activity-row:not(.activity-row--header):hover { background: var(--bg-2); }
 .position-row--selected { background: var(--accent-soft); }
 .position-row--header, .activity-row--header { color: var(--muted-2); font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700; }
@@ -906,3 +1033,23 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
   display:grid; grid-template-columns:repeat(4,1fr); gap:5px; margin-top:5px;
 }
 .mobile-duration-options .duration-option { min-height:34px; }
+
+@media (max-width: 1100px) {
+  .trade-history-toolbar {
+    grid-template-columns: minmax(180px, 1.5fr) repeat(3, minmax(110px, .8fr)) repeat(2, minmax(120px, .8fr)) auto auto;
+  }
+  .trade-history-toolbar > :nth-child(4) { grid-column: span 1; }
+}
+@media (max-width: 820px) {
+  .trade-history-toolbar {
+    grid-template-columns: repeat(2, minmax(130px, 1fr));
+    align-items: stretch;
+  }
+  .trade-history-search { grid-column: 1 / -1; }
+  .trade-history-reset,
+  .trade-history-export { justify-content: center; }
+  .trade-history-footer {
+    justify-content: space-between;
+    flex-wrap: wrap;
+  }
+}
