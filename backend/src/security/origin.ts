@@ -39,3 +39,12 @@ export function assertTrustedOrigin(request: FastifyRequest): void {
     throw new OriginSecurityError('Same-site request is not from an allowed application origin')
   }
 }
+
+
+export function assertTrustedWebSocketOrigin(request: FastifyRequest): void {
+  const origin = headerValue(request, 'origin')
+  const fetchSite = headerValue(request, 'sec-fetch-site')
+  if (!origin || !env.corsOrigins.includes(origin) || fetchSite === 'cross-site') {
+    throw new OriginSecurityError('WebSocket origin is not allowed')
+  }
+}
