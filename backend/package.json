@@ -30,7 +30,7 @@
     "@fastify/cookie": "^11.1.2"
   },
   "devDependencies": {
-    "@types/node": "^24.0.0",
+    "@types/node": "^26.6.3",
     "@types/ws": "^8.18.2",
     "dotenv": "^17.2.2",
     "prisma": "^7.10.0",
