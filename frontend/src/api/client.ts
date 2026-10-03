@@ -12,6 +12,10 @@ export type ApiErrorPayload = {
   message?: string
 }
 
+function emitNetworkEvent(type: 'start' | 'end'): void {
+  window.dispatchEvent(new Event(type === 'start' ? 'slspot:network-start' : 'slspot:network-end'))
+}
+
 export class ApiError extends Error {
   readonly status: number
   readonly code?: string
@@ -73,6 +77,7 @@ export async function apiRequest<T>(
   }
 
   const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs)
+  emitNetworkEvent('start')
 
   try {
     const hasBody = requestInit.body !== undefined && requestInit.body !== null
@@ -127,6 +132,7 @@ export async function apiRequest<T>(
 
     throw error
   } finally {
+    emitNetworkEvent('end')
     window.clearTimeout(timeoutId)
     callerSignal?.removeEventListener('abort', forwardAbort)
   }
