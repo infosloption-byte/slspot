@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router'
 import { Pagination } from '../components/ui/Pagination'
 import { ApiState } from '../components/ui/ApiState'
+import { Toast } from '../components/ui/Toast'
 import { formatPrice } from '../lib/format'
 import { notificationsApi } from '../api/notifications'
 import { authApi } from '../api/auth'
@@ -550,6 +551,7 @@ function NotificationsPage() {
   const notifications = useNotifications(page, 15, unreadOnly)
   const unread = useNotifications(1, 1, true)
   const unreadCount = unread.data?.pagination.total ?? 0
+  const [toast, setToast] = useState<{ title: string; message: string } | null>(null)
 
   useEffect(() => {
     if (!user?.id) return
@@ -559,6 +561,12 @@ function NotificationsPage() {
   useEffect(() => {
     return realtime.onEvent((event) => {
       if (event.type !== 'notification.created') return
+      const data = event.data as { title?: unknown; body?: unknown }
+      setToast({
+        title: typeof data.title === 'string' ? data.title : 'New notification',
+        message: typeof data.body === 'string' ? data.body : 'You have a new account notification.',
+      })
+      window.setTimeout(() => setToast(null), 4500)
       void notifications.reload()
       void unread.reload()
     })
@@ -604,11 +612,16 @@ function NotificationsPage() {
           {notifications.data ? <Pagination page={page} totalPages={notifications.data.pagination.totalPages} onChange={setPage} /> : null}
         </section>
       </ApiState>
+      {toast ? (
+        <div className="toast-viewport" aria-live="polite">
+          <Toast title={toast.title} message={toast.message} />
+        </div>
+      ) : null}
     </div>
   )
 }
 
-function SecurityPage() {
+function SecurityPage {
   const sessions = useAuthSessions()
   const { user, logoutAll } = useAuth()
   const [actionError, setActionError] = useState<string | null>(null)
