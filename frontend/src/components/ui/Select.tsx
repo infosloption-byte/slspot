@@ -31,11 +31,7 @@ export function Select({ value, options, onChange, label, className = '' }: Sele
   const menuRef = useRef<HTMLDivElement>(null)
   const optionRefs = useRef<Array<HTMLButtonElement | null>>([])
   const selected = options.find((option) => option.value === value) ?? options[0]
-
-  useEffect(() => {
-    const index = options.findIndex((option) => option.value === value)
-    setHighlightedIndex(index >= 0 ? index : 0)
-  }, [options, value])
+  const selectedIndex = Math.max(0, options.findIndex((option) => option.value === value))
 
   useEffect(() => {
     if (!open) return
@@ -62,10 +58,7 @@ export function Select({ value, options, onChange, label, className = '' }: Sele
   }, [])
 
   useLayoutEffect(() => {
-    if (!open) {
-      setMenuPosition(null)
-      return undefined
-    }
+    if (!open) return undefined
 
     updatePosition()
     const frame = window.requestAnimationFrame(updatePosition)
@@ -148,22 +141,34 @@ export function Select({ value, options, onChange, label, className = '' }: Sele
           aria-haspopup="listbox"
           aria-expanded={open}
           aria-controls={open ? menuId : undefined}
-          onClick={() => setOpen((current) => !current)}
+          onClick={() => {
+            if (open) {
+              setOpen(false)
+              return
+            }
+            setHighlightedIndex(selectedIndex)
+            setMenuPosition(null)
+            setOpen(true)
+          }}
           onKeyDown={(event) => {
             if (event.key === 'ArrowDown') {
               event.preventDefault()
+              setMenuPosition(null)
               setOpen(true)
-              setHighlightedIndex((current) => Math.min(options.length - 1, Math.max(0, current + 1)))
+              setHighlightedIndex((current) => Math.min(options.length - 1, Math.max(0, (open ? current : selectedIndex) + 1)))
             } else if (event.key === 'ArrowUp') {
               event.preventDefault()
+              setMenuPosition(null)
               setOpen(true)
-              setHighlightedIndex((current) => Math.max(0, current - 1))
+              setHighlightedIndex((current) => Math.max(0, (open ? current : selectedIndex) - 1))
             } else if (event.key === 'Home') {
               event.preventDefault()
+              setMenuPosition(null)
               setOpen(true)
               setHighlightedIndex(0)
             } else if (event.key === 'End') {
               event.preventDefault()
+              setMenuPosition(null)
               setOpen(true)
               setHighlightedIndex(Math.max(0, options.length - 1))
             } else if ((event.key === 'Enter' || event.key === ' ') && open) {
