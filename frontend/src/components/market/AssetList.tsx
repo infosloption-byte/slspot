@@ -1,7 +1,9 @@
-import { Search, Star, X } from 'lucide-react'
+import { ArrowDownAZ, BarChart3, Clock3, Search, Star, X } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { MarketAsset } from '../../data/mockMarket'
 import { formatPercent, formatPrice } from '../../lib/format'
+
+type AssetSort = 'recent' | 'symbol' | 'price' | 'change' | 'volume' | 'payout'
 
 type AssetListProps = {
   open: boolean
@@ -9,16 +11,29 @@ type AssetListProps = {
   assets: MarketAsset[]
   onSelect: (asset: MarketAsset) => void
   onClose: () => void
+  loading?: boolean
+  errorMessage?: string | null
+  onRetry?: () => void
 }
 
 const favoriteStorageKey = 'slspot.watchlist.favorites'
 const categories = ['All', 'Crypto', 'FX', 'Stocks', 'Commodities', 'Indices', 'Fav'] as const
 
-export function AssetList({ open, selected, assets, onSelect, onClose }: AssetListProps) {
+export function AssetList({ open, selected, assets, onSelect, onClose, loading = false, errorMessage = null, onRetry }: AssetListProps) {
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState<(typeof categories)[number]>('All')
+  const [sortBy, setSortBy] = useState<AssetSort>('recent')
   const searchInputRef = useRef<HTMLInputElement>(null)
   const previousOpenRef = useRef(false)
+  const [recentSymbols, setRecentSymbols] = useState<string[]>(() => {
+    try {
+      const stored = window.localStorage.getItem('slspot.watchlist.recent')
+      const parsed = stored ? JSON.parse(stored) : []
+      return Array.isArray(parsed) ? parsed.filter((value): value is string => typeof value === 'string').slice(0, 8) : []
+    } catch {
+      return []
+    }
+  })
   const [favorites, setFavorites] = useState<string[]>(() => {
     try {
       const stored = window.localStorage.getItem(favoriteStorageKey)
@@ -32,6 +47,10 @@ export function AssetList({ open, selected, assets, onSelect, onClose }: AssetLi
   useEffect(() => {
     window.localStorage.setItem(favoriteStorageKey, JSON.stringify(favorites))
   }, [favorites])
+
+  useEffect(() => {
+    window.localStorage.setItem('slspot.watchlist.recent', JSON.stringify(recentSymbols))
+  }, [recentSymbols])
 
   useEffect(() => {
     if (!open) return
@@ -61,8 +80,7 @@ export function AssetList({ open, selected, assets, onSelect, onClose }: AssetLi
 
   const filteredAssets = useMemo(() => {
     const normalized = query.trim().toLowerCase()
-
-    return assets.filter((asset) => {
+    const visible = assets.filter((asset) => {
       const matchesCategory =
         category === 'All' ||
         (category === 'Fav' ? favorites.includes(asset.symbol) : asset.category === category)
@@ -73,7 +91,17 @@ export function AssetList({ open, selected, assets, onSelect, onClose }: AssetLi
 
       return matchesCategory && matchesQuery
     })
-  }, [assets, category, favorites, query])
+
+    const recentRank = new Map(recentSymbols.map((symbol, index) => [symbol, index]))
+    return visible.toSorted((a, b) => {
+      if (sortBy === 'recent') return (recentRank.get(a.symbol) ?? 99_999) - (recentRank.get(b.symbol) ?? 99_999)
+      if (sortBy === 'symbol') return a.symbol.localeCompare(b.symbol)
+      if (sortBy === 'price') return b.price - a.price
+      if (sortBy === 'change') return b.change - a.change
+      if (sortBy === 'volume') return (b.volumeValue ?? -1) - (a.volumeValue ?? -1)
+      return b.payout - a.payout
+    })
+  }, [assets, category, favorites, query, recentSymbols, sortBy])
 
   const toggleFavorite = (symbol: string) => {
     setFavorites((current) => (
@@ -125,6 +153,15 @@ export function AssetList({ open, selected, assets, onSelect, onClose }: AssetLi
         ) : null}
       </div>
 
+      {errorMessage ? (
+        <div className="market-picker__notice market-picker__notice--error" role="alert">
+          <span><BarChart3 size={14} /> {errorMessage}</span>
+          {onRetry ? <button type="button" className="quiet-button" onClick={onRetry}>Retry</button> : null}
+        </div>
+      ) : loading ? (
+        <div className="market-picker__notice"><span><span className="loading-spinner" aria-hidden="true" /> Updating markets…</span></div>
+      ) : null}
+
       <div className="market-filter-row" aria-label="Market category">
         {categories.map((value) => {
           const count = value === 'All'
@@ -148,6 +185,21 @@ export function AssetList({ open, selected, assets, onSelect, onClose }: AssetLi
         })}
       </div>
 
+      <div className="market-sort-row">
+        <span><Clock3 size={12} /> Recent</span>
+        <label>
+          <ArrowDownAZ size={12} />
+          <select value={sortBy} onChange={(event) => setSortBy(event.target.value as AssetSort)} aria-label="Sort markets">
+            <option value="recent">Recent</option>
+            <option value="symbol">Symbol</option>
+            <option value="price">Price</option>
+            <option value="change">24h change</option>
+            <option value="volume">Volume</option>
+            <option value="payout">Payout</option>
+          </select>
+        </label>
+      </div>
+
       <div className="asset-list" aria-label="Available markets">
         {filteredAssets.length === 0 ? (
           <div className="asset-list__empty">
@@ -168,7 +220,10 @@ export function AssetList({ open, selected, assets, onSelect, onClose }: AssetLi
               >
                 <button
                   className="asset-row__select"
-                  onClick={() => onSelect(asset)}
+                  onClick={() => {
+                    setRecentSymbols((current) => [asset.symbol, ...current.filter((item) => item !== asset.symbol)].slice(0, 8))
+                    onSelect(asset)
+                  }}
                   type="button"
                   aria-label={'Select ' + asset.symbol}
                   aria-current={isSelected ? 'true' : undefined}
