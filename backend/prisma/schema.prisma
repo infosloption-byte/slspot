@@ -169,6 +169,8 @@ model User {
   twoFactorPendingSecretEnc String? @db.VarChar(512)
   loginFailedCount  Int          @default(0)
   loginLockedUntil  DateTime?    @db.DateTime(3)
+  termsAcceptedAt   DateTime?    @db.DateTime(3)
+  termsVersion      String?      @db.VarChar(32)
 
   sessions      Session[]
   devices       Device[]
