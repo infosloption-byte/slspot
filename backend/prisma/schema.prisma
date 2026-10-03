@@ -151,6 +151,7 @@ enum NotificationType {
 enum AuthTokenType {
   EMAIL_VERIFICATION
   PASSWORD_RESET
+  TWO_FACTOR_CHALLENGE
 }
 
 model User {
@@ -163,6 +164,11 @@ model User {
   updatedAt     DateTime     @updatedAt @db.DateTime(3)
   lastLoginAt       DateTime?    @db.DateTime(3)
   emailVerifiedAt   DateTime?    @db.DateTime(3)
+  twoFactorEnabled  Boolean      @default(false)
+  twoFactorSecretEnc String?     @db.VarChar(512)
+  twoFactorPendingSecretEnc String? @db.VarChar(512)
+  loginFailedCount  Int          @default(0)
+  loginLockedUntil  DateTime?    @db.DateTime(3)
 
   sessions      Session[]
   devices       Device[]
@@ -173,6 +179,7 @@ model User {
   trades        Trade[]
   kycCases      KycCase[]
   notifications Notification[]
+  recoveryCodes RecoveryCode[]
   auditLogs     AuditLog[]   @relation("AuditActor")
 }
 
@@ -223,6 +230,18 @@ model Device {
 
   @@index([userId, revokedAt])
   @@index([userId, lastSeenAt])
+}
+
+model RecoveryCode {
+  id         String    @id @default(uuid()) @db.Char(36)
+  userId     String    @db.Char(36)
+  codeHash   String    @unique @db.VarChar(128)
+  usedAt     DateTime? @db.DateTime(3)
+  createdAt  DateTime  @default(now()) @db.DateTime(3)
+
+  user       User      @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([userId, usedAt])
 }
 
 model Account {
