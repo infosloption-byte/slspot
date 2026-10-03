@@ -66,8 +66,9 @@ export function useLiveMarketAssets() {
     (resource.data?.items ?? []).map((asset) => {
       const quote = quotes[asset.assetId]
       const price = Number(quote?.last ?? asset.market?.lastPrice ?? 0)
-      const change = Number(quote?.changePct ?? 0)
-      const volume = Number(quote?.volume ?? 0)
+      const change = Number(quote?.changePct ?? asset.market?.lastChangePct ?? 0)
+      const volume = Number(quote?.volume ?? asset.market?.lastVolume ?? 0)
+      const lastUpdatedAt = quote?.timestamp ?? asset.market?.lastPriceAt ?? null
 
       return {
         assetId: asset.assetId,
@@ -77,6 +78,9 @@ export function useLiveMarketAssets() {
         price: Number.isFinite(price) ? price : 0,
         change: Number.isFinite(change) ? change : 0,
         volume: volume > 0 ? compactVolume(volume) : '—',
+        volumeValue: Number.isFinite(volume) && volume > 0 ? volume : null,
+        lastUpdatedAt,
+        marketStatus: asset.market?.status ?? null,
         accent: accentForSymbol(asset.symbol),
         payout: Number(asset.trading.payoutRate) * 100,
         payoutRate: asset.trading.payoutRate,
