@@ -12,7 +12,7 @@ type TradePanelProps = {
   balance: number
   walletMode: WalletMode
   onToggleSound: () => void
-  onOpenTrade: (trade: { direction: TradeDirection; amount: number; durationSeconds: number; entryPrice: number; payoutRate: number }) => Promise<TradeCreateResult>
+  onOpenTrade: (trade: { direction: TradeDirection; amount: number; durationSeconds: number; entryPrice: number; payoutRate: number; clientRequestId: string }) => Promise<TradeCreateResult>
 }
 
 type OrderStage = 'draft' | 'submitting' | 'pending' | 'accepted' | 'open' | 'rejected' | 'failed'
@@ -42,7 +42,7 @@ export function TradePanel({ asset, balance, walletMode, soundEnabled, onToggleS
 
   const validate = () => {
     if (!Number.isFinite(amount) || amount < asset.minAmount || amount > asset.maxAmount) {
-      return 'Stake must be between $' + asset.minAmount.toFixed(2) + ' and $' + asset.maxAmount.toFixed(2) + '.'
+      return 'Stake must be between ' + formatCurrency(asset.minAmount, asset.quoteCurrency) + ' and ' + formatCurrency(asset.maxAmount, asset.quoteCurrency) + '.'
     }
     if (!asset.durationsSeconds.includes(duration)) {
       return 'That duration is not currently allowed for this market.'
@@ -166,14 +166,14 @@ export function TradePanel({ asset, balance, walletMode, soundEnabled, onToggleS
 
         <div className="trade-panel__desktop-content">
           <div className="trade-field">
-            <span className="trade-field__label">Stake</span>
+            <span className="trade-field__label">Stake · {asset.quoteCurrency}</span>
             <div className="stepper">
               <button type="button" onClick={() => adjustAmount(-10)} aria-label="Decrease stake"><Minus size={17} /></button>
-              <div className="stepper__value"><span>$</span><input value={amount} onChange={(event) => { setAmount(Number(event.target.value) || 0); resetOrder() }} type="number" inputMode="decimal" min={asset.minAmount} max={asset.maxAmount} aria-label="Stake amount" /></div>
+              <div className="stepper__value"><span>{asset.quoteCurrency}</span><input value={amount} onChange={(event) => { setAmount(Number(event.target.value) || 0); resetOrder() }} type="number" inputMode="decimal" min={asset.minAmount} max={asset.maxAmount} aria-label="Stake amount" /></div>
               <button type="button" onClick={() => adjustAmount(10)} aria-label="Increase stake"><Plus size={17} /></button>
             </div>
             <div className="chips">
-              {[25, 50, 100, 250].map((value) => <button key={value} type="button" className={amount === value ? 'chip chip--active' : 'chip'} onClick={() => { setAmount(value); resetOrder() }}>${value}</button>)}
+              {[25, 50, 100, 250].map((value) => <button key={value} type="button" className={amount === value ? 'chip chip--active' : 'chip'} onClick={() => { setAmount(value); resetOrder() }}>{formatCurrency(value, asset.quoteCurrency)}</button>)}
             </div>
           </div>
 
@@ -205,7 +205,7 @@ export function TradePanel({ asset, balance, walletMode, soundEnabled, onToggleS
           {renderActions()}
 
           <div className="trade-panel__footer-row">
-            <span className="trade-panel__note"><i className="live-dot" /> {walletMode === 'DEMO' ? 'Demo market · Practice balance' : 'Real wallet · Trading unavailable'} · Balance ${balance.toFixed(2)}</span>
+            <span className="trade-panel__note"><i className="live-dot" /> {walletMode === 'DEMO' ? 'Demo market · Practice balance' : 'Real wallet · Trading unavailable'} · Balance {formatCurrency(balance, asset.quoteCurrency)}</span>
             <button type="button" className="icon-button" onClick={onToggleSound} aria-label={soundEnabled ? 'Disable trade sounds' : 'Enable trade sounds'} title={soundEnabled ? 'Disable trade sounds' : 'Enable trade sounds'}>
               {soundEnabled ? <Volume2 size={15} /> : <VolumeX size={15} />}
             </button>
@@ -214,13 +214,13 @@ export function TradePanel({ asset, balance, walletMode, soundEnabled, onToggleS
 
         <div className="trade-panel__mobile-content">
           <button className="trade-mobile-config" type="button" onClick={() => setMobileConfigOpen((current) => !current)} aria-expanded={mobileConfigOpen}>
-            <span>Stake <strong>${amount}</strong> · {formatDuration(duration)}</span>
+            <span>Stake <strong>{formatCurrency(amount, asset.quoteCurrency)}</strong> · {formatDuration(duration)}</span>
             <span>{asset.payout}% <ChevronDown size={14} /></span>
           </button>
           {mobileConfigOpen ? (
             <div className="trade-mobile-config__panel">
               <div className="trade-mobile-config__grid">
-                <label><span>Stake</span><div className="stepper"><button type="button" onClick={() => adjustAmount(-10)} aria-label="Decrease stake"><Minus size={15} /></button><div className="stepper__value"><span>$</span><input value={amount} onChange={(event) => { setAmount(Number(event.target.value) || 0); resetOrder() }} type="number" inputMode="decimal" /></div><button type="button" onClick={() => adjustAmount(10)} aria-label="Increase stake"><Plus size={15} /></button></div></label>
+                <label><span>Stake</span><div className="stepper"><button type="button" onClick={() => adjustAmount(-10)} aria-label="Decrease stake"><Minus size={15} /></button><div className="stepper__value"><span>{asset.quoteCurrency}</span><input value={amount} onChange={(event) => { setAmount(Number(event.target.value) || 0); resetOrder() }} type="number" inputMode="decimal" /></div><button type="button" onClick={() => adjustAmount(10)} aria-label="Increase stake"><Plus size={15} /></button></div></label>
                 <label>
                   <span>Duration</span>
                   <button className="mobile-duration-button" type="button" onClick={() => setMobileDurationOpen((open) => !open)} aria-expanded={mobileDurationOpen}>{formatDuration(duration)} <ChevronDown size={13} /></button>
