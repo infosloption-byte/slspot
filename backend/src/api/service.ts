@@ -98,6 +98,7 @@ export type ApiPortfolioAnalytics = {
   wins: number
   losses: number
   winRate: string
+  lossRate: string
   tradeCount: number
   volume: string
   averageTrade: string
@@ -620,6 +621,7 @@ export class PlatformApiService {
       wins: winTrades.length,
       losses: lossTrades.length,
       winRate: resolvedCount ? new Prisma.Decimal(winTrades.length).div(resolvedCount).mul(100).toFixed(2) : '0',
+      lossRate: resolvedCount ? new Prisma.Decimal(lossTrades.length).div(resolvedCount).mul(100).toFixed(2) : '0',
       tradeCount: trades.length,
       volume: volume.toString(),
       averageTrade: averageTrade.toString(),
