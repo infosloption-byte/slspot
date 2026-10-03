@@ -1,5 +1,8 @@
-import type { PrismaClient } from '../generated/prisma/client.js'
+import type { PrismaClient, Prisma } from '../generated/prisma/client.js'
+import { env } from '../config/env.js'
 import { getTradingRules } from '../trading/config.js'
+
+export type WalletMode = 'DEMO' | 'REAL'
 
 export type ApiPage = {
   page: number
@@ -127,6 +130,8 @@ export type ApiTrade = {
 export type ApiWallet = {
   id: string
   accountId: string
+  mode: WalletMode
+  name: string
   currency: string
   status: string
   availableBalance: string
@@ -209,46 +214,30 @@ export class PlatformApiService {
     }
   }
 
-  async getPortfolioSummary(userId: string): Promise<ApiPortfolioSummary> {
-    const account = await this.prisma.account.findFirst({
-      where: { userId, status: 'ACTIVE' },
-      orderBy: { createdAt: 'asc' },
-      include: {
-        wallets: {
-          where: { status: { not: 'CLOSED' } },
-          take: 1,
-        },
-      },
-    })
-
-    const wallet = account?.wallets[0]
+  async getPortfolioSummary(userId: string, mode: WalletMode = 'DEMO'): Promise<ApiPortfolioSummary> {
+    const wallets = await this.getWallets(userId)
+    const wallet = wallets.find((item) => item.mode === mode)
 
     const [openPositionCount, tradeCount, pnl] = await Promise.all([
-      this.prisma.position.count({ where: { userId, status: 'OPEN' } }),
-      this.prisma.trade.count({ where: { userId } }),
-      this.prisma.trade.aggregate({ where: { userId }, _sum: { netPnl: true } }),
+      this.prisma.position.count({ where: { userId, status: 'OPEN', account: { mode } } }),
+      this.prisma.trade.count({ where: { userId, position: { account: { mode } } } }),
+      this.prisma.trade.aggregate({ where: { userId, position: { account: { mode } } }, _sum: { netPnl: true } }),
     ])
 
-    const availableBalance = wallet?.availableBalance?.toString() ?? '0'
-    const heldBalance = wallet?.heldBalance?.toString() ?? '0'
-    const totalBalance = wallet
-      ? wallet.availableBalance.add(wallet.heldBalance).toFixed(8)
-      : '0.00000000'
-
     return {
-      currency: account?.currency ?? null,
-      availableBalance,
-      heldBalance,
-      totalBalance,
+      currency: wallet?.currency ?? null,
+      availableBalance: wallet?.availableBalance ?? '0',
+      heldBalance: wallet?.heldBalance ?? '0',
+      totalBalance: wallet?.totalBalance ?? '0.00000000',
       openPositionCount,
       tradeCount,
       netPnl: pnl._sum.netPnl?.toString() ?? '0',
     }
   }
 
-  async listPositions(userId: string, input: { page?: number; pageSize?: number }): Promise<ApiListResult<ApiPosition>> {
+  async listPositions(userId: string, input: { page?: number; pageSize?: number }, mode: WalletMode = 'DEMO'): Promise<ApiListResult<ApiPosition>> {
     const paging = normalizePage(input.page, input.pageSize)
-    const where = { userId }
+    const where = { userId, account: { mode } }
 
     const [total, positions] = await this.prisma.$transaction([
       this.prisma.position.count({ where }),
@@ -296,10 +285,11 @@ export class PlatformApiService {
     }
   }
 
-  async listTrades(userId: string, input: { page?: number; pageSize?: number; status?: string }): Promise<ApiListResult<ApiTrade>> {
+  async listTrades(userId: string, input: { page?: number; pageSize?: number; status?: string }, mode: WalletMode = 'DEMO'): Promise<ApiListResult<ApiTrade>> {
     const paging = normalizePage(input.page, input.pageSize)
     const where = {
       userId,
+      position: { account: { mode } },
       ...(input.status ? { status: input.status as 'OPEN' | 'WON' | 'LOST' | 'CANCELLED' | 'EXPIRED' } : {}),
     }
 
@@ -350,34 +340,31 @@ export class PlatformApiService {
     }
   }
 
-  async getWallet(userId: string): Promise<ApiWallet | null> {
-    const wallet = await this.prisma.wallet.findFirst({
-      where: { account: { userId }, status: { not: 'CLOSED' } },
+  async getWallets(userId: string): Promise<ApiWallet[]> {
+    return this.prisma.$transaction(async (tx) => {
+      const wallets: ApiWallet[] = []
+      for (const mode of ['DEMO', 'REAL'] as const) {
+        const record = await this.ensureWallet(tx, userId, 'USD', mode)
+        if (record) wallets.push(this.toApiWallet(record))
+      }
+      return wallets
     })
-
-    if (!wallet) return null
-
-    return {
-      id: wallet.id,
-      accountId: wallet.accountId,
-      currency: wallet.currency,
-      status: wallet.status,
-      availableBalance: wallet.availableBalance.toString(),
-      heldBalance: wallet.heldBalance.toString(),
-      totalBalance: wallet.availableBalance.add(wallet.heldBalance).toFixed(8),
-    }
   }
 
-  async listWalletTransactions(userId: string, input: { page?: number; pageSize?: number }): Promise<ApiListResult<ApiWalletTransaction>> {
-    const paging = normalizePage(input.page, input.pageSize)
-    const wallet = await this.prisma.wallet.findFirst({
-      where: { account: { userId }, status: { not: 'CLOSED' } },
-      select: { id: true },
-    })
+  async getWallet(userId: string, mode: WalletMode = 'DEMO'): Promise<ApiWallet | null> {
+    const wallets = await this.getWallets(userId)
+    return wallets.find((wallet) => wallet.mode === mode) ?? null
+  }
 
-    if (!wallet) {
-      return { items: [], pagination: paginate(0, paging.page, paging.pageSize) }
-    }
+  async listWalletTransactions(
+    userId: string,
+    input: { page?: number; pageSize?: number },
+    mode: WalletMode = 'DEMO',
+  ): Promise<ApiListResult<ApiWalletTransaction>> {
+    const paging = normalizePage(input.page, input.pageSize)
+    const wallet = await this.getWallet(userId, mode)
+
+    if (!wallet) return { items: [], pagination: paginate(0, paging.page, paging.pageSize) }
 
     const where = { walletId: wallet.id }
     const [total, transactions] = await this.prisma.$transaction([
@@ -403,6 +390,135 @@ export class PlatformApiService {
         createdAt: transaction.createdAt.toISOString(),
       })),
       pagination: paginate(total, paging.page, paging.pageSize),
+    }
+  }
+
+  private async ensureWallet(
+    tx: Prisma.TransactionClient,
+    userId: string,
+    currency: string,
+    mode: WalletMode,
+  ) {
+    const normalizedCurrency = currency.slice(0, 3).toUpperCase()
+    let account = await tx.account.findUnique({
+      where: { userId_currency_mode: { userId, currency: normalizedCurrency, mode } },
+    })
+
+    if (!account) {
+      account = await tx.account.create({
+        data: {
+          userId,
+          name: mode === 'DEMO' ? 'Demo Trading Account' : 'Real Trading Account',
+          currency: normalizedCurrency,
+          mode,
+          status: 'ACTIVE',
+        },
+      })
+    }
+
+    if (account.status !== 'ACTIVE') return null
+
+    let wallet = await tx.wallet.findUnique({ where: { accountId: account.id } })
+    if (!wallet) {
+      const initialBalance = mode === 'DEMO'
+        ? new Prisma.Decimal(env.trading.initialBalance)
+        : new Prisma.Decimal(0)
+      wallet = await tx.wallet.create({
+        data: {
+          accountId: account.id,
+          currency: account.currency,
+          status: 'ACTIVE',
+          availableBalance: initialBalance,
+          heldBalance: 0,
+        },
+      })
+
+      if (mode === 'DEMO' && initialBalance.gt(0)) {
+        await this.recordDemoFunding(tx, wallet.id, account.id, account.currency, initialBalance, 'Initial demo trading balance')
+      }
+    }
+
+    if (mode === 'DEMO' && wallet.status === 'ACTIVE' && wallet.availableBalance.lte(0) && wallet.heldBalance.lte(0)) {
+      const refillAmount = new Prisma.Decimal(env.trading.initialBalance)
+      if (refillAmount.gt(0)) {
+        const claimed = await tx.wallet.updateMany({
+          where: {
+            id: wallet.id,
+            status: 'ACTIVE',
+            availableBalance: { lte: 0 },
+            heldBalance: { lte: 0 },
+          },
+          data: { availableBalance: { increment: refillAmount } },
+        })
+
+        if (claimed.count === 1) {
+          await this.recordDemoFunding(tx, wallet.id, account.id, account.currency, refillAmount, 'Demo wallet auto-refill')
+        }
+
+        wallet = await tx.wallet.findUnique({ where: { id: wallet.id } }) ?? wallet
+      }
+    }
+
+    return { account, wallet }
+  }
+
+  private async recordDemoFunding(
+    tx: Prisma.TransactionClient,
+    walletId: string,
+    accountId: string,
+    currency: string,
+    amount: Prisma.Decimal,
+    description: string,
+  ): Promise<void> {
+    const walletTransaction = await tx.walletTransaction.create({
+      data: {
+        walletId,
+        type: 'ADJUSTMENT',
+        status: 'COMPLETED',
+        amount,
+        currency,
+        idempotencyKey: 'demo-funding:' + walletId + ':' + crypto.randomUUID(),
+        referenceType: 'DEMO_WALLET',
+        referenceId: walletId,
+        description,
+      },
+    })
+
+    await tx.ledgerEntry.create({
+      data: {
+        transactionId: walletTransaction.id,
+        accountId,
+        walletTransactionId: walletTransaction.id,
+        direction: 'CREDIT',
+        amount,
+        currency,
+        referenceType: 'DEMO_WALLET',
+        referenceId: walletId,
+      },
+    })
+  }
+
+  private toApiWallet(record: {
+    account: { id: string; mode: string; name: string }
+    wallet: {
+      id: string
+      accountId: string
+      currency: string
+      status: string
+      availableBalance: Prisma.Decimal
+      heldBalance: Prisma.Decimal
+    }
+  }): ApiWallet {
+    return {
+      id: record.wallet.id,
+      accountId: record.wallet.accountId,
+      mode: record.account.mode as WalletMode,
+      name: record.account.name,
+      currency: record.wallet.currency,
+      status: record.wallet.status,
+      availableBalance: record.wallet.availableBalance.toString(),
+      heldBalance: record.wallet.heldBalance.toString(),
+      totalBalance: record.wallet.availableBalance.add(record.wallet.heldBalance).toFixed(8),
     }
   }
 
