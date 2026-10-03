@@ -82,13 +82,19 @@ export async function setValue(
   ttlSeconds?: number,
 ): Promise<void> {
   if (!client?.isReady) throw new Error('Redis is not connected')
-
   if (ttlSeconds !== undefined) {
     await client.set(redisKey(key), value, { EX: ttlSeconds })
     return
   }
-
   await client.set(redisKey(key), value)
+}
+
+export async function incrementWithExpiry(key: string, windowSeconds: number): Promise<number> {
+  if (!client?.isReady) throw new Error('Redis is not connected')
+  const fullKey = redisKey(key)
+  const count = await client.incr(fullKey)
+  if (count === 1) await client.expire(fullKey, windowSeconds)
+  return count
 }
 
 export async function deleteValue(key: string): Promise<void> {
