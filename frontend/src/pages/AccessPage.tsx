@@ -121,18 +121,6 @@ export function AccessPage() {
   const location = useLocation()
   const navigate = useNavigate()
   const { status, isAuthenticated, login, verifyTwoFactor, register } = useAuth()
-  const [values, setValues] = useState<Record<string, string>>({})
-  const [submitted, setSubmitted] = useState(false)
-  const [error, setError] = useState('')
-  const [busy, setBusy] = useState(false)
-  const [rememberDevice, setRememberDevice] = useState(false)
-  const [useRecoveryCode, setUseRecoveryCode] = useState(false)
-  const [acceptTerms, setAcceptTerms] = useState(false)
-  const config = useMemo(
-    () => configByPath[location.pathname as keyof typeof configByPath] ?? configByPath['/login'],
-    [location.pathname],
-  )
-  const Icon = config.icon
   const routeState = readRouteState(location)
   const storedChallenge = (() => {
     if (location.pathname !== '/2fa') return null
@@ -143,11 +131,20 @@ export function AccessPage() {
       return null
     }
   })()
-
-  const challengeToken = routeState.challengeToken ?? storedChallenge?.challengeToken ?? ''
   const initialChallengeRememberDevice = routeState.rememberDevice ?? storedChallenge?.rememberDevice ?? false
-  // Seed the local control from the server-directed challenge state once.
-  useEffect(() => { if (location.pathname === '/2fa') setRememberDevice(initialChallengeRememberDevice) }, [initialChallengeRememberDevice, location.pathname])
+  const [values, setValues] = useState<Record<string, string>>({})
+  const [submitted, setSubmitted] = useState(false)
+  const [error, setError] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [rememberDevice, setRememberDevice] = useState(initialChallengeRememberDevice)
+  const [useRecoveryCode, setUseRecoveryCode] = useState(false)
+  const [acceptTerms, setAcceptTerms] = useState(false)
+  const config = useMemo(
+    () => configByPath[location.pathname as keyof typeof configByPath] ?? configByPath['/login'],
+    [location.pathname],
+  )
+  const Icon = config.icon
+  const challengeToken = routeState.challengeToken ?? storedChallenge?.challengeToken ?? ''
   const destination = typeof routeState.from === 'string' && routeState.from.startsWith('/app/')
     ? routeState.from
     : typeof storedChallenge?.from === 'string' && storedChallenge.from.startsWith('/app/')
