@@ -23,7 +23,6 @@ export function TradePanel({ asset, balance, walletMode, soundEnabled, onToggleS
   const [amount, setAmount] = useState(Math.min(50, asset.maxAmount))
   const [duration, setDuration] = useState(asset.durationsSeconds[0] ?? 60)
   const [durationOpen, setDurationOpen] = useState(false)
-  const [direction, setDirection] = useState<TradeDirection | null>(null)
   const [stage, setStage] = useState<OrderStage>('draft')
   const [error, setError] = useState('')
   const [mobileConfigOpen, setMobileConfigOpen] = useState(false)
@@ -71,7 +70,6 @@ export function TradePanel({ asset, balance, walletMode, soundEnabled, onToggleS
   }, [durationOpen, stage, error])
 
   const resetOrder = () => {
-    setDirection(null)
     setStage('draft')
     setError('')
   }
@@ -85,7 +83,6 @@ export function TradePanel({ asset, balance, walletMode, soundEnabled, onToggleS
     }
 
     setError('')
-    setDirection(nextDirection)
     setStage('submitting')
 
     try {
@@ -97,12 +94,10 @@ export function TradePanel({ asset, balance, walletMode, soundEnabled, onToggleS
         payoutRate,
       })
       setStage('draft')
-      setDirection(null)
-    } catch (error) {
+      } catch (error) {
       setError(error instanceof Error ? error.message : 'Trade submission failed')
       setStage('draft')
-      setDirection(null)
-    }
+      }
   }
 
   const adjustAmount = (delta: number) => {
