@@ -557,8 +557,16 @@ export class TradingService {
         throw new TradingError(409, 'SETTLEMENT_BALANCE_ERROR', 'Wallet hold could not be released atomically')
       }
 
-      const wallet = await tx.wallet.findUnique({ where: { accountId: details.position.accountId } })
+      let wallet = await tx.wallet.findUnique({ where: { accountId: details.position.accountId } })
       if (!wallet) throw new TradingError(409, 'WALLET_NOT_FOUND', 'Trading wallet was not found during settlement')
+
+      const account = await tx.account.findUnique({
+        where: { id: details.position.accountId },
+        select: { mode: true },
+      })
+      if (account?.mode === 'DEMO') {
+        wallet = await this.ensureDemoBalance(tx, details.position.accountId, wallet)
+      }
 
       const settlementTx = await tx.walletTransaction.create({
         data: {
