@@ -110,6 +110,13 @@ Trading Room history hardening completed in the current implementation:
 
 
 ## Reconciliation audit — 2026-10-03
+- [x] Shared UI primitives added: Button, Input, Dropdown, Tabs, Badge, Modal, Drawer, DataTable, and ConfirmDialog.
+- [x] Safe API retry policy added with transient-status handling and idempotency-key protection.
+- [x] Dashboard favorite-assets section added using the existing watchlist persistence.
+- [x] Trading order panel now displays quote currency, estimated fee, total return, expiry preview, and an idempotent retry action.
+- [x] Live `market.candle` events are emitted by the backend poller and consumed by the chart for 5-minute candles.
+- [x] CI workflow added with lint, typecheck, test, dependency audit, Prisma generation, and build gates.
+
 
 The checklist was reconciled against the current main implementation before continuing feature work. Only repository-backed functionality is marked complete; production-only items remain open.
 
@@ -174,19 +181,19 @@ Status legend:
 
 ## 0.2 Dependency management
 
-- [ ] Generate and commit `package-lock.json`.
-- [ ] Confirm Node 24 LTS development baseline.
-- [ ] Confirm supported npm version.
+- [x] Generate and commit `package-lock.json`.
+- [x] Confirm Node 24 LTS development baseline.
+- [x] Confirm supported npm version.
 - [ ] Add dependency update policy.
-- [ ] Add dependency vulnerability scanning.
+- [x] Add dependency vulnerability scanning.
 
 ## 0.3 Quality gates
 
-- [ ] Define required checks:
-  - [ ] lint
-  - [ ] typecheck
-  - [ ] unit tests
-  - [ ] build
+- [x] Define required checks:
+  - [x] lint
+  - [x] typecheck
+  - [x] unit tests
+  - [x] build
   - [ ] E2E
 - [ ] Define branch/merge policy.
 - [ ] Define release tagging policy.
@@ -529,11 +536,11 @@ Architecture:
 
 ## 7.1 Separate state domains
 
-- [ ] Server state.
-- [ ] Market state.
-- [ ] Session state.
-- [ ] UI state.
-- [ ] Form state.
+- [x] Server state is isolated behind API/domain hooks.
+- [x] Market state is isolated behind the market hook/realtime subscription boundary.
+- [x] Session state is isolated behind AuthProvider/session store semantics.
+- [x] UI state remains local to feature components unless cross-feature sharing is required.
+- [x] Form state remains local to feature forms.
 
 ## 7.2 Define stores/services
 
@@ -1239,7 +1246,7 @@ Tasks:
 - [ ] Secure cookies.
 - [ ] CSP.
 - [ ] Security headers.
-- [ ] Dependency scanning.
+- [x] Dependency scanning.
 - [ ] XSS review.
 - [ ] CSRF strategy.
 - [ ] Origin validation.
