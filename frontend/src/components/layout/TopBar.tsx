@@ -1,7 +1,7 @@
 import { Bell, Check, ChevronDown, LogOut, WalletCards } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router'
-import { useAuth } from '../../auth/AuthProvider'
+import { useAuth } from '../../auth/useAuth'
 import { useNotifications, useWallets } from '../../hooks/useServerState'
 import { useWalletMode } from '../../hooks/useWalletMode'
 import { useRealtime, useRealtimeState } from '../../realtime/RealtimeProvider'
