@@ -260,12 +260,26 @@ describe('platform API routes', () => {
 
 
   it('forwards trade history filters and pagination controls', async () => {
-    let requestedInput: Parameters<PlatformApiService['listTrades']>[1] | null = null
+    type CapturedTradeHistoryInput = {
+      page?: number
+      pageSize?: number
+      statuses?: Array<'OPEN' | 'WON' | 'LOST' | 'CANCELLED' | 'EXPIRED'>
+      search?: string
+      assetId?: string
+      direction?: 'UP' | 'DOWN'
+      from?: Date
+      to?: Date
+      sortBy?: 'openedAt' | 'closedAt' | 'amount' | 'netPnl'
+      sortOrder?: 'asc' | 'desc'
+      settledOnly?: boolean
+    }
+
+    let requestedInput: CapturedTradeHistoryInput | null = null
     let requestedMode = ''
 
     const scoped = {
       ...apiService,
-      listTrades: async (_userId: string, input: Parameters<PlatformApiService['listTrades']>[1], mode: 'DEMO' | 'REAL') => {
+      listTrades: async (_userId: string, input: CapturedTradeHistoryInput, mode: 'DEMO' | 'REAL') => {
         requestedInput = input
         requestedMode = mode
         return { items: [], pagination: { page: input.page ?? 1, pageSize: input.pageSize ?? 25, total: 0, totalPages: 1 } }
