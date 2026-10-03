@@ -3,6 +3,8 @@ import { useEffect, useRef, useState } from 'react'
 import type { MarketAsset } from '../../data/mockMarket'
 import type { TradeDirection } from '../../types/trading'
 import type { WalletMode } from '../../hooks/useWalletMode'
+import { ApiError } from '../../api/client'
+import type { TradeCreateResult } from '../../api/trades'
 
 type TradePanelProps = {
   asset: MarketAsset
@@ -10,10 +12,10 @@ type TradePanelProps = {
   balance: number
   walletMode: WalletMode
   onToggleSound: () => void
-  onOpenTrade: (trade: { direction: TradeDirection; amount: number; durationSeconds: number; entryPrice: number; payoutRate: number }) => Promise<void>
+  onOpenTrade: (trade: { direction: TradeDirection; amount: number; durationSeconds: number; entryPrice: number; payoutRate: number }) => Promise<TradeCreateResult>
 }
 
-type OrderStage = 'draft' | 'submitting'
+type OrderStage = 'draft' | 'submitting' | 'accepted' | 'open'
 
 function formatDuration(value: number) {
   return value < 60 ? value + 's' : value / 60 + 'm'
@@ -25,6 +27,7 @@ export function TradePanel({ asset, balance, walletMode, soundEnabled, onToggleS
   const [durationOpen, setDurationOpen] = useState(false)
   const [stage, setStage] = useState<OrderStage>('draft')
   const [error, setError] = useState('')
+  const [lastOrder, setLastOrder] = useState<TradeCreateResult | null>(null)
   const [mobileConfigOpen, setMobileConfigOpen] = useState(false)
   const [mobileDurationOpen, setMobileDurationOpen] = useState(false)
   const durationRef = useRef<HTMLDivElement>(null)
@@ -86,18 +89,22 @@ export function TradePanel({ asset, balance, walletMode, soundEnabled, onToggleS
     setStage('submitting')
 
     try {
-      await onOpenTrade({
-        direction: nextDirection,
+      const result = await onOpenTrade({        direction: nextDirection,
         amount,
         durationSeconds: duration,
         entryPrice: asset.price,
         payoutRate,
       })
+      setLastOrder(result)
+      setStage(result.orderStatus === 'ACCEPTED' ? 'accepted' : 'open')
+      window.setTimeout(() => setStage('draft'), 1600)
+    } catch (error) {
+      const message = error instanceof ApiError && error.code === 'ORDER_REJECTED'
+        ? 'Trade rejected: ' + error.message
+        : error instanceof Error ? error.message : 'Trade submission failed'
+      setError(message)
       setStage('draft')
-      } catch (error) {
-      setError(error instanceof Error ? error.message : 'Trade submission failed')
-      setStage('draft')
-      }
+    }
   }
 
   const adjustAmount = (delta: number) => {
@@ -129,6 +136,13 @@ export function TradePanel({ asset, balance, walletMode, soundEnabled, onToggleS
   return (
     <>
       <aside className="trade-panel" aria-label="Trade controls">
+        {stage !== 'draft' || lastOrder ? (
+          <div className={'trade-state-banner trade-state-banner--' + stage} role="status">
+            <span>{stage === 'submitting' ? 'Submitting order…' : stage === 'accepted' ? 'Order accepted' : stage === 'open' ? 'Trade open' : lastOrder?.status ?? 'Ready'}</span>
+            {lastOrder ? <small>{lastOrder.tradeId} · {lastOrder.orderStatus}</small> : null}
+          </div>
+        ) : null}
+
         <div className="trade-panel__head">
           <div>
             <span className="trade-panel__label">Server account</span>
