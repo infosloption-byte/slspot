@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router'
 import { useAuth } from '../../auth/useAuth'
 import { useNotifications, useWallets } from '../../hooks/useServerState'
 import { useWalletMode } from '../../hooks/useWalletMode'
+import { setUnreadCount, useNotificationStore } from '../../state/notificationStore'
 import { useRealtime, useRealtimeState } from '../../realtime/useRealtime'
 import { userChannel } from '../../realtime/subscriptions'
 
@@ -27,7 +28,7 @@ export function TopBar() {
   const realtimeState = useRealtimeState()
   const wallets = useWallets()
   const notifications = useNotifications(1, 1, true)
-  const unreadCount = notifications.data?.pagination.total ?? 0
+  const { unreadCount } = useNotificationStore()
   const [walletMenuOpen, setWalletMenuOpen] = useState(false)
   const walletSelectorRef = useRef<HTMLDivElement>(null)
   const [loggingOut, setLoggingOut] = useState(false)
@@ -36,6 +37,10 @@ export function TopBar() {
   const selectedWallet = wallets.data?.find((wallet) => wallet.mode === mode) ?? null
   const reloadWallets = wallets.reload
   const reloadNotifications = notifications.reload
+
+  useEffect(() => {
+    if (notifications.data) setUnreadCount(notifications.data.pagination.total)
+  }, [notifications.data])
 
   useEffect(() => {
     if (!user?.id) return
