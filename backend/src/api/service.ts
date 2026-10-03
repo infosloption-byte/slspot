@@ -185,6 +185,7 @@ export type ApiWallet = {
   availableBalance: string
   heldBalance: string
   totalBalance: string
+  pendingFunds: string
 }
 
 export type WalletTransactionType = 'DEPOSIT' | 'WITHDRAWAL' | 'TRADE_HOLD' | 'TRADE_RELEASE' | 'SETTLEMENT' | 'FEE' | 'ADJUSTMENT'
@@ -454,7 +455,19 @@ export class PlatformApiService {
       const wallets: ApiWallet[] = []
       for (const mode of ['DEMO', 'REAL'] as const) {
         const record = await this.ensureWallet(tx, userId, 'USD', mode)
-        if (record) wallets.push(this.toApiWallet(record))
+        if (!record) continue
+
+        const [pendingDeposits, pendingWithdrawals] = await Promise.all([
+          tx.deposit.aggregate({
+            where: { walletId: record.wallet.id, status: { in: ['PENDING', 'PROCESSING'] } },
+            _sum: { amount: true },
+          }),
+          tx.withdrawal.aggregate({
+            where: { walletId: record.wallet.id, status: { in: ['PENDING', 'PROCESSING'] } },
+            _sum: { amount: true },
+          }),
+        ])
+        wallets.push(this.toApiWallet(record, (pendingDeposits._sum.amount ?? new Prisma.Decimal(0)).minus(pendingWithdrawals._sum.amount ?? new Prisma.Decimal(0))))
       }
       return wallets
     })
@@ -946,7 +959,7 @@ export class PlatformApiService {
       availableBalance: Prisma.Decimal
       heldBalance: Prisma.Decimal
     }
-  }): ApiWallet {
+  }, pendingFunds = new Prisma.Decimal(0)): ApiWallet {
     return {
       id: record.wallet.id,
       accountId: record.wallet.accountId,
@@ -957,6 +970,7 @@ export class PlatformApiService {
       availableBalance: record.wallet.availableBalance.toString(),
       heldBalance: record.wallet.heldBalance.toString(),
       totalBalance: record.wallet.availableBalance.add(record.wallet.heldBalance).toFixed(8),
+      pendingFunds: pendingFunds.toString(),
     }
   }
 
