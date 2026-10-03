@@ -41,7 +41,7 @@ export class RealtimeClient {
   }
 
   connect(): void {
-    if (this.socket || this.stateValue === 'connecting' || this.stateValue === 'reconnecting') return
+    if (this.socket || this.stateValue === 'connecting') return
 
     this.intentionalClose = false
     this.setState(this.reconnectAttempt > 0 ? 'reconnecting' : 'connecting')
