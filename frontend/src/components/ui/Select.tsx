@@ -1,6 +1,6 @@
 import { Check, ChevronDown } from 'lucide-react'
 import { createPortal } from 'react-dom'
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
 
 export type SelectOption = {
   value: string
@@ -24,10 +24,23 @@ type MenuPosition = {
 export function Select({ value, options, onChange, label, className = '' }: SelectProps) {
   const [open, setOpen] = useState(false)
   const [menuPosition, setMenuPosition] = useState<MenuPosition | null>(null)
+  const [highlightedIndex, setHighlightedIndex] = useState(() => Math.max(0, options.findIndex((option) => option.value === value)))
+  const menuId = useId().replace(/:/g, '')
   const rootRef = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
+  const optionRefs = useRef<Array<HTMLButtonElement | null>>([])
   const selected = options.find((option) => option.value === value) ?? options[0]
+
+  useEffect(() => {
+    const index = options.findIndex((option) => option.value === value)
+    setHighlightedIndex(index >= 0 ? index : 0)
+  }, [options, value])
+
+  useEffect(() => {
+    if (!open) return
+    optionRefs.current[highlightedIndex]?.focus()
+  }, [highlightedIndex, open])
 
   const updatePosition = useCallback(() => {
     const trigger = triggerRef.current
@@ -94,6 +107,7 @@ export function Select({ value, options, onChange, label, className = '' }: Sele
       <div
         ref={menuRef}
         className="select-field__menu"
+        id={menuId}
         role="listbox"
         aria-label={label}
         style={{
@@ -102,9 +116,10 @@ export function Select({ value, options, onChange, label, className = '' }: Sele
           width: menuPosition.width,
         }}
       >
-        {options.map((option) => (
+        {options.map((option, index) => (
           <button
             key={option.value}
+            ref={(element) => { optionRefs.current[index] = element }}
             type="button"
             role="option"
             aria-selected={option.value === value}
@@ -132,7 +147,35 @@ export function Select({ value, options, onChange, label, className = '' }: Sele
           className={open ? 'select-field__trigger select-field__trigger--open' : 'select-field__trigger'}
           aria-haspopup="listbox"
           aria-expanded={open}
+          aria-controls={open ? menuId : undefined}
           onClick={() => setOpen((current) => !current)}
+          onKeyDown={(event) => {
+            if (event.key === 'ArrowDown') {
+              event.preventDefault()
+              setOpen(true)
+              setHighlightedIndex((current) => Math.min(options.length - 1, Math.max(0, current + 1)))
+            } else if (event.key === 'ArrowUp') {
+              event.preventDefault()
+              setOpen(true)
+              setHighlightedIndex((current) => Math.max(0, current - 1))
+            } else if (event.key === 'Home') {
+              event.preventDefault()
+              setOpen(true)
+              setHighlightedIndex(0)
+            } else if (event.key === 'End') {
+              event.preventDefault()
+              setOpen(true)
+              setHighlightedIndex(Math.max(0, options.length - 1))
+            } else if ((event.key === 'Enter' || event.key === ' ') && open) {
+              event.preventDefault()
+              const option = options[highlightedIndex]
+              if (option) {
+                onChange(option.value)
+                setOpen(false)
+                triggerRef.current?.focus()
+              }
+            }
+          }}
         >
           <span>{selected?.label ?? 'Select'}</span>
           <ChevronDown size={14} aria-hidden="true" />
