@@ -36,10 +36,10 @@ function clearSessionCookie(reply: FastifyReply) {
 }
 
 export function registerAuthRoutes(app: FastifyInstance, service: AuthServiceLike): void {
-  app.post<{Body:{email:string;password:string;countryCode?:string}}>(PREFIX+'/register',{
-    schema:{body:{type:'object',required:['email','password'],additionalProperties:false,properties:{
+  app.post<{Body:{email:string;password:string;countryCode?:string;acceptTerms:boolean;termsVersion?:string}}>(PREFIX+'/register',{
+    schema:{body:{type:'object',required:['email','password','acceptTerms'],additionalProperties:false,properties:{
       email:{type:'string',minLength:3,maxLength:254},password:{type:'string',minLength:10,maxLength:128},
-      countryCode:{type:'string',minLength:2,maxLength:2},
+      countryCode:{type:'string',minLength:2,maxLength:2},acceptTerms:{type:'boolean'},termsVersion:{type:'string',maxLength:32},
     }}},
   },async(request,reply)=>{
     const result=await service.register(request.body)
