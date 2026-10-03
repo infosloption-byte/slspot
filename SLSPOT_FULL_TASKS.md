@@ -1275,8 +1275,8 @@ Tasks:
 
 - [x] No secrets in bundle.
 - [x] Secure cookies.
-- [ ] CSP.
-- [ ] Security headers.
+- [x] CSP.
+- [~] Security headers — frontend dev/preview and backend API headers are hardened; production static-site edge headers remain part of Phase 27.
 - [x] Dependency scanning.
 - [x] XSS review.
 - [x] CSRF strategy.
@@ -1288,7 +1288,7 @@ Tasks:
 - [x] Authorization.
 - [x] RBAC.
 - [x] Tenant/resource ownership checks.
-- [ ] Rate limiting.
+- [x] Rate limiting.
 - [x] Input validation.
 - [x] SQL safety.
 - [x] SSRF review.
@@ -1296,7 +1296,7 @@ Tasks:
 - [x] Webhook verification — HMAC-SHA256 verification utility is ready; provider-specific ingestion remains in the Payments milestone.
 - [x] Idempotency.
 - [x] Replay protection.
-- [ ] Audit logging.
+- [x] Audit logging.
 
 ## Financial
 
