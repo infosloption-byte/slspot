@@ -49,6 +49,16 @@ function createMockAuthService(): AuthServiceLike {
   }
 }
 
+async function csrfToken(app: ReturnType<typeof buildApp>, sessionCookie?: string): Promise<string> {
+  const response = await app.inject({
+    method: 'GET',
+    url: '/api/v1/auth/csrf',
+    ...(sessionCookie ? { headers: { cookie: sessionCookie } } : {}),
+  })
+  assert.equal(response.statusCode, 200)
+  return response.json<{ data: { csrfToken: string } }>().data.csrfToken
+}
+
 describe('authentication routes', () => {
   it('rejects protected endpoints without a session cookie', async () => {
     const app = buildApp({ logging: false, authService: createMockAuthService() })
@@ -68,6 +78,7 @@ describe('authentication routes', () => {
     const response = await app.inject({
       method: 'POST',
       url: '/api/v1/auth/register',
+      headers: { 'x-csrf-token': await csrfToken(app) },
       payload: { email: user.email, password: 'A-strong-password-123', acceptTerms: true },
     })
 
@@ -85,6 +96,7 @@ describe('authentication routes', () => {
     const response = await app.inject({
       method: 'POST',
       url: '/api/v1/auth/login',
+      headers: { 'x-csrf-token': await csrfToken(app) },
       payload: { email: user.email, password: 'A-strong-password-123' },
     })
 
@@ -101,6 +113,7 @@ describe('authentication routes', () => {
     const login = await app.inject({
       method: 'POST',
       url: '/api/v1/auth/login',
+      headers: { 'x-csrf-token': await csrfToken(app) },
       payload: { email: user.email, password: 'A-strong-password-123' },
     })
     const cookie = String(login.headers['set-cookie']).split(';')[0]
@@ -133,6 +146,7 @@ describe('authentication routes', () => {
     const response = await app.inject({
       method: 'POST',
       url: '/api/v1/auth/login',
+      headers: { 'x-csrf-token': await csrfToken(app) },
       payload: { email: user.email, password: 'A-strong-password-123', rememberDevice: true },
     })
 
@@ -149,6 +163,7 @@ describe('authentication routes', () => {
     const response = await app.inject({
       method: 'POST',
       url: '/api/v1/auth/register',
+      headers: { 'x-csrf-token': await csrfToken(app) },
       payload: { email: user.email, password: 'A-strong-password-123', acceptTerms: false },
     })
 
