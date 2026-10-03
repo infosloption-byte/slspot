@@ -67,6 +67,7 @@ export type TradeRecord = {
 
 export type TradeCreateResult = {
   orderId: string
+  orderStatus: string
   tradeId: string
   positionId: string
   status: string
