@@ -56,8 +56,8 @@ function parseLogLevel(value: string | undefined): LogLevel {
   return logLevel as LogLevel
 }
 
-function parseAuthSameSite(value: string | undefined): AuthSameSite {
-  const sameSite = (value ?? 'lax').trim().toLowerCase()
+function parseAuthSameSite(value: string | undefined, nodeEnv: NodeEnv): AuthSameSite {
+  const sameSite = (value ?? (nodeEnv === 'production' ? 'strict' : 'lax')).trim().toLowerCase()
   if (!AUTH_SAME_SITE_VALUES.includes(sameSite as AuthSameSite)) {
     throw new Error('AUTH_COOKIE_SAMESITE must be lax, strict, or none')
   }
@@ -384,7 +384,7 @@ export const env = {
     passwordMinLength: parsePositiveInteger('AUTH_PASSWORD_MIN_LENGTH', process.env.AUTH_PASSWORD_MIN_LENGTH, 12, 10, 128),
     cookieName: authCookieName,
     csrfCookieName,
-    cookieSameSite: parseAuthSameSite(process.env.AUTH_COOKIE_SAMESITE),
+    cookieSameSite: parseAuthSameSite(process.env.AUTH_COOKIE_SAMESITE, nodeEnv),
     cookieSecure: authCookieSecure,
     exposeDevTokens,
   },
