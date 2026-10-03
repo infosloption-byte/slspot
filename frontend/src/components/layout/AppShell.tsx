@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { useRealtimeState } from '../../realtime/useRealtime'
 import { Sidebar } from './Sidebar'
 import { TopBar } from './TopBar'
+import { NetworkStatus } from '../ui/NetworkStatus'
 
 /** Shared frame for every /app/* page: left rail + top bar + page content. */
 export function AppShell() {
@@ -26,6 +27,7 @@ export function AppShell() {
       <Sidebar />
       <div className="app-main">
         <TopBar />
+        <NetworkStatus />
         <div className="app-content">
           <Outlet />
         </div>
