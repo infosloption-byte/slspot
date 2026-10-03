@@ -1,31 +1,14 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useSyncExternalStore } from 'react'
+import { useCallback, useEffect, useMemo, useSyncExternalStore } from 'react'
 import type { PropsWithChildren } from 'react'
 import { ApiError } from '../api/client'
 import { authApi } from '../api/auth'
 import type { AuthSession, LoginResponse, RegistrationResponse } from './types'
-
-type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated'
-
-type AuthContextValue = {
-  status: AuthStatus
-  user: AuthSession | null
-  isAuthenticated: boolean
-  refresh: () => Promise<AuthSession | null>
-  login: (email: string, password: string, rememberDevice?: boolean) => Promise<LoginResponse>
-  verifyTwoFactor: (challengeToken: string, code?: string, recoveryCode?: string, rememberDevice?: boolean) => Promise<LoginResponse>
-  register: (email: string, password: string, acceptTerms: boolean, termsVersion?: string) => Promise<RegistrationResponse>
-  logout: () => Promise<void>
-  logoutAll: () => Promise<void>
-}
-
-const AuthContext = createContext<AuthContextValue | null>(null)
+import { AuthContext, AUTH_EXPIRED_EVENT, type AuthContextValue, type AuthStatus } from './context'
 
 type AuthSnapshot = {
   status: AuthStatus
   user: AuthSession | null
 }
-
-const AUTH_EXPIRED_EVENT = 'slspot:auth-expired'
 
 let snapshot: AuthSnapshot = {
   status: 'loading',
@@ -155,12 +138,3 @@ export function AuthProvider({ children }: PropsWithChildren) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 
-export function useAuth(): AuthContextValue {
-  const value = useContext(AuthContext)
-  if (!value) {
-    throw new Error('useAuth must be used inside AuthProvider')
-  }
-  return value
-}
-
-export { AUTH_EXPIRED_EVENT }
