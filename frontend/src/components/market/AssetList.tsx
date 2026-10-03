@@ -1,4 +1,5 @@
 import { ArrowDownAZ, BarChart3, Clock3, Search, Star, X } from 'lucide-react'
+import { Select } from '../ui/Select'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { MarketAsset } from '../../data/mockMarket'
 import { formatPercent, formatPrice } from '../../lib/format'
@@ -187,17 +188,22 @@ export function AssetList({ open, selected, assets, onSelect, onClose, loading =
 
       <div className="market-sort-row">
         <span><Clock3 size={12} /> Recent</span>
-        <label>
-          <ArrowDownAZ size={12} />
-          <select value={sortBy} onChange={(event) => setSortBy(event.target.value as AssetSort)} aria-label="Sort markets">
-            <option value="recent">Recent</option>
-            <option value="symbol">Symbol</option>
-            <option value="price">Price</option>
-            <option value="change">24h change</option>
-            <option value="volume">Volume</option>
-            <option value="payout">Payout</option>
-          </select>
-        </label>
+        <div className="market-sort-row__select">
+          <ArrowDownAZ size={12} aria-hidden="true" />
+          <Select
+            value={sortBy}
+            options={[
+              { value: 'recent', label: 'Recent' },
+              { value: 'symbol', label: 'Symbol' },
+              { value: 'price', label: 'Price' },
+              { value: 'change', label: '24h change' },
+              { value: 'volume', label: 'Volume' },
+              { value: 'payout', label: 'Payout' },
+            ]}
+            onChange={(value) => setSortBy(value as AssetSort)}
+            className="market-sort-select"
+          />
+        </div>
       </div>
 
       <div className="asset-list" aria-label="Available markets">
