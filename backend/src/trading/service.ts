@@ -4,6 +4,7 @@ import { env } from '../config/env.js'
 import { createRealtimeEvent, serializeRealtimeEvent } from '../realtime/events.js'
 import { isRedisReady, publish } from '../realtime/redis.js'
 import { getTradingRules, TRADING_RULES } from './config.js'
+import { LedgerService } from '../ledger/service.js'
 
 export type TradeDirection = 'UP' | 'DOWN'
 export type WalletMode = 'DEMO' | 'REAL'
@@ -176,6 +177,7 @@ const DEMO_PRICE_BASES: Record<string, string> = {
 export class TradingService {
   private timer: ReturnType<typeof setTimeout> | null = null
   private running = false
+  private readonly ledger: LedgerService
 
   constructor(
     private readonly prisma: PrismaClient,
@@ -184,7 +186,9 @@ export class TradingService {
       warn: (value: unknown, message?: string) => void
       error: (value: unknown, message?: string) => void
     } = console,
-  ) {}
+  ) {
+    this.ledger = new LedgerService(prisma)
+  }
 
   async start(): Promise<void> {
     if (this.running) return
@@ -321,10 +325,10 @@ export class TradingService {
           where: {
             id: wallet!.id,
             status: 'ACTIVE',
-            availableBalance: { gte: holdAmount.plus(fee) },
+            availableBalance: { gte: holdAmount },
           },
           data: {
-            availableBalance: { decrement: holdAmount.plus(fee) },
+            availableBalance: { decrement: holdAmount },
             heldBalance: { increment: holdAmount },
           },
         })
@@ -337,35 +341,24 @@ export class TradingService {
           return { kind: 'rejected' as const, order: rejected, asset }
         }
 
-        const updatedOrder = await tx.order.update({
-          where: { id: order.id },
-          data: {
-            status: 'ACCEPTED',
-            executedPrice: marketForTrade!.lastPrice!,
-            acceptedAt: now,
-          },
-        })
+        const heldWallet = await tx.wallet.findUnique({ where: { id: wallet!.id } })
+        if (!heldWallet) throw new TradingError(409, 'WALLET_NOT_FOUND', 'Trading wallet disappeared while holding funds')
 
-        const position = await tx.position.create({
-          data: {
-            orderId: updatedOrder.id,
-            userId,
-            accountId: account.id,
-            assetId: asset.id,
-            side: updatedOrder.side,
-            amount,
-            entryPrice: marketForTrade!.lastPrice!,
-          },
-        })
+        if (fee.gt(0)) {
+          const feeClaim = await tx.wallet.updateMany({
+            where: {
+              id: wallet!.id,
+              status: 'ACTIVE',
+              availableBalance: { gte: fee },
+            },
+            data: { availableBalance: { decrement: fee } },
+          })
+          if (feeClaim.count !== 1) {
+            throw new TradingError(409, 'FEE_BALANCE_ERROR', 'Trading fee could not be reserved atomically')
+          }
+        }
 
-        const trade = await tx.trade.create({
-          data: {
-            positionId: position.id,
-            userId,
-            status: 'OPEN',
-            fee,
-          },
-        })
+        const ledgerAccounts = await this.ledger.ensureWalletLedgerAccounts(tx, account.id, wallet!.currency)
 
         const holdTx = await tx.walletTransaction.create({
           data: {
@@ -378,23 +371,38 @@ export class TradingService {
             referenceType: 'TRADE',
             referenceId: trade.id,
             description: 'Funds held for trade ' + trade.id,
+            availableBalanceAfter: heldWallet.availableBalance,
+            heldBalanceAfter: heldWallet.heldBalance,
           },
         })
 
-        await tx.ledgerEntry.create({
-          data: {
-            transactionId: holdTx.id,
-            accountId: account.id,
-            walletTransactionId: holdTx.id,
-            direction: 'DEBIT',
-            amount: holdAmount,
-            currency: wallet!.currency,
-            referenceType: 'TRADE_HOLD',
-            referenceId: trade.id,
-          },
+        await this.ledger.postTransaction(tx, {
+          walletTransactionId: holdTx.id,
+          currency: wallet!.currency,
+          referenceType: 'TRADE_HOLD',
+          referenceId: trade.id,
+          description: 'Hold funds for trade ' + trade.id,
+          lines: [
+            {
+              accountCode: ledgerAccounts.availableCode,
+              accountName: 'User available balance',
+              accountType: 'LIABILITY',
+              direction: 'DEBIT',
+              amount: holdAmount,
+            },
+            {
+              accountCode: ledgerAccounts.heldCode,
+              accountName: 'User held balance',
+              accountType: 'LIABILITY',
+              direction: 'CREDIT',
+              amount: holdAmount,
+            },
+          ],
         })
 
         if (fee.gt(0)) {
+          const feeWallet = await tx.wallet.findUnique({ where: { id: wallet!.id } })
+          if (!feeWallet) throw new TradingError(409, 'WALLET_NOT_FOUND', 'Trading wallet disappeared while reserving fee')
           const feeTx = await tx.walletTransaction.create({
             data: {
               walletId: wallet!.id,
@@ -406,20 +414,41 @@ export class TradingService {
               referenceType: 'TRADE',
               referenceId: trade.id,
               description: 'Trading fee for ' + trade.id,
+              availableBalanceAfter: feeWallet.availableBalance,
+              heldBalanceAfter: feeWallet.heldBalance,
             },
           })
 
-          await tx.ledgerEntry.create({
-            data: {
-              transactionId: feeTx.id,
-              accountId: account.id,
-              walletTransactionId: feeTx.id,
-              direction: 'DEBIT',
-              amount: fee,
-              currency: wallet!.currency,
-              referenceType: 'FEE',
-              referenceId: trade.id,
-            },
+          const feeAccountCode = await this.ledger.ensureSystemLedgerAccount(
+            tx,
+            'SYSTEM:TRADE_FEES',
+            'Trading fee revenue',
+            'REVENUE',
+            wallet!.currency,
+          )
+
+          await this.ledger.postTransaction(tx, {
+            walletTransactionId: feeTx.id,
+            currency: wallet!.currency,
+            referenceType: 'FEE',
+            referenceId: trade.id,
+            description: 'Trading fee for ' + trade.id,
+            lines: [
+              {
+                accountCode: ledgerAccounts.availableCode,
+                accountName: 'User available balance',
+                accountType: 'LIABILITY',
+                direction: 'DEBIT',
+                amount: fee,
+              },
+              {
+                accountCode: feeAccountCode,
+                accountName: 'Trading fee revenue',
+                accountType: 'REVENUE',
+                direction: 'CREDIT',
+                amount: fee,
+              },
+            ],
           })
         }
 
@@ -633,23 +662,68 @@ export class TradingService {
           referenceType: 'SETTLEMENT',
           referenceId,
           description: 'Trade settlement ' + tradeId,
+          availableBalanceAfter: wallet.availableBalance,
+          heldBalanceAfter: wallet.heldBalance,
         },
       })
 
-      if (terms.grossPayout.gt(0)) {
-        await tx.ledgerEntry.create({
-          data: {
-            transactionId: settlementTx.id,
-            accountId: details.position.accountId,
-            walletTransactionId: settlementTx.id,
-            direction: 'CREDIT',
-            amount: terms.grossPayout,
-            currency: wallet.currency,
-            referenceType: 'SETTLEMENT',
-            referenceId,
-          },
-        })
-      }
+      const settlementAccountCode = await this.ledger.ensureSystemLedgerAccount(
+        tx,
+        'SYSTEM:TRADE_SETTLEMENT',
+        'Trade settlement house result',
+        'EQUITY',
+        wallet.currency,
+      )
+      const walletLedger = await this.ledger.ensureWalletLedgerAccounts(tx, details.position.accountId, wallet.currency)
+      const settlementLines = won
+        ? [
+            {
+              accountCode: walletLedger.heldCode,
+              accountName: 'User held balance',
+              accountType: 'LIABILITY' as const,
+              direction: 'DEBIT' as const,
+              amount: terms.holdAmount,
+            },
+            {
+              accountCode: settlementAccountCode,
+              accountName: 'Trade settlement house result',
+              accountType: 'EQUITY' as const,
+              direction: 'DEBIT' as const,
+              amount: terms.profit,
+            },
+            {
+              accountCode: walletLedger.availableCode,
+              accountName: 'User available balance',
+              accountType: 'LIABILITY' as const,
+              direction: 'CREDIT' as const,
+              amount: terms.grossPayout,
+            },
+          ]
+        : [
+            {
+              accountCode: walletLedger.heldCode,
+              accountName: 'User held balance',
+              accountType: 'LIABILITY' as const,
+              direction: 'DEBIT' as const,
+              amount: terms.holdAmount,
+            },
+            {
+              accountCode: settlementAccountCode,
+              accountName: 'Trade settlement house result',
+              accountType: 'EQUITY' as const,
+              direction: 'CREDIT' as const,
+              amount: terms.holdAmount,
+            },
+          ]
+
+      await this.ledger.postTransaction(tx, {
+        walletTransactionId: settlementTx.id,
+        currency: wallet.currency,
+        referenceType: 'SETTLEMENT',
+        referenceId,
+        description: 'Trade settlement ' + tradeId,
+        lines: settlementLines,
+      })
 
       const settlement = await tx.settlement.upsert({
         where: { tradeId },
@@ -822,6 +896,14 @@ export class TradingService {
       },
     })
     if (seedInitialBalance && initialBalance.gt(0)) {
+      const ledgerAccounts = await this.ledger.ensureWalletLedgerAccounts(tx, accountId, currency)
+      const fundingCode = await this.ledger.ensureSystemLedgerAccount(
+        tx,
+        'SYSTEM:DEMO_FUNDING',
+        'Demo funding source',
+        'EQUITY',
+        currency,
+      )
       const walletTransaction = await tx.walletTransaction.create({
         data: {
           walletId: wallet.id,
@@ -833,21 +915,21 @@ export class TradingService {
           referenceType: 'SYSTEM',
           referenceId: wallet.id,
           description: 'Initial demo trading balance',
+          availableBalanceAfter: wallet.availableBalance,
+          heldBalanceAfter: wallet.heldBalance,
         },
       })
-      await tx.ledgerEntry.create({
-        data: {
-          transactionId: walletTransaction.id,
-          accountId,
-          walletTransactionId: walletTransaction.id,
-          direction: 'CREDIT',
-          amount: initialBalance,
-          currency,
-          referenceType: 'SYSTEM',
-          referenceId: wallet.id,
-        },
+      await this.ledger.postTransaction(tx, {
+        walletTransactionId: walletTransaction.id,
+        currency,
+        referenceType: 'SYSTEM',
+        referenceId: wallet.id,
+        description: 'Initial demo trading balance',
+        lines: [
+          { accountCode: fundingCode, accountName: 'Demo funding source', accountType: 'EQUITY', direction: 'DEBIT', amount: initialBalance },
+          { accountCode: ledgerAccounts.availableCode, accountName: 'User available balance', accountType: 'LIABILITY', direction: 'CREDIT', amount: initialBalance },
+        ],
       })
-    }
     return wallet
   }
 
@@ -872,6 +954,14 @@ export class TradingService {
     })
 
     if (claimed.count === 1) {
+      const ledgerAccounts = await this.ledger.ensureWalletLedgerAccounts(tx, accountId, wallet.currency)
+      const fundingCode = await this.ledger.ensureSystemLedgerAccount(
+        tx,
+        'SYSTEM:DEMO_FUNDING',
+        'Demo funding source',
+        'EQUITY',
+        wallet.currency,
+      )
       const walletTransaction = await tx.walletTransaction.create({
         data: {
           walletId: wallet.id,
@@ -883,22 +973,21 @@ export class TradingService {
           referenceType: 'DEMO_WALLET',
           referenceId: wallet.id,
           description: 'Demo wallet auto-refill',
+          availableBalanceAfter: wallet.availableBalance.add(refillAmount),
+          heldBalanceAfter: wallet.heldBalance,
         },
       })
-      await tx.ledgerEntry.create({
-        data: {
-          transactionId: walletTransaction.id,
-          accountId,
-          walletTransactionId: walletTransaction.id,
-          direction: 'CREDIT',
-          amount: refillAmount,
-          currency: wallet.currency,
-          referenceType: 'DEMO_WALLET',
-          referenceId: wallet.id,
-        },
+      await this.ledger.postTransaction(tx, {
+        walletTransactionId: walletTransaction.id,
+        currency: wallet.currency,
+        referenceType: 'DEMO_WALLET',
+        referenceId: wallet.id,
+        description: 'Demo wallet auto-refill',
+        lines: [
+          { accountCode: fundingCode, accountName: 'Demo funding source', accountType: 'EQUITY', direction: 'DEBIT', amount: refillAmount },
+          { accountCode: ledgerAccounts.availableCode, accountName: 'User available balance', accountType: 'LIABILITY', direction: 'CREDIT', amount: refillAmount },
+        ],
       })
-    }
-
     const refreshedWallet = await tx.wallet.findUnique({ where: { id: wallet.id } })
     if (!refreshedWallet) {
       throw new TradingError(409, 'WALLET_NOT_FOUND', 'Trading wallet disappeared during demo balance refill')
