@@ -103,10 +103,10 @@ Trading Room history hardening completed in the current implementation:
 - [x] Typed domain API clients for market, portfolio, trades, wallet, and notifications.
 - [x] Authenticated WebSocket/realtime client with reconnect and subscription recovery.
 - [x] Authoritative market data and wallet state for trading flows.
-- [ ] Loading/offline/reconnecting states across all features.
-- [ ] Full accessibility audit and focus trapping.
-- [ ] Unit/component/E2E test suite.
-- [ ] CI quality gates.
+- [~] Loading/offline/reconnecting states across all features (global loading bar plus offline/reconnect banner now implemented; per-feature coverage remains).
+- [~] Full accessibility audit and focus trapping (shared Select/Modal/Drawer coverage added; full feature audit remains).
+- [~] Unit/component/E2E test suite (shared UI, realtime parsing, API retry coverage added; broader component/E2E coverage remains).
+- [x] CI quality gates.
 
 
 ## Reconciliation audit — 2026-10-03
@@ -244,32 +244,32 @@ Before real-money features:
 - [x] Establish red negative state.
 - [x] Establish surface/border tokens.
 - [x] Establish radius tokens.
-- [ ] Document typography scale.
-- [ ] Document spacing scale.
-- [ ] Document component states.
-- [ ] Document accessibility contrast requirements.
+- [x] Document typography scale.
+- [x] Document spacing scale.
+- [x] Document component states.
+- [x] Document accessibility contrast requirements.
 
 ## 2.2 Components
 
 Create reusable primitives:
 
-- [ ] Button
+- [x] Button
 - [x] IconButton
-- [ ] Input
+- [x] Input
 - [x] Select
-- [ ] Dropdown
-- [ ] Tabs
-- [ ] Badge
+- [x] Dropdown
+- [x] Tabs
+- [x] Badge
 - [x] Tooltip
-- [ ] Modal
-- [ ] Drawer
+- [x] Modal
+- [x] Drawer
 - [x] Toast
 - [x] Skeleton
 - [x] EmptyState
 - [x] ErrorState
-- [ ] DataTable
+- [x] DataTable
 - [x] Pagination
-- [ ] ConfirmDialog
+- [x] ConfirmDialog
 
 ---
 
@@ -423,12 +423,12 @@ Architecture:
 - [x] Direction.
 - [x] Amount.
 - [x] Duration.
-- [ ] Expiry.
+- [x] Expiry.
 - [x] Available balance.
 - [x] Minimum amount.
 - [x] Maximum amount.
 - [x] Potential return.
-- [ ] Fees where applicable.
+- [x] Fees where applicable.
 - [x] Risk disclosure.
 
 ## 5.2 Amount UX
@@ -438,7 +438,7 @@ Architecture:
 - [x] Validation.
 - [x] Min/max enforcement from server configuration.
 - [x] Server accepts validated decimal trade amounts.
-- [ ] Currency display.
+- [x] Currency display.
 - [x] Invalid amount state.
 
 ## 5.3 Duration UX
@@ -470,7 +470,7 @@ Architecture:
 - [x] Client request ID.
 - [x] Server idempotency key.
 - [x] Pending/submitting state.
-- [ ] Retry policy (later).
+- [x] Retry policy with idempotent request recovery.
 - [x] Error recovery.
 - [x] Confirmation UI.
 
@@ -575,7 +575,7 @@ Tasks:
 - [x] Request timeout.
 - [x] Error normalization.
 - [x] Browser credential/session transport (`credentials: include`) foundation.
-- [ ] Retry rules (deferred for non-idempotent financial mutations).
+- [x] Retry rules for safe/idempotent requests; non-idempotent requests without an idempotency key are not retried.
 - [x] Cache policy: server-authoritative reads are no-store by default; realtime provides live updates.
 - [x] Request tracing/correlation ID.
 - [x] Idempotency-Key transport support.
@@ -617,7 +617,7 @@ Tasks:
 Market events:
 
 - [x] Price update.
-- [ ] Candle update.
+- [x] Candle update.
 - [x] Market status.
 - [x] Trade status.
 - [x] Position update.
@@ -680,7 +680,7 @@ Market events:
 - [x] Trade count.
 - [x] Volume.
 - [x] Recent trades.
-- [ ] Favorite assets.
+- [x] Favorite assets.
 - [x] Performance chart.
 - [x] Loading.
 - [x] Empty.
@@ -1166,8 +1166,8 @@ smoke tests
 
 Tasks:
 
-- [ ] CI workflow.
-- [ ] Dependency scanning.
+- [x] CI workflow.
+- [x] Dependency scanning.
 - [ ] Secret scanning.
 - [ ] Build artifact.
 - [ ] Staging deployment.
