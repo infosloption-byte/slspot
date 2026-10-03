@@ -45,7 +45,6 @@ export function TradePanel({ asset, balance, walletMode, canTrade, tradeDisabled
 
   useEffect(() => {
     const updateClock = () => setNow(Date.now())
-    updateClock()
     const timer = window.setInterval(updateClock, 1000)
     return () => window.clearInterval(timer)
   }, [])
