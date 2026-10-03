@@ -392,50 +392,104 @@ model Wallet {
 }
 
 model WalletTransaction {
-  id                  String                  @id @default(uuid()) @db.Char(36)
-  walletId            String                  @db.Char(36)
-  type                WalletTransactionType
-  status              WalletTransactionStatus @default(PENDING)
-  amount              Decimal                 @db.Decimal(30, 8)
-  currency            String                  @db.Char(3)
-  idempotencyKey      String                  @unique @db.VarChar(128)
-  referenceType       String?                 @db.VarChar(64)
-  referenceId         String?                 @db.VarChar(127)
-  description         String?                 @db.VarChar(255)
-  createdAt           DateTime                @default(now()) @db.DateTime(3)
-  updatedAt           DateTime                @updatedAt @db.DateTime(3)
+  id                   String                  @id @default(uuid()) @db.Char(36)
+  walletId             String                  @db.Char(36)
+  type                 WalletTransactionType
+  status               WalletTransactionStatus @default(PENDING)
+  amount               Decimal                 @db.Decimal(30, 8)
+  currency             String                  @db.Char(3)
+  idempotencyKey       String                  @unique @db.VarChar(128)
+  referenceType        String?                 @db.VarChar(64)
+  referenceId          String?                 @db.VarChar(127)
+  description          String?                 @db.VarChar(255)
+  availableBalanceAfter Decimal?              @db.Decimal(30, 8)
+  heldBalanceAfter      Decimal?              @db.Decimal(30, 8)
+  createdAt             DateTime                @default(now()) @db.DateTime(3)
+  updatedAt             DateTime                @updatedAt @db.DateTime(3)
 
-  wallet              Wallet                  @relation(fields: [walletId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  ledgerEntries       LedgerEntry[]
+  wallet              Wallet             @relation(fields: [walletId], references: [id], onDelete: Restrict)
+  ledgerTransaction   LedgerTransaction?
+  deposits            Deposit[]
+  withdrawals         Withdrawal[]
 
   @@index([walletId, createdAt])
   @@index([referenceType, referenceId])
 }
 
+model LedgerAccount {
+  id          String            @id @default(uuid()) @db.Char(36)
+  code        String            @unique @db.VarChar(96)
+  name        String            @db.VarChar(160)
+  type        LedgerAccountType
+  currency    String            @db.Char(3)
+  accountId   String?           @db.Char(36)
+  active      Boolean           @default(true)
+  createdAt   DateTime          @default(now()) @db.DateTime(3)
+  updatedAt   DateTime          @updatedAt @db.DateTime(3)
+
+  account     Account?          @relation(fields: [accountId], references: [id], onDelete: Restrict)
+  entries     LedgerEntry[]
+  snapshots   LedgerBalanceSnapshot[]
+
+  @@index([accountId, active])
+  @@index([type, currency, active])
+}
+
+model LedgerTransaction {
+  id                  String           @id @default(uuid()) @db.Char(36)
+  walletTransactionId String?          @unique @db.Char(36)
+  currency            String           @db.Char(3)
+  referenceType       String?          @db.VarChar(64)
+  referenceId         String?          @db.VarChar(128)
+  description         String?          @db.VarChar(255)
+  metadata            Json?
+  createdAt           DateTime         @default(now()) @db.DateTime(3)
+
+  walletTransaction   WalletTransaction?   @relation(fields: [walletTransactionId], references: [id], onDelete: Restrict)
+  entries             LedgerEntry[]
+  snapshots           LedgerBalanceSnapshot[]
+
+  @@index([referenceType, referenceId, createdAt])
+}
+
 model LedgerEntry {
-  id                  String          @id @default(uuid()) @db.Char(36)
-  transactionId       String          @db.Char(36)
-  accountId           String          @db.Char(36)
-  walletTransactionId String?         @db.Char(36)
+  id                  String           @id @default(uuid()) @db.Char(36)
+  ledgerTransactionId String           @db.Char(36)
+  ledgerAccountId     String           @db.Char(36)
   direction           LedgerDirection
-  amount              Decimal         @db.Decimal(30, 8)
-  currency            String          @db.Char(3)
-  referenceType       String?         @db.VarChar(64)
-  referenceId         String?         @db.VarChar(128)
-  createdAt           DateTime        @default(now()) @db.DateTime(3)
+  amount              Decimal          @db.Decimal(30, 8)
+  currency            String           @db.Char(3)
+  referenceType       String?          @db.VarChar(64)
+  referenceId         String?          @db.VarChar(128)
+  createdAt           DateTime         @default(now()) @db.DateTime(3)
 
-  account             Account         @relation(fields: [accountId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  walletTransaction   WalletTransaction? @relation(fields: [walletTransactionId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  ledgerTransaction   LedgerTransaction @relation(fields: [ledgerTransactionId], references: [id], onDelete: Restrict)
+  ledgerAccount       LedgerAccount     @relation(fields: [ledgerAccountId], references: [id], onDelete: Restrict)
 
-  @@index([transactionId])
-  @@index([accountId, createdAt])
-  @@index([walletTransactionId])
+  @@index([ledgerTransactionId])
+  @@index([ledgerAccountId, createdAt])
   @@index([referenceType, referenceId])
+}
+
+model LedgerBalanceSnapshot {
+  id                   String             @id @default(uuid()) @db.Char(36)
+  ledgerAccountId      String             @db.Char(36)
+  ledgerTransactionId  String             @db.Char(36)
+  currency             String             @db.Char(3)
+  balance              Decimal            @db.Decimal(30, 8)
+  createdAt            DateTime           @default(now()) @db.DateTime(3)
+
+  ledgerAccount      LedgerAccount     @relation(fields: [ledgerAccountId], references: [id], onDelete: Restrict)
+  ledgerTransaction  LedgerTransaction @relation(fields: [ledgerTransactionId], references: [id], onDelete: Restrict)
+
+  @@index([ledgerAccountId, createdAt])
+  @@index([ledgerTransactionId])
 }
 
 model Deposit {
   id                String        @id @default(uuid()) @db.Char(36)
   walletId          String        @db.Char(36)
+  walletTransactionId String?      @unique @db.Char(36)
   provider          String        @db.VarChar(64)
   providerReference String?       @unique @db.VarChar(128)
   amount            Decimal       @db.Decimal(30, 8)
@@ -447,7 +501,8 @@ model Deposit {
   createdAt         DateTime      @default(now()) @db.DateTime(3)
   updatedAt         DateTime      @updatedAt @db.DateTime(3)
 
-  wallet            Wallet        @relation(fields: [walletId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  wallet            Wallet              @relation(fields: [walletId], references: [id], onDelete: Restrict)
+  walletTransaction WalletTransaction?  @relation(fields: [walletTransactionId], references: [id], onDelete: Restrict)
 
   @@index([walletId, createdAt])
   @@index([provider, status, createdAt])
@@ -456,18 +511,20 @@ model Deposit {
 model Withdrawal {
   id                String           @id @default(uuid()) @db.Char(36)
   walletId          String           @db.Char(36)
+  walletTransactionId String?         @unique @db.Char(36)
   provider          String           @db.VarChar(64)
   providerReference String?          @unique @db.VarChar(128)
   amount            Decimal          @db.Decimal(30, 8)
   currency          String           @db.Char(3)
   status            WithdrawalStatus @default(PENDING)
-  failureReason     String?          @db.VarChar(255)
+  failureReason     String?           @db.VarChar(255)
   requestedAt       DateTime         @default(now()) @db.DateTime(3)
   completedAt       DateTime?        @db.DateTime(3)
   createdAt         DateTime         @default(now()) @db.DateTime(3)
   updatedAt         DateTime         @updatedAt @db.DateTime(3)
 
-  wallet            Wallet           @relation(fields: [walletId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  wallet            Wallet              @relation(fields: [walletId], references: [id], onDelete: Restrict)
+  walletTransaction WalletTransaction?  @relation(fields: [walletTransactionId], references: [id], onDelete: Restrict)
 
   @@index([walletId, createdAt])
   @@index([provider, status, createdAt])
