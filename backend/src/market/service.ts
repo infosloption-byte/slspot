@@ -100,11 +100,31 @@ export class MarketDataService {
       externalSymbol: market.externalSymbol,
     }
 
-    const candles = await this.provider.candles(
-      definition,
-      intervalValue as CandleInterval,
-      Math.min(5000, Math.max(1, limit)),
-    )
+    let candles: Awaited<ReturnType<MarketDataProvider['candles']>>
+
+    try {
+      candles = await this.provider.candles(
+        definition,
+        intervalValue as CandleInterval,
+        Math.min(5000, Math.max(1, limit)),
+      )
+    } catch (error) {
+      this.logger.warn(
+        { err: error, assetId: market.assetId, symbol: market.asset.symbol, interval: intervalValue },
+        'Market candle provider request failed',
+      )
+
+      if (env.nodeEnv !== 'production') {
+        return {
+          assetId: market.assetId,
+          symbol: market.asset.symbol,
+          interval: intervalValue as CandleInterval,
+          candles: [],
+        }
+      }
+
+      throw new MarketDataUnavailableError('Market data provider request failed')
+    }
 
     return {
       assetId: market.assetId,
