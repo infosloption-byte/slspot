@@ -1,4 +1,4 @@
-import { ArrowDownCircle, ArrowUpCircle, ArrowUpRight, BarChart3, Bell, CalendarDays, Check, Clock3, Download, DollarSign, PieChart, Search, ChevronDown, ShieldCheck, Smartphone, TrendingUp, WalletCards } from 'lucide-react'
+import { ArrowDownCircle, ArrowUpCircle, ArrowUpRight, BarChart3, Bell, CalendarDays, Check, Clock3, Download, DollarSign, PieChart, Search, ChevronDown, Star, ShieldCheck, Smartphone, TrendingUp, WalletCards } from 'lucide-react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router'
 import { Pagination } from '../components/ui/Pagination'
@@ -201,7 +201,32 @@ function DashboardPage() {
   const summary = usePortfolioSummary()
   const analytics = usePortfolioAnalytics()
   const trades = useTrades(1, 8)
-  const markets = useMarketAssets(10)
+  const markets = useMarketAssets(25)
+  const [favoriteSymbols, setFavoriteSymbols] = useState<string[]>(() => {
+    try {
+      const stored = window.localStorage.getItem('slspot.watchlist.favorites')
+      const parsed = stored ? JSON.parse(stored) : []
+      return Array.isArray(parsed) ? parsed.filter((value): value is string => typeof value === 'string') : []
+    } catch {
+      return []
+    }
+  })
+
+  useEffect(() => {
+    const handleStorage = () => {
+      try {
+        const stored = window.localStorage.getItem('slspot.watchlist.favorites')
+        const parsed = stored ? JSON.parse(stored) : []
+        setFavoriteSymbols(Array.isArray(parsed) ? parsed.filter((value): value is string => typeof value === 'string') : [])
+      } catch {
+        setFavoriteSymbols([])
+      }
+    }
+    window.addEventListener('storage', handleStorage)
+    return () => window.removeEventListener('storage', handleStorage)
+  }, [])
+
+  const favoriteMarkets = (markets.data?.items ?? []).filter((asset) => favoriteSymbols.includes(asset.symbol))
 
   const loading = summary.loading || analytics.loading || trades.loading
   const error = summary.error ?? analytics.error ?? trades.error
@@ -400,6 +425,31 @@ function PortfolioPage() {
               {positions.data?.items.length === 0 ? <div className="dashboard-note">No positions have been recorded yet.</div> : null}
             </div>
             {positions.data ? <Pagination page={page} totalPages={positions.data.pagination.totalPages} onChange={setPage} /> : null}
+          </section>
+          <section className="dashboard-card panel">
+            <div className="dashboard-card__header">
+              <div><span className="eyebrow">Watchlist</span><h2>Favorite assets</h2></div>
+              <Link to="/app/trading" className="dashboard-link">Manage <ArrowUpRight size={13} /></Link>
+            </div>
+            {favoriteMarkets.length ? (
+              <div className="favorite-assets">
+                {favoriteMarkets.slice(0, 6).map((asset) => (
+                  <div className="favorite-asset" key={asset.assetId}>
+                    <span className="favorite-asset__icon"><Star size={12} fill="currentColor" /></span>
+                    <div>
+                      <strong>{asset.symbol}</strong>
+                      <small>{asset.name}</small>
+                    </div>
+                    <div className="favorite-asset__quote">
+                      <strong>{asset.market?.lastPrice ? formatPrice(Number(asset.market.lastPrice), asset.priceScale > 4 ? 5 : 2) : '—'}</strong>
+                      <small>{asset.market?.lastChangePct ?? '0'}%</small>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="dashboard-note"><Star size={14} /> No favorite assets yet. Star a market from the Trading Room watchlist.</div>
+            )}
           </section>
         </div>
       </ApiState>
