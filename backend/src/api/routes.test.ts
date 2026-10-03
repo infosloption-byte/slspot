@@ -427,7 +427,7 @@ describe('platform API routes', () => {
     })
 
     assert.equal(response.statusCode, 400)
-    assert.equal(response.json<{ error: { code: string } }>().error.code, 'IDEMPOTENCY_REQUIRED')
+    assert.equal(response.json<{ error: { code: string } }>().error.code, 'INVALID_IDEMPOTENCY_KEY')
     await app.close()
   })
 
