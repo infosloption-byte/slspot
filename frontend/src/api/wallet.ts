@@ -68,6 +68,22 @@ export const walletApi = {
         { headers: { 'x-wallet-mode': mode } },
       )
       .then((response) => response.data),
+
+  deposit: (input: { amount: string; clientRequestId: string }, mode: WalletMode = 'DEMO') =>
+    apiClient
+      .post<ApiSuccess<FundingResult>>('/wallet/deposit', input, {
+        idempotencyKey: input.clientRequestId,
+        headers: { 'x-wallet-mode': mode },
+      })
+      .then((response) => response.data),
+
+  withdraw: (input: { amount: string; destination: string; clientRequestId: string }, mode: WalletMode = 'DEMO') =>
+    apiClient
+      .post<ApiSuccess<FundingResult>>('/wallet/withdraw', input, {
+        idempotencyKey: input.clientRequestId,
+        headers: { 'x-wallet-mode': mode },
+      })
+      .then((response) => response.data),
 }
 
 function toQueryString(query: { page?: number; pageSize?: number } & WalletTransactionFilters): string {
