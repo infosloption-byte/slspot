@@ -45,11 +45,11 @@ The WebSocket layer should authenticate connections, authorize subscriptions, ap
 
 ### Request protection
 
-- State-changing API requests require a trusted `Origin`/`Referer` when supplied and reject `Sec-Fetch-Site: cross-site`.
+- State-changing API requests require a trusted `Origin`/`Referer` when supplied and reject `Sec-Fetch-Site: cross-site`. WebSocket handshakes require an explicit trusted `Origin` because WebSocket upgrades are not protected by CORS.
 - CORS credentials are restricted to an explicit origin allowlist; production requires `CORS_ORIGIN` to be configured.
 - API request URLs are capped and state-changing API content types are restricted to JSON.
 - Multipart file uploads are rejected until a dedicated upload endpoint has explicit content-type, size, storage and malware-scanning controls.
-- Redis-backed rate limiting is applied by request class and client IP. Development has a bounded in-memory fallback; production fails closed when Redis is unavailable.
+- Redis-backed rate limiting is applied by request class, client IP, and WebSocket connection. Development has a bounded in-memory fallback; production fails closed when Redis is unavailable.
 - Authenticated mutation requests use a signed session-bound CSRF token, while idempotent trade/deposit/withdrawal mutations require validated idempotency keys.
 
 ### Authorization and RBAC
