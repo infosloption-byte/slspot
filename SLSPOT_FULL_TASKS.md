@@ -89,6 +89,15 @@ Completed in this milestone:
 
 Frontend platform layer status after the 2026-10-02 API layering milestone:
 
+Trading Room history hardening completed in the current implementation:
+- [x] Global settled trade history across all selected pairs.
+- [x] Server-side search, status, asset/pair, direction, and date-range filters.
+- [x] Server-side sorting.
+- [x] Server-side pagination.
+- [x] CSV export of all trades matching the active history filters.
+- [x] History-specific loading and error states.
+- [x] Open and closed prices in Trading Room history.
+
 - [x] Server-backed authentication.
 - [x] API client abstraction.
 - [x] Typed domain API clients for market, portfolio, trades, wallet, and notifications.
