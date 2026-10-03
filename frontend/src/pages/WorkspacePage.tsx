@@ -202,8 +202,8 @@ function DashboardPage() {
           <StatCard label="Portfolio value" value={formatMoney(summary.data?.totalBalance, summary.data?.currency)} change={summary.data?.currency ?? 'USD'} positive icon={WalletCards} />
           <StatCard label="Trading balance" value={formatMoney(summary.data?.availableBalance, summary.data?.currency)} change="Available to trade" positive icon={DollarSign} />
           <StatCard label="Today's P&amp;L" value={signedMoney(analytics.data?.dailyPnl)} change="Realized today" positive={Number(analytics.data?.dailyPnl ?? 0) >= 0} icon={TrendingUp} />
-          <StatCard label="Win / loss" value={(analyticsData?.wins ?? 0) + ' / ' + (analyticsData?.losses ?? 0)} change={(analyticsData?.winRate ?? '0') + '% win rate'} positive icon={BarChart3} />
-          <StatCard label="Trade volume" value={formatMoney(analyticsData?.volume, analyticsData?.currency)} change="Last 30 days" positive icon={ArrowUpCircle} />
+          <StatCard label="Win / loss" value={(analytics.data?.wins ?? 0) + ' / ' + (analytics.data?.losses ?? 0)} change={(analytics.data?.winRate ?? '0') + '% win rate'} positive icon={BarChart3} />
+          <StatCard label="Trade volume" value={formatMoney(analytics.data?.volume, analytics.data?.currency)} change="Last 30 days" positive icon={ArrowUpCircle} />
           <StatCard label="Trade count" value={String(analytics.data?.tradeCount ?? summary.data?.tradeCount ?? 0)} change={(summary.data?.openPositionCount ?? 0) + ' open positions'} positive icon={Clock3} />
         </div>
 
@@ -213,7 +213,7 @@ function DashboardPage() {
               <div><span className="eyebrow">Performance</span><h2>Realized P&amp;L</h2></div>
               <Link to="/app/portfolio" className="dashboard-link">Analytics <ArrowUpRight size={13} /></Link>
             </div>
-            <Sparkline series={analyticsData?.series ?? []} currency={analyticsData?.currency ?? 'USD'} />
+            <Sparkline series={analytics.data?.series ?? []} currency={analytics.data?.currency ?? 'USD'} />
             <div className="return-summary">
               <div><span>Daily</span><strong className={Number(analytics.data?.dailyPnl ?? 0) >= 0 ? 'text-positive' : 'text-negative'}>{signedMoney(analytics.data?.dailyPnl)}</strong></div>
               <div><span>Weekly</span><strong className={Number(analytics.data?.weeklyPnl ?? 0) >= 0 ? 'text-positive' : 'text-negative'}>{signedMoney(analytics.data?.weeklyPnl)}</strong></div>
@@ -279,7 +279,7 @@ function DashboardPage() {
             <div className="return-summary">
               <div><span>Available</span><strong>{formatMoney(summary.data?.availableBalance, summary.data?.currency)}</strong></div>
               <div><span>Held</span><strong>{formatMoney(summary.data?.heldBalance, summary.data?.currency)}</strong></div>
-              <div><span>Average trade</span><strong>{formatMoney(analyticsData?.averageTrade, analyticsData?.currency)}</strong></div>
+              <div><span>Average trade</span><strong>{formatMoney(analytics.data?.averageTrade, analytics.data?.currency)}</strong></div>
               <div><span>Win rate</span><strong>{analytics.data?.winRate ?? '0'}%</strong></div>
               <div><span>Loss rate</span><strong>{analytics.data?.lossRate ?? '0'}%</strong></div>
             </div>
@@ -328,7 +328,7 @@ function PortfolioPage() {
     if (!analyticsData) return
     const rows = [
       ['Date', 'Daily P&L', 'Cumulative P&L', 'Trades'],
-      ...analytics.data.series.map((point) => [point.date, point.pnl, point.cumulativePnl, String(point.tradeCount)]),
+      ...analyticsData.series.map((point) => [point.date, point.pnl, point.cumulativePnl, String(point.tradeCount)]),
     ]
     const csv = '\uFEFF' + rows.map((row) => row.map((value) => '"' + value.replace(/"/g, '""') + '"').join(',')).join('\r\n')
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
@@ -340,7 +340,7 @@ function PortfolioPage() {
     link.click()
     link.remove()
     URL.revokeObjectURL(url)
-  }, [analytics.data])
+  }, [analyticsData])
 
   return (
     <div className="workspace-page">
@@ -351,12 +351,12 @@ function PortfolioPage() {
         onRetry={() => { void summary.reload(); void analytics.reload(); void positions.reload() }}
       >
         <div className="dashboard-stats dashboard-stats--six">
-          <StatCard label="Daily P&amp;L" value={signedMoney(analyticsData?.dailyPnl)} change="Today" positive={Number(analytics.data?.dailyPnl ?? 0) >= 0} icon={TrendingUp} />
-          <StatCard label="Weekly P&amp;L" value={signedMoney(analyticsData?.weeklyPnl)} change="This week" positive={Number(analytics.data?.weeklyPnl ?? 0) >= 0} icon={BarChart3} />
-          <StatCard label="Monthly P&amp;L" value={signedMoney(analyticsData?.monthlyPnl)} change="This month" positive={Number(analytics.data?.monthlyPnl ?? 0) >= 0} icon={PieChart} />
-          <StatCard label="Win rate" value={(analytics.data?.winRate ?? '0') + '%'} change={(analytics.data?.wins ?? 0) + ' wins · ' + (analytics.data?.losses ?? 0) + ' losses'} positive icon={Check} />
-          <StatCard label="Average trade" value={formatMoney(analytics.data?.averageTrade, analytics.data?.currency)} change="30-day average" positive icon={DollarSign} />
-          <StatCard label="Volume" value={formatMoney(analytics.data?.volume, analytics.data?.currency)} change={(analyticsData?.tradeCount ?? 0) + ' settled trades'} positive icon={ArrowUpCircle} />
+          <StatCard label="Daily P&amp;L" value={signedMoney(analyticsData?.dailyPnl)} change="Today" positive={Number(analyticsData?.dailyPnl ?? 0) >= 0} icon={TrendingUp} />
+          <StatCard label="Weekly P&amp;L" value={signedMoney(analyticsData?.weeklyPnl)} change="This week" positive={Number(analyticsData?.weeklyPnl ?? 0) >= 0} icon={BarChart3} />
+          <StatCard label="Monthly P&amp;L" value={signedMoney(analyticsData?.monthlyPnl)} change="This month" positive={Number(analyticsData?.monthlyPnl ?? 0) >= 0} icon={PieChart} />
+          <StatCard label="Win rate" value={(analyticsData?.winRate ?? '0') + '%'} change={(analyticsData?.wins ?? 0) + ' wins · ' + (analyticsData?.losses ?? 0) + ' losses'} positive icon={Check} />
+          <StatCard label="Average trade" value={formatMoney(analyticsData?.averageTrade, analyticsData?.currency)} change="30-day average" positive icon={DollarSign} />
+          <StatCard label="Volume" value={formatMoney(analyticsData?.volume, analyticsData?.currency)} change={(analyticsData?.tradeCount ?? 0) + ' settled trades'} positive icon={ArrowUpCircle} />
         </div>
 
         <section className="dashboard-card panel">
@@ -364,7 +364,7 @@ function PortfolioPage() {
             <div><span className="eyebrow">Performance</span><h2>30-day trend</h2></div>
             <button type="button" className="setting-button" onClick={exportAnalytics}><Download size={14} /> Export</button>
           </div>
-          <Sparkline series={analytics.data?.series ?? []} currency={analytics.data?.currency ?? 'USD'} />
+          <Sparkline series={analyticsData?.series ?? []} currency={analyticsData?.currency ?? 'USD'} />
         </section>
 
         <div className="portfolio-layout">
@@ -396,7 +396,7 @@ function PortfolioPage() {
                 <div className="holding" key={position.id}>
                   <span className="holding__icon">{position.asset.symbol.slice(0, 1)}</span>
                   <div className="holding__identity"><strong>{position.asset.symbol}</strong><small>{position.direction} · {position.status}</small></div>
-                  <div className="holding__allocation"><span><b>{formatMoney(position.amount, summary.data?.currency)}</b><small>Entry {formatPrice(Number(position.entryPrice))}</small></span></div>
+                  <div className="holding__allocation"><span><b>{formatMoney(position.amount, summaryData?.currency)}</b><small>Entry {formatPrice(Number(position.entryPrice))}</small></span></div>
                   <span>{position.closedAt ? formatDateTime(position.closedAt) : 'Open'}</span>
                 </div>
               ))}
