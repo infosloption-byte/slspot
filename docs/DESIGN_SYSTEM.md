@@ -57,3 +57,5 @@ Interactive controls should provide visible focus, semantic roles, accurate ARIA
 
 ## Current implementation note
 The shared primitives are intentionally separate from feature components. Feature code should use these primitives for new forms, menus, dialogs, tabs, tables, and confirmations instead of adding new browser-native controls.
+## Contrast requirement
+Normal text should target at least 4.5:1 contrast against its adjacent surface; large text should target at least 3:1. Focus indicators and essential non-text controls should remain visibly distinguishable from surrounding surfaces.
