@@ -16,6 +16,14 @@ type Query = {
   type?: string
   status?: string
   unreadOnly?: string
+  direction?: string
+  assetId?: string
+  search?: string
+  from?: string
+  to?: string
+  sortBy?: string
+  sortOrder?: string
+  settledOnly?: string
 }
 
 function queryNumber(value: string | undefined): number | undefined {
@@ -37,6 +45,24 @@ function queryBoolean(value: string | undefined): boolean | undefined {
 function queryEnum(value: string | undefined, allowed: readonly string[], name: string): string | undefined {
   if (value === undefined || allowed.includes(value)) return value
   throw new AuthError(400, 'INVALID_QUERY', name + ' is invalid')
+}
+
+function queryEnumList(value: string | undefined, allowed: readonly string[], name: string): string[] | undefined {
+  if (value === undefined) return undefined
+  const values = value.split(',').map((item) => item.trim()).filter(Boolean)
+  if (values.length === 0 || values.some((item) => !allowed.includes(item))) {
+    throw new AuthError(400, 'INVALID_QUERY', name + ' is invalid')
+  }
+  return values
+}
+
+function queryDate(value: string | undefined, name: string): Date | undefined {
+  if (value === undefined) return undefined
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) {
+    throw new AuthError(400, 'INVALID_QUERY', name + ' must be a valid date')
+  }
+  return date
 }
 
 const ASSET_TYPES = ['CRYPTO', 'FOREX', 'STOCK', 'COMMODITY', 'INDEX', 'OTHER'] as const
@@ -106,10 +132,24 @@ export function registerPlatformApiRoutes(app: FastifyInstance, options: Platfor
 
   app.get<{ Querystring: Query }>(PREFIX + '/trades', async (request) => {
     const session = await requireSession(request, options.authService)
+    const from = queryDate(request.query.from, 'From date')
+    const to = queryDate(request.query.to, 'To date')
+    if (from && to && from.getTime() > to.getTime()) {
+      throw new AuthError(400, 'INVALID_QUERY', 'From date must not be after to date')
+    }
+
     return ok(request, await options.apiService.listTrades(session.id, {
       page: queryNumber(request.query.page),
       pageSize: queryNumber(request.query.pageSize),
-      status: queryEnum(request.query.status, TRADE_STATUSES, 'Trade status'),
+      statuses: queryEnumList(request.query.status, TRADE_STATUSES, 'Trade status') as Array<typeof TRADE_STATUSES[number]> | undefined,
+      direction: queryEnum(request.query.direction, ['UP', 'DOWN'], 'Trade direction') as 'UP' | 'DOWN' | undefined,
+      assetId: request.query.assetId?.trim() || undefined,
+      search: request.query.search?.trim() || undefined,
+      from,
+      to,
+      sortBy: queryEnum(request.query.sortBy, ['openedAt', 'closedAt', 'amount', 'netPnl'], 'Trade sort') as 'openedAt' | 'closedAt' | 'amount' | 'netPnl' | undefined,
+      sortOrder: queryEnum(request.query.sortOrder, ['asc', 'desc'], 'Trade sort order') as 'asc' | 'desc' | undefined,
+      settledOnly: queryBoolean(request.query.settledOnly),
     }, walletModeFromRequest(request)))
   })
 
