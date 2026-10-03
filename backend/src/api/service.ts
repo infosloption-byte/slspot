@@ -2,8 +2,23 @@ import { randomUUID } from 'node:crypto'
 import { Prisma, type PrismaClient } from '../generated/prisma/client.js'
 import { env } from '../config/env.js'
 import { getTradingRules } from '../trading/config.js'
+import { LedgerService } from '../ledger/service.js'
+import { createRealtimeEvent, serializeRealtimeEvent } from '../realtime/events.js'
+import { isRedisReady, publish } from '../realtime/redis.js'
 
 export type WalletMode = 'DEMO' | 'REAL'
+
+export class FinanceError extends Error {
+  readonly statusCode: number
+  readonly code: string
+
+  constructor(statusCode: number, code: string, message: string) {
+    super(message)
+    this.name = 'FinanceError'
+    this.statusCode = statusCode
+    this.code = code
+  }
+}
 
 export type ApiPage = {
   page: number
@@ -75,6 +90,37 @@ export type ApiPortfolioSummary = {
   netPnl: string
 }
 
+export type ApiPortfolioAnalytics = {
+  currency: string
+  dailyPnl: string
+  weeklyPnl: string
+  monthlyPnl: string
+  wins: number
+  losses: number
+  winRate: string
+  tradeCount: number
+  volume: string
+  averageTrade: string
+  series: Array<{ date: string; pnl: string; cumulativePnl: string; tradeCount: number }>
+  assets: Array<{ assetId: string; symbol: string; name: string; pnl: string; volume: string; trades: number; wins: number; losses: number }>
+}
+
+export type ApiFundingResult = {
+  id: string
+  type: 'DEPOSIT' | 'WITHDRAWAL'
+  status: string
+  amount: string
+  currency: string
+  walletId: string
+  walletTransactionId: string | null
+  provider: string
+  providerReference: string | null
+  destination?: string | null
+  failureReason: string | null
+  requestedAt: string
+  completedAt: string | null
+}
+
 export type ApiPosition = {
   id: string
   tradeId: string | null
@@ -140,10 +186,13 @@ export type ApiWallet = {
   totalBalance: string
 }
 
+export type WalletTransactionType = 'DEPOSIT' | 'WITHDRAWAL' | 'TRADE_HOLD' | 'TRADE_RELEASE' | 'SETTLEMENT' | 'FEE' | 'ADJUSTMENT'
+export type WalletTransactionStatus = 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | 'REJECTED'
+
 export type ApiWalletTransaction = {
   id: string
-  type: string
-  status: string
+  type: WalletTransactionType
+  status: WalletTransactionStatus
   amount: string
   currency: string
   referenceType: string | null
@@ -162,7 +211,11 @@ export type ApiNotification = {
 }
 
 export class PlatformApiService {
-  constructor(private readonly prisma: PrismaClient) {}
+  private readonly ledger: LedgerService
+
+  constructor(private readonly prisma: PrismaClient) {
+    this.ledger = new LedgerService(prisma)
+  }
 
   async listAssets(input: { page?: number; pageSize?: number; type?: string }): Promise<ApiListResult<ApiMarketAsset>> {
     const paging = normalizePage(input.page, input.pageSize)
@@ -413,7 +466,15 @@ export class PlatformApiService {
 
   async listWalletTransactions(
     userId: string,
-    input: { page?: number; pageSize?: number },
+    input: {
+      page?: number
+      pageSize?: number
+      types?: WalletTransactionType[]
+      statuses?: WalletTransactionStatus[]
+      search?: string
+      from?: Date
+      to?: Date
+    },
     mode: WalletMode = 'DEMO',
   ): Promise<ApiListResult<ApiWalletTransaction>> {
     const paging = normalizePage(input.page, input.pageSize)
@@ -421,7 +482,30 @@ export class PlatformApiService {
 
     if (!wallet) return { items: [], pagination: paginate(0, paging.page, paging.pageSize) }
 
-    const where = { walletId: wallet.id }
+    const where: Prisma.WalletTransactionWhereInput = {
+      walletId: wallet.id,
+      ...(input.types?.length ? { type: { in: input.types as Prisma.EnumWalletTransactionTypeFilter['in'] } } : {}),
+      ...(input.statuses?.length ? { status: { in: input.statuses as Prisma.EnumWalletTransactionStatusFilter['in'] } } : {}),
+      ...(input.search?.trim()
+        ? {
+            OR: [
+              { id: { contains: input.search.trim() } },
+              { referenceType: { contains: input.search.trim() } },
+              { referenceId: { contains: input.search.trim() } },
+              { description: { contains: input.search.trim() } },
+            ],
+          }
+        : {}),
+      ...(input.from || input.to
+        ? {
+            createdAt: {
+              ...(input.from ? { gte: input.from } : {}),
+              ...(input.to ? { lte: input.to } : {}),
+            },
+          }
+        : {}),
+    }
+
     const [total, transactions] = await this.prisma.$transaction([
       this.prisma.walletTransaction.count({ where }),
       this.prisma.walletTransaction.findMany({
@@ -446,6 +530,279 @@ export class PlatformApiService {
       })),
       pagination: paginate(total, paging.page, paging.pageSize),
     }
+  }
+
+  async getPortfolioAnalytics(userId: string, mode: WalletMode = 'DEMO'): Promise<ApiPortfolioAnalytics> {
+    const wallet = await this.getWallet(userId, mode)
+    const currency = wallet?.currency ?? 'USD'
+    const now = new Date()
+    const dayStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()))
+    const weekStart = new Date(dayStart)
+    const weekday = weekStart.getUTCDay()
+    weekStart.setUTCDate(weekStart.getUTCDate() - ((weekday + 6) % 7))
+    const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))
+    const seriesStart = new Date(dayStart)
+    seriesStart.setUTCDate(seriesStart.getUTCDate() - 29)
+
+    const trades = await this.prisma.trade.findMany({
+      where: {
+        userId,
+        status: { in: ['WON', 'LOST', 'CANCELLED', 'EXPIRED'] },
+        openedAt: { gte: seriesStart },
+        position: { account: { mode } },
+      },
+      include: { position: { include: { asset: true } } },
+      orderBy: { openedAt: 'asc' },
+      take: 10000,
+    })
+
+    const pnlFor = (trade: typeof trades[number]) => trade.netPnl ?? new Prisma.Decimal(0)
+    const amountFor = (trade: typeof trades[number]) => trade.position.amount
+    const tradeTimestamp = (trade: typeof trades[number]) => trade.closedAt ?? trade.openedAt
+
+    const sumPnl = (from: Date) => trades
+      .filter((trade) => tradeTimestamp(trade) >= from)
+      .reduce((sum, trade) => sum.plus(pnlFor(trade)), new Prisma.Decimal(0))
+
+    const winTrades = trades.filter((trade) => trade.status === 'WON')
+    const lossTrades = trades.filter((trade) => trade.status === 'LOST')
+    const resolvedCount = winTrades.length + lossTrades.length
+    const volume = trades.reduce((sum, trade) => sum.plus(amountFor(trade)), new Prisma.Decimal(0))
+    const averageTrade = trades.length ? volume.div(trades.length) : new Prisma.Decimal(0)
+
+    let cumulativePnl = new Prisma.Decimal(0)
+    const series: ApiPortfolioAnalytics['series'] = []
+    for (let offset = 0; offset < 30; offset += 1) {
+      const date = new Date(seriesStart)
+      date.setUTCDate(seriesStart.getUTCDate() + offset)
+      const next = new Date(date)
+      next.setUTCDate(date.getUTCDate() + 1)
+      const dayTrades = trades.filter((trade) => {
+        const timestamp = tradeTimestamp(trade)
+        return timestamp >= date && timestamp < next
+      })
+      const dayPnl = dayTrades.reduce((sum, trade) => sum.plus(pnlFor(trade)), new Prisma.Decimal(0))
+      cumulativePnl = cumulativePnl.plus(dayPnl)
+      series.push({
+        date: date.toISOString().slice(0, 10),
+        pnl: dayPnl.toString(),
+        cumulativePnl: cumulativePnl.toString(),
+        tradeCount: dayTrades.length,
+      })
+    }
+
+    const assetMap = new Map<string, ApiPortfolioAnalytics['assets'][number]>()
+    for (const trade of trades) {
+      const asset = trade.position.asset
+      const existing = assetMap.get(asset.id) ?? {
+        assetId: asset.id,
+        symbol: asset.symbol,
+        name: asset.name,
+        pnl: '0',
+        volume: '0',
+        trades: 0,
+        wins: 0,
+        losses: 0,
+      }
+      existing.pnl = new Prisma.Decimal(existing.pnl).plus(pnlFor(trade)).toString()
+      existing.volume = new Prisma.Decimal(existing.volume).plus(amountFor(trade)).toString()
+      existing.trades += 1
+      if (trade.status === 'WON') existing.wins += 1
+      if (trade.status === 'LOST') existing.losses += 1
+      assetMap.set(asset.id, existing)
+    }
+
+    return {
+      currency,
+      dailyPnl: sumPnl(dayStart).toString(),
+      weeklyPnl: sumPnl(weekStart).toString(),
+      monthlyPnl: sumPnl(monthStart).toString(),
+      wins: winTrades.length,
+      losses: lossTrades.length,
+      winRate: resolvedCount ? new Prisma.Decimal(winTrades.length).div(resolvedCount).mul(100).toFixed(2) : '0',
+      tradeCount: trades.length,
+      volume: volume.toString(),
+      averageTrade: averageTrade.toString(),
+      series,
+      assets: [...assetMap.values()].sort((a, b) => Number(b.pnl) - Number(a.pnl)),
+    }
+  }
+
+  async createDemoDeposit(
+    userId: string,
+    input: { amount: string; clientRequestId: string },
+  ): Promise<ApiFundingResult> {
+    const requestId = input.clientRequestId.trim()
+    if (!requestId) throw new FinanceError(400, 'INVALID_IDEMPOTENCY_KEY', 'A client request ID is required')
+    const amount = this.parseFundingAmount(input.amount)
+
+    const existing = await this.prisma.walletTransaction.findUnique({
+      where: { idempotencyKey: 'deposit:' + requestId },
+      include: { deposit: true },
+    })
+    if (existing?.deposit) return this.toApiDeposit(existing.deposit)
+
+    const result = await this.prisma.$transaction(async (tx) => {
+      const walletRecord = await this.ensureWallet(tx, userId, 'USD', 'DEMO')
+      const systemCode = await this.ledger.ensureSystemLedgerAccount(tx, 'SYSTEM:DEMO_FUNDING', 'Demo funding source', 'EQUITY', walletRecord.wallet.currency)
+      const walletCode = await this.ledger.ensureWalletLedgerAccounts(tx, walletRecord.account.id, walletRecord.wallet.currency)
+
+      const deposit = await tx.deposit.create({
+        data: {
+          walletId: walletRecord.wallet.id,
+          provider: 'DEMO',
+          amount,
+          currency: walletRecord.wallet.currency,
+          status: 'PROCESSING',
+          requestedAt: new Date(),
+        },
+      })
+
+      const walletUpdated = await tx.wallet.updateMany({
+        where: { id: walletRecord.wallet.id, status: 'ACTIVE' },
+        data: { availableBalance: { increment: amount } },
+      })
+      if (walletUpdated.count !== 1) throw new FinanceError(409, 'WALLET_UPDATE_FAILED', 'Demo wallet could not be credited')
+
+      const wallet = await tx.wallet.findUnique({ where: { id: walletRecord.wallet.id } })
+      if (!wallet) throw new FinanceError(409, 'WALLET_NOT_FOUND', 'Demo wallet disappeared while processing deposit')
+
+      const walletTransaction = await tx.walletTransaction.create({
+        data: {
+          walletId: wallet.id,
+          type: 'DEPOSIT',
+          status: 'COMPLETED',
+          amount,
+          currency: wallet.currency,
+          idempotencyKey: 'deposit:' + requestId,
+          referenceType: 'DEPOSIT',
+          referenceId: deposit.id,
+          description: 'Demo deposit',
+          availableBalanceAfter: wallet.availableBalance,
+          heldBalanceAfter: wallet.heldBalance,
+        },
+      })
+
+      await this.ledger.postTransaction(tx, {
+        walletTransactionId: walletTransaction.id,
+        currency: wallet.currency,
+        referenceType: 'DEPOSIT',
+        referenceId: deposit.id,
+        description: 'Demo deposit',
+        lines: [
+          { accountCode: systemCode, accountName: 'Demo funding source', accountType: 'EQUITY', direction: 'DEBIT', amount },
+          { accountCode: walletCode.availableCode, accountName: 'User available balance', accountType: 'LIABILITY', direction: 'CREDIT', amount },
+        ],
+      })
+
+      return tx.deposit.update({
+        where: { id: deposit.id },
+        data: {
+          walletTransactionId: walletTransaction.id,
+          providerReference: 'demo-deposit:' + deposit.id,
+          status: 'COMPLETED',
+          completedAt: new Date(),
+        },
+      })
+    })
+
+    await this.createNotification(userId, 'DEPOSIT', 'Demo deposit completed', 'Demo wallet was credited with ' + amount.toString() + ' ' + result.currency + '.')
+    return this.toApiDeposit(result)
+  }
+
+  async createDemoWithdrawal(
+    userId: string,
+    input: { amount: string; destination: string; clientRequestId: string },
+  ): Promise<ApiFundingResult> {
+    const requestId = input.clientRequestId.trim()
+    if (!requestId) throw new FinanceError(400, 'INVALID_IDEMPOTENCY_KEY', 'A client request ID is required')
+    const amount = this.parseFundingAmount(input.amount)
+    const destination = input.destination.trim()
+    if (!destination) throw new FinanceError(400, 'INVALID_DESTINATION', 'A withdrawal destination is required')
+
+    const result = await this.prisma.$transaction(async (tx) => {
+      const walletRecord = await this.ensureWallet(tx, userId, 'USD', 'DEMO')
+      const systemCode = await this.ledger.ensureSystemLedgerAccount(tx, 'SYSTEM:DEMO_WITHDRAWAL', 'Demo withdrawal clearing', 'ASSET', walletRecord.wallet.currency)
+      const walletCode = await this.ledger.ensureWalletLedgerAccounts(tx, walletRecord.account.id, walletRecord.wallet.currency)
+
+      const existingTx = await tx.walletTransaction.findUnique({
+        where: { idempotencyKey: 'withdrawal:' + requestId },
+        include: { withdrawal: true },
+      })
+      if (existingTx?.withdrawal) return existingTx.withdrawal
+
+      const claimed = await tx.wallet.updateMany({
+        where: {
+          id: walletRecord.wallet.id,
+          status: 'ACTIVE',
+          availableBalance: { gte: amount },
+        },
+        data: { availableBalance: { decrement: amount } },
+      })
+      if (claimed.count !== 1) throw new FinanceError(422, 'INSUFFICIENT_FUNDS', 'Insufficient available demo balance')
+
+      const wallet = await tx.wallet.findUnique({ where: { id: walletRecord.wallet.id } })
+      if (!wallet) throw new FinanceError(409, 'WALLET_NOT_FOUND', 'Demo wallet disappeared while processing withdrawal')
+
+      const withdrawal = await tx.withdrawal.create({
+        data: {
+          walletId: wallet.id,
+          provider: 'DEMO',
+          amount,
+          currency: wallet.currency,
+          destination,
+          status: 'PROCESSING',
+          requestedAt: new Date(),
+        },
+      })
+
+      const walletTransaction = await tx.walletTransaction.create({
+        data: {
+          walletId: wallet.id,
+          type: 'WITHDRAWAL',
+          status: 'COMPLETED',
+          amount: amount.neg(),
+          currency: wallet.currency,
+          idempotencyKey: 'withdrawal:' + requestId,
+          referenceType: 'WITHDRAWAL',
+          referenceId: withdrawal.id,
+          description: 'Demo withdrawal',
+          availableBalanceAfter: wallet.availableBalance,
+          heldBalanceAfter: wallet.heldBalance,
+        },
+      })
+
+      await this.ledger.postTransaction(tx, {
+        walletTransactionId: walletTransaction.id,
+        currency: wallet.currency,
+        referenceType: 'WITHDRAWAL',
+        referenceId: withdrawal.id,
+        description: 'Demo withdrawal',
+        lines: [
+          { accountCode: walletCode.availableCode, accountName: 'User available balance', accountType: 'LIABILITY', direction: 'DEBIT', amount },
+          { accountCode: systemCode, accountName: 'Demo withdrawal clearing', accountType: 'ASSET', direction: 'CREDIT', amount },
+        ],
+      })
+
+      return tx.withdrawal.update({
+        where: { id: withdrawal.id },
+        data: {
+          walletTransactionId: walletTransaction.id,
+          providerReference: 'demo-withdrawal:' + withdrawal.id,
+          status: 'COMPLETED',
+          completedAt: new Date(),
+        },
+      })
+    })
+
+    await this.createNotification(userId, 'WITHDRAWAL', 'Demo withdrawal completed', 'Demo wallet withdrawal of ' + result.amount.toString() + ' ' + result.currency + ' was completed.')
+    return this.toApiWithdrawal(result)
+  }
+
+  async reconcileWallet(userId: string, mode: WalletMode = 'DEMO') {
+    const wallet = await this.getWallet(userId, mode)
+    if (!wallet) throw new FinanceError(404, 'WALLET_NOT_FOUND', 'Wallet not found')
+    return this.ledger.reconcileWallet(userId, wallet.accountId)
   }
 
   private async ensureWallet(
@@ -622,4 +979,128 @@ export class PlatformApiService {
     })
     return true
   }
+
+  async markAllNotificationsRead(userId: string): Promise<number> {
+    const result = await this.prisma.notification.updateMany({
+      where: { userId, readAt: null },
+      data: { readAt: new Date() },
+    })
+    return result.count
+  }
+
+  async createNotification(
+    userId: string,
+    type: 'TRADE_RESULT' | 'DEPOSIT' | 'WITHDRAWAL' | 'SECURITY' | 'VERIFICATION' | 'SYSTEM',
+    title: string,
+    body: string,
+  ): Promise<ApiNotification> {
+    const notification = await this.prisma.notification.create({
+      data: { userId, type, title, body },
+    })
+    const channel = ('user:' + userId) as `user:${string}`
+    if (isRedisReady()) {
+      try {
+        await publish(
+          env.redisChannel,
+          serializeRealtimeEvent(
+            createRealtimeEvent(
+              'notification.created',
+              {
+                id: notification.id,
+                type: notification.type,
+                title: notification.title,
+                body: notification.body,
+                readAt: null,
+                createdAt: notification.createdAt.toISOString(),
+              },
+              channel,
+            ),
+          ),
+        )
+      } catch {
+        // Durable notification storage remains the source of truth.
+      }
+    }
+    return {
+      id: notification.id,
+      type: notification.type,
+      title: notification.title,
+      body: notification.body,
+      readAt: notification.readAt?.toISOString() ?? null,
+      createdAt: notification.createdAt.toISOString(),
+    }
+  }
+
+  private parseFundingAmount(value: string): Prisma.Decimal {
+    try {
+      const amount = new Prisma.Decimal(value)
+      if (!amount.isFinite() || amount.lte(0) || amount.gt(new Prisma.Decimal('1000000'))) {
+        throw new Error('invalid')
+      }
+      return amount
+    } catch {
+      throw new FinanceError(400, 'INVALID_FUNDING_AMOUNT', 'Funding amount must be a positive decimal not greater than 1000000')
+    }
+  }
+
+  private toApiDeposit(deposit: {
+    id: string
+    walletId: string
+    walletTransactionId: string | null
+    provider: string
+    providerReference: string | null
+    amount: Prisma.Decimal
+    currency: string
+    status: string
+    failureReason: string | null
+    requestedAt: Date
+    completedAt: Date | null
+  }): ApiFundingResult {
+    return {
+      id: deposit.id,
+      type: 'DEPOSIT',
+      status: deposit.status,
+      amount: deposit.amount.toString(),
+      currency: deposit.currency,
+      walletId: deposit.walletId,
+      walletTransactionId: deposit.walletTransactionId,
+      provider: deposit.provider,
+      providerReference: deposit.providerReference,
+      failureReason: deposit.failureReason,
+      requestedAt: deposit.requestedAt.toISOString(),
+      completedAt: deposit.completedAt?.toISOString() ?? null,
+    }
+  }
+
+  private toApiWithdrawal(withdrawal: {
+    id: string
+    walletId: string
+    walletTransactionId: string | null
+    provider: string
+    providerReference: string | null
+    amount: Prisma.Decimal
+    currency: string
+    status: string
+    failureReason: string | null
+    requestedAt: Date
+    completedAt: Date | null
+    destination: string | null
+  }): ApiFundingResult {
+    return {
+      id: withdrawal.id,
+      type: 'WITHDRAWAL',
+      status: withdrawal.status,
+      amount: withdrawal.amount.toString(),
+      currency: withdrawal.currency,
+      walletId: withdrawal.walletId,
+      walletTransactionId: withdrawal.walletTransactionId,
+      provider: withdrawal.provider,
+      providerReference: withdrawal.providerReference,
+      destination: withdrawal.destination,
+      failureReason: withdrawal.failureReason,
+      requestedAt: withdrawal.requestedAt.toISOString(),
+      completedAt: withdrawal.completedAt?.toISOString() ?? null,
+    }
+  }
+
 }
