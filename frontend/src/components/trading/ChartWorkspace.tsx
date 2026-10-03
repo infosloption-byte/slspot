@@ -14,6 +14,7 @@ import {
   Slash,
   Square,
   TrendingUp,
+  ArrowRight,
 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { PointerEvent as ReactPointerEvent } from 'react'
@@ -179,11 +180,11 @@ function calculateMacd(candles: ChartCandle[], fast = 12, slow = 26, signalPerio
 
 function calculateAwesomeOscillator(candles: ChartCandle[]): number[] {
   const median = candles.map((candle) => (candle.high + candle.low) / 2)
-  const short = median.map((value, index) => {
+  const short = median.map((_value, index) => {
     const slice = median.slice(Math.max(0, index - 4), index + 1)
     return slice.reduce((sum, item) => sum + item, 0) / slice.length
   })
-  const long = median.map((value, index) => {
+  const long = median.map((_value, index) => {
     const slice = median.slice(Math.max(0, index - 33), index + 1)
     return slice.reduce((sum, item) => sum + item, 0) / slice.length
   })
@@ -239,7 +240,7 @@ function calculatePsar(candles: ChartCandle[]): OverlayPoint[] {
 
 function calculateAlligator(candles: ChartCandle[]): { jaw: OverlayPoint[]; teeth: OverlayPoint[]; lips: OverlayPoint[] } {
   const median = candles.map((candle) => (candle.high + candle.low) / 2)
-  const make = (period: number) => median.map((value, index) => {
+  const make = (period: number) => median.map((_value, index) => {
     const slice = median.slice(Math.max(0, index - period + 1), index + 1)
     return { time: candles[index]!.time, value: slice.reduce((sum, item) => sum + item, 0) / slice.length }
   })
@@ -438,7 +439,7 @@ function ChartCanvas({
     if (!chart) return
 
     const bollinger = calculateBollinger(candles, Math.max(5, indicatorPeriod))
-    const overlayDefinitions: Array<[string, OverlayPoint[], string, number]> = []
+    const overlayDefinitions: Array<[string, OverlayPoint[], string, 1 | 2]> = []
 
     if (enabledIndicators.includes('sma')) overlayDefinitions.push(['sma', sma, '#ffc21a', 2])
     if (enabledIndicators.includes('ema')) overlayDefinitions.push(['ema', calculateEma(candles, indicatorPeriod), '#7dd3fc', 2])
