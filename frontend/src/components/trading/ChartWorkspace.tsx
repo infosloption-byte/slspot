@@ -113,6 +113,147 @@ function calculateRsi(candles: ChartCandle[], period = 14) {
   return points
 }
 
+
+type OverlayPoint = { time: ChartCandle['time']; value: number }
+
+function calculateEma(candles: ChartCandle[], period = 14): OverlayPoint[] {
+  const multiplier = 2 / (period + 1)
+  let previous = candles[0]?.close ?? 0
+  return candles.map((candle, index) => {
+    previous = index === 0 ? candle.close : (candle.close - previous) * multiplier + previous
+    return { time: candle.time, value: previous }
+  })
+}
+
+function calculateBollinger(candles: ChartCandle[], period = 20): { upper: OverlayPoint[]; middle: OverlayPoint[]; lower: OverlayPoint[] } {
+  const middle: OverlayPoint[] = []
+  const upper: OverlayPoint[] = []
+  const lower: OverlayPoint[] = []
+  for (let index = 0; index < candles.length; index += 1) {
+    const start = Math.max(0, index - period + 1)
+    const slice = candles.slice(start, index + 1)
+    const mean = slice.reduce((sum, item) => sum + item.close, 0) / slice.length
+    const variance = slice.reduce((sum, item) => sum + Math.pow(item.close - mean, 2), 0) / slice.length
+    const deviation = Math.sqrt(variance)
+    middle.push({ time: candles[index]!.time, value: mean })
+    upper.push({ time: candles[index]!.time, value: mean + deviation * 2 })
+    lower.push({ time: candles[index]!.time, value: mean - deviation * 2 })
+  }
+  return { middle, upper, lower }
+}
+
+function calculateStochastic(candles: ChartCandle[], period = 14): number[] {
+  return candles.map((candle, index) => {
+    const slice = candles.slice(Math.max(0, index - period + 1), index + 1)
+    const highest = Math.max(...slice.map((item) => item.high))
+    const lowest = Math.min(...slice.map((item) => item.low))
+    return highest === lowest ? 50 : ((candle.close - lowest) / (highest - lowest)) * 100
+  })
+}
+
+function calculateAtr(candles: ChartCandle[], period = 14): number[] {
+  const ranges = candles.map((candle, index) => {
+    const previous = candles[index - 1]?.close ?? candle.close
+    return Math.max(candle.high - candle.low, Math.abs(candle.high - previous), Math.abs(candle.low - previous))
+  })
+  return ranges.map((_, index) => {
+    const slice = ranges.slice(Math.max(0, index - period + 1), index + 1)
+    return slice.reduce((sum, value) => sum + value, 0) / slice.length
+  })
+}
+
+function calculateMacd(candles: ChartCandle[], fast = 12, slow = 26, signalPeriod = 9): { macd: number[]; signal: number[] } {
+  const fastEma = calculateEma(candles, fast)
+  const slowEma = calculateEma(candles, slow)
+  const macd = candles.map((_, index) => (fastEma[index]?.value ?? 0) - (slowEma[index]?.value ?? 0))
+  let previousSignal = macd[0] ?? 0
+  const multiplier = 2 / (signalPeriod + 1)
+  const signal = macd.map((value, index) => {
+    previousSignal = index === 0 ? value : (value - previousSignal) * multiplier + previousSignal
+    return previousSignal
+  })
+  return { macd, signal }
+}
+
+function calculateAwesomeOscillator(candles: ChartCandle[]): number[] {
+  const median = candles.map((candle) => (candle.high + candle.low) / 2)
+  const short = median.map((value, index) => {
+    const slice = median.slice(Math.max(0, index - 4), index + 1)
+    return slice.reduce((sum, item) => sum + item, 0) / slice.length
+  })
+  const long = median.map((value, index) => {
+    const slice = median.slice(Math.max(0, index - 33), index + 1)
+    return slice.reduce((sum, item) => sum + item, 0) / slice.length
+  })
+  return short.map((value, index) => value - (long[index] ?? 0))
+}
+
+function calculatePsar(candles: ChartCandle[]): OverlayPoint[] {
+  if (!candles.length) return []
+  let rising = true
+  let sar = candles[0]!.low
+  let extreme = candles[0]!.high
+  let acceleration = 0.02
+  return candles.map((candle, index) => {
+    if (index === 0) return { time: candle.time, value: sar }
+    const previous = candles[index - 1]!
+    sar += acceleration * (extreme - sar)
+    if (rising) {
+      sar = Math.min(sar, previous.low, candle.low)
+      if (candle.low < sar) {
+        rising = false
+        sar = extreme
+        extreme = candle.low
+        acceleration = 0.02
+      } else if (candle.high > extreme) {
+        extreme = candle.high
+        acceleration = Math.min(0.2, acceleration + 0.02)
+      }
+    } else {
+      sar = Math.max(sar, previous.high, candle.high)
+      if (candle.high > sar) {
+        rising = true
+        sar = extreme
+        extreme = candle.high
+        acceleration = 0.02
+      } else if (candle.low < extreme) {
+        extreme = candle.low
+        acceleration = Math.min(0.2, acceleration + 0.02)
+      }
+    }
+    return { time: candle.time, value: sar }
+  })
+}
+
+function calculateAlligator(candles: ChartCandle[]): { jaw: OverlayPoint[]; teeth: OverlayPoint[]; lips: OverlayPoint[] } {
+  const median = candles.map((candle) => (candle.high + candle.low) / 2)
+  const make = (period: number) => median.map((value, index) => {
+    const slice = median.slice(Math.max(0, index - period + 1), index + 1)
+    return { time: candles[index]!.time, value: slice.reduce((sum, item) => sum + item, 0) / slice.length }
+  })
+  return { jaw: make(13), teeth: make(8), lips: make(5) }
+}
+
+function calculateFractals(candles: ChartCandle[]): { highs: OverlayPoint[]; lows: OverlayPoint[] } {
+  const highs: OverlayPoint[] = []
+  const lows: OverlayPoint[] = []
+  for (let index = 2; index < candles.length - 2; index += 1) {
+    const current = candles[index]!
+    const window = candles.slice(index - 2, index + 3)
+    if (current.high >= Math.max(...window.map((item) => item.high))) highs.push({ time: current.time, value: current.high })
+    if (current.low <= Math.min(...window.map((item) => item.low))) lows.push({ time: current.time, value: current.low })
+  }
+  return { highs, lows }
+}
+
+function normalizeOscillator(values: number[]): number[] {
+  if (!values.length) return []
+  const min = Math.min(...values)
+  const max = Math.max(...values)
+  const range = Math.max(max - min, Number.EPSILON)
+  return values.map((value) => 10 + ((value - min) / range) * 80)
+}
+
 function formatCountdown(seconds: number) {
   const safe = Math.max(0, seconds)
   if (safe < 60) return safe + 's'
