@@ -154,6 +154,25 @@ type TradeDetails = {
   settlement: TradingSettlementRecord | null
 }
 
+type TradingMarketSnapshot = {
+  status: string
+  lastPrice: Prisma.Decimal | null
+  lastPriceAt: Date | null
+}
+
+const DEMO_PRICE_BASES: Record<string, string> = {
+  'BTC/USD': '68000',
+  'ETH/USD': '2500',
+  'SOL/USD': '150',
+  'XRP/USD': '2.4',
+  'EUR/USD': '1.17',
+  'GBP/USD': '1.35',
+  'AAPL/USD': '255',
+  'TSLA/USD': '430',
+  'XAU/USD': '3850',
+  'NAS100/USD': '24600',
+}
+
 export class TradingService {
   private timer: ReturnType<typeof setTimeout> | null = null
   private running = false
@@ -231,7 +250,21 @@ export class TradingService {
 
         const market = asset.markets[0]
         const now = new Date()
-        const rules = getTradingRules(asset.symbol, Boolean(market && market.status === 'OPEN'))
+        const marketIsFresh = Boolean(
+          market?.status === 'OPEN' &&
+          market.lastPrice &&
+          market.lastPriceAt &&
+          now.getTime() - market.lastPriceAt.getTime() <= env.trading.marketMaxAgeMs,
+        )
+        const marketForTrade: TradingMarketSnapshot | undefined =
+          mode === 'DEMO' && !marketIsFresh
+            ? {
+                status: 'OPEN',
+                lastPrice: this.getDemoPrice(asset.symbol, market?.lastPrice),
+                lastPriceAt: now,
+              }
+            : market
+        const rules = getTradingRules(asset.symbol, mode === 'DEMO' || marketIsFresh)
         const account = await this.ensureAccount(tx, userId, asset.quoteCurrency ?? 'USD', mode)
         let wallet = await this.ensureWallet(tx, account.id, account.currency, mode === 'DEMO')
         if (mode === 'DEMO') wallet = await this.ensureDemoBalance(tx, account.id, wallet)
@@ -253,7 +286,7 @@ export class TradingService {
         const rejection = this.validateTrade({
           amount,
           durationSeconds: input.durationSeconds,
-          market,
+          market: marketForTrade,
           rules,
           walletBalance: wallet?.availableBalance ?? new Prisma.Decimal(0),
           now,
@@ -271,7 +304,7 @@ export class TradingService {
             side: input.direction === 'UP' ? 'BUY' : 'SELL',
             status: rejection ? 'REJECTED' : 'PENDING',
             amount,
-            requestedPrice: market?.lastPrice ?? null,
+            requestedPrice: marketForTrade?.lastPrice ?? null,
             payoutRate,
             fee,
             durationSeconds: input.durationSeconds,
@@ -308,7 +341,7 @@ export class TradingService {
           where: { id: order.id },
           data: {
             status: 'ACCEPTED',
-            executedPrice: market!.lastPrice!,
+            executedPrice: marketForTrade!.lastPrice!,
             acceptedAt: now,
           },
         })
@@ -321,7 +354,7 @@ export class TradingService {
             assetId: asset.id,
             side: updatedOrder.side,
             amount,
-            entryPrice: market!.lastPrice!,
+            entryPrice: marketForTrade!.lastPrice!,
           },
         })
 
@@ -451,12 +484,21 @@ export class TradingService {
       select: { lastPrice: true, lastPriceAt: true, status: true },
     })
 
-    if (!market?.lastPrice || !market.lastPriceAt) {
+    const marketIsFresh = Boolean(
+      market?.lastPrice &&
+      market.lastPriceAt &&
+      Date.now() - market.lastPriceAt.getTime() <= env.trading.marketMaxAgeMs,
+    )
+    const settlementPrice = mode === 'DEMO' && !marketIsFresh
+      ? this.getDemoPrice(details.position.asset.symbol, market?.lastPrice)
+      : market?.lastPrice ?? null
+
+    if (!settlementPrice) {
       throw new TradingError(503, 'MARKET_PRICE_UNAVAILABLE', 'A current market price is required to close the trade')
     }
-    this.assertFreshMarketPrice(market.lastPriceAt)
+    if (mode !== 'DEMO' && market?.lastPriceAt) this.assertFreshMarketPrice(market.lastPriceAt)
 
-    const outcome = await this.settleTrade(tradeId, market.lastPrice, 'MANUAL')
+    const outcome = await this.settleTrade(tradeId, settlementPrice, 'MANUAL')
     if (!outcome || outcome.trade.userId !== userId) {
       throw new TradingError(404, 'TRADE_NOT_FOUND', 'Trade was not found')
     }
@@ -486,11 +528,23 @@ export class TradingService {
         orderBy: { updatedAt: 'desc' },
         select: { lastPrice: true, lastPriceAt: true },
       })
-      if (!market?.lastPrice || !market.lastPriceAt) continue
-      if (Date.now() - market.lastPriceAt.getTime() > env.trading.marketMaxAgeMs) continue
+      const account = await this.prisma.account.findUnique({
+        where: { id: trade.position.accountId },
+        select: { mode: true },
+      })
+      const marketIsFresh = Boolean(
+        market?.lastPrice &&
+        market.lastPriceAt &&
+        Date.now() - market.lastPriceAt.getTime() <= env.trading.marketMaxAgeMs,
+      )
+      const settlementPrice = account?.mode === 'DEMO' && !marketIsFresh
+        ? this.getDemoPrice(trade.position.asset.symbol, market?.lastPrice)
+        : market?.lastPrice ?? null
+      if (!settlementPrice) continue
+      if (account?.mode !== 'DEMO' && !marketIsFresh) continue
 
       try {
-        const outcome = await this.settleTrade(trade.id, market.lastPrice, 'EXPIRY')
+        const outcome = await this.settleTrade(trade.id, settlementPrice, 'EXPIRY')
         if (outcome) {
           const result = this.toTradingResult(outcome.trade, outcome.position, outcome.settlement)
           await this.publishTradeSettlement(trade.userId, result)
@@ -662,6 +716,17 @@ export class TradingService {
         asset: { id: position.asset.id, symbol: position.asset.symbol, name: position.asset.name },
       }
     })
+  }
+
+  private getDemoPrice(symbol: string, marketPrice: Prisma.Decimal | null | undefined): Prisma.Decimal {
+    const base = marketPrice?.gt(0)
+      ? marketPrice
+      : new Prisma.Decimal(DEMO_PRICE_BASES[symbol] ?? '100')
+    let hash = 0
+    for (const char of symbol) hash = (hash * 31 + char.charCodeAt(0)) % 1000
+    const phase = Date.now() / 5000 + hash
+    const movement = Math.sin(phase) * 0.003
+    return base.mul(new Prisma.Decimal(1 + movement)).toDecimalPlaces(8)
   }
 
   private parseAmount(value: string): Prisma.Decimal {
