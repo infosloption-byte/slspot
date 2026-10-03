@@ -267,6 +267,7 @@ export function TradingPage() {
         key={selectedAsset.assetId}
         asset={selectedAsset}
         balance={Number(wallet.data?.availableBalance ?? '0')}
+        walletMode={mode}
         soundEnabled={soundEnabled}
         onToggleSound={toggleSound}
         onOpenTrade={openTrade}
