@@ -21,6 +21,7 @@ export type PortfolioAnalytics = {
   wins: number
   losses: number
   winRate: string
+  lossRate: string
   tradeCount: number
   volume: string
   averageTrade: string
