@@ -37,6 +37,16 @@ const authService: AuthServiceLike = {
   listSecurityEvents: async () => [],
 }
 
+async function csrfToken(app: ReturnType<typeof buildApp>, sessionCookie: string): Promise<string> {
+  const response = await app.inject({
+    method: 'GET',
+    url: '/api/v1/auth/csrf',
+    headers: { cookie: sessionCookie },
+  })
+  assert.equal(response.statusCode, 200)
+  return response.json<{ data: { csrfToken: string } }>().data.csrfToken
+}
+
 function mockAdmin(overrides: Record<string, unknown> = {}) {
   return {
     requireAdmin: async (userId: string) => {
@@ -94,13 +104,16 @@ describe('admin API routes', () => {
     await app.ready()
     const response = await app.inject({
       method: 'POST',
-      url: '/api/v1/admin/users/user-2/status',
-      headers: { cookie: 'slspot_session=test-session' },
+      url: '/api/v1/admin/users/550e8400-e29b-41d4-a716-446655440000/status',
+      headers: {
+        cookie: 'slspot_session=test-session',
+        'x-csrf-token': await csrfToken(app, 'slspot_session=test-session'),
+      },
       payload: { status: 'SUSPENDED' },
     })
     assert.equal(response.statusCode, 200)
     assert.equal(actor, 'user-1')
-    assert.equal(target, 'user-2')
+    assert.equal(target, '550e8400-e29b-41d4-a716-446655440000')
     await app.close()
   })
 
