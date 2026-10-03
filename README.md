@@ -8,6 +8,7 @@ SL Spot is an original trading-terminal product with a React/Vite frontend and a
 slspot/
 ├── frontend/    # React 19 + Vite trading terminal
 ├── backend/     # Fastify + TypeScript API/realtime foundation
+├── admin/       # Separate React/Vite administrator console
 ├── docs/        # Architecture, design system and security documentation
 └── repository-level documentation and configuration
 ```
@@ -79,6 +80,16 @@ cd backend
 npm run typecheck
 npm run build
 ```
+
+### Admin application
+
+```bash
+cd admin
+npm install
+npm run dev
+```
+
+Default admin dev URL: `http://localhost:5174`. Configure `VITE_API_BASE_URL` when the API is on another origin. Backend administrator access is bootstrapped for configured active users with `ADMIN_BOOTSTRAP_EMAILS`.
 
 ## Security baseline
 
