@@ -430,11 +430,11 @@ function WalletPage() {
             </div>
 
             {fundingAction === 'deposit' ? (
-              <label className="wallet-funding-field"><span>Amount</span><div className="wallet-amount-input"><b>{wallet.data?.currency ?? 'USD'}</b><input inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value)} placeholder="100.00" disabled={!isDemo || fundingSubmitting} /></div><small>Demo deposits are credited immediately and create a balanced ledger transaction.</small></label>
+              <label className="wallet-funding-field"><span>Amount</span><div className="wallet-amount-input"><b>{wallet.data?.currency ?? 'USD'}</b><input inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value)} placeholder="100.00" disabled={!isDemo || fundingSubmitting} /></div><small>Demo deposits are credited immediately, capped at $1,000,000, and create a balanced ledger transaction.</small></label>
             ) : (
               <>
                 <label className="wallet-funding-field"><span>Destination</span><input value={destination} onChange={(event) => setDestination(event.target.value)} placeholder="Demo destination" disabled={!isDemo || fundingSubmitting} /></label>
-                <label className="wallet-funding-field"><span>Amount</span><div className="wallet-amount-input"><b>{wallet.data?.currency ?? 'USD'}</b><input inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value)} placeholder="50.00" disabled={!isDemo || fundingSubmitting} /></div><small>Withdrawals use available demo balance and are fully ledger-recorded.</small></label>
+                <label className="wallet-funding-field"><span>Amount</span><div className="wallet-amount-input"><b>{wallet.data?.currency ?? 'USD'}</b><input inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value)} placeholder="50.00" disabled={!isDemo || fundingSubmitting} /></div><small>Withdrawals use available demo balance, have a $0 demo fee, and are fully ledger-recorded. Maximum $1,000,000.</small></label>
               </>
             )}
 
