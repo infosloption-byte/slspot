@@ -5,6 +5,7 @@ import type { TradeDirection } from '../../types/trading'
 import type { WalletMode } from '../../hooks/useWalletMode'
 import { ApiError } from '../../api/client'
 import type { TradeCreateResult } from '../../api/trades'
+import { Modal } from '../ui/Modal'
 
 type TradePanelProps = {
   asset: MarketAsset
@@ -245,7 +246,24 @@ export function TradePanel({ asset, balance, walletMode, canTrade, tradeDisabled
         </div>
       </aside>
 
-      {error ? <div className="trade-modal-backdrop"><div className="trade-modal trade-modal--error" role="alertdialog" aria-modal="true"><div className="trade-modal__icon"><ShieldAlert size={18} /></div><div><span>Check your trade</span><strong>{error}</strong></div><div className="trade-modal__actions"><button className="btn btn--ghost" type="button" onClick={() => { setError(''); setStage('draft') }}>Close</button>{failedRequest ? <button className="btn btn--primary" type="button" onClick={() => { setError(''); void requestPreview(failedRequest.direction, failedRequest.clientRequestId) }}><RefreshCcw size={14} /> Retry</button> : null}</div></div></div> : null}
+      <Modal
+        open={Boolean(error)}
+        onClose={() => { setError(''); setStage('draft') }}
+        title="Check your trade"
+        description={error || undefined}
+        footer={(
+          <>
+            <button className="btn btn--ghost" type="button" onClick={() => { setError(''); setStage('draft') }}>Close</button>
+            {failedRequest ? (
+              <button className="btn btn--primary" type="button" onClick={() => { setError(''); void requestPreview(failedRequest.direction, failedRequest.clientRequestId) }}>
+                <RefreshCcw size={14} /> Retry
+              </button>
+            ) : null}
+          </>
+        )}
+      >
+        <div className="trade-modal__icon" aria-hidden="true"><ShieldAlert size={18} /></div>
+      </Modal>
 
     </>
   )
