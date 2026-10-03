@@ -4,6 +4,8 @@ import { Link, useNavigate } from 'react-router'
 import { useAuth } from '../../auth/AuthProvider'
 import { useNotifications, useWallets } from '../../hooks/useServerState'
 import { useWalletMode } from '../../hooks/useWalletMode'
+import { useRealtime } from '../../realtime/RealtimeProvider'
+import { userChannel } from '../../realtime/subscriptions'
 
 function formatBalance(value: string | null | undefined, currency: string | null | undefined): string {
   const amount = Number(value ?? 0)
@@ -19,8 +21,9 @@ function formatBalance(value: string | null | undefined, currency: string | null
 
 export function TopBar() {
   const navigate = useNavigate()
-  const { logout } = useAuth()
+  const { user, logout } = useAuth()
   const { mode, setMode } = useWalletMode()
+  const realtime = useRealtime()
   const wallets = useWallets()
   const notifications = useNotifications(1, 1, true)
   const unreadCount = notifications.data?.pagination.total ?? 0
@@ -30,6 +33,25 @@ export function TopBar() {
   const [logoutError, setLogoutError] = useState('')
 
   const selectedWallet = wallets.data?.find((wallet) => wallet.mode === mode) ?? null
+
+  useEffect(() => {
+    if (!user?.id) return
+    return realtime.subscribe(userChannel(user.id))
+  }, [realtime, user?.id])
+
+  useEffect(() => {
+    return realtime.onEvent((event) => {
+      if (event.type !== 'wallet.update') return
+      void wallets.reload()
+    })
+  }, [realtime, wallets.reload])
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      void wallets.reload()
+    }, 2500)
+    return () => window.clearInterval(timer)
+  }, [wallets.reload])
 
   useEffect(() => {
     if (!walletMenuOpen) return
