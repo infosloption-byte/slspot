@@ -27,6 +27,8 @@ export type MarketAsset = {
     externalSymbol: string
     lastPrice: string | null
     lastPriceAt: string | null
+    lastChangePct: string | null
+    lastVolume: string | null
   } | null
 }
 
