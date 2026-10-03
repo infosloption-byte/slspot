@@ -191,38 +191,48 @@ function calculateAwesomeOscillator(candles: ChartCandle[]): number[] {
 }
 
 function calculatePsar(candles: ChartCandle[]): OverlayPoint[] {
-  if (!candles.length) return []
-  let rising = true
-  let sar = candles[0]!.low
-  let extreme = candles[0]!.high
+  if (candles.length < 2) return candles.map((candle) => ({ time: candle.time, value: candle.low }))
+  let rising = candles[1]!.close >= candles[0]!.close
+  let sar = rising ? candles[0]!.low : candles[0]!.high
+  let extreme = rising ? candles[0]!.high : candles[0]!.low
   let acceleration = 0.02
+
   return candles.map((candle, index) => {
     if (index === 0) return { time: candle.time, value: sar }
+
     const previous = candles[index - 1]!
-    sar += acceleration * (extreme - sar)
+    const candidate = sar + acceleration * (extreme - sar)
+
     if (rising) {
-      sar = Math.min(sar, previous.low, candle.low)
-      if (candle.low < sar) {
+      const constrainedSar = Math.min(candidate, previous.low, candle.low)
+      if (candle.low < candidate) {
         rising = false
         sar = extreme
         extreme = candle.low
         acceleration = 0.02
-      } else if (candle.high > extreme) {
-        extreme = candle.high
-        acceleration = Math.min(0.2, acceleration + 0.02)
+      } else {
+        sar = constrainedSar
+        if (candle.high > extreme) {
+          extreme = candle.high
+          acceleration = Math.min(0.2, acceleration + 0.02)
+        }
       }
     } else {
-      sar = Math.max(sar, previous.high, candle.high)
-      if (candle.high > sar) {
+      const constrainedSar = Math.max(candidate, previous.high, candle.high)
+      if (candle.high > candidate) {
         rising = true
         sar = extreme
         extreme = candle.high
         acceleration = 0.02
-      } else if (candle.low < extreme) {
-        extreme = candle.low
-        acceleration = Math.min(0.2, acceleration + 0.02)
+      } else {
+        sar = constrainedSar
+        if (candle.low < extreme) {
+          extreme = candle.low
+          acceleration = Math.min(0.2, acceleration + 0.02)
+        }
       }
     }
+
     return { time: candle.time, value: sar }
   })
 }
