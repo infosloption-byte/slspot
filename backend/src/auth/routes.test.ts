@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import { buildApp } from '../app.js'
+import { createCsrfToken } from '../security/csrf.js'
 import type { AuthServiceLike } from './routes.js'
 
 const user = {
@@ -49,14 +50,9 @@ function createMockAuthService(): AuthServiceLike {
   }
 }
 
-async function csrfToken(app: ReturnType<typeof buildApp>, sessionCookie?: string): Promise<string> {
-  const response = await app.inject({
-    method: 'GET',
-    url: '/api/v1/auth/csrf',
-    ...(sessionCookie ? { headers: { cookie: sessionCookie } } : {}),
-  })
-  assert.equal(response.statusCode, 200)
-  return response.json<{ data: { csrfToken: string } }>().data.csrfToken
+function csrfToken(sessionCookie?: string): string {
+  const sessionToken = sessionCookie?.split(';')[0].split('=')[1]
+  return createCsrfToken(sessionToken)
 }
 
 describe('authentication routes', () => {
@@ -78,7 +74,7 @@ describe('authentication routes', () => {
     const response = await app.inject({
       method: 'POST',
       url: '/api/v1/auth/register',
-      headers: { 'x-csrf-token': await csrfToken(app) },
+      headers: { 'x-csrf-token': csrfToken() },
       payload: { email: user.email, password: 'A-strong-password-123', acceptTerms: true },
     })
 
@@ -96,7 +92,7 @@ describe('authentication routes', () => {
     const response = await app.inject({
       method: 'POST',
       url: '/api/v1/auth/login',
-      headers: { 'x-csrf-token': await csrfToken(app) },
+      headers: { 'x-csrf-token': csrfToken() },
       payload: { email: user.email, password: 'A-strong-password-123' },
     })
 
@@ -113,7 +109,7 @@ describe('authentication routes', () => {
     const login = await app.inject({
       method: 'POST',
       url: '/api/v1/auth/login',
-      headers: { 'x-csrf-token': await csrfToken(app) },
+      headers: { 'x-csrf-token': csrfToken() },
       payload: { email: user.email, password: 'A-strong-password-123' },
     })
     const cookie = String(login.headers['set-cookie']).split(';')[0]
@@ -146,7 +142,7 @@ describe('authentication routes', () => {
     const response = await app.inject({
       method: 'POST',
       url: '/api/v1/auth/login',
-      headers: { 'x-csrf-token': await csrfToken(app) },
+      headers: { 'x-csrf-token': csrfToken() },
       payload: { email: user.email, password: 'A-strong-password-123', rememberDevice: true },
     })
 
@@ -163,7 +159,7 @@ describe('authentication routes', () => {
     const response = await app.inject({
       method: 'POST',
       url: '/api/v1/auth/register',
-      headers: { 'x-csrf-token': await csrfToken(app) },
+      headers: { 'x-csrf-token': csrfToken() },
       payload: { email: user.email, password: 'A-strong-password-123', acceptTerms: false },
     })
 
