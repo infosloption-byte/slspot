@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import { Prisma, type PrismaClient } from '../generated/prisma/client.js'
 import { env } from '../config/env.js'
 import { getTradingRules } from '../trading/config.js'
@@ -477,7 +478,7 @@ export class PlatformApiService {
         status: 'COMPLETED',
         amount,
         currency,
-        idempotencyKey: 'demo-funding:' + walletId + ':' + crypto.randomUUID(),
+        idempotencyKey: 'demo-funding:' + walletId + ':' + randomUUID(),
         referenceType: 'DEMO_WALLET',
         referenceId: walletId,
         description,
