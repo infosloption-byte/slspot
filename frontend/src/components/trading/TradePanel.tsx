@@ -15,7 +15,7 @@ type TradePanelProps = {
   onOpenTrade: (trade: { direction: TradeDirection; amount: number; durationSeconds: number; entryPrice: number; payoutRate: number }) => Promise<TradeCreateResult>
 }
 
-type OrderStage = 'draft' | 'submitting' | 'accepted' | 'open' | 'rejected' | 'failed'
+type OrderStage = 'draft' | 'pending' | 'accepted' | 'open' | 'rejected' | 'failed'
 
 function formatDuration(value: number) {
   return value < 60 ? value + 's' : value / 60 + 'm'
@@ -96,7 +96,7 @@ export function TradePanel({ asset, balance, walletMode, soundEnabled, onToggleS
         payoutRate,
       })
       setLastOrder(result)
-      setStage(result.orderStatus === 'ACCEPTED' ? 'accepted' : 'open')
+      setStage(result.orderStatus === 'PENDING' ? 'pending' : result.orderStatus === 'ACCEPTED' ? 'accepted' : 'open')
       window.setTimeout(() => setStage('draft'), 1600)
     } catch (error) {
       const rejected = error instanceof ApiError && error.code === 'ORDER_REJECTED'
