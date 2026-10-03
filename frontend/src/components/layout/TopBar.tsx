@@ -62,7 +62,7 @@ export function TopBar() {
         <span className="account-chip__body">
           <small>Available balance</small>
           <strong>{formatBalance(wallet.data?.availableBalance, wallet.data?.currency)}</strong>
-          <em>{user?.email ?? 'Signed in'}</em>
+          <small className="topbar__account-email">{user?.email ?? 'Signed in'}</small>
         </span>
       </Link>
 
