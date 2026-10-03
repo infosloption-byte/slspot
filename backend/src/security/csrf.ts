@@ -26,6 +26,7 @@ export function verifyCsrfToken(token: string | undefined, sessionToken?: string
 
   const payload = parts.slice(0, TOKEN_PARTS).join('.')
   const signature = parts[TOKEN_PARTS]
+  if (!signature) return false
   const expectedBinding = hashBinding(sessionToken ?? 'anonymous')
   if (parts[1] !== expectedBinding) return false
 
