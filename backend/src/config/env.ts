@@ -305,7 +305,7 @@ export const env = {
     initialBalance: parseDecimalString(
       'TRADING_INITIAL_BALANCE',
       process.env.TRADING_INITIAL_BALANCE,
-      nodeEnv === 'production' ? '0' : '12480.65',
+      '12480.65',
     ),
     maxOpenPositions: parsePositiveInteger('TRADING_MAX_OPEN_POSITIONS', process.env.TRADING_MAX_OPEN_POSITIONS, 20, 1, 1_000),
     maxOpenExposure: parseDecimalString('TRADING_MAX_OPEN_EXPOSURE', process.env.TRADING_MAX_OPEN_EXPOSURE, '100000'),
