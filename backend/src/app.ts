@@ -7,6 +7,8 @@ import { registerPlatformApiRoutes } from './api/routes.js'
 import type { PlatformApiService } from './api/service.js'
 import cookie from '@fastify/cookie'
 import { registerAuthRoutes, type AuthServiceLike } from './auth/routes.js'
+import { registerAdminRoutes } from './admin/routes.js'
+import type { AdminService } from './admin/service.js'
 import type { ApiError, ApiSuccess } from './contracts/api.js'
 
 const API_PREFIX = '/api/v1'
@@ -22,6 +24,7 @@ type AppOptions = {
   apiService?: PlatformApiService
   marketDataService?: import('./market/service.js').MarketDataServiceLike
   tradingService?: import('./api/routes.js').TradingServiceLike
+  adminService?: AdminService
 }
 
 function resolveRequestId(value: string | string[] | undefined): string {
@@ -81,6 +84,10 @@ export function buildApp(options: AppOptions = {}) {
 
   if (options.authService) {
     registerAuthRoutes(app, options.authService)
+  }
+
+  if (options.authService && options.adminService) {
+    registerAdminRoutes(app, { authService: options.authService, adminService: options.adminService, checkDatabase: options.checkDatabase, checkRedis: options.checkRedis })
   }
 
   if (options.authService && options.apiService) {
