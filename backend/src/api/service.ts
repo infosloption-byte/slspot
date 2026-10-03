@@ -708,9 +708,14 @@ export class PlatformApiService {
 
     const existing = await this.prisma.walletTransaction.findUnique({
       where: { idempotencyKey: 'deposit:' + requestId },
-      include: { deposit: true },
+      include: { deposit: { include: { wallet: { include: { account: { select: { userId: true } } } } } } },
     })
-    if (existing?.deposit) return this.toApiDeposit(existing.deposit)
+    if (existing?.deposit) {
+      if (existing.deposit.wallet.account.userId !== userId) {
+        throw new FinanceError(409, 'IDEMPOTENCY_CONFLICT', 'The idempotency key is already associated with another user')
+      }
+      return this.toApiDeposit(existing.deposit)
+    }
 
     const result = await this.prisma.$transaction(async (tx) => {
       const walletRecord = await this.ensureWallet(tx, userId, 'USD', 'DEMO')
