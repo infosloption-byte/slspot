@@ -14,7 +14,7 @@ export type AuthSession = AuthUser & {
 }
 
 export type LoginResponse =
-  | { requiresTwoFactor: false; user: AuthSession; expiresAt: string }
+  | { requiresTwoFactor: false; user: AuthSession; expiresAt: string; csrfToken?: string }
   | { requiresTwoFactor: true; user: AuthUser; challengeToken: string; challengeExpiresAt: string }
 
 export type RegistrationVerification = {
