@@ -1552,16 +1552,6 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
 .security-event-row small { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .security-event-row small { color:var(--muted); }
 .dashboard-note--error { color:var(--negative); border-color:rgba(255,77,94,.24); }
-.access-check {
-  display:flex;
-  align-items:flex-start;
-  gap:8px;
-  color:var(--muted);
-  font-size:11px;
-}
-.access-check input { margin-top:2px; accent-color:var(--accent); }
-.two-factor-help { display:grid; gap:8px; margin:10px 0; padding:10px; border:1px solid var(--border); border-radius:9px; background:var(--panel-raised); }
-.two-factor-help__row { display:flex; align-items:flex-start; gap:8px; color:var(--muted); font-size:11px; }
 @media (max-width:600px) {
   .recovery-code-grid { grid-template-columns:1fr; }
   .trade-state-banner { margin-inline:8px; }
