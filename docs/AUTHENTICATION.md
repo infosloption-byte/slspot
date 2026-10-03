@@ -1,6 +1,6 @@
 # SL Spot Authentication & Sessions
 
-Status: implemented on `main` — 2026-10-02.
+Status: implemented on `main` — 2026-10-03.
 
 ## Authentication model
 
@@ -30,6 +30,14 @@ Base path: `/api/v1/auth`.
 |---|---|---|
 | POST | `/register` | public |
 | POST | `/login` | public |
+| POST | `/2fa/verify` | public challenge |
+| GET | `/2fa/status` | session |
+| POST | `/2fa/setup` | session |
+| POST | `/2fa/enable` | session |
+| POST | `/2fa/disable` | session |
+| GET | `/devices` | session |
+| GET | `/login-history` | session |
+| GET | `/security-events` | session |
 | POST | `/logout` | session |
 | POST | `/logout-all` | session |
 | GET | `/me` | session |
@@ -46,7 +54,12 @@ Base path: `/api/v1/auth`.
 - Sessions have explicit expiration and revocation timestamps.
 - Authentication requires an active user and an unexpired, non-revoked session.
 - Browser authentication uses an HttpOnly cookie with configurable Secure/SameSite/domain settings.
-- Password reset revokes all active sessions for the user.
+- Password reset revokes all active sessions for the user and clears login lockout counters.
+- Five failed password attempts lock the account for a configurable period; locked responses return HTTP 429 with `Retry-After`.
+- `rememberDevice` selects the server session lifetime; the session token remains inside the HttpOnly cookie.
+- TOTP secrets are encrypted at rest with AES-256-GCM; production requires an explicitly configured 32-byte encryption key.
+- Recovery codes are generated once, stored hashed, and consumed atomically.
+- Sessions create and update tracked device records; device, login-history, and security-event APIs are user-scoped.
 - Authentication lifecycle actions are written to the audit log.
 
 Passwords use Node.js asynchronous `crypto.scrypt` with a unique random 16-byte salt. Node documents scrypt as a password-based key derivation function designed to make brute-force attacks more expensive and recommends a random salt of at least 16 bytes. citeturn827206search2
@@ -69,7 +82,7 @@ The production server passes the authentication service into the realtime gatewa
 
 ## Remaining authentication follow-ups
 
-Rate limiting/abuse controls, email-provider delivery, MFA, authorization/RBAC, security-event notifications, full device management UX and the final CSRF strategy remain later security work.
+Email-provider delivery, authorization/RBAC, final CSRF strategy, and broader production abuse controls remain later security work. Core login lockout, 2FA, recovery codes, device tracking, login history, and security-event views are implemented.
 
 
 ## Frontend session integration
