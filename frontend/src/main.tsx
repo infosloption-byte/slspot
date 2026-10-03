@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router'
 import App from './App'
 import { AuthProvider } from './auth/AuthProvider'
+import { WalletModeProvider } from './hooks/useWalletMode'
 import { RealtimeProvider } from './realtime/RealtimeProvider'
 import './styles/theme.css'
 import './styles/global.css'
@@ -17,9 +18,11 @@ createRoot(rootElement).render(
   <StrictMode>
     <BrowserRouter>
       <AuthProvider>
-        <RealtimeProvider>
-          <App />
-        </RealtimeProvider>
+        <WalletModeProvider>
+          <RealtimeProvider>
+            <App />
+          </RealtimeProvider>
+        </WalletModeProvider>
       </AuthProvider>
     </BrowserRouter>
   </StrictMode>,
