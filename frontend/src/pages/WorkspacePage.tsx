@@ -224,6 +224,7 @@ function DashboardPage() {
               <div><span>Held</span><strong>{formatMoney(summary.data?.heldBalance, summary.data?.currency)}</strong></div>
               <div><span>Average trade</span><strong>{formatMoney(analytics.data?.averageTrade, analytics.data?.currency)}</strong></div>
               <div><span>Win rate</span><strong>{analytics.data?.winRate ?? '0'}%</strong></div>
+              <div><span>Loss rate</span><strong>{analytics.data?.lossRate ?? '0'}%</strong></div>
             </div>
           </section>
         </div>
