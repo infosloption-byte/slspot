@@ -77,6 +77,8 @@ export type ApiMarketAsset = {
     externalSymbol: string
     lastPrice: string | null
     lastPriceAt: string | null
+    lastChangePct: string | null
+    lastVolume: string | null
   } | null
 }
 
@@ -262,6 +264,8 @@ export class PlatformApiService {
                 externalSymbol: market.externalSymbol,
                 lastPrice: market.lastPrice?.toString() ?? null,
                 lastPriceAt: market.lastPriceAt?.toISOString() ?? null,
+                lastChangePct: market.lastChangePct?.toString() ?? null,
+                lastVolume: market.lastVolume?.toString() ?? null,
               }
             : null,
         }
