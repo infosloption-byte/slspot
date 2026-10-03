@@ -2,6 +2,7 @@ import type { FastifyRequest } from 'fastify'
 import { Prisma, type PrismaClient } from '../generated/prisma/client.js'
 import { env } from '../config/env.js'
 import { createOpaqueToken, hashOpaqueToken, hashPassword, verifyPassword } from './crypto.js'
+import { LedgerService } from '../ledger/service.js'
 
 export type AuthUser = {
   id: string
@@ -58,7 +59,11 @@ function validateCountryCode(value: string | undefined): string | null {
 }
 
 export class AuthService {
-  constructor(private readonly prisma: PrismaClient) {}
+  private readonly ledger: LedgerService
+
+  constructor(private readonly prisma: PrismaClient) {
+    this.ledger = new LedgerService(prisma)
+  }
 
   async register(input: { email: string; password: string; countryCode?: string }) {
     const email = normalizeEmail(input.email)
@@ -332,15 +337,68 @@ export class AuthService {
 
         const existingWallet = await tx.wallet.findUnique({ where: { accountId: existingAccount.id } })
         if (!existingWallet) {
-          await tx.wallet.create({
+          const initialBalance = mode === 'DEMO'
+            ? new Prisma.Decimal(env.trading.initialBalance)
+            : new Prisma.Decimal(0)
+
+          const wallet = await tx.wallet.create({
             data: {
               accountId: existingAccount.id,
               currency: existingAccount.currency,
               status: 'ACTIVE',
-              availableBalance: mode === 'DEMO' ? new Prisma.Decimal(env.trading.initialBalance) : 0,
+              availableBalance: initialBalance,
               heldBalance: 0,
             },
           })
+
+          if (initialBalance.gt(0)) {
+            const walletLedger = await this.ledger.ensureWalletLedgerAccounts(tx, existingAccount.id, existingAccount.currency)
+            const fundingCode = await this.ledger.ensureSystemLedgerAccount(
+              tx,
+              'SYSTEM:DEMO_FUNDING',
+              'Demo funding source',
+              'EQUITY',
+              existingAccount.currency,
+            )
+            const walletTransaction = await tx.walletTransaction.create({
+              data: {
+                walletId: wallet.id,
+                type: 'ADJUSTMENT',
+                status: 'COMPLETED',
+                amount: initialBalance,
+                currency: existingAccount.currency,
+                idempotencyKey: 'wallet-initial:' + wallet.id,
+                referenceType: 'SYSTEM',
+                referenceId: wallet.id,
+                description: 'Initial demo trading balance',
+                availableBalanceAfter: wallet.availableBalance,
+                heldBalanceAfter: wallet.heldBalance,
+              },
+            })
+            await this.ledger.postTransaction(tx, {
+              walletTransactionId: walletTransaction.id,
+              currency: existingAccount.currency,
+              referenceType: 'SYSTEM',
+              referenceId: wallet.id,
+              description: 'Initial demo trading balance',
+              lines: [
+                {
+                  accountCode: fundingCode,
+                  accountName: 'Demo funding source',
+                  accountType: 'EQUITY',
+                  direction: 'DEBIT',
+                  amount: initialBalance,
+                },
+                {
+                  accountCode: walletLedger.availableCode,
+                  accountName: 'User available balance',
+                  accountType: 'LIABILITY',
+                  direction: 'CREDIT',
+                  amount: initialBalance,
+                },
+              ],
+            })
+          }
         }
         continue
       }
@@ -370,6 +428,14 @@ export class AuthService {
       })
 
       if (initialBalance.gt(0)) {
+        const walletLedger = await this.ledger.ensureWalletLedgerAccounts(tx, account.id, account.currency)
+        const fundingCode = await this.ledger.ensureSystemLedgerAccount(
+          tx,
+          'SYSTEM:DEMO_FUNDING',
+          'Demo funding source',
+          'EQUITY',
+          account.currency,
+        )
         const walletTransaction = await tx.walletTransaction.create({
           data: {
             walletId: wallet.id,
@@ -381,20 +447,33 @@ export class AuthService {
             referenceType: 'SYSTEM',
             referenceId: wallet.id,
             description: 'Initial demo trading balance',
+            availableBalanceAfter: wallet.availableBalance,
+            heldBalanceAfter: wallet.heldBalance,
           },
         })
 
-        await tx.ledgerEntry.create({
-          data: {
-            transactionId: walletTransaction.id,
-            accountId: account.id,
-            walletTransactionId: walletTransaction.id,
-            direction: 'CREDIT',
-            amount: initialBalance,
-            currency: account.currency,
-            referenceType: 'SYSTEM',
-            referenceId: wallet.id,
-          },
+        await this.ledger.postTransaction(tx, {
+          walletTransactionId: walletTransaction.id,
+          currency: account.currency,
+          referenceType: 'SYSTEM',
+          referenceId: wallet.id,
+          description: 'Initial demo trading balance',
+          lines: [
+            {
+              accountCode: fundingCode,
+              accountName: 'Demo funding source',
+              accountType: 'EQUITY',
+              direction: 'DEBIT',
+              amount: initialBalance,
+            },
+            {
+              accountCode: walletLedger.availableCode,
+              accountName: 'User available balance',
+              accountType: 'LIABILITY',
+              direction: 'CREDIT',
+              amount: initialBalance,
+            },
+          ],
         })
       }
     }
