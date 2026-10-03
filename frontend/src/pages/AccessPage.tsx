@@ -381,14 +381,14 @@ export function AccessPage() {
           ) : null}
 
           {location.pathname === '/login' ? (
-            <label className="access-check">
+            <label className="access-check access-check--single-line">
               <input type="checkbox" checked={rememberDevice} onChange={(event) => setRememberDevice(event.target.checked)} />
               <span>Remember this device for longer sessions</span>
             </label>
           ) : null}
 
           {location.pathname === '/2fa' ? (
-            <label className="access-check">
+            <label className="access-check access-check--single-line">
               <input type="checkbox" checked={rememberDevice} onChange={(event) => {
                 const next = event.target.checked
                 setRememberDevice(next)
