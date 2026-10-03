@@ -842,6 +842,9 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
   .workspace-page { padding:16px 12px; }
 }
 @media (max-width: 420px) {
+  .topbar { gap: 6px; }
+  .account-chip { max-width:140px; padding:0 7px; }
+  .account-chip__body strong { font-size:13px; }
   .drawing-tools { grid-template-columns:1fr; }
   .chart-type-switch { grid-template-columns:1fr 1fr 1fr; }
   .trade-mobile-config__grid { grid-template-columns:1fr 1fr; }
