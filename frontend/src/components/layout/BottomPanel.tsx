@@ -106,7 +106,7 @@ export function BottomPanel({
           const count = id === 'open'
             ? visiblePositions.length
             : id === 'history'
-              ? visibleHistory.length
+              ? historyTotal
               : visibleWallet.length
 
           return (
