@@ -6,6 +6,7 @@ import { createRealtimeEvent, serializeRealtimeEvent } from '../realtime/events.
 import { isRedisReady, publish } from '../realtime/redis.js'
 import { createOpaqueToken, hashOpaqueToken, hashPassword, verifyPassword } from './crypto.js'
 import { createOtpAuthUri, createRecoveryCodes, decryptTotpSecret, encryptTotpSecret, generateTotpSecret, normalizeRecoveryCode, verifyTotpCode } from './totp.js'
+import { createOtpAuthUri, createRecoveryCodes, decryptTotpSecret, encryptTotpSecret, generateTotpSecret, normalizeRecoveryCode, verifyTotpCode } from './totp.js'
 import { LedgerService } from '../ledger/service.js'
 
 export type AuthUser = {
@@ -248,6 +249,194 @@ export class AuthService {
     return this.finishLogin(user.id, user, input.ipAddress, input.userAgent, input.rememberDevice ?? false, now)
   }
 
+  private async finishLogin(userId: string, user: AuthUser, ipAddress: string | undefined, userAgent: string | undefined, rememberDevice: boolean, now = new Date()): Promise<AuthLoginResult> {
+    const sessionToken = createOpaqueToken(48)
+    const sessionTtl = rememberDevice ? env.auth.sessionTtlSeconds : env.auth.shortSessionTtlSeconds
+    const expiresAt = new Date(now.getTime() + sessionTtl * 1000)
+
+    const session = await this.prisma.$transaction(async (tx) => {
+      const device = await tx.device.create({
+        data: { userId, deviceName: describeUserAgent(userAgent), userAgent, lastSeenAt: now },
+      })
+      const created = await tx.session.create({
+        data: { userId, deviceId: device.id, tokenHash: hashOpaqueToken(sessionToken), expiresAt, ipAddress, userAgent },
+      })
+      await tx.user.update({ where: { id: userId }, data: { lastLoginAt: now, loginFailedCount: 0, loginLockedUntil: null } })
+      await this.ensureTradingAccounts(tx, userId, 'USD')
+      await tx.auditLog.create({
+        data: {
+          actorUserId: userId,
+          action: 'LOGIN_SUCCESS',
+          entityType: 'Session',
+          entityId: created.id,
+          ipAddress,
+          userAgent,
+          metadata: { rememberDevice },
+        },
+      })
+      return created
+    })
+
+    await this.createSecurityNotification(userId)
+    return { requiresTwoFactor: false, session: { ...user, sessionId: session.id, expiresAt }, sessionToken }
+  }
+
+  async verifyTwoFactorChallenge(input: {
+    challengeToken: string
+    code?: string
+    recoveryCode?: string
+    rememberDevice?: boolean
+    ipAddress?: string
+    userAgent?: string
+  }): Promise<AuthLoginResult> {
+    const challenge = await this.prisma.authToken.findFirst({
+      where: { tokenHash: hashOpaqueToken(input.challengeToken), type: 'TWO_FACTOR_CHALLENGE', consumedAt: null, expiresAt: { gt: new Date() } },
+      include: { user: true },
+    })
+    if (!challenge || challenge.user.status !== 'ACTIVE' || !challenge.user.twoFactorEnabled) {
+      throw new AuthError(401, 'TWO_FACTOR_CHALLENGE_EXPIRED', 'The two-factor challenge is invalid or expired')
+    }
+
+    const hasCode = Boolean(input.code)
+    const hasRecoveryCode = Boolean(input.recoveryCode)
+    if (hasCode === hasRecoveryCode) {
+      throw new AuthError(400, 'TWO_FACTOR_INPUT_REQUIRED', 'Provide a six-digit authenticator code or a recovery code')
+    }
+
+    let valid = false
+    let recoveryRecordId: string | null = null
+    if (hasCode) {
+      if (!challenge.user.twoFactorSecretEnc) throw new AuthError(503, 'TWO_FACTOR_UNAVAILABLE', 'Two-factor authentication is not configured correctly')
+      try {
+        valid = verifyTotpCode(decryptTotpSecret(challenge.user.twoFactorSecretEnc, env.auth.twoFactorEncryptionKey), input.code ?? '')
+      } catch {
+        throw new AuthError(503, 'TWO_FACTOR_UNAVAILABLE', 'Two-factor authentication is not configured correctly')
+      }
+    } else {
+      const normalized = normalizeRecoveryCode(input.recoveryCode ?? '')
+      if (normalized.length < 8) valid = false
+      else {
+        const recovery = await this.prisma.recoveryCode.findFirst({ where: { userId: challenge.userId, codeHash: hashOpaqueToken(normalized), usedAt: null } })
+        if (recovery) { valid = true; recoveryRecordId = recovery.id }
+      }
+    }
+
+    const now = new Date()
+    if (!valid) {
+      const result = await this.prisma.$transaction(async (tx) => {
+        const latest = await tx.authToken.findUnique({ where: { id: challenge.id } })
+        if (!latest || latest.consumedAt) return null
+        const attempts = latest.attempts + 1
+        const exhausted = attempts >= env.auth.twoFactorMaxAttempts
+        const updated = await tx.authToken.update({ where: { id: challenge.id }, data: { attempts, consumedAt: exhausted ? now : null } })
+        await tx.auditLog.create({
+          data: { actorUserId: challenge.userId, action: 'TWO_FACTOR_FAILED', entityType: 'AuthToken', entityId: challenge.id, ipAddress: input.ipAddress, userAgent: input.userAgent, metadata: { attempts } },
+        })
+        return updated
+      })
+      if (!result) throw new AuthError(401, 'TWO_FACTOR_CHALLENGE_EXPIRED', 'The two-factor challenge is invalid or expired')
+      if (result.consumedAt) throw new AuthError(429, 'TWO_FACTOR_RATE_LIMITED', 'Too many two-factor attempts. Start a new sign-in.', env.auth.twoFactorChallengeTtlSeconds)
+      throw new AuthError(401, 'INVALID_TWO_FACTOR_CODE', 'The verification code is incorrect. ' + Math.max(0, env.auth.twoFactorMaxAttempts - result.attempts) + ' attempts remaining.')
+    }
+
+    const sessionToken = createOpaqueToken(48)
+    const sessionTtl = input.rememberDevice ? env.auth.sessionTtlSeconds : env.auth.shortSessionTtlSeconds
+    const expiresAt = new Date(now.getTime() + sessionTtl * 1000)
+
+    const session = await this.prisma.$transaction(async (tx) => {
+      const latest = await tx.authToken.findUnique({ where: { id: challenge.id } })
+      if (!latest || latest.consumedAt) throw new AuthError(401, 'TWO_FACTOR_CHALLENGE_EXPIRED', 'The two-factor challenge is invalid or expired')
+      await tx.authToken.update({ where: { id: challenge.id }, data: { consumedAt: now } })
+      if (recoveryRecordId) {
+        const used = await tx.recoveryCode.updateMany({ where: { id: recoveryRecordId, userId: challenge.userId, usedAt: null }, data: { usedAt: now } })
+        if (used.count !== 1) throw new AuthError(401, 'INVALID_TWO_FACTOR_CODE', 'The recovery code has already been used')
+      }
+      const device = await tx.device.create({ data: { userId: challenge.userId, deviceName: describeUserAgent(input.userAgent), userAgent: input.userAgent, lastSeenAt: now } })
+      const created = await tx.session.create({ data: { userId: challenge.userId, deviceId: device.id, tokenHash: hashOpaqueToken(sessionToken), expiresAt, ipAddress: input.ipAddress, userAgent: input.userAgent } })
+      await tx.user.update({ where: { id: challenge.userId }, data: { lastLoginAt: now, loginFailedCount: 0, loginLockedUntil: null } })
+      await this.ensureTradingAccounts(tx, challenge.userId, 'USD')
+      await tx.auditLog.create({
+        data: {
+          actorUserId: challenge.userId,
+          action: 'LOGIN_SUCCESS',
+          entityType: 'Session',
+          entityId: created.id,
+          ipAddress: input.ipAddress,
+          userAgent: input.userAgent,
+          metadata: { rememberDevice: input.rememberDevice ?? false, twoFactor: true, recoveryCode: Boolean(recoveryRecordId) },
+        },
+      })
+      return created
+    })
+
+    await this.createSecurityNotification(challenge.userId)
+    return { requiresTwoFactor: false, session: { ...this.toUser(challenge.user), sessionId: session.id, expiresAt }, sessionToken }
+  }
+
+  async getTwoFactorStatus(userId: string): Promise<{ enabled: boolean; recoveryCodesRemaining: number }> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { twoFactorEnabled: true } })
+    if (!user) throw new AuthError(404, 'USER_NOT_FOUND', 'User was not found')
+    return { enabled: user.twoFactorEnabled, recoveryCodesRemaining: await this.prisma.recoveryCode.count({ where: { userId, usedAt: null } }) }
+  }
+
+  async setupTwoFactor(userId: string): Promise<TwoFactorSetup> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { email: true, twoFactorEnabled: true } })
+    if (!user) throw new AuthError(404, 'USER_NOT_FOUND', 'User was not found')
+    if (user.twoFactorEnabled) throw new AuthError(409, 'TWO_FACTOR_ALREADY_ENABLED', 'Two-factor authentication is already enabled')
+    const secret = generateTotpSecret()
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { twoFactorPendingSecretEnc: encryptTotpSecret(secret, env.auth.twoFactorEncryptionKey) },
+    })
+    return { enabled: false, secret, otpauthUri: createOtpAuthUri(secret, 'SL Spot', user.email) }
+  }
+
+  async enableTwoFactor(userId: string, code: string): Promise<{ enabled: true; recoveryCodes: string[] }> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { twoFactorEnabled: true, twoFactorPendingSecretEnc: true } })
+    if (!user) throw new AuthError(404, 'USER_NOT_FOUND', 'User was not found')
+    if (user.twoFactorEnabled) throw new AuthError(409, 'TWO_FACTOR_ALREADY_ENABLED', 'Two-factor authentication is already enabled')
+    if (!user.twoFactorPendingSecretEnc) throw new AuthError(409, 'TWO_FACTOR_SETUP_REQUIRED', 'Start two-factor setup before enabling it')
+    let secret: string
+    try { secret = decryptTotpSecret(user.twoFactorPendingSecretEnc, env.auth.twoFactorEncryptionKey) } catch { throw new AuthError(503, 'TWO_FACTOR_UNAVAILABLE', 'Two-factor setup is not available') }
+    if (!verifyTotpCode(secret, code)) throw new AuthError(401, 'INVALID_TWO_FACTOR_CODE', 'The authenticator code is incorrect')
+    const recoveryCodes = createRecoveryCodes(8)
+    await this.prisma.$transaction(async (tx) => {
+      await tx.user.update({ where: { id: userId }, data: { twoFactorEnabled: true, twoFactorSecretEnc: user.twoFactorPendingSecretEnc, twoFactorPendingSecretEnc: null } })
+      await tx.recoveryCode.deleteMany({ where: { userId } })
+      for (const recoveryCode of recoveryCodes) {
+        await tx.recoveryCode.create({ data: { userId, codeHash: hashOpaqueToken(normalizeRecoveryCode(recoveryCode)) } })
+      }
+      await tx.auditLog.create({ data: { actorUserId: userId, action: 'TWO_FACTOR_ENABLED', entityType: 'User', entityId: userId } })
+    })
+    return { enabled: true, recoveryCodes }
+  }
+
+  async disableTwoFactor(userId: string, code: string): Promise<void> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { twoFactorEnabled: true, twoFactorSecretEnc: true } })
+    if (!user) throw new AuthError(404, 'USER_NOT_FOUND', 'User was not found')
+    if (!user.twoFactorEnabled || !user.twoFactorSecretEnc) throw new AuthError(409, 'TWO_FACTOR_NOT_ENABLED', 'Two-factor authentication is not enabled')
+    let secret: string
+    try { secret = decryptTotpSecret(user.twoFactorSecretEnc, env.auth.twoFactorEncryptionKey) } catch { throw new AuthError(503, 'TWO_FACTOR_UNAVAILABLE', 'Two-factor configuration is not available') }
+    if (!verifyTotpCode(secret, code)) throw new AuthError(401, 'INVALID_TWO_FACTOR_CODE', 'The authenticator code is incorrect')
+    await this.prisma.$transaction(async (tx) => {
+      await tx.user.update({ where: { id: userId }, data: { twoFactorEnabled: false, twoFactorSecretEnc: null, twoFactorPendingSecretEnc: null } })
+      await tx.recoveryCode.deleteMany({ where: { userId } })
+      await tx.auditLog.create({ data: { actorUserId: userId, action: 'TWO_FACTOR_DISABLED', entityType: 'User', entityId: userId } })
+    })
+  }
+
+  async listDevices(userId: string) {
+    return this.prisma.device.findMany({ where: { userId, revokedAt: null }, orderBy: { lastSeenAt: 'desc' }, take: 25, select: { id: true, deviceName: true, userAgent: true, lastSeenAt: true, createdAt: true } })
+  }
+
+  async listLoginHistory(userId: string) {
+    return this.prisma.auditLog.findMany({ where: { actorUserId: userId, action: { in: ['LOGIN_SUCCESS', 'LOGIN_FAILED', 'LOGIN_LOCKED'] } }, orderBy: { createdAt: 'desc' }, take: 50, select: { id: true, action: true, ipAddress: true, userAgent: true, createdAt: true, metadata: true } })
+  }
+
+  async listSecurityEvents(userId: string) {
+    return this.prisma.auditLog.findMany({ where: { actorUserId: userId, action: { in: ['REGISTER', 'EMAIL_VERIFIED', 'LOGIN_SUCCESS', 'LOGIN_FAILED', 'LOGIN_LOCKED', 'PASSWORD_RESET', 'TWO_FACTOR_CHALLENGE', 'TWO_FACTOR_FAILED', 'TWO_FACTOR_ENABLED', 'TWO_FACTOR_DISABLED', 'SESSION_REVOKED'] } }, orderBy: { createdAt: 'desc' }, take: 75, select: { id: true, action: true, entityType: true, entityId: true, ipAddress: true, userAgent: true, metadata: true, createdAt: true } })
+  }
+
   async authenticateSession(sessionToken: string | undefined): Promise<AuthSession | null> {
     if (!sessionToken) return null
     const session = await this.prisma.session.findFirst({
@@ -256,15 +445,14 @@ export class AuthService {
         revokedAt: null,
         expiresAt: { gt: new Date() },
       },
-      include: { user: true },
+      include: { user: true, device: true },
     })
 
     if (!session || session.user.status !== 'ACTIVE') return null
 
-    void this.prisma.session.update({
-      where: { id: session.id },
-      data: { updatedAt: new Date() },
-    })
+    const now = new Date()
+    void this.prisma.session.update({ where: { id: session.id }, data: { updatedAt: now } })
+    if (session.deviceId) void this.prisma.device.update({ where: { id: session.deviceId }, data: { lastSeenAt: now } })
 
     return { ...this.toUser(session.user), sessionId: session.id, expiresAt: session.expiresAt }
   }
