@@ -7,6 +7,7 @@ import { isCandleInterval } from '../market/types.js'
 import type { MarketDataServiceLike } from '../market/service.js'
 import type { TradingService } from '../trading/service.js'
 import type { WalletMode } from './service.js'
+import { FinanceError } from './service.js'
 
 const PREFIX = '/api/v1'
 
@@ -68,6 +69,8 @@ function queryDate(value: string | undefined, name: string): Date | undefined {
 const ASSET_TYPES = ['CRYPTO', 'FOREX', 'STOCK', 'COMMODITY', 'INDEX', 'OTHER'] as const
 const TRADE_STATUSES = ['OPEN', 'WON', 'LOST', 'CANCELLED', 'EXPIRED'] as const
 const WALLET_MODES = ['DEMO', 'REAL'] as const
+const WALLET_TRANSACTION_TYPES = ['DEPOSIT', 'WITHDRAWAL', 'TRADE_HOLD', 'TRADE_RELEASE', 'SETTLEMENT', 'FEE', 'ADJUSTMENT'] as const
+const WALLET_TRANSACTION_STATUSES = ['PENDING', 'PROCESSING', 'COMPLETED', 'FAILED', 'REJECTED'] as const
 
 async function requireSession(request: FastifyRequest, authService: AuthServiceLike): Promise<AuthSession> {
   const session = await authService.authenticateSession(request.cookies?.[env.auth.cookieName])
@@ -120,6 +123,11 @@ export function registerPlatformApiRoutes(app: FastifyInstance, options: Platfor
   app.get<{ Querystring: Query }>(PREFIX + '/portfolio/summary', async (request) => {
     const session = await requireSession(request, options.authService)
     return ok(request, await options.apiService.getPortfolioSummary(session.id, walletModeFromRequest(request)))
+  })
+
+  app.get<{ Querystring: Query }>(PREFIX + '/portfolio/analytics', async (request) => {
+    const session = await requireSession(request, options.authService)
+    return ok(request, await options.apiService.getPortfolioAnalytics(session.id, walletModeFromRequest(request)))
   })
 
   app.get<{ Querystring: Query }>(PREFIX + '/portfolio/positions', async (request) => {
@@ -205,6 +213,11 @@ export function registerPlatformApiRoutes(app: FastifyInstance, options: Platfor
     return ok(request, await options.tradingService.closeTrade(session.id, request.params.tradeId, walletModeFromRequest(request)))
   })
 
+  app.get<{ Querystring: Query }>(PREFIX + '/ledger/reconcile', async (request) => {
+    const session = await requireSession(request, options.authService)
+    return ok(request, await options.apiService.reconcileWallet(session.id, walletModeFromRequest(request)))
+  })
+
   app.get(PREFIX + '/wallets', async (request) => {
     const session = await requireSession(request, options.authService)
     return ok(request, await options.apiService.getWallets(session.id))
@@ -217,10 +230,53 @@ export function registerPlatformApiRoutes(app: FastifyInstance, options: Platfor
 
   app.get<{ Querystring: Query }>(PREFIX + '/wallet/transactions', async (request) => {
     const session = await requireSession(request, options.authService)
+    const from = queryDate(request.query.from, 'From date')
+    const to = queryDate(request.query.to, 'To date')
+    if (from && to && from.getTime() > to.getTime()) {
+      throw new AuthError(400, 'INVALID_QUERY', 'From date must not be after to date')
+    }
     return ok(request, await options.apiService.listWalletTransactions(session.id, {
       page: queryNumber(request.query.page),
       pageSize: queryNumber(request.query.pageSize),
+      types: queryEnumList(request.query.type, WALLET_TRANSACTION_TYPES, 'Wallet transaction type') as Array<typeof WALLET_TRANSACTION_TYPES[number]> | undefined,
+      statuses: queryEnumList(request.query.status, WALLET_TRANSACTION_STATUSES, 'Wallet transaction status') as Array<typeof WALLET_TRANSACTION_STATUSES[number]> | undefined,
+      search: request.query.search?.trim() || undefined,
+      from,
+      to,
     }, walletModeFromRequest(request)))
+  })
+
+  app.post<{
+    Body: { amount: string | number; clientRequestId?: string }
+  }>(PREFIX + '/wallet/deposit', async (request) => {
+    const session = await requireSession(request, options.authService)
+    const mode = walletModeFromRequest(request)
+    if (mode !== 'DEMO') throw new FinanceError(503, 'PAYMENT_PROVIDER_UNAVAILABLE', 'Real deposits are not enabled')
+    const headerKey = request.headers['idempotency-key']
+    const clientRequestId = request.body.clientRequestId
+      ?? (Array.isArray(headerKey) ? headerKey[0] : headerKey)
+    if (!clientRequestId) throw new AuthError(400, 'IDEMPOTENCY_REQUIRED', 'Idempotency-Key is required for deposits')
+    return ok(request, await options.apiService.createDemoDeposit(session.id, {
+      amount: String(request.body.amount),
+      clientRequestId,
+    }))
+  })
+
+  app.post<{
+    Body: { amount: string | number; destination: string; clientRequestId?: string }
+  }>(PREFIX + '/wallet/withdraw', async (request) => {
+    const session = await requireSession(request, options.authService)
+    const mode = walletModeFromRequest(request)
+    if (mode !== 'DEMO') throw new FinanceError(503, 'PAYMENT_PROVIDER_UNAVAILABLE', 'Real withdrawals are not enabled')
+    const headerKey = request.headers['idempotency-key']
+    const clientRequestId = request.body.clientRequestId
+      ?? (Array.isArray(headerKey) ? headerKey[0] : headerKey)
+    if (!clientRequestId) throw new AuthError(400, 'IDEMPOTENCY_REQUIRED', 'Idempotency-Key is required for withdrawals')
+    return ok(request, await options.apiService.createDemoWithdrawal(session.id, {
+      amount: String(request.body.amount),
+      destination: request.body.destination,
+      clientRequestId,
+    }))
   })
 
   app.get<{ Querystring: Query }>(PREFIX + '/notifications', async (request) => {
@@ -230,6 +286,11 @@ export function registerPlatformApiRoutes(app: FastifyInstance, options: Platfor
       pageSize: queryNumber(request.query.pageSize),
       unreadOnly: queryBoolean(request.query.unreadOnly),
     }))
+  })
+
+  app.post(PREFIX + '/notifications/read-all', async (request) => {
+    const session = await requireSession(request, options.authService)
+    return ok(request, { updated: await options.apiService.markAllNotificationsRead(session.id) })
   })
 
   app.post<{ Params: { notificationId: string } }>(
