@@ -937,6 +937,13 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
   font-size:11px;
   font-weight:600;
 }
+.access-check--single-line {
+  white-space:nowrap;
+}
+.access-check--single-line span {
+  white-space:nowrap;
+  line-height:17px;
+}
 .two-factor-help {
   display:grid;
   gap:9px;
