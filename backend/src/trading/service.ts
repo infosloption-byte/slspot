@@ -319,6 +319,15 @@ export class TradingService {
         })
 
         if (rejection) {
+          await tx.auditLog.create({
+            data: {
+              actorUserId: userId,
+              action: 'TRADE_REJECTED',
+              entityType: 'Order',
+              entityId: order.id,
+              metadata: { reason: rejection, mode, clientRequestId: requestId },
+            },
+          })
           return { kind: 'rejected' as const, order, asset }
         }
 
@@ -338,6 +347,15 @@ export class TradingService {
           const rejected = await tx.order.update({
             where: { id: order.id },
             data: { status: 'REJECTED', rejectionReason: 'Insufficient available balance' },
+          })
+          await tx.auditLog.create({
+            data: {
+              actorUserId: userId,
+              action: 'TRADE_REJECTED',
+              entityType: 'Order',
+              entityId: order.id,
+              metadata: { reason: 'Insufficient available balance', mode, clientRequestId: requestId },
+            },
           })
           return { kind: 'rejected' as const, order: rejected, asset }
         }
@@ -374,6 +392,16 @@ export class TradingService {
 
         const heldWallet = await tx.wallet.findUnique({ where: { id: wallet!.id } })
         if (!heldWallet) throw new TradingError(409, 'WALLET_NOT_FOUND', 'Trading wallet disappeared while holding funds')
+
+        await tx.auditLog.create({
+          data: {
+            actorUserId: userId,
+            action: 'TRADE_OPENED',
+            entityType: 'Trade',
+            entityId: trade.id,
+            metadata: { mode, clientRequestId: requestId, orderId: order.id, amount: amount.toString(), durationSeconds: input.durationSeconds },
+          },
+        })
 
         if (fee.gt(0)) {
           const feeClaim = await tx.wallet.updateMany({
