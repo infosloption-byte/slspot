@@ -126,9 +126,15 @@ export function BottomPanel({
         <div className="bottom-panel__spacer" />
 
         {!collapsed ? (
-          <button className="bottom-link" type="button" title="Export current tab">
+          <button
+            className="bottom-link"
+            type="button"
+            title={active === 'history' ? 'Export trade history CSV' : 'Export is available for trade history'}
+            onClick={active === 'history' ? onHistoryExport : undefined}
+            disabled={active !== 'history' || historyExporting || historyLoading}
+          >
             <ArrowDownToLine size={14} />
-            <span>Export</span>
+            <span>{active === 'history' && historyExporting ? 'Exporting…' : 'Export'}</span>
           </button>
         ) : null}
 
