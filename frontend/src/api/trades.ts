@@ -1,6 +1,10 @@
 import { apiClient } from './client'
 import type { ApiSuccess, PaginatedData } from './contracts'
 
+function data<T>(response: ApiSuccess<T>): T {
+  return response.data
+}
+
 export type TradeRecord = {
   id: string
   orderId: string
@@ -34,7 +38,7 @@ export const tradesApi = {
   list: (query: { page?: number; pageSize?: number; status?: TradeRecord['status'] } = {}) =>
     apiClient
       .get<ApiSuccess<PaginatedData<TradeRecord>>>('/trades' + toQueryString(query))
-      .then((response) => response.data),
+      .then(data),
 
   create: (input: {
     assetId: string
