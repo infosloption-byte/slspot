@@ -1,5 +1,7 @@
+
 import { apiClient } from './client'
 import type { PaginatedData } from './contracts'
+import type { WalletMode } from '../hooks/useWalletMode'
 
 type ApiEnvelope<T> = {
   success: true
@@ -83,9 +85,11 @@ function unwrap<T>(response: ApiEnvelope<T>): T {
 }
 
 export const tradesApi = {
-  list: (query: { page?: number; pageSize?: number; status?: TradeRecord['status'] } = {}) =>
+  list: (query: { page?: number; pageSize?: number; status?: TradeRecord['status'] } = {}, mode: WalletMode = 'DEMO') =>
     apiClient
-      .get<ApiEnvelope<PaginatedData<TradeRecord>>>('/trades' + toQueryString(query))
+      .get<ApiEnvelope<PaginatedData<TradeRecord>>>('/trades' + toQueryString(query), {
+        headers: { 'x-wallet-mode': mode },
+      })
       .then(unwrap),
 
   create: (input: {
@@ -94,14 +98,21 @@ export const tradesApi = {
     amount: string
     durationSeconds: number
     clientRequestId: string
-  }): Promise<TradeCreateResult> =>
+  }, mode: WalletMode = 'DEMO'): Promise<TradeCreateResult> =>
     apiClient
-      .post<ApiEnvelope<TradeCreateResult>>('/trades', input, { idempotencyKey: input.clientRequestId })
+      .post<ApiEnvelope<TradeCreateResult>>('/trades', input, {
+        idempotencyKey: input.clientRequestId,
+        headers: { 'x-wallet-mode': mode },
+      })
       .then(unwrap),
 
-  close: (tradeId: string): Promise<TradeCloseResult> =>
+  close: (tradeId: string, mode: WalletMode = 'DEMO'): Promise<TradeCloseResult> =>
     apiClient
-      .post<ApiEnvelope<TradeCloseResult>>('/trades/' + encodeURIComponent(tradeId) + '/close')
+      .post<ApiEnvelope<TradeCloseResult>>(
+        '/trades/' + encodeURIComponent(tradeId) + '/close',
+        undefined,
+        { headers: { 'x-wallet-mode': mode } },
+      )
       .then(unwrap),
 }
 
