@@ -1236,3 +1236,66 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
 @media (max-width:600px) {
   .topbar__connection { display:none; }
 }
+
+
+/* End-to-end trading and account-state feedback */
+.trade-state-banner {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  margin:8px 12px 0;
+  padding:8px 10px;
+  border:1px solid var(--accent-line);
+  border-radius:8px;
+  background:var(--panel-raised);
+  color:var(--text);
+  font-size:11px;
+}
+.trade-state-banner span { font-weight:700; }
+.trade-state-banner small { color:var(--muted); }
+.trade-state-banner--submitting { color:var(--accent); }
+.trade-state-banner--accepted,
+.trade-state-banner--open { border-color:rgba(31,210,122,.24); color:var(--positive); }
+.chart-feed-state { display:inline-flex; align-items:center; gap:6px; }
+.chart-feed-state--stale { color:var(--negative); }
+.security-actions { display:flex; align-items:center; gap:8px; margin-top:10px; }
+.two-factor-setup,
+.two-factor-recovery {
+  display:grid;
+  gap:10px;
+  margin-top:12px;
+  padding:12px;
+  border:1px solid var(--border);
+  border-radius:10px;
+  background:var(--panel-raised);
+}
+.two-factor-setup__secret { display:grid; gap:4px; }
+.two-factor-setup__secret span { color:var(--muted); font-size:10px; }
+.two-factor-setup code,
+.recovery-code-grid code { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; letter-spacing:.08em; }
+.recovery-code-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:6px; }
+.recovery-code-grid code { padding:7px 8px; border:1px solid var(--border); border-radius:7px; background:var(--panel); font-size:11px; }
+.security-event-list { display:grid; gap:0; }
+.security-event-row { display:flex; align-items:center; gap:10px; padding:10px 0; border-top:1px solid var(--border); }
+.security-event-row:first-child { border-top:0; }
+.security-event-row > div { min-width:0; display:grid; gap:2px; }
+.security-event-row strong,
+.security-event-row small { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.security-event-row small { color:var(--muted); }
+.dashboard-note--error { color:var(--negative); border-color:rgba(255,77,94,.24); }
+.access-check {
+  display:flex;
+  align-items:flex-start;
+  gap:8px;
+  color:var(--muted);
+  font-size:11px;
+}
+.access-check input { margin-top:2px; accent-color:var(--accent); }
+.two-factor-help { display:grid; gap:8px; margin:10px 0; padding:10px; border:1px solid var(--border); border-radius:9px; background:var(--panel-raised); }
+.two-factor-help__row { display:flex; align-items:flex-start; gap:8px; color:var(--muted); font-size:11px; }
+@media (max-width:600px) {
+  .recovery-code-grid { grid-template-columns:1fr; }
+  .trade-state-banner { margin-inline:8px; }
+  .security-event-row { align-items:flex-start; }
+}
