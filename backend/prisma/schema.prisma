@@ -20,6 +20,11 @@ enum AccountStatus {
   CLOSED
 }
 
+enum AccountMode {
+  DEMO
+  REAL
+}
+
 enum AssetType {
   CRYPTO
   FOREX
@@ -217,6 +222,7 @@ model Account {
   userId        String        @db.Char(36)
   name          String        @db.VarChar(120)
   currency      String        @db.Char(3)
+  mode          AccountMode   @default(DEMO)
   status        AccountStatus @default(ACTIVE)
   createdAt     DateTime      @default(now()) @db.DateTime(3)
   updatedAt     DateTime      @updatedAt @db.DateTime(3)
@@ -227,7 +233,7 @@ model Account {
   wallets       Wallet[]
   ledgerEntries LedgerEntry[]
 
-  @@unique([userId, currency])
+  @@unique([userId, currency, mode])
   @@index([userId, status])
 }
 
