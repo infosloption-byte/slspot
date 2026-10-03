@@ -413,17 +413,20 @@ function PortfolioPage() {
 function WalletPage() {
   const wallet = useWallet()
   const wallets = useWallets()
+  const capabilities = useTradingCapabilities()
   const { mode, setMode } = useWalletMode()
   const [page, setPage] = useState(1)
   const [filters, setFilters] = useState<WalletTransactionFilters>({ search: '', type: undefined, status: undefined, from: '', to: '' })
   const transactions = useWalletTransactions(page, 10, filters)
-  const [fundingAction, setFundingAction] = useState('deposit')
+  const [fundingAction, setFundingAction] = useState<'deposit' | 'withdrawal'>('deposit')
   const [amount, setAmount] = useState('')
   const [destination, setDestination] = useState('')
   const [fundingError, setFundingError] = useState('')
   const [fundingMessage, setFundingMessage] = useState('')
   const [fundingSubmitting, setFundingSubmitting] = useState(false)
   const isDemo = mode === 'DEMO'
+  const fundingCapability = capabilities.data?.funding[fundingAction][mode]
+  const canFund = fundingCapability?.enabled === true
 
   const updateFilters = (patch: Partial<WalletTransactionFilters>) => {
     setFilters((current) => ({ ...current, ...patch }))
@@ -431,8 +434,8 @@ function WalletPage() {
   }
 
   const submitFunding = async () => {
-    if (!isDemo) {
-      setFundingError('Real-money funding is not enabled yet.')
+    if (!canFund) {
+      setFundingError(fundingCapability?.reason ?? 'This wallet operation is not currently enabled.')
       return
     }
     setFundingError('')
@@ -488,12 +491,19 @@ function WalletPage() {
 
   return (
     <div className="workspace-page">
-      <PageHeader eyebrow="Funds" title="Wallet" description={isDemo ? 'Demo funding workflows are server-authoritative and fully recorded in the ledger.' : 'Real wallet operations stay disabled until a payment provider and compliance flow are connected.'} action="Back to trading" />
+      <PageHeader
+        eyebrow="Funds"
+        title="Wallet"
+        description={canFund
+          ? (isDemo ? 'Demo funding workflows are server-authoritative and fully recorded in the ledger.' : 'Real wallet operations are enabled by your current account capabilities.')
+          : (fundingCapability?.reason ?? 'Wallet capabilities are being checked by the server.')}
+        action="Back to trading"
+      />
 
       <ApiState
-        loading={wallet.loading || wallets.loading}
-        error={wallet.error ?? wallets.error}
-        onRetry={() => { void wallet.reload(); void wallets.reload(); void transactions.reload() }}
+        loading={wallet.loading || wallets.loading || capabilities.loading}
+        error={wallet.error ?? wallets.error ?? capabilities.error}
+        onRetry={() => { void wallet.reload(); void wallets.reload(); void transactions.reload(); void capabilities.reload() }}
       >
         <div className="dashboard-stats dashboard-stats--four">
           <StatCard label="Available" value={formatMoney(wallet.data?.availableBalance, wallet.data?.currency)} change={isDemo ? 'Demo wallet' : 'Real wallet'} positive icon={WalletCards} />
@@ -506,7 +516,7 @@ function WalletPage() {
           <section className="dashboard-card panel wallet-funding-card">
             <div className="dashboard-card__header">
               <div><span className="eyebrow">Funding</span><h2>{fundingAction === 'deposit' ? 'Deposit' : 'Withdraw'}</h2></div>
-              <span className={isDemo ? 'status-pill status-pill--positive' : 'status-pill status-pill--pending'}>{isDemo ? 'DEMO' : 'LOCKED'}</span>
+              <span className={canFund ? 'status-pill status-pill--positive' : 'status-pill status-pill--pending'}>{canFund ? 'READY' : 'LOCKED'}</span>
             </div>
             <div className="wallet-funding-tabs">
               <button type="button" className={fundingAction === 'deposit' ? 'wallet-funding-tab wallet-funding-tab--active' : 'wallet-funding-tab'} onClick={() => setFundingAction('deposit')}><ArrowDownCircle size={14} /> Deposit</button>
@@ -514,15 +524,15 @@ function WalletPage() {
             </div>
 
             {fundingAction === 'deposit' ? (
-              <label className="wallet-funding-field"><span>Amount</span><div className="wallet-amount-input"><b>{wallet.data?.currency ?? 'USD'}</b><input inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value)} placeholder="100.00" disabled={!isDemo || fundingSubmitting} /></div><small>Demo deposits are credited immediately, capped at $1,000,000, and create a balanced ledger transaction.</small></label>
+              <label className="wallet-funding-field"><span>Amount</span><div className="wallet-amount-input"><b>{wallet.data?.currency ?? 'USD'}</b><input inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value)} placeholder="100.00" disabled={!canFund || fundingSubmitting} /></div><small>Demo deposits are credited immediately, capped at $1,000,000, and create a balanced ledger transaction.</small></label>
             ) : (
               <>
-                <label className="wallet-funding-field"><span>Destination</span><input value={destination} onChange={(event) => setDestination(event.target.value)} placeholder="Demo destination" disabled={!isDemo || fundingSubmitting} /></label>
-                <label className="wallet-funding-field"><span>Amount</span><div className="wallet-amount-input"><b>{wallet.data?.currency ?? 'USD'}</b><input inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value)} placeholder="50.00" disabled={!isDemo || fundingSubmitting} /></div><small>Withdrawals use available demo balance, have a $0 demo fee, and are fully ledger-recorded. Maximum $1,000,000.</small></label>
+                <label className="wallet-funding-field"><span>Destination</span><input value={destination} onChange={(event) => setDestination(event.target.value)} placeholder="Demo destination" disabled={!canFund || fundingSubmitting} /></label>
+                <label className="wallet-funding-field"><span>Amount</span><div className="wallet-amount-input"><b>{wallet.data?.currency ?? 'USD'}</b><input inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value)} placeholder="50.00" disabled={!canFund || fundingSubmitting} /></div><small>Withdrawals use available demo balance, have a $0 demo fee, and are fully ledger-recorded. Maximum $1,000,000.</small></label>
               </>
             )}
 
-            <button type="button" className="btn btn--primary" onClick={() => void submitFunding()} disabled={!isDemo || fundingSubmitting || !amount.trim() || (fundingAction === 'withdrawal' && !destination.trim())}>
+            <button type="button" className="btn btn--primary" onClick={() => void submitFunding()} disabled={!canFund || fundingSubmitting || !amount.trim() || (fundingAction === 'withdrawal' && !destination.trim())}>
               {fundingSubmitting ? 'Processing…' : fundingAction === 'deposit' ? 'Submit deposit' : 'Submit withdrawal'}
             </button>
             {fundingError ? <div className="wallet-form-note" role="alert">{fundingError}</div> : null}
