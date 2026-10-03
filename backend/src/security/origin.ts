@@ -31,11 +31,11 @@ export function assertTrustedOrigin(request: FastifyRequest): void {
   if (!request.url.startsWith('/api/')) return
 
   const origin = headerValue(request, 'origin') ?? originFromReferrer(headerValue(request, 'referer'))
-  if (!origin || !env.corsOrigins.includes(origin)) throw new OriginSecurityError()
-
   const fetchSite = headerValue(request, 'sec-fetch-site')
+
   if (fetchSite === 'cross-site') throw new OriginSecurityError('Cross-site requests are not allowed')
-  if (fetchSite === 'same-site' && !env.corsOrigins.includes(origin)) {
+  if (origin && !env.corsOrigins.includes(origin)) throw new OriginSecurityError()
+  if (fetchSite === 'same-site' && origin && !env.corsOrigins.includes(origin)) {
     throw new OriginSecurityError('Same-site request is not from an allowed application origin')
   }
 }
