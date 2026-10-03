@@ -38,6 +38,16 @@ const authService: AuthServiceLike = {
   listSecurityEvents: async () => [],
 }
 
+async function csrfToken(app: ReturnType<typeof buildApp>, sessionCookie: string): Promise<string> {
+  const response = await app.inject({
+    method: 'GET',
+    url: '/api/v1/auth/csrf',
+    headers: { cookie: sessionCookie },
+  })
+  assert.equal(response.statusCode, 200)
+  return response.json<{ data: { csrfToken: string } }>().data.csrfToken
+}
+
 const apiService = {
   listAssets: async (query: { page?: number; pageSize?: number }) => ({
     items: [],
@@ -404,7 +414,10 @@ describe('platform API routes', () => {
     const response = await app.inject({
       method: 'POST',
       url: '/api/v1/trades',
-      headers: { cookie: 'slspot_session=test-session' },
+      headers: {
+        cookie: 'slspot_session=test-session',
+        'x-csrf-token': await csrfToken(app, 'slspot_session=test-session'),
+      },
       payload: {
         assetId: 'asset-1',
         direction: 'UP',
@@ -436,6 +449,7 @@ describe('platform API routes', () => {
       url: '/api/v1/trades',
       headers: {
         cookie: 'slspot_session=test-session',
+        'x-csrf-token': await csrfToken(app, 'slspot_session=test-session'),
         'idempotency-key': 'test-trade-123',
       },
       payload: {
@@ -469,13 +483,16 @@ describe('platform API routes', () => {
 
     const response = await app.inject({
       method: 'POST',
-      url: '/api/v1/notifications/notification-1/read',
-      headers: { cookie: 'slspot_session=test-session' },
+      url: '/api/v1/notifications/550e8400-e29b-41d4-a716-446655440001/read',
+      headers: {
+        cookie: 'slspot_session=test-session',
+        'x-csrf-token': await csrfToken(app, 'slspot_session=test-session'),
+      },
     })
 
     assert.equal(response.statusCode, 200)
     assert.equal(requestedUserId, 'user-1')
-    assert.equal(requestedNotificationId, 'notification-1')
+    assert.equal(requestedNotificationId, '550e8400-e29b-41d4-a716-446655440001')
     await app.close()
   })
 
