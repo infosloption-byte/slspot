@@ -15,7 +15,7 @@ type TradePanelProps = {
   onOpenTrade: (trade: { direction: TradeDirection; amount: number; durationSeconds: number; entryPrice: number; payoutRate: number }) => Promise<TradeCreateResult>
 }
 
-type OrderStage = 'draft' | 'submitting' | 'accepted' | 'open'
+type OrderStage = 'draft' | 'submitting' | 'accepted' | 'open' | 'rejected' | 'failed'
 
 function formatDuration(value: number) {
   return value < 60 ? value + 's' : value / 60 + 'm'
@@ -89,7 +89,7 @@ export function TradePanel({ asset, balance, walletMode, soundEnabled, onToggleS
     setStage('submitting')
 
     try {
-      const result = await onOpenTrade({        direction: nextDirection,
+      const result = await onOpenTrade({ direction: nextDirection,
         amount,
         durationSeconds: duration,
         entryPrice: asset.price,
@@ -99,11 +99,13 @@ export function TradePanel({ asset, balance, walletMode, soundEnabled, onToggleS
       setStage(result.orderStatus === 'ACCEPTED' ? 'accepted' : 'open')
       window.setTimeout(() => setStage('draft'), 1600)
     } catch (error) {
-      const message = error instanceof ApiError && error.code === 'ORDER_REJECTED'
+      const rejected = error instanceof ApiError && error.code === 'ORDER_REJECTED'
+      const message = rejected
         ? 'Trade rejected: ' + error.message
         : error instanceof Error ? error.message : 'Trade submission failed'
       setError(message)
-      setStage('draft')
+      setStage(rejected ? 'rejected' : 'failed')
+      window.setTimeout(() => setStage('draft'), 2200)
     }
   }
 
@@ -138,7 +140,7 @@ export function TradePanel({ asset, balance, walletMode, soundEnabled, onToggleS
       <aside className="trade-panel" aria-label="Trade controls">
         {stage !== 'draft' || lastOrder ? (
           <div className={'trade-state-banner trade-state-banner--' + stage} role="status">
-            <span>{stage === 'submitting' ? 'Submitting order…' : stage === 'accepted' ? 'Order accepted' : stage === 'open' ? 'Trade open' : lastOrder?.status ?? 'Ready'}</span>
+            <span>{stage === 'submitting' ? 'Submitting order…' : stage === 'accepted' ? 'Order accepted' : stage === 'open' ? 'Trade open' : stage === 'rejected' ? 'Order rejected' : stage === 'failed' ? 'Order failed' : lastOrder?.status ?? 'Ready'}</span>
             {lastOrder ? <small>{lastOrder.tradeId} · {lastOrder.orderStatus}</small> : null}
           </div>
         ) : null}
