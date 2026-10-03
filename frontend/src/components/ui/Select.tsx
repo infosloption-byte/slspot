@@ -40,7 +40,7 @@ export function Select({ value, options, onChange, label, className = '' }: Sele
   useEffect(() => {
     if (!open) return
     optionRefs.current[highlightedIndex]?.focus()
-  }, [highlightedIndex, open])
+  }, [highlightedIndex, menuPosition, open])
 
   const updatePosition = useCallback(() => {
     const trigger = triggerRef.current
