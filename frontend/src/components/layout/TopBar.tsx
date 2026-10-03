@@ -1,8 +1,9 @@
-import { Bell, LogOut, Plus } from 'lucide-react'
+import { Bell, Check, ChevronDown, LogOut, WalletCards } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { useAuth } from '../../auth/AuthProvider'
-import { useNotifications, useWallet } from '../../hooks/useServerState'
+import { useNotifications, useWallets } from '../../hooks/useServerState'
+import { useWalletMode } from '../../hooks/useWalletMode'
 
 function formatBalance(value: string | null | undefined, currency: string | null | undefined): string {
   const amount = Number(value ?? 0)
@@ -19,11 +20,15 @@ function formatBalance(value: string | null | undefined, currency: string | null
 export function TopBar() {
   const navigate = useNavigate()
   const { user, logout } = useAuth()
-  const wallet = useWallet()
+  const { mode, setMode } = useWalletMode()
+  const wallets = useWallets()
   const notifications = useNotifications(1, 1, true)
   const unreadCount = notifications.data?.pagination.total ?? 0
+  const [walletMenuOpen, setWalletMenuOpen] = useState(false)
   const [loggingOut, setLoggingOut] = useState(false)
   const [logoutError, setLogoutError] = useState('')
+
+  const selectedWallet = wallets.data?.find((wallet) => wallet.mode === mode) ?? null
 
   const signOut = async () => {
     if (loggingOut) return
@@ -58,24 +63,61 @@ export function TopBar() {
         {unreadCount > 0 ? <span className="topbar__bell-dot" /> : null}
       </Link>
 
-      <Link to="/app/wallet" className="account-chip" aria-label="Open wallet">
-        <span className="account-chip__body">
-          <small>Available balance</small>
-          <strong>{formatBalance(wallet.data?.availableBalance, wallet.data?.currency)}</strong>
-          <small className="topbar__account-email">{user?.email ?? 'Signed in'}</small>
-        </span>
-      </Link>
+      <div className="wallet-selector">
+        <button
+          type="button"
+          className="account-chip"
+          aria-haspopup="menu"
+          aria-expanded={walletMenuOpen}
+          onClick={() => setWalletMenuOpen((open) => !open)}
+        >
+          <span className="account-chip__icon"><WalletCards size={15} /></span>
+          <span className="account-chip__body">
+            <small>{mode === 'DEMO' ? 'Demo wallet' : 'Real wallet'}</small>
+            <strong>{formatBalance(selectedWallet?.availableBalance, selectedWallet?.currency)}</strong>
+            <small className="topbar__account-email">{mode === 'REAL' ? 'Deposits coming soon' : user?.email ?? 'Practice account'}</small>
+          </span>
+          <ChevronDown size={15} className={walletMenuOpen ? 'account-chip__chevron account-chip__chevron--open' : 'account-chip__chevron'} />
+        </button>
+
+        {walletMenuOpen ? (
+          <div className="wallet-selector__menu" role="menu">
+            {(['DEMO', 'REAL'] as const).map((walletMode) => {
+              const wallet = wallets.data?.find((item) => item.mode === walletMode)
+              const active = mode === walletMode
+              return (
+                <button
+                  key={walletMode}
+                  type="button"
+                  role="menuitemradio"
+                  aria-checked={active}
+                  className={active ? 'wallet-selector__option wallet-selector__option--active' : 'wallet-selector__option'}
+                  onClick={() => {
+                    setMode(walletMode)
+                    setWalletMenuOpen(false)
+                  }}
+                >
+                  <span>
+                    <strong>{walletMode === 'DEMO' ? 'Demo Wallet' : 'Real Wallet'}</strong>
+                    <small>{walletMode === 'DEMO' ? 'Practice trading · auto-refills' : 'Live funds · deposits coming soon'}</small>
+                    <em>{formatBalance(wallet?.availableBalance, wallet?.currency)}</em>
+                  </span>
+                  {active ? <Check size={15} /> : null}
+                </button>
+              )
+            })}
+            <Link to="/app/wallet" className="wallet-selector__footer" onClick={() => setWalletMenuOpen(false)}>
+              <WalletCards size={14} /> Open wallet
+            </Link>
+          </div>
+        ) : null}
+      </div>
 
       {logoutError ? <span className="topbar__auth-error" role="alert">{logoutError}</span> : null}
 
       <button className="icon-button" type="button" disabled={loggingOut} onClick={() => void signOut()} aria-label="Sign out" title="Sign out">
         <LogOut size={17} />
       </button>
-
-      <Link className="btn btn--primary topbar__deposit" to="/app/wallet">
-        <Plus size={16} strokeWidth={2.6} />
-        <span>Deposit</span>
-      </Link>
     </header>
   )
 }
