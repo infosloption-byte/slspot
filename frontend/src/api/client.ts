@@ -16,13 +16,15 @@ export class ApiError extends Error {
   readonly status: number
   readonly code?: string
   readonly requestId?: string
+  readonly retryAfterSeconds?: number
 
-  constructor(status: number, message: string, code?: string, requestId?: string) {
+  constructor(status: number, message: string, code?: string, requestId?: string, retryAfterSeconds?: number) {
     super(message)
     this.name = 'ApiError'
     this.status = status
     this.code = code
     this.requestId = requestId
+    this.retryAfterSeconds = retryAfterSeconds
   }
 }
 
@@ -109,6 +111,7 @@ export async function apiRequest<T>(
         message,
         payload?.error?.code,
         payload?.requestId,
+        (() => { const value = Number(response.headers.get('retry-after')); return Number.isFinite(value) && value > 0 ? value : undefined })(),
       )
     }
 
