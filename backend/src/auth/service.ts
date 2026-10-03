@@ -1,9 +1,11 @@
+import { createHash } from 'node:crypto'
 import type { FastifyRequest } from 'fastify'
 import { Prisma, type PrismaClient } from '../generated/prisma/client.js'
 import { env } from '../config/env.js'
 import { createRealtimeEvent, serializeRealtimeEvent } from '../realtime/events.js'
 import { isRedisReady, publish } from '../realtime/redis.js'
 import { createOpaqueToken, hashOpaqueToken, hashPassword, verifyPassword } from './crypto.js'
+import { createOtpAuthUri, createRecoveryCodes, decryptTotpSecret, encryptTotpSecret, generateTotpSecret, normalizeRecoveryCode, verifyTotpCode } from './totp.js'
 import { LedgerService } from '../ledger/service.js'
 
 export type AuthUser = {
@@ -19,16 +21,28 @@ export type AuthSession = AuthUser & {
   expiresAt: Date
 }
 
+export type AuthLoginResult =
+  | { requiresTwoFactor: false; session: AuthSession; sessionToken: string }
+  | { requiresTwoFactor: true; user: AuthUser; challengeToken: string; challengeExpiresAt: Date }
+
+export type TwoFactorSetup = {
+  enabled: boolean
+  secret: string
+  otpauthUri: string
+}
+
 export type AuthTokenResult = { token: string; expiresAt: Date }
 
 export class AuthError extends Error {
   readonly statusCode: number
   readonly code: string
-  constructor(statusCode: number, code: string, message: string) {
+  readonly retryAfterSeconds: number | undefined
+  constructor(statusCode: number, code: string, message: string, retryAfterSeconds?: number) {
     super(message)
     this.name = 'AuthError'
     this.statusCode = statusCode
     this.code = code
+    this.retryAfterSeconds = retryAfterSeconds
   }
 }
 
@@ -121,7 +135,13 @@ export class AuthService {
     }
   }
 
-  async login(input: { email: string; password: string; ipAddress?: string; userAgent?: string }) {
+  async login(input: {
+    email: string
+    password: string
+    rememberDevice?: boolean
+    ipAddress?: string
+    userAgent?: string
+  }): Promise<AuthLoginResult> {
     const email = normalizeEmail(input.email)
     validateEmail(email)
     const user = await this.prisma.user.findUnique({ where: { email } })
@@ -131,9 +151,46 @@ export class AuthService {
       ? await verifyPassword(input.password, user.passwordHash)
       : await verifyPassword(input.password, dummyHash)
 
-    if (!user || !valid) {
+    if (!user) {
       await this.writeAudit('LOGIN_FAILED', email, undefined, input.ipAddress, input.userAgent)
       throw new AuthError(401, 'INVALID_CREDENTIALS', 'Email or password is incorrect')
+    }
+
+    const now = new Date()
+    if (user.loginLockedUntil && user.loginLockedUntil > now) {
+      const retryAfterSeconds = Math.max(1, Math.ceil((user.loginLockedUntil.getTime() - now.getTime()) / 1000))
+      await this.writeAudit('LOGIN_LOCKED', user.id, user.id, input.ipAddress, input.userAgent)
+      throw new AuthError(429, 'ACCOUNT_LOCKED', 'Too many unsuccessful sign-in attempts. Try again in ' + retryAfterSeconds + ' seconds.', retryAfterSeconds)
+    }
+
+    if (!valid) {
+      const lockedUser = await this.prisma.$transaction(async (tx) => {
+        const claimed = await tx.user.update({
+          where: { id: user.id },
+          data: { loginFailedCount: { increment: 1 } },
+        })
+        const lock = claimed.loginFailedCount >= env.auth.loginMaxAttempts
+        if (lock) {
+          return tx.user.update({
+            where: { id: user.id },
+            data: {
+              loginFailedCount: 0,
+              loginLockedUntil: new Date(now.getTime() + env.auth.loginLockSeconds * 1000),
+            },
+          })
+        }
+        return claimed
+      })
+
+      await this.writeAudit('LOGIN_FAILED', user.id, user.id, input.ipAddress, input.userAgent)
+      if (lockedUser.loginLockedUntil) {
+        const retryAfterSeconds = Math.max(1, Math.ceil((lockedUser.loginLockedUntil.getTime() - now.getTime()) / 1000))
+        await this.writeAudit('LOGIN_LOCKED', user.id, user.id, input.ipAddress, input.userAgent)
+        throw new AuthError(429, 'ACCOUNT_LOCKED', 'Too many unsuccessful sign-in attempts. Try again in ' + retryAfterSeconds + ' seconds.', retryAfterSeconds)
+      }
+
+      const attemptsRemaining = Math.max(0, env.auth.loginMaxAttempts - lockedUser.loginFailedCount)
+      throw new AuthError(401, 'INVALID_CREDENTIALS', 'Email or password is incorrect. ' + attemptsRemaining + ' sign-in attempts remaining.')
     }
 
     if (user.status === 'PENDING_VERIFICATION') {
@@ -144,41 +201,51 @@ export class AuthService {
     }
 
     const sessionToken = createOpaqueToken(48)
-    const expiresAt = new Date(Date.now() + env.auth.sessionTtlSeconds * 1000)
+    const sessionTtl = input.rememberDevice ? env.auth.sessionTtlSeconds : env.auth.shortSessionTtlSeconds
+    const expiresAt = new Date(now.getTime() + sessionTtl * 1000)
 
-    const session = await this.prisma.$transaction(async (tx) => {
-      const created = await tx.session.create({
-        data: {
-          userId: user.id,
-          tokenHash: hashOpaqueToken(sessionToken),
-          expiresAt,
-          ipAddress: input.ipAddress,
-          userAgent: input.userAgent,
-        },
+    if (user.twoFactorEnabled) {
+      if (!user.twoFactorSecretEnc) {
+        throw new AuthError(503, 'TWO_FACTOR_UNAVAILABLE', 'Two-factor authentication is configured incorrectly. Contact support.')
+      }
+
+      const challengeToken = createOpaqueToken(32)
+      const challengeExpiresAt = new Date(now.getTime() + env.auth.twoFactorChallengeTtlSeconds * 1000)
+      await this.prisma.$transaction(async (tx) => {
+        await tx.user.update({
+          where: { id: user.id },
+          data: { loginFailedCount: 0, loginLockedUntil: null },
+        })
+        await tx.authToken.deleteMany({ where: { userId: user.id, type: 'TWO_FACTOR_CHALLENGE', consumedAt: null } })
+        await tx.authToken.create({
+          data: {
+            userId: user.id,
+            type: 'TWO_FACTOR_CHALLENGE',
+            tokenHash: hashOpaqueToken(challengeToken),
+            expiresAt: challengeExpiresAt,
+            attempts: 0,
+          },
+        })
+        await tx.auditLog.create({
+          data: {
+            actorUserId: user.id,
+            action: 'TWO_FACTOR_CHALLENGE',
+            entityType: 'AuthToken',
+            entityId: user.id,
+            ipAddress: input.ipAddress,
+            userAgent: input.userAgent,
+          },
+        })
       })
-
-      await tx.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } })
-      await this.ensureTradingAccounts(tx, user.id, 'USD')
-      await tx.auditLog.create({
-        data: {
-          actorUserId: user.id,
-          action: 'LOGIN_SUCCESS',
-          entityType: 'Session',
-          entityId: created.id,
-          ipAddress: input.ipAddress,
-          userAgent: input.userAgent,
-        },
-      })
-
-      return created
-    })
-
-    await this.createSecurityNotification(user.id)
-
-    return {
-      session: { ...this.toUser(user), sessionId: session.id, expiresAt },
-      sessionToken,
+      return {
+        requiresTwoFactor: true,
+        user: this.toUser(user),
+        challengeToken,
+        challengeExpiresAt,
+      }
     }
+
+    return this.finishLogin(user.id, user, input.ipAddress, input.userAgent, input.rememberDevice ?? false, now)
   }
 
   async authenticateSession(sessionToken: string | undefined): Promise<AuthSession | null> {
