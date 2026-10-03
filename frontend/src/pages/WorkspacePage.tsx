@@ -12,7 +12,7 @@ import { tradesApi } from '../api/trades'
 import { walletApi, type WalletTransactionFilters } from '../api/wallet'
 import { useAuth } from '../auth/useAuth'
 import { useWalletMode } from '../hooks/useWalletMode'
-import { useNotificationStore, setUnreadCount } from '../state/notificationStore'
+import { recordNotificationEvent, useNotificationStore, setUnreadCount, decrementUnreadCount } from '../state/notificationStore'
 import { usePortfolioStore } from '../state/portfolioStore'
 import { useRealtime } from '../realtime/useRealtime'
 import { userChannel } from '../realtime/subscriptions'
@@ -899,13 +899,14 @@ function NotificationsPage() {
       })
       window.setTimeout(() => setToast(null), 4500)
       void reloadNotifications()
-      setUnreadCount(unreadCount + 1)
+      recordNotificationEvent()
       void reloadUnread()
     })
   }, [reloadNotifications, reloadUnread, realtime])
 
   const markRead = async (id: string) => {
     await notificationsApi.markRead(id)
+    decrementUnreadCount()
     await Promise.all([notifications.reload(), unread.reload()])
   }
 
