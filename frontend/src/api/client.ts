@@ -90,9 +90,10 @@ export async function apiRequest<T>(
     requestId = createRequestId(),
     idempotencyKey,
     retry,
-    signal: callerSignal,
+    signal: callerSignalInput,
     ...requestInit
   } = init
+  const callerSignal = callerSignalInput ?? undefined
 
   const url = path.startsWith('http')
     ? path
@@ -191,7 +192,6 @@ export async function apiRequest<T>(
     throw new ApiError(500, 'Request retry limit reached', 'REQUEST_RETRY_EXHAUSTED', requestId)
   } finally {
     emitNetworkEvent('end')
-    callerSignal?.removeEventListener('abort', forwardAbort)
   }
 }
 
