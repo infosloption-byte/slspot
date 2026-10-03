@@ -19,7 +19,7 @@ function formatBalance(value: string | null | undefined, currency: string | null
 
 export function TopBar() {
   const navigate = useNavigate()
-  const { user, logout } = useAuth()
+  const { logout } = useAuth()
   const { mode, setMode } = useWalletMode()
   const wallets = useWallets()
   const notifications = useNotifications(1, 1, true)
@@ -75,7 +75,7 @@ export function TopBar() {
           <span className="account-chip__body">
             <small>{mode === 'DEMO' ? 'Demo wallet' : 'Real wallet'}</small>
             <strong>{formatBalance(selectedWallet?.availableBalance, selectedWallet?.currency)}</strong>
-            <small className="topbar__account-email">{mode === 'REAL' ? 'Deposits coming soon' : user?.email ?? 'Practice account'}</small>
+            <small className="topbar__account-email">{mode === 'REAL' ? 'Deposits coming soon' : 'Practice funds · auto-refill'}</small>
           </span>
           <ChevronDown size={15} className={walletMenuOpen ? 'account-chip__chevron account-chip__chevron--open' : 'account-chip__chevron'} />
         </button>
