@@ -8,7 +8,8 @@ import { formatPercent, formatPrice } from '../lib/format'
 import { notificationsApi } from '../api/notifications'
 import { authApi } from '../api/auth'
 import { useAuth } from '../auth/AuthProvider'
-import { useAuthSessions, useMarketAssets, useNotifications, usePortfolioPositions, usePortfolioSummary, useTrades, useWallet, useWalletTransactions } from '../hooks/useServerState'
+import { useWalletMode } from '../hooks/useWalletMode'
+import { useAuthSessions, useMarketAssets, useNotifications, usePortfolioPositions, usePortfolioSummary, useTrades, useWallet, useWalletTransactions, useWallets } from '../hooks/useServerState'
 
 type WorkspacePageProps = {
   eyebrow: string
@@ -243,130 +244,113 @@ function PortfolioPage() {
 
 function WalletPage() {
   const wallet = useWallet()
+  const wallets = useWallets()
+  const { mode, setMode } = useWalletMode()
   const [page, setPage] = useState(1)
   const transactions = useWalletTransactions(page, 10)
-  const [mode, setMode] = useState<'deposit' | 'withdraw'>('deposit')
-  const [amount, setAmount] = useState('250')
-  const [method, setMethod] = useState('card')
-  const [destination, setDestination] = useState('')
-  const [requestNotice, setRequestNotice] = useState<string | null>(null)
-
-  const submitFunding = (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-
-    const numericAmount = Number(amount)
-    if (!Number.isFinite(numericAmount) || numericAmount <= 0) return
-
-    setRequestNotice(
-      (mode === 'deposit' ? 'Deposit' : 'Withdrawal') +
-      ' request created for ' +
-      formatMoney(numericAmount.toFixed(2), wallet.data?.currency),
-    )
-    setAmount('')
-    setDestination('')
-    setPage(1)
-  }
+  const isDemo = mode === 'DEMO'
 
   return (
     <div className="workspace-page">
-      <PageHeader eyebrow="Funds" title="Wallet" description="View server-backed balances, funding requests and transaction history." action="Back to trading" />
+      <PageHeader
+        eyebrow="Funds"
+        title="Wallet"
+        description={isDemo
+          ? 'Practice with server-backed demo funds that refill automatically when your balance is exhausted.'
+          : 'View your real wallet. Payment deposits are not available yet.'}
+        action="Back to trading"
+      />
 
       <ApiState
-        loading={wallet.loading || transactions.loading}
-        error={wallet.error ?? transactions.error}
+        loading={wallet.loading || transactions.loading || wallets.loading}
+        error={wallet.error ?? transactions.error ?? wallets.error}
         onRetry={() => {
           void wallet.reload()
+          void wallets.reload()
           void transactions.reload()
         }}
       >
         <div className="dashboard-stats">
-          <StatCard label="Available balance" value={formatMoney(wallet.data?.availableBalance, wallet.data?.currency)} change={wallet.data?.status ?? '—'} positive icon={WalletCards} />
+          <StatCard label="Available balance" value={formatMoney(wallet.data?.availableBalance, wallet.data?.currency)} change={isDemo ? 'Demo wallet' : 'Real wallet'} positive icon={WalletCards} />
           <StatCard label="Held balance" value={formatMoney(wallet.data?.heldBalance, wallet.data?.currency)} change="Reserved" positive icon={DollarSign} />
           <StatCard label="Total balance" value={formatMoney(wallet.data?.totalBalance, wallet.data?.currency)} change="Available + held" positive icon={TrendingUp} />
-          <StatCard label="Transactions" value={String(transactions.data?.pagination.total ?? 0)} change="Recorded wallet events" positive icon={Clock3} />
+          <StatCard label="Transactions" value={String(transactions.data?.pagination.total ?? 0)} change={isDemo ? 'Demo wallet activity' : 'Real wallet activity'} positive icon={Clock3} />
         </div>
 
         <div className="wallet-grid">
           <section className="dashboard-card panel wallet-funding-card">
             <div className="dashboard-card__header">
-              <div><span className="eyebrow">Funding</span><h2>{mode === 'deposit' ? 'Deposit funds' : 'Withdraw funds'}</h2></div>
-              <span className="status-pill status-pill--pending">DEMO REQUEST</span>
+              <div><span className="eyebrow">Wallet mode</span><h2>{isDemo ? 'Demo wallet' : 'Real wallet'}</h2></div>
+              <span className={isDemo ? 'status-pill status-pill--positive' : 'status-pill status-pill--pending'}>
+                {isDemo ? 'AUTO-FUNDED' : 'COMING SOON'}
+              </span>
             </div>
 
-            <div className="wallet-mode-switch">
-              <button type="button" className={mode === 'deposit' ? 'wallet-mode wallet-mode--active' : 'wallet-mode'} onClick={() => setMode('deposit')}>Deposit</button>
-              <button type="button" className={mode === 'withdraw' ? 'wallet-mode wallet-mode--active' : 'wallet-mode'} onClick={() => setMode('withdraw')}>Withdraw</button>
+            <div className="wallet-balance-switcher">
+              {(['DEMO', 'REAL'] as const).map((walletMode) => {
+                const item = wallets.data?.find((entry) => entry.mode === walletMode)
+                const active = walletMode === mode
+                return (
+                  <button
+                    key={walletMode}
+                    type="button"
+                    className={active ? 'wallet-balance-option wallet-balance-option--active' : 'wallet-balance-option'}
+                    onClick={() => {
+                      setMode(walletMode)
+                      setPage(1)
+                    }}
+                  >
+                    <span>{walletMode === 'DEMO' ? 'Demo' : 'Real'}</span>
+                    <strong>{formatMoney(item?.availableBalance, item?.currency)}</strong>
+                    <small>{walletMode === 'DEMO' ? 'Practice funds' : 'Live funds'}</small>
+                  </button>
+                )
+              })}
             </div>
 
-            <form className="wallet-funding-form" onSubmit={submitFunding}>
-              <label>
-                <span>Amount</span>
-                <div className="wallet-amount-input">
-                  <span>$</span>
-                  <input
-                    required
-                    inputMode="decimal"
-                    min="1"
-                    step="0.01"
-                    type="number"
-                    value={amount}
-                    onChange={(event) => setAmount(event.target.value)}
-                    placeholder="0.00"
-                  />
+            {isDemo ? (
+              <div className="wallet-funding-state wallet-funding-state--demo">
+                <span className="wallet-funding-state__icon"><WalletCards size={20} /></span>
+                <div>
+                  <strong>Ready for practice trading</strong>
+                  <p>Your demo balance is isolated from the real wallet. When the demo balance reaches zero and no funds are held, it automatically refills to the configured demo starting balance.</p>
                 </div>
-              </label>
-
-              <Select
-                label={mode === 'deposit' ? 'Funding method' : 'Withdrawal method'}
-                value={method}
-                onChange={setMethod}
-                options={mode === 'deposit'
-                  ? [
-                      { value: 'card', label: 'Demo card' },
-                      { value: 'bank', label: 'Demo bank transfer' },
-                      { value: 'crypto', label: 'Demo crypto' },
-                    ]
-                  : [
-                      { value: 'bank', label: 'Demo bank account' },
-                      { value: 'crypto', label: 'Demo wallet address' },
-                    ]}
-              />
-
-              {mode === 'withdraw' ? (
-                <label>
-                  <span>Destination</span>
-                  <input required value={destination} onChange={(event) => setDestination(event.target.value)} placeholder="Demo destination" />
-                </label>
-              ) : (
-                <div className="wallet-form-note"><Check size={15} /> Demo funding requests do not change the server balance.</div>
-              )}
-
-              <button className="btn btn--primary" type="submit">
-                {mode === 'deposit' ? 'Create deposit request' : 'Create withdrawal request'}
-                <ArrowUpRight size={14} />
-              </button>
-            </form>
-
-            {requestNotice ? (
-              <div className="wallet-form-note wallet-form-note--success" role="status">
-                <Check size={15} /> {requestNotice}. Actual wallet mutations remain server-gated.
               </div>
-            ) : null}
+            ) : (
+              <div className="wallet-funding-state">
+                <span className="wallet-funding-state__icon"><ShieldCheck size={20} /></span>
+                <div>
+                  <strong>Real deposits are not available yet</strong>
+                  <p>Payment processing has not been connected yet, so this wallet cannot be funded. The real wallet remains separate from demo trading funds.</p>
+                </div>
+              </div>
+            )}
           </section>
 
           <section className="dashboard-card panel">
             <div className="dashboard-card__header">
-              <div><span className="eyebrow">Security</span><h2>Funding controls</h2></div>
+              <div><span className="eyebrow">Funding</span><h2>{isDemo ? 'Demo wallet rules' : 'Real wallet status'}</h2></div>
               <ShieldCheck size={16} className="dashboard-muted-icon" />
             </div>
-            <div className="setting-row"><div><strong>Withdrawal verification</strong><small>Production withdrawals require server-side verification.</small></div><span className="status-pill status-pill--pending">LOCKED</span></div>
-            <div className="setting-row"><div><strong>Ledger state</strong><small>Balances and wallet mutations remain server-authoritative.</small></div><span className="status-pill status-pill--positive">SERVER</span></div>
+            {isDemo ? (
+              <>
+                <div className="setting-row"><div><strong>Manual deposits</strong><small>Disabled. Demo funds are controlled automatically by the platform.</small></div><span className="status-pill status-pill--positive">AUTO</span></div>
+                <div className="setting-row"><div><strong>Auto-refill</strong><small>Refills after the demo balance reaches zero with no active held funds.</small></div><span className="status-pill status-pill--positive">ON</span></div>
+                <div className="setting-row"><div><strong>Real money</strong><small>Demo trades never spend real wallet funds.</small></div><span className="status-pill status-pill--positive">ISOLATED</span></div>
+              </>
+            ) : (
+              <>
+                <div className="setting-row"><div><strong>Deposits</strong><small>Payment integration will be implemented in a later release.</small></div><span className="status-pill status-pill--pending">SOON</span></div>
+                <div className="setting-row"><div><strong>Withdrawals</strong><small>Production withdrawals remain server-gated until funding is enabled.</small></div><span className="status-pill status-pill--pending">LOCKED</span></div>
+                <div className="setting-row"><div><strong>Balance</strong><small>Real wallet starts at zero until a real deposit is completed.</small></div><span className="status-pill status-pill--positive">SEPARATE</span></div>
+              </>
+            )}
           </section>
         </div>
 
         <section className="dashboard-card panel">
           <div className="dashboard-card__header">
-            <div><span className="eyebrow">Transactions</span><h2>Wallet activity</h2></div>
+            <div><span className="eyebrow">Transactions</span><h2>{isDemo ? 'Demo wallet activity' : 'Real wallet activity'}</h2></div>
             <span className="status-pill status-pill--pending">{transactions.data?.pagination.total ?? 0} RECORDS</span>
           </div>
           <div className="data-table">
@@ -381,7 +365,7 @@ function WalletPage() {
               </div>
             ))}
           </div>
-          {transactions.data?.items.length === 0 ? <div className="dashboard-note">No wallet transactions have been recorded yet.</div> : null}
+          {transactions.data?.items.length === 0 ? <div className="dashboard-note">No {isDemo ? 'demo' : 'real'} wallet transactions have been recorded yet.</div> : null}
           {transactions.data ? <Pagination page={page} totalPages={transactions.data.pagination.totalPages} onChange={setPage} /> : null}
         </section>
       </ApiState>
