@@ -274,14 +274,16 @@ describe('platform API routes', () => {
       settledOnly?: boolean
     }
 
-    let requestedInput: CapturedTradeHistoryInput | null = null
-    let requestedMode = ''
+    const captured = {
+      input: null as CapturedTradeHistoryInput | null,
+      mode: '' as 'DEMO' | 'REAL' | '',
+    }
 
     const scoped = {
       ...apiService,
       listTrades: async (_userId: string, input: CapturedTradeHistoryInput, mode: 'DEMO' | 'REAL') => {
-        requestedInput = input
-        requestedMode = mode
+        captured.input = input
+        captured.mode = mode
         return { items: [], pagination: { page: input.page ?? 1, pageSize: input.pageSize ?? 25, total: 0, totalPages: 1 } }
       },
     } as unknown as PlatformApiService
@@ -296,17 +298,17 @@ describe('platform API routes', () => {
     })
 
     assert.equal(response.statusCode, 200)
-    assert.ok(requestedInput)
-    assert.deepEqual(requestedInput.statuses, ['WON', 'LOST'])
-    assert.equal(requestedInput.page, 2)
-    assert.equal(requestedInput.pageSize, 25)
-    assert.equal(requestedInput.search, 'BTC')
-    assert.equal(requestedInput.assetId, 'asset-1')
-    assert.equal(requestedInput.direction, 'UP')
-    assert.equal(requestedInput.sortBy, 'netPnl')
-    assert.equal(requestedInput.sortOrder, 'asc')
-    assert.equal(requestedInput.settledOnly, true)
-    assert.equal(requestedMode, 'DEMO')
+    if (!captured.input) throw new Error('Trade history request was not captured')
+    assert.deepEqual(captured.input.statuses, ['WON', 'LOST'])
+    assert.equal(captured.input.page, 2)
+    assert.equal(captured.input.pageSize, 25)
+    assert.equal(captured.input.search, 'BTC')
+    assert.equal(captured.input.assetId, 'asset-1')
+    assert.equal(captured.input.direction, 'UP')
+    assert.equal(captured.input.sortBy, 'netPnl')
+    assert.equal(captured.input.sortOrder, 'asc')
+    assert.equal(captured.input.settledOnly, true)
+    assert.equal(captured.mode, 'DEMO')
     await app.close()
   })
 
