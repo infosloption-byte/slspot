@@ -41,10 +41,15 @@ export function TopBar() {
 
   useEffect(() => {
     return realtime.onEvent((event) => {
-      if (event.type !== 'wallet.update') return
-      void wallets.reload()
+      if (event.type === 'wallet.update') {
+        void wallets.reload()
+        return
+      }
+      if (event.type === 'notification.created') {
+        void notifications.reload()
+      }
     })
-  }, [realtime, wallets.reload])
+  }, [notifications.reload, realtime, wallets.reload])
 
   useEffect(() => {
     const timer = window.setInterval(() => {
