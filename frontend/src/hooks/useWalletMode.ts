@@ -1,26 +1,13 @@
-import { createContext, useContext } from 'react'
+import type { WalletMode } from '../state/walletStore'
+import { setWalletMode, useWalletStore } from '../state/walletStore'
 
-export type WalletMode = 'DEMO' | 'REAL'
-
-const STORAGE_KEY = 'slspot.wallet-mode'
-
-type WalletModeContextValue = {
-  mode: WalletMode
-  setMode: (mode: WalletMode) => void
-}
-
-export const WalletModeContext = createContext<WalletModeContextValue | null>(null)
+export type { WalletMode }
 
 export function readStoredMode(): WalletMode {
-  try {
-    return window.localStorage.getItem(STORAGE_KEY) === 'REAL' ? 'REAL' : 'DEMO'
-  } catch {
-    return 'DEMO'
-  }
+  return useWalletStore().mode
 }
 
-export function useWalletMode(): WalletModeContextValue {
-  const context = useContext(WalletModeContext)
-  if (!context) throw new Error('useWalletMode must be used within WalletModeProvider')
-  return context
+export function useWalletMode(): { mode: WalletMode; setMode: (mode: WalletMode) => void } {
+  const state = useWalletStore()
+  return { mode: state.mode, setMode: setWalletMode }
 }
