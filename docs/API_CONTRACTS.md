@@ -213,7 +213,7 @@ wallet.update
 notification.created
 \`\`\`
 
-No business event is authoritative until its server-side producer and persistence semantics are implemented.
+Business events are durable-first: notification, trade, wallet, and position state is persisted on the server before realtime delivery is attempted.
 
 ## Market-data shape
 
@@ -257,6 +257,8 @@ Public:
 Authenticated:
 
 - `GET /portfolio/summary`
+- `GET /portfolio/analytics`
+  - Returns server-calculated daily/weekly/monthly P&L, win/loss rates, trade volume/count, average trade, 30-day performance series, and per-asset performance for the selected wallet mode.
 - `GET /portfolio/positions?page=&pageSize=`
 - `GET /trades?page=&pageSize=&status=&search=&assetId=&direction=&from=&to=&sortBy=&sortOrder=&settledOnly=`
   - `status` may be a comma-separated list.
@@ -267,9 +269,17 @@ Authenticated:
   - `sortOrder` is `asc` or `desc`.
   - `settledOnly=true` excludes open trades, which is used by the Trading Room history view.
 - `GET /wallet`
-- `GET /wallet/transactions?page=&pageSize=`
+- `GET /wallet/transactions?page=&pageSize=&type=&status=&search=&from=&to=`
+  - Filters are server-side and support transaction type/status, text search, and ISO-8601 date ranges.
+- `POST /wallet/deposit`
+  - Demo mode only until a payment provider is selected; requires an idempotency key and records the wallet mutation in the double-entry ledger.
+- `POST /wallet/withdraw`
+  - Demo mode only until payment-provider/KYC controls are connected; requires an idempotency key and records the wallet mutation in the double-entry ledger.
+- `GET /ledger/reconcile`
+  - Reconciles the selected wallet against its ledger balances and reports unbalanced ledger transactions or missing wallet-transaction links.
 - `GET /notifications?page=&pageSize=&unreadOnly=`
 - `POST /notifications/:notificationId/read`
+- `POST /notifications/read-all`
 
 Public market chart data:
 
