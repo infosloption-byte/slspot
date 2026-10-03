@@ -60,12 +60,7 @@ const authStore = {
         const result = await authApi.me()
         emit({ status: 'authenticated', user: result.user })
         return result.user
-      } catch (error) {
-        if (error instanceof ApiError && error.status !== 401) {
-          emit({ status: 'unauthenticated', user: null })
-          return null
-        }
-
+      } catch {
         emit({ status: 'unauthenticated', user: null })
         return null
       } finally {
