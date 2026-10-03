@@ -134,6 +134,20 @@ The remaining unchecked production-hardening, compliance, accessibility, testing
 
 ## Hardening milestone update — 2026-10-04
 
+Security hardening implementation update — 2026-10-04:
+
+- [x] HttpOnly session cookies no longer expose raw authentication session tokens in login/2FA JSON responses.
+- [x] Session authentication rejects revoked devices.
+- [x] Signed session-bound CSRF token transport and trusted-origin checks are enforced on state-changing API requests.
+- [x] Redis-backed request rate limiting is enforced with production fail-closed behavior when Redis is unavailable.
+- [x] Admin RBAC now distinguishes ADMIN from SUPER_ADMIN for sensitive role/session actions.
+- [x] Cross-user idempotency replay for demo deposits/withdrawals is rejected.
+- [x] Trade and demo funding mutations now create durable audit events.
+- [x] Provider URL configuration is constrained to prevent SSRF through the market-data adapter.
+- [x] Multipart uploads are rejected because no controlled upload endpoint exists yet.
+- [x] Frontend and admin CSP/security headers are defined for development/preview and browser CSP is embedded in the application documents.
+
+
 Implemented on `main`:
 
 - [x] Frontend React/TypeScript hardening fixes for API abort handling, DataTable generics, React purity lint rules, Select state management, chart candle derivation, and trade expiry clock handling.
@@ -943,7 +957,7 @@ COMMIT
 - [ ] Withdrawal status.
 - [ ] Reconciliation.
 - [ ] Failed payment handling.
-- [ ] Audit logging.
+- [x] Audit logging.
 
 ---
 
@@ -1207,12 +1221,12 @@ Tasks:
 - [ ] DNS.
 - [ ] TLS.
 - [ ] Nginx or edge proxy.
-- [ ] Security headers.
-- [ ] CSP.
+- [~] Security headers — frontend dev/preview and backend API headers are hardened; production static-site edge headers remain part of Phase 27.
+- [x] CSP.
 - [ ] HSTS.
 - [ ] Referrer-Policy.
 - [ ] Permissions-Policy.
-- [ ] Rate limiting.
+- [x] Rate limiting.
 
 ## Application
 
@@ -1259,29 +1273,29 @@ Tasks:
 
 ## Frontend
 
-- [ ] No secrets in bundle.
-- [ ] Secure cookies.
+- [x] No secrets in bundle.
+- [x] Secure cookies.
 - [ ] CSP.
 - [ ] Security headers.
 - [x] Dependency scanning.
-- [ ] XSS review.
-- [ ] CSRF strategy.
-- [ ] Origin validation.
+- [x] XSS review.
+- [x] CSRF strategy.
+- [x] Origin validation.
 
 ## Backend
 
-- [ ] Authentication.
-- [ ] Authorization.
-- [ ] RBAC.
-- [ ] Tenant/resource ownership checks.
+- [x] Authentication.
+- [x] Authorization.
+- [x] RBAC.
+- [x] Tenant/resource ownership checks.
 - [ ] Rate limiting.
-- [ ] Input validation.
-- [ ] SQL safety.
-- [ ] SSRF review.
-- [ ] File-upload controls.
-- [ ] Webhook verification.
-- [ ] Idempotency.
-- [ ] Replay protection.
+- [x] Input validation.
+- [x] SQL safety.
+- [x] SSRF review.
+- [x] File-upload controls — multipart uploads are explicitly rejected until a dedicated controlled upload path exists.
+- [x] Webhook verification — HMAC-SHA256 verification utility is ready; provider-specific ingestion remains in the Payments milestone.
+- [x] Idempotency.
+- [x] Replay protection.
 - [ ] Audit logging.
 
 ## Financial
