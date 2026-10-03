@@ -90,6 +90,7 @@ export function buildApp(options: AppOptions = {}) {
     }
 
     const path = request.url.split('?', 1)[0]
+    if (request.method === 'OPTIONS') return
     const isAuthRoute = path.startsWith(API_PREFIX + '/auth/')
     const isTradingRoute = path.startsWith(API_PREFIX + '/trades') || path.startsWith(API_PREFIX + '/wallet')
 
