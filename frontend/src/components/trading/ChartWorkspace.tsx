@@ -644,7 +644,7 @@ export function ChartWorkspace({ asset, onOpenMarkets, openTrades, now }: ChartW
 
         {priceLineEnabled && candles.length ? <div className="chart-price-tag"><span>{price}</span><small>{formatPercent(asset.change)}</small></div> : null}
 
-        {rsiEnabled ? (
+        {rsiEnabled && candles.length ? (
           <div className="chart-rsi-panel">
             <div className="chart-rsi-panel__label"><span>RSI 14</span><strong>{Math.round(rsi[rsi.length - 1] ?? 50)}</strong></div>
             <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-label="RSI indicator">
@@ -657,7 +657,7 @@ export function ChartWorkspace({ asset, onOpenMarkets, openTrades, now }: ChartW
       </div>
 
       <div className="chart-bottom-status">
-        <span><i className="live-dot" /> {candleResource.data?.candles.length ? 'Live market data' : usingMockCandles ? 'Demo market data' : 'Waiting for market data'}</span>
+        <span><i className="live-dot" /> {candleResource.error && !usingMockCandles ? 'Market data unavailable' : candleResource.data?.candles.length ? 'Live market data' : usingMockCandles ? 'Demo market data' : 'Waiting for market data'}</span>
         <span>{timeframe}</span>
         <span>{chartType === 'candles' ? 'Candles' : chartType === 'line' ? 'Line' : 'Area'}</span>
         <span className="chart-bottom-status__spacer" />
