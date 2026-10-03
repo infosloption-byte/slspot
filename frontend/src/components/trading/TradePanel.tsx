@@ -11,6 +11,8 @@ type TradePanelProps = {
   soundEnabled: boolean
   balance: number
   walletMode: WalletMode
+  canTrade: boolean
+  tradeDisabledReason?: string | null
   onToggleSound: () => void
   onOpenTrade: (trade: { direction: TradeDirection; amount: number; durationSeconds: number; entryPrice: number; payoutRate: number; clientRequestId: string }) => Promise<TradeCreateResult>
 }
@@ -22,7 +24,7 @@ function formatDuration(value: number) {
   return value < 60 ? value + 's' : value / 60 + 'm'
 }
 
-export function TradePanel({ asset, balance, walletMode, soundEnabled, onToggleSound, onOpenTrade }: TradePanelProps) {
+export function TradePanel({ asset, balance, walletMode, canTrade, tradeDisabledReason, soundEnabled, onToggleSound, onOpenTrade }: TradePanelProps) {
   const [amount, setAmount] = useState(Math.min(50, asset.maxAmount))
   const [duration, setDuration] = useState(asset.durationsSeconds[0] ?? 60)
   const [durationOpen, setDurationOpen] = useState(false)
@@ -58,8 +60,8 @@ export function TradePanel({ asset, balance, walletMode, soundEnabled, onToggleS
     if (!Number.isFinite(balance) || amount > balance) {
       return 'Stake exceeds the available server balance.'
     }
-    if (walletMode === 'REAL') {
-      return 'Real-money trading is not available yet. Switch to Demo Wallet to practise trading.'
+    if (!canTrade) {
+      return tradeDisabledReason ?? 'Trading is not currently enabled for this wallet.'
     }
     if (!asset.tradingEnabled) {
       return 'This market is currently unavailable for trading.'
@@ -139,12 +141,12 @@ export function TradePanel({ asset, balance, walletMode, soundEnabled, onToggleS
 
   const renderActions = (mobile = false) => (
     <div className={mobile ? 'trade-actions trade-actions--mobile' : 'trade-actions'} aria-label="Trade direction">
-      <button className="trade-btn trade-btn--up" type="button" onClick={() => void requestPreview('UP')} disabled={stage === 'submitting' || walletMode === 'REAL' || balance <= 0}>
+      <button className="trade-btn trade-btn--up" type="button" onClick={() => void requestPreview('UP')} disabled={stage === 'submitting' || !canTrade || balance <= 0}>
         <TrendingUp size={18} />
         <span>UP</span>
         {!mobile ? <small>Higher</small> : null}
       </button>
-      <button className="trade-btn trade-btn--down" type="button" onClick={() => void requestPreview('DOWN')} disabled={stage === 'submitting' || walletMode === 'REAL' || balance <= 0}>
+      <button className="trade-btn trade-btn--down" type="button" onClick={() => void requestPreview('DOWN')} disabled={stage === 'submitting' || !canTrade || balance <= 0}>
         <TrendingDown size={18} />
         <span>DOWN</span>
         {!mobile ? <small>Lower</small> : null}
@@ -214,7 +216,7 @@ export function TradePanel({ asset, balance, walletMode, soundEnabled, onToggleS
           {renderActions()}
 
           <div className="trade-panel__footer-row">
-            <span className="trade-panel__note"><i className="live-dot" /> {walletMode === 'DEMO' ? 'Demo market · Practice balance' : 'Real wallet · Trading unavailable'} · Balance {formatCurrency(balance, asset.quoteCurrency)}</span>
+            <span className="trade-panel__note"><i className="live-dot" /> {canTrade ? (walletMode === 'DEMO' ? 'Demo market · Practice balance' : 'Real wallet · Trading enabled') : (tradeDisabledReason ?? 'Trading unavailable')} · Balance {formatCurrency(balance, asset.quoteCurrency)}</span>
             <button type="button" className="icon-button" onClick={onToggleSound} aria-label={soundEnabled ? 'Disable trade sounds' : 'Enable trade sounds'} title={soundEnabled ? 'Disable trade sounds' : 'Enable trade sounds'}>
               {soundEnabled ? <Volume2 size={15} /> : <VolumeX size={15} />}
             </button>
