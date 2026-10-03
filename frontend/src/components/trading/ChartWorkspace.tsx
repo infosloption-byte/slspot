@@ -783,7 +783,7 @@ export function ChartWorkspace({ asset, onOpenMarkets, openTrades, now, realtime
 
   const feedAgeMs = asset.lastUpdatedAt ? Math.max(0, now - Date.parse(asset.lastUpdatedAt)) : Number.POSITIVE_INFINITY
   const feedAgeSeconds = Number.isFinite(feedAgeMs) ? Math.floor(feedAgeMs / 1000) : null
-  const feedStale = !Number.isFinite(feedAgeMs) || feedAgeMs > 45_000
+  const feedStale = !usingMockCandles && (!Number.isFinite(feedAgeMs) || feedAgeMs > 45_000)
   const hasOscillators = enabledIndicators.some((id) => id === 'rsi' || id === 'macd' || id === 'stochastic' || id === 'atr' || id === 'ao')
 
   return (
