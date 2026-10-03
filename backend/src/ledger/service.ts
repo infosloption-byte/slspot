@@ -58,7 +58,6 @@ export function assertBalancedLedgerLines(lines: LedgerLine[], currency: string)
   for (const line of lines) {
     const amount = new Prisma.Decimal(line.amount)
     if (!amount.isFinite() || amount.lte(0)) throw new Error('Ledger entry amount must be positive')
-    if (currency.toUpperCase() !== normalizedCurrency) throw new Error('Ledger transaction currency mismatch')
     if (line.direction === 'DEBIT') debits = debits.plus(amount)
     else credits = credits.plus(amount)
   }
@@ -72,7 +71,7 @@ export class LedgerService {
   constructor(private readonly prisma: PrismaClient) {}
 
   async ensureWalletLedgerAccounts(
-    tx: Prisma.TransactionClient,
+    tx: Prisma.TransactionClient | PrismaClient,
     accountId: string,
     currency: string,
   ): Promise<{ availableCode: string; heldCode: string }> {
@@ -108,7 +107,7 @@ export class LedgerService {
   }
 
   async ensureSystemLedgerAccount(
-    tx: Prisma.TransactionClient,
+    tx: Prisma.TransactionClient | PrismaClient,
     code: string,
     name: string,
     type: LedgerLine['accountType'],
