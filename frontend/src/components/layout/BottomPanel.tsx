@@ -1,7 +1,20 @@
-import { ArrowDownToLine, ArrowUpDown, CalendarDays, ChevronDown, ChevronUp, Clock3, History, RotateCcw, Search, ShieldCheck, TimerReset, WalletCards } from 'lucide-react'
+import {
+  ArrowDownToLine,
+  ArrowUpDown,
+  CalendarDays,
+  ChevronDown,
+  ChevronUp,
+  Clock3,
+  History,
+  RotateCcw,
+  Search,
+  ShieldCheck,
+  TimerReset,
+  WalletCards,
+} from 'lucide-react'
 import { useMemo, useState } from 'react'
-import type { WalletTransaction } from '../../api/wallet'
 import type { TradeHistoryFilters } from '../../api/trades'
+import type { WalletTransaction } from '../../api/wallet'
 import type { OpenTrade } from '../../types/trading'
 import { tradeProgress, tradeRemainingSeconds } from '../../types/trading'
 import { formatPrice } from '../../lib/format'
@@ -278,7 +291,10 @@ export function BottomPanel({
               <select
                 value={historyFilters.sortBy + '_' + historyFilters.sortOrder}
                 onChange={(event) => {
-                  const [sortBy, sortOrder] = event.target.value.split('_') as [TradeHistoryFilters['sortBy'], TradeHistoryFilters['sortOrder']]
+                  const [sortBy, sortOrder] = event.target.value.split('_') as [
+                    TradeHistoryFilters['sortBy'],
+                    TradeHistoryFilters['sortOrder'],
+                  ]
                   onHistoryFiltersChange({ sortBy, sortOrder })
                 }}
               >
@@ -293,12 +309,17 @@ export function BottomPanel({
               </select>
             </label>
 
-            <button className="quiet-button trade-history-reset" type="button" onClick={onHistoryReset} title="Reset history filters">
+            <button className="quiet-button trade-history-reset" type="button" onClick={onHistoryReset}>
               <RotateCcw size={14} />
               <span>Reset</span>
             </button>
 
-            <button className="quiet-button trade-history-export" type="button" onClick={onHistoryExport} disabled={historyExporting || historyLoading}>
+            <button
+              className="quiet-button trade-history-export"
+              type="button"
+              onClick={onHistoryExport}
+              disabled={historyExporting || historyLoading}
+            >
               <ArrowDownToLine size={14} />
               <span>{historyExporting ? 'Exporting…' : 'Export CSV'}</span>
             </button>
@@ -356,79 +377,19 @@ export function BottomPanel({
                   <span className={trade.direction === 'UP' ? 'side-label side-label--up' : 'side-label side-label--down'}>
                     {trade.direction}
                   </span>
-                  <span>{'
-
-      {!collapsed && active === 'wallet' ? (
-        <div className="activity-table">
-          {visibleWallet.length === 0 ? (
-            <EmptyState
-              title="No wallet activity yet"
-              message="Server wallet holds, settlements, fees, deposits, and withdrawals will appear here."
-              icon={<WalletCards size={18} />}
-            />
-          ) : (
-            <>
-              <div className="activity-row activity-row--header">
-                <span>Activity</span>
-                <span>Type</span>
-                <span>Amount</span>
-                <span>Status</span>
-                <span>Time</span>
-              </div>
-
-              {visibleWallet.map((item) => {
-                const amount = Number(item.amount)
-                return (
-                  <div className="activity-row" key={item.id}>
-                    <div>
-                      <strong>{item.description ?? item.type}</strong>
-                      <small>#{item.id}</small>
-                    </div>
-                    <span>{item.type}</span>
-                    <strong className={amount >= 0 ? 'text-positive' : 'text-negative'}>
-                      {formatWalletAmount(item)}
-                    </strong>
-                    <span className={item.status === 'COMPLETED'
-                      ? 'status-pill status-pill--positive'
-                      : 'status-pill status-pill--pending'}>
-                      {item.status}
-                    </span>
-                    <small>{formatWalletTime(item.createdAt)}</small>
-                  </div>
-                )
-              })}
-            </>
-          )}
-        </div>
-      ) : null}
-
-      {!collapsed && visiblePositions.length > 0 && active === 'open' ? (
-        <div className="position-detail position-detail--live">
-          <span className="position-detail__icon"><ShieldCheck size={15} /></span>
-          <div className="position-detail__copy">
-            <strong>Server positions</strong>
-            <span>{visiblePositions.length} open · settlement is controlled by the trading engine</span>
-          </div>
-          <div className="position-detail__metrics">
-            <span>Current <b>{formatPrice(currentPrice, currentPrice < 10 ? 5 : 2)}</b></span>
-            <span>Market <b>{selectedSymbol}</b></span>
-          </div>
-        </div>
-      ) : null}
-    </section>
-  )
-}
-}{trade.amount.toFixed(2)}</span>
+                  <span>{'$'}{trade.amount.toFixed(2)}</span>
                   <span>{formatPrice(trade.entryPrice, trade.entryPrice < 10 ? 5 : 2)}</span>
-                  <span>
-                    {trade.exitPrice === undefined
-                      ? '—'
-                      : formatPrice(trade.exitPrice, trade.exitPrice < 10 ? 5 : 2)}
-                  </span>
-                  <span className={trade.status === 'WON' ? 'status-pill status-pill--positive' : trade.status === 'LOST' ? 'status-pill status-pill--negative' : 'status-pill status-pill--pending'}>
+                  <span>{trade.exitPrice === undefined ? '—' : formatPrice(trade.exitPrice, trade.exitPrice < 10 ? 5 : 2)}</span>
+                  <span className={
+                    trade.status === 'WON'
+                      ? 'status-pill status-pill--positive'
+                      : trade.status === 'LOST'
+                        ? 'status-pill status-pill--negative'
+                        : 'status-pill status-pill--pending'
+                  }>
                     {trade.status}
                   </span>
-                  <strong className={trade.status === 'WON' ? 'text-positive' : trade.status === 'LOST' ? 'text-negative' : 'text-positive'}>
+                  <strong className={trade.netPnl !== undefined && trade.netPnl < 0 ? 'text-negative' : 'text-positive'}>
                     {trade.netPnl === undefined ? '—' : (trade.netPnl >= 0 ? '+' : '') + trade.netPnl.toFixed(2)}
                   </strong>
                 </div>
