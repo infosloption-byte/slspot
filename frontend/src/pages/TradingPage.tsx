@@ -6,7 +6,7 @@ import { ChartWorkspace } from '../components/trading/ChartWorkspace'
 import { Toast, type ToastTone } from '../components/ui/Toast'
 import { ApiState } from '../components/ui/ApiState'
 import { useLiveMarketAssets } from '../hooks/useMarketState'
-import { usePortfolioPositions, useTrades, useWallet, useWalletTransactions } from '../hooks/useServerState'
+import { usePortfolioPositions, useTrades, useTradingCapabilities, useWallet, useWalletTransactions } from '../hooks/useServerState'
 import {
   tradesApi,
   type TradeHistoryFilters,
@@ -17,6 +17,7 @@ import { useAuth } from '../auth/useAuth'
 import { useWalletMode } from '../hooks/useWalletMode'
 import { useRealtime, useRealtimeState } from '../realtime/useRealtime'
 import { userChannel } from '../realtime/subscriptions'
+import { defaultHistoryFilters, setSoundEnabled, setTradingUiState, useTradingUiStore } from '../state/tradingUiStore'
 
 type ToastItem = {
   id: number
@@ -60,19 +61,9 @@ export function TradingPage() {
   const realtimeState = useRealtimeState()
   const market = useLiveMarketAssets()
   const positions = usePortfolioPositions(1, 50)
-
-  const [historyPage, setHistoryPage] = useState(1)
-  const [historyFilters, setHistoryFilters] = useState<TradeHistoryFilters>({
-    search: '',
-    assetId: '',
-    direction: '',
-    status: '',
-    from: '',
-    to: '',
-    sortBy: 'openedAt',
-    sortOrder: 'desc',
-  })
-  const [historyExporting, setHistoryExporting] = useState(false)
+  const capabilities = useTradingCapabilities()
+  const tradingUi = useTradingUiStore()
+  const { historyPage, historyFilters, historyExporting, selectedSymbol, marketPickerOpen, activityOpen, soundEnabled } = tradingUi
 
   const historyQuery = useMemo<TradeListQuery>(() => {
     const from = historyFilters.from
@@ -101,13 +92,7 @@ export function TradingPage() {
   const wallet = useWallet()
   const walletTransactions = useWalletTransactions(1, 50)
 
-  const [selectedSymbol, setSelectedSymbol] = useState('')
-  const [marketPickerOpen, setMarketPickerOpen] = useState(false)
-  const [activityOpen, setActivityOpen] = useState(true)
   const [now, setNow] = useState(() => Date.now())
-  const [soundEnabled, setSoundEnabled] = useState(
-    () => window.localStorage.getItem('slspot.trade-sounds') === 'on',
-  )
   const [toasts, setToasts] = useState<ToastItem[]>([])
   const eventRefreshTimer = useRef<number | null>(null)
 
@@ -120,26 +105,15 @@ export function TradingPage() {
   }, [])
 
   const updateHistoryFilters = useCallback((patch: Partial<TradeHistoryFilters>) => {
-    setHistoryFilters((current) => ({ ...current, ...patch }))
-    setHistoryPage(1)
+    setTradingUiState({ historyFilters: { ...historyFilters, ...patch }, historyPage: 1 })
   }, [])
 
   const resetHistoryFilters = useCallback(() => {
-    setHistoryFilters({
-      search: '',
-      assetId: '',
-      direction: '',
-      status: '',
-      from: '',
-      to: '',
-      sortBy: 'openedAt',
-      sortOrder: 'desc',
-    })
-    setHistoryPage(1)
+    setTradingUiState({ historyFilters: { ...defaultHistoryFilters }, historyPage: 1 })
   }, [])
 
   const exportTradeHistory = useCallback(async () => {
-    setHistoryExporting(true)
+    setTradingUiState({ historyExporting: true })
     try {
       const baseQuery = { ...historyQuery, page: 1, pageSize: 100 }
       const firstPage = await tradesApi.list(baseQuery, mode)
@@ -193,7 +167,7 @@ export function TradingPage() {
     } catch (error) {
       addToast('error', 'Export failed', error instanceof Error ? error.message : 'Unable to export trade history.')
     } finally {
-      setHistoryExporting(false)
+      setTradingUiState({ historyExporting: false })
     }
   }, [addToast, historyQuery, mode])
 
@@ -347,16 +321,10 @@ export function TradingPage() {
     return result
   }, [addToast, mode, reloadTradingState, selectedAsset, soundEnabled])
 
-  const toggleSound = () => {
-    setSoundEnabled((current) => {
-      const next = !current
-      window.localStorage.setItem('slspot.trade-sounds', next ? 'on' : 'off')
-      return next
-    })
-  }
+  const toggleSound = () => setSoundEnabled(!soundEnabled)
 
-  const loading = market.loading || positions.loading || trades.loading || wallet.loading
-  const error = market.error || positions.error || trades.error || wallet.error
+  const loading = market.loading || positions.loading || trades.loading || wallet.loading || capabilities.loading
+  const error = market.error || positions.error || trades.error || wallet.error || capabilities.error
 
   if (!selectedAsset || (loading && !market.assets.length)) {
     return (
@@ -365,7 +333,7 @@ export function TradingPage() {
           <ApiState
             loading={loading}
             error={error}
-            onRetry={() => void Promise.all([market.reload(), reloadTradingState()])}
+            onRetry={() => void Promise.all([market.reload(), reloadTradingState(), capabilities.reload()])}
           >
             {!loading && !error ? (
               <div className="dashboard-note">No active market assets are configured.</div>
@@ -382,7 +350,7 @@ export function TradingPage() {
         <ChartWorkspace
           key={selectedAsset.assetId + ':' + selectedAsset.symbol}
           asset={selectedAsset}
-          onOpenMarkets={() => setMarketPickerOpen(true)}
+          onOpenMarkets={() => setTradingUiState({ marketPickerOpen: true })}
           openTrades={openTrades}
           now={now}
           realtimeState={realtimeState}
@@ -404,12 +372,12 @@ export function TradingPage() {
           historyFilters={historyFilters}
           historyAssets={market.assets.map((asset) => ({ id: asset.assetId, symbol: asset.symbol, name: asset.name }))}
           historyExporting={historyExporting}
-          onHistoryPageChange={setHistoryPage}
+          onHistoryPageChange={(page) => setTradingUiState({ historyPage: page })}
           onHistoryFiltersChange={updateHistoryFilters}
           onHistoryReset={resetHistoryFilters}
           onHistoryRetry={() => void trades.reload()}
           onHistoryExport={() => void exportTradeHistory()}
-          onToggle={() => setActivityOpen((current) => !current)}
+          onToggle={() => setTradingUiState({ activityOpen: !activityOpen })}
         />
       </div>
 
@@ -419,6 +387,8 @@ export function TradingPage() {
         balance={Number(wallet.data?.availableBalance ?? '0')}
         walletMode={mode}
         soundEnabled={soundEnabled}
+        canTrade={capabilities.data?.trading[mode].enabled === true}
+        tradeDisabledReason={capabilities.data?.trading[mode].reason}
         onToggleSound={toggleSound}
         onOpenTrade={openTrade}
       />
@@ -428,10 +398,9 @@ export function TradingPage() {
         selected={activeSymbol}
         assets={market.assets}
         onSelect={(asset) => {
-          setSelectedSymbol(asset.symbol)
-          setMarketPickerOpen(false)
+          setTradingUiState({ selectedSymbol: asset.symbol, marketPickerOpen: false })
         }}
-        onClose={() => setMarketPickerOpen(false)}
+        onClose={() => setTradingUiState({ marketPickerOpen: false })}
         loading={market.loading}
         errorMessage={market.error?.message ?? null}
         onRetry={() => void market.reload()}
