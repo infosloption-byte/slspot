@@ -8,7 +8,7 @@
     "build": "npm run prisma:generate && tsc -p tsconfig.json",
     "start": "node dist/server.js",
     "typecheck": "npm run prisma:generate && tsc -p tsconfig.json --noEmit",
-    "test": "npm run prisma:generate && node --import tsx --test",
+    "test": "npm run prisma:generate && node --import tsx --test \"src/**/*.test.ts\"",
     "prisma:generate": "prisma --config prisma7.config.ts generate",
     "prisma:migrate": "prisma --config prisma7.config.ts migrate dev",
     "prisma:migrate:deploy": "prisma --config prisma7.config.ts migrate deploy",
