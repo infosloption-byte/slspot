@@ -843,7 +843,9 @@ export class PlatformApiService {
       })
     }
 
-    if (account.status !== 'ACTIVE') return null
+    if (account.status !== 'ACTIVE') {
+      throw new FinanceError(403, 'ACCOUNT_NOT_ELIGIBLE', 'The trading account is not active')
+    }
 
     let wallet = await tx.wallet.findUnique({ where: { accountId: account.id } })
     if (!wallet) {
