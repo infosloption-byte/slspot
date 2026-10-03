@@ -1,4 +1,4 @@
-import { ArrowRight, KeyRound, MailCheck, ShieldCheck } from 'lucide-react'
+import { ArrowRight, CheckCircle2, KeyRound, MailCheck, ShieldCheck } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router'
@@ -65,73 +65,96 @@ const configByPath = {
   '/2fa': {
     eyebrow: 'Two-factor verification',
     title: 'Confirm sign in',
-    description: 'Two-factor authentication will become server-backed in a later security milestone.',
-    submit: 'Continue',
-    fields: ['code'] as const,
+    description: 'Enter the code from your authenticator app. You can use a recovery code instead.',
+    submit: 'Verify and continue',
+    fields: [] as const,
     icon: ShieldCheck,
-    footer: 'Need another method?',
+    footer: 'Need to restart?',
     footerTo: '/login',
     footerLabel: 'Back to sign in',
   },
 } as const
 
-type Field = 'email' | 'password' | 'confirm' | 'token' | 'code' | 'name'
+type Field = 'email' | 'password' | 'confirm' | 'token'
+
+type RouteState = {
+  token?: string
+  email?: string
+  from?: string
+  message?: string
+  challengeToken?: string
+  challengeExpiresAt?: string
+  rememberDevice?: boolean
+}
+
+const challengeStorageKey = 'slspot:2fa-challenge'
 
 function hasField(fields: readonly Field[], field: Field): boolean {
   return fields.includes(field)
 }
 
+function readRouteState(location: ReturnType<typeof useLocation>): RouteState {
+  const value = location.state
+  if (value && typeof value === 'object') {
+    return value as RouteState
+  }
+  return {}
+}
+
 function errorMessage(error: unknown): string {
   if (!(error instanceof ApiError)) return 'Something went wrong. Please try again.'
 
-  if (error.code === 'EMAIL_VERIFICATION_REQUIRED') {
-    return 'Your email address must be verified before you can sign in.'
-  }
-
-  if (error.code === 'INVALID_CREDENTIALS') {
-    return 'Email or password is incorrect.'
-  }
-
-  if (error.code === 'INVALID_VERIFICATION_TOKEN') {
-    return 'That verification token is invalid or expired.'
-  }
-
-  if (error.code === 'INVALID_RESET_TOKEN') {
-    return 'That reset token is invalid or expired.'
-  }
-
+  if (error.code === 'ACCOUNT_LOCKED') return error.message
+  if (error.code === 'RATE_LIMITED' || error.status === 429) return error.message
+  if (error.code === 'INVALID_CREDENTIALS') return error.message
+  if (error.code === 'EMAIL_VERIFICATION_REQUIRED') return 'Your email address must be verified before you can sign in.'
+  if (error.code === 'TERMS_CONSENT_REQUIRED') return 'You must accept the terms and privacy notice before creating the account.'
+  if (error.code === 'INVALID_VERIFICATION_TOKEN') return 'That verification token is invalid or expired.'
+  if (error.code === 'INVALID_RESET_TOKEN') return 'That reset token is invalid or expired. Request a new reset link.'
+  if (error.code === 'TWO_FACTOR_CHALLENGE_EXPIRED') return 'This two-factor challenge has expired. Start a new sign-in.'
+  if (error.code === 'TWO_FACTOR_RATE_LIMITED') return 'Too many verification attempts. Start a new sign-in.'
+  if (error.code === 'INVALID_TWO_FACTOR_CODE') return error.message
   return error.message
 }
 
 export function AccessPage() {
   const location = useLocation()
   const navigate = useNavigate()
-  const { status, isAuthenticated, login, register } = useAuth()
+  const { status, isAuthenticated, login, verifyTwoFactor, register } = useAuth()
   const [values, setValues] = useState<Record<string, string>>({})
   const [submitted, setSubmitted] = useState(false)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+  const [rememberDevice, setRememberDevice] = useState(false)
+  const [useRecoveryCode, setUseRecoveryCode] = useState(false)
+  const [acceptTerms, setAcceptTerms] = useState(false)
   const config = useMemo(
     () => configByPath[location.pathname as keyof typeof configByPath] ?? configByPath['/login'],
     [location.pathname],
   )
   const Icon = config.icon
-  const routeState = (
-    location.state &&
-    typeof location.state === 'object' &&
-    location.state !== null
-  ) ? location.state as {
-    token?: string
-    email?: string
-    from?: string
-    message?: string
-  } : {}
+  const routeState = readRouteState(location)
+  const storedChallenge = (() => {
+    if (location.pathname !== '/2fa') return null
+    try {
+      const raw = sessionStorage.getItem(challengeStorageKey)
+      return raw ? JSON.parse(raw) as RouteState : null
+    } catch {
+      return null
+    }
+  })()
 
+  const challengeToken = routeState.challengeToken ?? storedChallenge?.challengeToken ?? ''
+  const destination = typeof routeState.from === 'string' && routeState.from.startsWith('/app/')
+    ? routeState.from
+    : typeof storedChallenge?.from === 'string' && storedChallenge.from.startsWith('/app/')
+      ? storedChallenge.from
+      : '/app/trading'
   const initialToken = typeof routeState.token === 'string'
     ? routeState.token
     : new URLSearchParams(location.search).get('token') ?? ''
 
-  if (isAuthenticated && (location.pathname === '/login' || location.pathname === '/register')) {
+  if (isAuthenticated && (location.pathname === '/login' || location.pathname === '/register' || location.pathname === '/2fa')) {
     return <Navigate to="/app/trading" replace />
   }
 
@@ -146,14 +169,15 @@ export function AccessPage() {
     setSubmitted(false)
     setError('')
 
-    if (location.pathname === '/2fa') {
-      setError('Two-factor verification is not connected to the server yet.')
-      return
-    }
-
-    if (location.pathname === '/register' && values.password !== values.confirm) {
-      setError('Passwords do not match.')
-      return
+    if (location.pathname === '/register') {
+      if (!acceptTerms) {
+        setError('Accept the terms and privacy notice to continue.')
+        return
+      }
+      if (values.password !== values.confirm) {
+        setError('Passwords do not match.')
+        return
+      }
     }
 
     if (location.pathname === '/reset-password' && values.password !== values.confirm) {
@@ -161,44 +185,81 @@ export function AccessPage() {
       return
     }
 
-    setBusy(true)
+    if (location.pathname === '/2fa' && !challengeToken) {
+      setError('This two-factor challenge is missing or expired. Start a new sign-in.')
+      return
+    }
 
+    if (location.pathname === '/2fa' && !useRecoveryCode && (values.code ?? '').length !== 6) {
+      setError('Enter the six-digit code from your authenticator app.')
+      return
+    }
+
+    if (location.pathname === '/2fa' && useRecoveryCode && !(values.recoveryCode ?? '').trim()) {
+      setError('Enter one of your recovery codes.')
+      return
+    }
+
+    setBusy(true)
     try {
       if (location.pathname === '/login') {
-        await login(values.email ?? '', values.password ?? '')
-        const state = location.state as { from?: string } | null
-        const destination = typeof state?.from === 'string' && state.from.startsWith('/app/')
-          ? state.from
-          : '/app/trading'
+        const result = await login(values.email ?? '', values.password ?? '', rememberDevice)
+        if (result.requiresTwoFactor) {
+          const challengeState: RouteState = {
+            challengeToken: result.challengeToken,
+            challengeExpiresAt: result.challengeExpiresAt,
+            rememberDevice,
+            from: typeof (location.state as RouteState | null)?.from === 'string' ? (location.state as RouteState).from : undefined,
+          }
+          try {
+            sessionStorage.setItem(challengeStorageKey, JSON.stringify(challengeState))
+          } catch {
+            // In-memory route state still carries the challenge.
+          }
+          navigate('/2fa', { replace: true, state: challengeState })
+          return
+        }
+
+        navigate(destination, { replace: true })
+        return
+      }
+
+      if (location.pathname === '/2fa') {
+        const result = await verifyTwoFactor(
+          challengeToken,
+          useRecoveryCode ? undefined : values.code,
+          useRecoveryCode ? values.recoveryCode : undefined,
+          routeState.rememberDevice ?? storedChallenge?.rememberDevice ?? false,
+        )
+        if (result.requiresTwoFactor) {
+          setError('A second verification step is still required. Start the sign-in flow again.')
+          return
+        }
+        try {
+          sessionStorage.removeItem(challengeStorageKey)
+        } catch {
+          // Ignore storage failures.
+        }
         navigate(destination, { replace: true })
         return
       }
 
       if (location.pathname === '/register') {
-        const result = await register(values.email ?? '', values.password ?? '')
+        const result = await register(values.email ?? '', values.password ?? '', true, '2026-10')
         setSubmitted(true)
-
         if (result.verification?.token) {
           navigate('/verify-email', {
             replace: true,
-            state: {
-              email: values.email ?? '',
-              token: result.verification.token,
-            },
+            state: { email: values.email ?? '', token: result.verification.token },
           })
-          return
         }
-
         return
       }
 
       if (location.pathname === '/forgot-password') {
         const result = await authApi.forgotPassword(values.email ?? '')
         if (result.reset?.token) {
-          navigate('/reset-password', {
-            replace: true,
-            state: { token: result.reset.token },
-          })
+          navigate('/reset-password', { replace: true, state: { token: result.reset.token } })
           return
         }
         setSubmitted(true)
@@ -223,12 +284,9 @@ export function AccessPage() {
           }
           const result = await authApi.requestEmailVerification(values.email)
           setSubmitted(true)
-          if (result.verification?.token) {
-            setValues((current) => ({ ...current, token: result.verification?.token ?? '' }))
-          }
+          if (result.verification?.token) setValues((current) => ({ ...current, token: result.verification!.token }))
           return
         }
-
         await authApi.verifyEmail(token)
         navigate('/login', {
           replace: true,
@@ -243,7 +301,6 @@ export function AccessPage() {
   }
 
   const verificationToken = values.token || initialToken
-  const hasSessionCheck = status === 'loading'
 
   return (
     <main className="access-page">
@@ -253,18 +310,9 @@ export function AccessPage() {
         <h1>{config.title}</h1>
         <p>{config.description}</p>
 
-        {hasSessionCheck ? (
-          <div className="access-form__message">Checking your secure session…</div>
-        ) : null}
-
-        {routeState.message ? (
-          <div className="access-form__message">{routeState.message}</div>
-        ) : null}
-
-        {error ? (
-          <div className="access-form__message access-form__message--error" role="alert">{error}</div>
-        ) : null}
-
+        {status === 'loading' ? <div className="access-form__message">Checking your secure session…</div> : null}
+        {routeState.message ? <div className="access-form__message">{routeState.message}</div> : null}
+        {error ? <div className="access-form__message access-form__message--error" role="alert">{error}</div> : null}
         {submitted ? (
           <div className="access-form__message">
             {location.pathname === '/register'
@@ -277,78 +325,87 @@ export function AccessPage() {
           </div>
         ) : null}
 
+        {location.pathname === '/2fa' ? (
+          <div className="two-factor-help">
+            <div className="two-factor-help__row">
+              <CheckCircle2 size={16} />
+              <span>Challenge expires {routeState.challengeExpiresAt ?? storedChallenge?.challengeExpiresAt ? new Date(routeState.challengeExpiresAt ?? storedChallenge!.challengeExpiresAt!).toLocaleTimeString() : 'soon'}.</span>
+            </div>
+            <button type="button" className="quiet-button" onClick={() => setUseRecoveryCode((value) => !value)}>
+              {useRecoveryCode ? 'Use authenticator code' : 'Use recovery code'}
+            </button>
+          </div>
+        ) : null}
+
         <form className="access-form" onSubmit={(event) => void submit(event)}>
           {hasField(config.fields, 'email') ? (
             <label>
               <span>Email address</span>
-              <input
-                required
-                type="email"
-                value={values.email ?? routeState.email ?? ''}
-                onChange={(event) => setField('email', event.target.value)}
-                autoComplete="email"
-              />
+              <input required type="email" value={values.email ?? routeState.email ?? ''} onChange={(event) => setField('email', event.target.value)} autoComplete="email" />
             </label>
           ) : null}
 
           {hasField(config.fields, 'token') ? (
             <label>
               <span>{location.pathname === '/verify-email' ? 'Verification token' : 'Recovery token'}</span>
-              <input
-                required={location.pathname === '/reset-password'}
-                type="text"
-                value={values.token ?? verificationToken}
-                onChange={(event) => setField('token', event.target.value.trim())}
-                autoComplete="one-time-code"
-                spellCheck={false}
-              />
+              <input required={location.pathname === '/reset-password'} type="text" value={values.token ?? verificationToken} onChange={(event) => setField('token', event.target.value.trim())} autoComplete="one-time-code" spellCheck={false} />
             </label>
           ) : null}
 
           {hasField(config.fields, 'password') ? (
             <label>
               <span>Password</span>
-              <input
-                required
-                minLength={12}
-                type="password"
-                value={values.password ?? ''}
-                onChange={(event) => setField('password', event.target.value)}
-                autoComplete={location.pathname === '/reset-password' ? 'new-password' : 'current-password'}
-              />
+              <input required minLength={12} type="password" value={values.password ?? ''} onChange={(event) => setField('password', event.target.value)} autoComplete={location.pathname === '/reset-password' ? 'new-password' : 'current-password'} />
             </label>
           ) : null}
 
           {hasField(config.fields, 'confirm') ? (
             <label>
               <span>Confirm password</span>
-              <input
-                required
-                minLength={12}
-                type="password"
-                value={values.confirm ?? ''}
-                onChange={(event) => setField('confirm', event.target.value)}
-                autoComplete="new-password"
-              />
+              <input required minLength={12} type="password" value={values.confirm ?? ''} onChange={(event) => setField('confirm', event.target.value)} autoComplete="new-password" />
             </label>
           ) : null}
 
-          {hasField(config.fields, 'code') ? (
-            <label>
-              <span>Verification code</span>
-              <input
-                required
-                inputMode="numeric"
-                pattern="\d{6}"
-                maxLength={6}
-                placeholder="123456"
-                value={values.code ?? ''}
-                onChange={(event) => setField('code', event.target.value.replace(/\D/g, '').slice(0, 6))}
-              />
+          {location.pathname === '/2fa' ? (
+            useRecoveryCode ? (
+              <label>
+                <span>Recovery code</span>
+                <input required autoComplete="one-time-code" spellCheck={false} value={values.recoveryCode ?? ''} onChange={(event) => setField('recoveryCode', event.target.value.toUpperCase())} placeholder="AB12-CD34-EF56-7890" />
+              </label>
+            ) : (
+              <label>
+                <span>Authenticator code</span>
+                <input required inputMode="numeric" pattern="\d{6}" maxLength={6} autoComplete="one-time-code" placeholder="123456" value={values.code ?? ''} onChange={(event) => setField('code', event.target.value.replace(/\D/g, '').slice(0, 6))} />
+              </label>
+            )
+          ) : null}
+
+          {location.pathname === '/login' ? (
+            <label className="access-check">
+              <input type="checkbox" checked={rememberDevice} onChange={(event) => setRememberDevice(event.target.checked)} />
+              <span>Remember this device for longer sessions</span>
             </label>
           ) : null}
 
-          <button className="btn btn--primary" type="submit" disabled={busy || hasSessionCheck}>
+          {location.pathname === '/2fa' ? (
+            <label className="access-check">
+              <input type="checkbox" checked={routeState.rememberDevice ?? storedChallenge?.rememberDevice ?? false} onChange={(event) => {
+                const next = event.target.checked
+                if (routeState.challengeToken) window.history.replaceState(null, '', window.location.href)
+                setRememberDevice(next)
+              }} />
+              <span>Remember this device for longer sessions</span>
+            </label>
+          ) : null}
+
+          {location.pathname === '/register' ? (
+            <label className="access-check">
+              <input type="checkbox" checked={acceptTerms} onChange={(event) => { setAcceptTerms(event.target.checked); setError('') }} required />
+              <span>I agree to the SL Spot terms and privacy notice (version 2026-10).</span>
+            </label>
+          ) : null}
+
+          <button className="btn btn--primary" type="submit" disabled={busy || status === 'loading'}>
             {busy ? 'Please wait…' : config.submit}
             <ArrowRight size={15} />
           </button>
@@ -366,13 +423,9 @@ export function AccessPage() {
               void (async () => {
                 try {
                   setBusy(true)
-                  const email = values.email
-                  if (!email) return
-                  const result = await authApi.requestEmailVerification(email)
+                  const result = await authApi.requestEmailVerification(values.email ?? '')
                   setSubmitted(true)
-                  if (result.verification?.token) {
-                    setValues((current) => ({ ...current, token: result.verification?.token ?? '' }))
-                  }
+                  if (result.verification?.token) setValues((current) => ({ ...current, token: result.verification!.token }))
                 } catch (caught) {
                   setError(errorMessage(caught))
                 } finally {
@@ -389,7 +442,7 @@ export function AccessPage() {
           <span>{config.footer}</span>
           <Link to={config.footerTo}>{config.footerLabel}</Link>
         </div>
-        <small>Authentication is managed by the SL Spot backend. Your browser only receives an HttpOnly session cookie.</small>
+        <small>Authentication is managed by the SL Spot backend. The normal authenticated session is stored in an HttpOnly cookie.</small>
       </section>
     </main>
   )
