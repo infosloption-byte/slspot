@@ -16,6 +16,7 @@ import {
   unsubscribe,
 } from './realtime/redis.js'
 import { RealtimeGateway } from './realtime/gateway.js'
+import { setLocalRealtimeSink } from './realtime/bus.js'
 import {
   checkDatabase,
   connectDatabase,
@@ -31,6 +32,8 @@ const tradingService = new TradingService(prisma)
 const realtimeGateway = new RealtimeGateway({
   authenticate: (request) => authService.authenticateWebSocket(request),
 })
+// Without Redis, realtime events are delivered straight to this process's gateway.
+setLocalRealtimeSink((message) => realtimeGateway.broadcastSerialized(message))
 const app = buildApp({
   checkDatabase,
   checkRedis,

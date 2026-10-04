@@ -95,6 +95,9 @@ export function TradingPage() {
 
   const [now, setNow] = useState(() => Date.now())
   const [toasts, setToasts] = useState<ToastItem[]>([])
+  // Trades the server accepted that the positions list has not returned yet. They make a
+  // placed trade appear in "Open positions" immediately instead of waiting for the refetch.
+  const [optimisticTrades, setOptimisticTrades] = useState<OpenTrade[]>([])
 
   const addToast = useCallback((tone: ToastTone, title: string, message: string) => {
     const id = Date.now() + Math.floor(Math.random() * 1000)
@@ -211,9 +214,10 @@ export function TradingPage() {
   })
 
   const openTrades = useMemo<OpenTrade[]>(() => {
-    return (positions.data?.items ?? [])
+    const items = positions.data?.items ?? []
+    const serverTrades = items
       .filter((position) => position.status === 'OPEN' && position.tradeId)
-      .map((position) => ({
+      .map((position): OpenTrade => ({
         id: position.tradeId as string,
         symbol: position.asset.symbol,
         direction: position.direction,
@@ -225,7 +229,12 @@ export function TradingPage() {
         payoutRate: Number(position.payoutRate),
         status: 'OPEN',
       }))
-  }, [positions.data])
+
+    // Once the server list contains a trade (open or already settled) it is authoritative.
+    const knownIds = new Set(items.map((position) => position.tradeId).filter(Boolean))
+    const pending = optimisticTrades.filter((trade) => !knownIds.has(trade.id))
+    return pending.length > 0 ? [...pending, ...serverTrades] : serverTrades
+  }, [positions.data, optimisticTrades])
 
   // Safety net for a missed trade.status event: check once shortly after each trade expiry.
   // The same trade expiry is never re-armed just because the refresh still reports it as OPEN.
@@ -303,8 +312,31 @@ export function TradingPage() {
       clientRequestId: request.clientRequestId,
     }, mode)
 
-    // The server publishes trade/position/wallet events immediately after opening the trade.
-    // The realtime refresh hook will coalesce those events into one authoritative refresh.
+    // Show the trade right away; the server list replaces this entry once it contains the trade.
+    if (result.status === 'OPEN') {
+      const openedAt = Date.parse(result.openedAt)
+      setOptimisticTrades((items) => [
+        {
+          id: result.tradeId,
+          symbol: selectedAsset.symbol,
+          direction: result.direction,
+          amount: Number(result.amount),
+          durationSeconds: request.durationSeconds,
+          openedAt,
+          expiresAt: result.expiresAt ? Date.parse(result.expiresAt) : openedAt + request.durationSeconds * 1000,
+          entryPrice: Number(result.entryPrice),
+          payoutRate: Number(result.payoutRate),
+          status: 'OPEN',
+        },
+        // Also forget entries that expired long ago without the server ever returning them.
+        ...items.filter((item) => item.id !== result.tradeId && item.expiresAt > Date.now() - 10_000),
+      ])
+    }
+
+    // Refresh immediately instead of waiting for the realtime events, which only arrive while the
+    // socket is connected. Later trade/position/wallet events still trigger coalesced refreshes.
+    void reloadTradingState()
+
     addToast(
       'success',
       'Trade opened',
@@ -313,7 +345,7 @@ export function TradingPage() {
 
     if (soundEnabled) playTradeSound('open')
     return result
-  }, [addToast, mode, selectedAsset, soundEnabled])
+  }, [addToast, mode, reloadTradingState, selectedAsset, soundEnabled])
 
   const toggleSound = () => setSoundEnabled(!soundEnabled)
 

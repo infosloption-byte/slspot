@@ -17,6 +17,20 @@ import { randomBytes } from 'node:crypto'
  */
 export type RandomSource = () => number
 
+/** Starting prices for simulated markets when no live price has ever been stored. */
+export const DEMO_PRICE_BASES: Record<string, string> = {
+  'BTC/USD': '68000',
+  'ETH/USD': '2500',
+  'SOL/USD': '150',
+  'XRP/USD': '2.4',
+  'EUR/USD': '1.17',
+  'GBP/USD': '1.35',
+  'AAPL/USD': '255',
+  'TSLA/USD': '430',
+  'XAU/USD': '3850',
+  'NAS100/USD': '24600',
+}
+
 /** Uniform float in [0, 1) from 53 random bits. */
 export const secureRandom: RandomSource = () => {
   const bytes = randomBytes(7)

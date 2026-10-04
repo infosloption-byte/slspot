@@ -267,6 +267,9 @@ const marketDataBaseUrl = parseMarketDataBaseUrl(process.env.MARKET_DATA_BASE_UR
 const marketDataEnabled = parseBoolean('MARKET_DATA_ENABLED', process.env.MARKET_DATA_ENABLED, marketDataProvider !== 'disabled')
 const marketDataApiKey = process.env.MARKET_DATA_API_KEY?.trim() || undefined
 const marketDataBootstrapAssets = parseBoolean('MARKET_DATA_BOOTSTRAP_ASSETS', process.env.MARKET_DATA_BOOTSTRAP_ASSETS, nodeEnv !== 'production')
+// Simulated prices keep the DEMO market usable when no live feed is configured or the feed is
+// failing (missing/rate-limited API key). Never allowed in production.
+const marketDataSimulate = parseBoolean('MARKET_DATA_SIMULATE', process.env.MARKET_DATA_SIMULATE, nodeEnv !== 'production')
 const adminBootstrapEmails = [...new Set((process.env.ADMIN_BOOTSTRAP_EMAILS ?? '').split(',').map((value) => value.trim().toLowerCase()).filter(Boolean))]
 const authCookieName = parseCookieName(process.env.AUTH_COOKIE_NAME, nodeEnv, nodeEnv === 'production' ? '__Host-slspot_session' : 'slspot_session')
 const csrfCookieName = parseCookieName(process.env.CSRF_COOKIE_NAME, nodeEnv, nodeEnv === 'production' ? '__Host-slspot_csrf' : 'slspot_csrf')
@@ -287,6 +290,10 @@ if (nodeEnv === 'production' && process.env.AUTH_COOKIE_DOMAIN?.trim()) {
 
 if (process.env.AUTH_COOKIE_SAMESITE?.trim().toLowerCase() === 'none' && !authCookieSecure) {
   throw new Error('AUTH_COOKIE_SAMESITE=none requires AUTH_COOKIE_SECURE=true')
+}
+
+if (nodeEnv === 'production' && marketDataSimulate) {
+  throw new Error('MARKET_DATA_SIMULATE must be false in production')
 }
 
 if (nodeEnv === 'production' && marketDataEnabled && marketDataProvider === 'twelve-data' && !marketDataApiKey) {
@@ -343,6 +350,7 @@ export const env = {
     pollIntervalMs: parsePositiveInteger('MARKET_DATA_POLL_INTERVAL_MS', process.env.MARKET_DATA_POLL_INTERVAL_MS, 15_000, 5_000, 300_000),
     requestTimeoutMs: parsePositiveInteger('MARKET_DATA_REQUEST_TIMEOUT_MS', process.env.MARKET_DATA_REQUEST_TIMEOUT_MS, 10_000, 1_000, 60_000),
     bootstrapAssets: marketDataBootstrapAssets,
+    simulate: marketDataSimulate,
   },
   trading: {
     feeRate: parseDecimalString('TRADING_FEE_RATE', process.env.TRADING_FEE_RATE, '0'),

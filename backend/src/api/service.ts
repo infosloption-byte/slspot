@@ -4,7 +4,7 @@ import { env } from '../config/env.js'
 import { getTradingRules } from '../trading/config.js'
 import { LedgerService } from '../ledger/service.js'
 import { createRealtimeEvent, serializeRealtimeEvent } from '../realtime/events.js'
-import { isRedisReady, publish } from '../realtime/redis.js'
+import { publishRealtime } from '../realtime/bus.js'
 
 export type WalletMode = 'DEMO' | 'REAL'
 
@@ -1123,28 +1123,25 @@ export class PlatformApiService {
       data: { userId, type, title, body },
     })
     const channel = ('user:' + userId) as `user:${string}`
-    if (isRedisReady()) {
-      try {
-        await publish(
-          env.redisChannel,
-          serializeRealtimeEvent(
-            createRealtimeEvent(
-              'notification.created',
-              {
-                id: notification.id,
-                type: notification.type,
-                title: notification.title,
-                body: notification.body,
-                readAt: null,
-                createdAt: notification.createdAt.toISOString(),
-              },
-              channel,
-            ),
+    try {
+      await publishRealtime(
+        serializeRealtimeEvent(
+          createRealtimeEvent(
+            'notification.created',
+            {
+              id: notification.id,
+              type: notification.type,
+              title: notification.title,
+              body: notification.body,
+              readAt: null,
+              createdAt: notification.createdAt.toISOString(),
+            },
+            channel,
           ),
-        )
-      } catch {
-        // Durable notification storage remains the source of truth.
-      }
+        ),
+      )
+    } catch {
+      // Durable notification storage remains the source of truth.
     }
     return {
       id: notification.id,

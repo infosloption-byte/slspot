@@ -2,7 +2,7 @@ import type { FastifyRequest } from 'fastify'
 import { Prisma, type PrismaClient } from '../generated/prisma/client.js'
 import { env } from '../config/env.js'
 import { createRealtimeEvent, serializeRealtimeEvent } from '../realtime/events.js'
-import { isRedisReady, publish } from '../realtime/redis.js'
+import { publishRealtime } from '../realtime/bus.js'
 import { createOpaqueToken, hashOpaqueToken, hashPassword, verifyPassword } from './crypto.js'
 import { createOtpAuthUri, createRecoveryCodes, decryptTotpSecret, encryptTotpSecret, generateTotpSecret, normalizeRecoveryCode, verifyTotpCode } from './totp.js'
 import { LedgerService } from '../ledger/service.js'
@@ -767,9 +767,7 @@ export class AuthService {
           body: 'A new sign-in session was created for your SL Spot account.',
         },
       })
-      if (!isRedisReady()) return
-      await publish(
-        env.redisChannel,
+      await publishRealtime(
         serializeRealtimeEvent(
           createRealtimeEvent('notification.created', {
             id: notification.id,

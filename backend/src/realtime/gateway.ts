@@ -35,63 +35,71 @@ export class RealtimeGateway {
       options: { maxPayload: env.websocketMaxPayloadBytes },
     })
 
-    app.get(
-      WS_PATH,
-      {
-        websocket: true,
-        preValidation: async (request, reply) => {
-          try {
-            assertTrustedWebSocketOrigin(request)
-            await enforceRateLimit({
-              key: 'ws:' + request.ip,
-              limit: env.security.rateLimit.generalLimit,
-              windowSeconds: env.security.rateLimit.generalWindowSeconds,
-            })
+    // The route lives in its own plugin so it is only defined after @fastify/websocket
+    // has finished loading. Declaring `app.get(..., { websocket: true })` right next to the
+    // un-awaited `app.register(websocket)` can run before the plugin's onRoute hook exists;
+    // the route is then treated as a plain HTTP route, and every handshake fails with a 500
+    // ("socket.terminate is not a function") which the browser reports as
+    // "WebSocket connection to 'ws://.../ws' failed".
+    app.register(async (instance) => {
+      instance.get(
+        WS_PATH,
+        {
+          websocket: true,
+          preValidation: async (request, reply) => {
+            try {
+              assertTrustedWebSocketOrigin(request)
+              await enforceRateLimit({
+                key: 'ws:' + request.ip,
+                limit: env.security.rateLimit.generalLimit,
+                windowSeconds: env.security.rateLimit.generalWindowSeconds,
+              })
 
-            if (this.options.authenticate) {
-              const principal = await this.options.authenticate(request)
-              if (!principal) {
-                return reply.code(401).send({
-                  success: false,
-                  error: {
-                    code: 'UNAUTHENTICATED',
-                    message: 'Authentication is required',
-                  },
-                })
+              if (this.options.authenticate) {
+                const principal = await this.options.authenticate(request)
+                if (!principal) {
+                  return reply.code(401).send({
+                    success: false,
+                    error: {
+                      code: 'UNAUTHENTICATED',
+                      message: 'Authentication is required',
+                    },
+                  })
+                }
+                ;(request as RealtimeRequest).realtimePrincipal = principal
+              } else {
+                ;(request as RealtimeRequest).realtimePrincipal = { userId: 'anonymous' }
               }
-              ;(request as RealtimeRequest).realtimePrincipal = principal
-            } else {
-              ;(request as RealtimeRequest).realtimePrincipal = { userId: 'anonymous' }
-            }
-          } catch (error) {
-            const statusCode = typeof error === 'object' && error !== null && 'statusCode' in error
-              ? Number((error as { statusCode?: unknown }).statusCode)
-              : 403
-            const code = typeof error === 'object' && error !== null && 'code' in error
-              ? String((error as { code?: unknown }).code)
-              : 'WS_SECURITY_REJECTED'
-            const message = error instanceof Error ? error.message : 'WebSocket connection is not allowed'
+            } catch (error) {
+              const statusCode = typeof error === 'object' && error !== null && 'statusCode' in error
+                ? Number((error as { statusCode?: unknown }).statusCode)
+                : 403
+              const code = typeof error === 'object' && error !== null && 'code' in error
+                ? String((error as { code?: unknown }).code)
+                : 'WS_SECURITY_REJECTED'
+              const message = error instanceof Error ? error.message : 'WebSocket connection is not allowed'
 
-            request.log.warn({ securityCode: code }, 'WebSocket security check rejected connection')
-            return reply.code(statusCode >= 400 && statusCode < 500 ? statusCode : 403).send({
-              success: false,
-              error: { code, message },
-            })
+              request.log.warn({ securityCode: code }, 'WebSocket security check rejected connection')
+              return reply.code(statusCode >= 400 && statusCode < 500 ? statusCode : 403).send({
+                success: false,
+                error: { code, message },
+              })
+            }
+
+            return undefined
+          },
+        },
+        (socket, request) => {
+          const principal = (request as RealtimeRequest).realtimePrincipal
+          if (!principal) {
+            socket.terminate()
+            return
           }
 
-          return undefined
+          this.attach(socket, principal)
         },
-      },
-      (socket, request) => {
-        const principal = (request as RealtimeRequest).realtimePrincipal
-        if (!principal) {
-          socket.terminate()
-          return
-        }
-
-        this.attach(socket, principal)
-      },
-    )
+      )
+    })
   }
 
   broadcastSerialized(message: string): void {

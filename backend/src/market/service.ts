@@ -1,10 +1,13 @@
 import type { AssetType, PrismaClient } from '../generated/prisma/client.js'
 import { env } from '../config/env.js'
 import { createRealtimeEvent, serializeRealtimeEvent } from '../realtime/events.js'
-import { isRedisReady, publish } from '../realtime/redis.js'
+import { publishRealtime } from '../realtime/bus.js'
 import type { MarketDataProvider } from './provider.js'
 import { CANDLE_INTERVALS, isCandleInterval, type CandleInterval, type MarketDefinition } from './types.js'
 import { ensureDefaultMarketRegistry } from './registry.js'
+import { DEMO_PRICE_BASES, DemoPriceSimulator } from '../trading/demoPrice.js'
+
+const SIMULATION_INTERVAL_MS = 2_000
 
 export type MarketCandleResult = {
   assetId: string
@@ -40,6 +43,12 @@ export class MarketDataService {
   private timer: ReturnType<typeof setTimeout> | null = null
   private running = false
   private consecutiveFailures = 0
+  private simulationTimer: ReturnType<typeof setInterval> | null = null
+  private simulationRunning = false
+  private readonly simulator = new DemoPriceSimulator()
+  private readonly simulationAnchors = new Map<string, number>()
+  /** Assets currently priced by the simulation rather than the live provider. */
+  private readonly simulatedAssets = new Set<string>()
 
   constructor(
     private readonly prisma: PrismaClient,
@@ -52,9 +61,11 @@ export class MarketDataService {
   ) {}
 
   async start(): Promise<void> {
-    if (env.marketData.provider !== 'disabled' && env.marketData.bootstrapAssets) {
+    if ((env.marketData.provider !== 'disabled' || env.marketData.simulate) && env.marketData.bootstrapAssets) {
       await ensureDefaultMarketRegistry(this.prisma, env.marketData.provider)
     }
+
+    if (env.marketData.simulate) this.startSimulation()
 
     if (!env.marketData.enabled || env.marketData.provider === 'disabled') {
       this.logger.info({ provider: env.marketData.provider }, 'Market data service disabled')
@@ -72,6 +83,10 @@ export class MarketDataService {
 
   async stop(): Promise<void> {
     this.running = false
+    if (this.simulationTimer) {
+      clearInterval(this.simulationTimer)
+      this.simulationTimer = null
+    }
     if (this.timer) {
       clearTimeout(this.timer)
       this.timer = null
@@ -145,6 +160,75 @@ export class MarketDataService {
     }
   }
 
+  /**
+   * Development fallback: keeps every active market priced (and ticking over the WebSocket)
+   * when there is no live provider, or when the provider is failing, for example because the
+   * API key is missing or the free plan is rate limited. Without it `lastPrice` stays null and
+   * the UI shows no prices. Disabled in production by the env validation.
+   */
+  private startSimulation(): void {
+    if (this.simulationTimer) return
+    this.logger.info({ intervalMs: SIMULATION_INTERVAL_MS }, 'Simulated market prices enabled (non-production)')
+    void this.simulateTick()
+    this.simulationTimer = setInterval(() => void this.simulateTick(), SIMULATION_INTERVAL_MS)
+    this.simulationTimer.unref?.()
+  }
+
+  private async simulateTick(): Promise<void> {
+    if (this.simulationRunning) return
+    this.simulationRunning = true
+
+    try {
+      const now = Date.now()
+      const staleAfterMs = Math.max(env.marketData.pollIntervalMs * 3, 30_000)
+      const markets = await this.prisma.market.findMany({
+        where: { provider: env.marketData.provider, asset: { isActive: true } },
+        include: { asset: true },
+      })
+
+      for (const market of markets) {
+        const stale = !market.lastPriceAt || now - market.lastPriceAt.getTime() > staleAfterMs
+        // A live provider that is delivering fresh prices owns the market.
+        if (this.provider && !this.simulatedAssets.has(market.assetId) && !stale) continue
+
+        const symbol = market.asset.symbol
+        let anchor = this.simulationAnchors.get(symbol)
+        if (anchor === undefined) {
+          const stored = market.lastPrice ? Number(market.lastPrice.toString()) : 0
+          anchor = stored > 0 ? stored : Number(DEMO_PRICE_BASES[symbol] ?? '100')
+          this.simulationAnchors.set(symbol, anchor)
+        }
+
+        const price = this.simulator.quote(symbol, anchor)
+        const digits = price < 10 ? 6 : 2
+        const last = price.toFixed(digits)
+        const changePct = (((price - anchor) / anchor) * 100).toFixed(4)
+        const timestamp = new Date(now)
+
+        await this.prisma.market.update({
+          where: { id: market.id },
+          data: { status: 'OPEN', lastPrice: last, lastPriceAt: timestamp, lastChangePct: changePct },
+        })
+        this.simulatedAssets.add(market.assetId)
+
+        await this.publishEvent(createRealtimeEvent('market.price', {
+          assetId: market.assetId,
+          symbol,
+          bid: last,
+          ask: last,
+          last,
+          changePct,
+          volume: null,
+          timestamp: timestamp.toISOString(),
+        }, ('market:' + market.assetId) as `market:${string}`))
+      }
+    } catch (error) {
+      this.logger.warn({ err: error }, 'Simulated market price update failed')
+    } finally {
+      this.simulationRunning = false
+    }
+  }
+
   private async poll(): Promise<void> {
     if (!this.running || !this.provider) return
 
@@ -205,6 +289,7 @@ export class MarketDataService {
 
     try {
       const quote = await this.provider!.quote(definition)
+      this.simulatedAssets.delete(market.assetId)
 
       await this.prisma.market.update({
         where: {
@@ -289,10 +374,8 @@ export class MarketDataService {
   }
 
   private async publishEvent(event: ReturnType<typeof createRealtimeEvent>): Promise<void> {
-    if (!isRedisReady()) return
-
     try {
-      await publish(env.redisChannel, serializeRealtimeEvent(event))
+      await publishRealtime(serializeRealtimeEvent(event))
     } catch (error) {
       this.logger.warn({ err: error }, 'Failed to publish market realtime event')
     }
