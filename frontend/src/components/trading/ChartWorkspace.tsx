@@ -34,10 +34,10 @@ import { generateMockCandles } from '../../data/mockCandles'
 import type { MarketCandle } from '../../api/contracts'
 import { useMarketCandles } from '../../hooks/useServerState'
 import type { OpenTrade } from '../../types/trading'
-import { tradeProgress, tradeRemainingSeconds } from '../../types/trading'
+import { tradeRemainingSeconds } from '../../types/trading'
 import type { RealtimeConnectionState } from '../../realtime/connection'
 import { formatPercent, formatPrice } from '../../lib/format'
-import { applyLivePrice } from '../../lib/liveCandle'
+import { applyLivePrice, reconcileLiveBar } from '../../lib/liveCandle'
 import { timeframeSeconds } from '../../lib/timeframes'
 import { ErrorState } from '../ui/ErrorState'
 import { IconButton } from '../ui/IconButton'
@@ -297,6 +297,9 @@ function formatCountdown(seconds: number) {
   return minutes + ':' + remainder.toString().padStart(2, '0')
 }
 
+type PriceLineHandle = { applyOptions: (options: Record<string, unknown>) => void }
+type EntryLine = { id: string; direction: 'UP' | 'DOWN'; price: number; title: string }
+
 function ChartCanvas({
   asset,
   datasetKey,
@@ -310,6 +313,7 @@ function ChartCanvas({
   volumeEnabled,
   candles,
   usingMockCandles,
+  entryLines,
 }: {
   asset: MarketAsset
   datasetKey: string
@@ -324,6 +328,8 @@ function ChartCanvas({
   volumeEnabled: boolean
   candles: ChartCandle[]
   usingMockCandles: boolean
+  /** One price line per open trade, drawn at its real entry price on the chart's own price scale. */
+  entryLines: EntryLine[]
 }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const chartRef = useRef<IChartApi | null>(null)
@@ -334,6 +340,8 @@ function ChartCanvas({
   const fittedDatasetRef = useRef<string | null>(null)
   /** The candle currently being extended by live ticks (accumulates high/low between ticks). */
   const liveBarRef = useRef<ChartCandle | null>(null)
+  const liveBarDatasetRef = useRef<string | null>(null)
+  const entryLinesRef = useRef<Map<string, PriceLineHandle>>(new Map())
   const closes = useMemo(
     () => candles.map((candle) => ({ time: candle.time, value: candle.close })),
     [candles],
@@ -343,6 +351,7 @@ function ChartCanvas({
   useEffect(() => {
     const indicatorSeries = indicatorSeriesRef.current
     const container = containerRef.current
+    const entryLineHandles = entryLinesRef.current
     if (!container) return
 
     const chart = createChart(container, {
@@ -414,6 +423,7 @@ function ChartCanvas({
       indicatorSeries.clear()
       volumeSeriesRef.current = null
       priceLineRef.current = null
+      entryLineHandles.clear()
       chart.remove()
     }
   }, [asset.symbol, chartType])
@@ -569,10 +579,14 @@ function ChartCanvas({
     })))
   }, [candles, chartType, volumeEnabled])
 
-  // New candle data (load, timeframe change, server candle event) restarts the live candle from the server's last bar.
+  // New candle data (load, timeframe change, server candle event) restarts the live candle from the
+  // server's last bar, unless this client already started a newer candle locally (see reconcileLiveBar).
   useEffect(() => {
-    liveBarRef.current = candles[candles.length - 1] ?? null
-  }, [candles])
+    const serverLast = candles[candles.length - 1] ?? null
+    const keep = liveBarDatasetRef.current === datasetKey ? liveBarRef.current : null
+    liveBarRef.current = reconcileLiveBar(keep, serverLast)
+    liveBarDatasetRef.current = datasetKey
+  }, [candles, datasetKey])
 
   // Live ticks update the last candle in place with series.update(). The series is never rebuilt
   // and the view is never refitted, so the user's zoom and pan survive every tick.
@@ -594,7 +608,45 @@ function ChartCanvas({
     } else {
       primary.update({ time: next.time, value: next.close })
     }
+
+    // A new candle has no volume bar yet; add an empty one so the histogram keeps pace with the candles.
+    if (next.time !== last.time) {
+      const volumeSeries = volumeSeriesRef.current as { update: (data: unknown) => void } | null
+      volumeSeries?.update({ time: next.time, value: next.volume ?? 0, color: 'rgba(255,194,26,.28)' })
+    }
   }, [asset.price, candles, chartType, intervalSeconds])
+
+  // Entry price lines for open trades. The chart owns the price scale, so the line sits at the real
+  // price and follows zoom, pan and auto-scaling.
+  useEffect(() => {
+    const series = primarySeriesRef.current as {
+      createPriceLine: (options: unknown) => PriceLineHandle
+      removePriceLine: (line: PriceLineHandle) => void
+    } | null
+    if (!series) return
+
+    const lines = entryLinesRef.current
+    const wanted = new Set(entryLines.map((line) => line.id))
+    for (const [id, line] of lines) {
+      if (wanted.has(id)) continue
+      series.removePriceLine(line)
+      lines.delete(id)
+    }
+
+    for (const entry of entryLines) {
+      const options = {
+        price: entry.price,
+        color: entry.direction === 'UP' ? '#1fd27a' : '#ff4d5e',
+        lineWidth: 1,
+        lineStyle: 2,
+        axisLabelVisible: true,
+        title: entry.title,
+      }
+      const existing = lines.get(entry.id)
+      if (existing) existing.applyOptions(options)
+      else lines.set(entry.id, series.createPriceLine(options))
+    }
+  }, [entryLines, chartType, asset.symbol])
 
   return (
     <div className="chart-canvas-shell">
@@ -686,6 +738,17 @@ export function ChartWorkspace({ asset, onOpenMarkets, openTrades, now, realtime
     [asset.symbol, timeframe, usingMockCandles],
   )
   const datasetKey = asset.symbol + ':' + marketInterval
+  const entryLines = useMemo<EntryLine[]>(
+    () => openTrades
+      .filter((trade) => trade.symbol === asset.symbol && Number.isFinite(trade.entryPrice) && trade.entryPrice > 0)
+      .map((trade) => ({
+        id: trade.id,
+        direction: trade.direction,
+        price: trade.entryPrice,
+        title: trade.direction + ' ' + formatCountdown(tradeRemainingSeconds(trade, now)),
+      })),
+    [asset.symbol, now, openTrades],
+  )
   const [liveCandleUpdates, setLiveCandleUpdates] = useState<Array<ChartCandle & { datasetKey: string }>>([])
   const baseCandles = useMemo(
     () => candleResource.data?.candles.length ? toChartCandles(candleResource.data.candles) : usingMockCandles ? mockCandles : NO_CANDLES,
@@ -1005,25 +1068,9 @@ export function ChartWorkspace({ asset, onOpenMarkets, openTrades, now, realtime
             volumeEnabled={volumeEnabled}
             candles={candles}
             usingMockCandles={usingMockCandles}
+            entryLines={entryLines}
           />
         )}
-
-        {candles.length ? <div className="trade-chart-markers" aria-hidden="true">
-          {openTrades.map((trade) => {
-            const remaining = tradeRemainingSeconds(trade, now)
-            const progress = tradeProgress(trade, now)
-            const priceDelta = asset.price > 0 ? (trade.entryPrice - asset.price) / (asset.price * 0.004) : 0
-            const y = Math.max(10, Math.min(88, 50 + priceDelta * 30))
-            const directionClass = trade.direction === 'UP' ? 'trade-chart-marker--up' : 'trade-chart-marker--down'
-            return (
-              <div key={trade.id} className={'trade-chart-marker ' + directionClass} style={{ top: y + '%' }}>
-                <span className="trade-chart-marker__line" />
-                <span className="trade-chart-marker__label"><b>{trade.direction}</b><small>{formatPrice(trade.entryPrice, trade.entryPrice < 10 ? 5 : 2)}</small><em>{formatCountdown(remaining)}</em></span>
-                <span className="trade-chart-marker__progress" style={{ width: (progress * 100) + '%' }} />
-              </div>
-            )
-          })}
-        </div> : null}
 
         {drawingTool !== 'none' && candles.length ? (
           <div className="drawing-layer" onPointerDown={handleDrawingStart} onPointerMove={handleDrawingMove} onPointerUp={handleDrawingEnd} onPointerCancel={handleDrawingEnd} role="application" aria-label="Drawing canvas">

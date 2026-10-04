@@ -97,7 +97,9 @@ export function TradingPage() {
   const [toasts, setToasts] = useState<ToastItem[]>([])
   // Trades the server accepted that the positions list has not returned yet. They make a
   // placed trade appear in "Open positions" immediately instead of waiting for the refetch.
-  const [optimisticTrades, setOptimisticTrades] = useState<OpenTrade[]>([])
+  // Keyed by wallet mode so a Demo trade never shows up while viewing Real, and vice versa.
+  const [optimistic, setOptimistic] = useState<{ mode: typeof mode; trades: OpenTrade[] }>({ mode, trades: [] })
+  const optimisticTrades = useMemo(() => (optimistic.mode === mode ? optimistic.trades : []), [mode, optimistic])
 
   const addToast = useCallback((tone: ToastTone, title: string, message: string) => {
     const id = Date.now() + Math.floor(Math.random() * 1000)
@@ -175,11 +177,18 @@ export function TradingPage() {
   }, [addToast, historyQuery, mode])
 
   const initialAsset = market.assets[0]
-  const activeSymbol = selectedSymbol || initialAsset?.symbol || ''
 
+  // The stored symbol can be stale (asset removed or renamed), so everything downstream uses the
+  // symbol of the asset that is really selected.
   const selectedAsset = useMemo(
-    () => market.assets.find((asset) => asset.symbol === activeSymbol) ?? initialAsset,
-    [activeSymbol, initialAsset, market.assets],
+    () => market.assets.find((asset) => asset.symbol === selectedSymbol) ?? initialAsset,
+    [selectedSymbol, initialAsset, market.assets],
+  )
+  const activeSymbol = selectedAsset?.symbol ?? ''
+
+  const priceBySymbol = useMemo(
+    () => Object.fromEntries(market.assets.map((asset) => [asset.symbol, asset.price])),
+    [market.assets],
   )
 
   useEffect(() => {
@@ -235,6 +244,65 @@ export function TradingPage() {
     const pending = optimisticTrades.filter((trade) => !knownIds.has(trade.id))
     return pending.length > 0 ? [...pending, ...serverTrades] : serverTrades
   }, [positions.data, optimisticTrades])
+
+  // Win/loss feedback. trade.status carries the outcome; position.update (sent just after it)
+  // carries the net P&L, so the toast waits a moment for it and falls back to an estimate.
+  const knownTradesRef = useRef<Map<string, OpenTrade>>(new Map())
+  const settledPnlRef = useRef<Map<string, number>>(new Map())
+  const notifiedTradesRef = useRef<Set<string>>(new Set())
+  const soundEnabledRef = useRef(soundEnabled)
+
+  useEffect(() => {
+    soundEnabledRef.current = soundEnabled
+  }, [soundEnabled])
+
+  useEffect(() => {
+    for (const trade of openTrades) knownTradesRef.current.set(trade.id, trade)
+  }, [openTrades])
+
+  useEffect(() => {
+    const timers = new Set<number>()
+
+    const unsubscribe = realtime.onEvent((event) => {
+      if (event.type === 'position.update') {
+        const data = event.data as { tradeId?: unknown; status?: unknown; netPnl?: unknown }
+        if (typeof data.tradeId === 'string' && (data.status === 'WON' || data.status === 'LOST') && data.netPnl != null) {
+          const pnl = Number(data.netPnl)
+          if (Number.isFinite(pnl)) settledPnlRef.current.set(data.tradeId, pnl)
+        }
+        return
+      }
+
+      if (event.type !== 'trade.status') return
+      const data = event.data as { tradeId?: unknown; status?: unknown }
+      if (typeof data.tradeId !== 'string' || (data.status !== 'WON' && data.status !== 'LOST')) return
+
+      const tradeId = data.tradeId
+      const outcome = data.status
+      // A trade is announced once, however many times its settlement event is delivered.
+      if (notifiedTradesRef.current.has(tradeId)) return
+      notifiedTradesRef.current.add(tradeId)
+
+      const timer = window.setTimeout(() => {
+        timers.delete(timer)
+        const trade = knownTradesRef.current.get(tradeId)
+        const estimate = trade ? (outcome === 'WON' ? trade.amount * trade.payoutRate : -trade.amount) : undefined
+        const pnl = settledPnlRef.current.get(tradeId) ?? estimate
+        settledPnlRef.current.delete(tradeId)
+
+        const label = trade ? trade.symbol + ' · ' + trade.direction : 'Trade ' + tradeId
+        const pnlText = pnl === undefined ? '' : ' · ' + (pnl >= 0 ? '+' : '-') + '$' + Math.abs(pnl).toFixed(2)
+        addToast(outcome === 'WON' ? 'success' : 'error', outcome === 'WON' ? 'Trade won' : 'Trade lost', label + pnlText)
+        if (soundEnabledRef.current) playTradeSound(outcome === 'WON' ? 'win' : 'lose')
+      }, 250)
+      timers.add(timer)
+    })
+
+    return () => {
+      unsubscribe()
+      timers.forEach((timer) => window.clearTimeout(timer))
+    }
+  }, [addToast, realtime])
 
   // Safety net for a missed trade.status event: check once shortly after each trade expiry.
   // The same trade expiry is never re-armed just because the refresh still reports it as OPEN.
@@ -315,7 +383,7 @@ export function TradingPage() {
     // Show the trade right away; the server list replaces this entry once it contains the trade.
     if (result.status === 'OPEN') {
       const openedAt = Date.parse(result.openedAt)
-      setOptimisticTrades((items) => [
+      setOptimistic((previous) => ({ mode, trades: [
         {
           id: result.tradeId,
           symbol: selectedAsset.symbol,
@@ -329,8 +397,8 @@ export function TradingPage() {
           status: 'OPEN',
         },
         // Also forget entries that expired long ago without the server ever returning them.
-        ...items.filter((item) => item.id !== result.tradeId && item.expiresAt > Date.now() - 10_000),
-      ])
+        ...(previous.mode === mode ? previous.trades : []).filter((item) => item.id !== result.tradeId && item.expiresAt > Date.now() - 10_000),
+      ] }))
     }
 
     // Refresh immediately instead of waiting for the realtime events, which only arrive while the
@@ -351,6 +419,27 @@ export function TradingPage() {
 
   const loading = market.loading || positions.loading || trades.loading || wallet.loading || capabilities.loading
   const error = market.error || positions.error || trades.error || wallet.error || capabilities.error
+
+  // Trading stays disabled until both the wallet and the permissions for the current mode have loaded,
+  // and the panel says why instead of showing dead buttons.
+  const walletReady = wallet.data !== null
+  const capabilitiesReady = capabilities.data !== null
+  const tradeAllowedByServer = capabilities.data?.trading[mode].enabled === true
+  const canTrade = capabilitiesReady && walletReady && tradeAllowedByServer
+  const tradeDisabledReason = capabilities.error
+    ? 'Could not check trading permissions. Use Retry above.'
+    : wallet.error
+      ? 'Could not load your wallet. Use Retry above.'
+      : !capabilitiesReady || !walletReady
+        ? 'Loading your account…'
+        : capabilities.data?.trading[mode].reason
+
+  // Account data that failed while the markets loaded fine. Without this the page looks normal with
+  // empty positions or dead trade buttons.
+  const accountFailures: Array<{ label: string; retry: () => Promise<unknown> }> = []
+  if (capabilities.error) accountFailures.push({ label: 'trading permissions', retry: capabilities.reload })
+  if (wallet.error) accountFailures.push({ label: 'wallet balance', retry: wallet.reload })
+  if (positions.error) accountFailures.push({ label: 'open positions', retry: positions.reload })
 
   if (!selectedAsset || (loading && !market.assets.length)) {
     return (
@@ -373,6 +462,13 @@ export function TradingPage() {
   return (
     <main className="trading-room">
       <div className="trading-room__main">
+        {accountFailures.length > 0 ? (
+          <div className="trading-alert" role="alert">
+            <span>Couldn&apos;t load {accountFailures.map((item) => item.label).join(', ')}.</span>
+            <button type="button" className="quiet-button" onClick={() => accountFailures.forEach((item) => void item.retry())}>Retry</button>
+          </div>
+        ) : null}
+
         <ChartWorkspace
           key={selectedAsset.assetId + ':' + selectedAsset.symbol}
           asset={selectedAsset}
@@ -383,9 +479,14 @@ export function TradingPage() {
         />
 
         <BottomPanel
-          selectedSymbol={activeSymbol}
-          currentPrice={selectedAsset.price}
+          priceBySymbol={priceBySymbol}
           openTrades={openTrades}
+          openLoading={positions.loading}
+          openError={positions.error?.message ?? null}
+          onOpenRetry={() => void positions.reload()}
+          walletLoading={walletTransactions.loading}
+          walletError={walletTransactions.error?.message ?? null}
+          onWalletRetry={() => void walletTransactions.reload()}
           settledTrades={settledTrades}
           walletTransactions={walletTransactions.data?.items ?? []}
           now={now}
@@ -413,8 +514,8 @@ export function TradingPage() {
         balance={Number(wallet.data?.availableBalance ?? '0')}
         walletMode={mode}
         soundEnabled={soundEnabled}
-        canTrade={capabilities.data?.trading[mode].enabled === true}
-        tradeDisabledReason={capabilities.data?.trading[mode].reason}
+        canTrade={canTrade}
+        tradeDisabledReason={tradeDisabledReason}
         onToggleSound={toggleSound}
         onOpenTrade={openTrade}
       />
