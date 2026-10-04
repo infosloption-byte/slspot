@@ -7,6 +7,6 @@ export default defineConfig({
     path: 'prisma/migrations',
   },
   datasource: {
-    url: process.env.DATABASE_URL ?? 'mysql://slspot:slspot@127.0.0.1:3307/slspot',
+    url: process.env.DATABASE_URL ?? 'mysql://slspot:slspot@127.0.0.1:3306/slspot',
   },
 })
