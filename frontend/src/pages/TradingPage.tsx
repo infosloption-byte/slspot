@@ -207,7 +207,7 @@ export function TradingPage() {
   useRealtimeRefresh(() => void reloadTradingState(), {
     events: ['trade.status', 'position.update', 'wallet.update'],
     coalesceMs: 150,
-    fallbackMs: 5000,
+    fallbackMs: 30_000,
   })
 
   const openTrades = useMemo<OpenTrade[]>(() => {
