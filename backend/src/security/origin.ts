@@ -44,7 +44,25 @@ export function assertTrustedOrigin(request: FastifyRequest): void {
 export function assertTrustedWebSocketOrigin(request: FastifyRequest): void {
   const origin = headerValue(request, 'origin')
   const fetchSite = headerValue(request, 'sec-fetch-site')
-  if (!origin || !env.corsOrigins.includes(origin) || fetchSite === 'cross-site') {
+  const host = headerValue(request, 'host')
+
+  if (!origin || fetchSite === 'cross-site') {
+    throw new OriginSecurityError('WebSocket origin is not allowed')
+  }
+
+  // A browser connection through the local Vite proxy is same-origin from the
+  // browser's perspective, but the backend sees the proxied Host header. Accept
+  // that exact host match in development while still requiring configured origins
+  // everywhere else.
+  if (env.nodeEnv === 'development' && host) {
+    try {
+      if (new URL(origin).host === host) return
+    } catch {
+      throw new OriginSecurityError('WebSocket origin is not allowed')
+    }
+  }
+
+  if (!env.corsOrigins.includes(origin)) {
     throw new OriginSecurityError('WebSocket origin is not allowed')
   }
 }
