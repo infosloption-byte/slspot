@@ -23,9 +23,15 @@ import { Pagination } from '../ui/Pagination'
 type TabId = 'open' | 'history' | 'wallet'
 
 type BottomPanelProps = {
-  selectedSymbol: string
-  currentPrice: number
+  /** Latest price per symbol, so every open position shows its own market's price. */
+  priceBySymbol: Record<string, number>
   openTrades: OpenTrade[]
+  openLoading?: boolean
+  openError?: string | null
+  onOpenRetry?: () => void
+  walletLoading?: boolean
+  walletError?: string | null
+  onWalletRetry?: () => void
   settledTrades: OpenTrade[]
   walletTransactions: WalletTransaction[]
   now: number
@@ -141,9 +147,14 @@ function formatWalletTime(value: string) {
 }
 
 export function BottomPanel({
-  selectedSymbol,
-  currentPrice,
+  priceBySymbol,
   openTrades,
+  openLoading = false,
+  openError = null,
+  onOpenRetry,
+  walletLoading = false,
+  walletError = null,
+  onWalletRetry,
   settledTrades,
   walletTransactions,
   now,
@@ -165,10 +176,8 @@ export function BottomPanel({
 }: BottomPanelProps) {
   const [active, setActive] = useState<TabId>('open')
 
-  const visiblePositions = useMemo(
-    () => openTrades.filter((trade) => trade.symbol === selectedSymbol),
-    [openTrades, selectedSymbol],
-  )
+  // Every open position is shown whichever market is selected on the chart.
+  const visiblePositions = openTrades
 
   const visibleHistory = useMemo(
     () => settledTrades,
@@ -233,9 +242,27 @@ export function BottomPanel({
 
       {!collapsed && active === 'open' ? (
         <div className="positions-table">
-          {visiblePositions.length === 0 ? (
+          {openError && visiblePositions.length > 0 ? (
+            <div className="trade-history-error" role="alert">
+              <strong>Positions refresh failed.</strong>
+              <span>{openError}</span>
+              {onOpenRetry ? <button type="button" className="quiet-button" onClick={onOpenRetry}>Retry</button> : null}
+            </div>
+          ) : null}
+          {visiblePositions.length === 0 && openLoading ? (
+            <div className="trade-history-state" role="status">
+              <span className="loading-spinner" aria-hidden="true" />
+              <strong>Loading open positions…</strong>
+            </div>
+          ) : visiblePositions.length === 0 && openError ? (
+            <div className="trade-history-state trade-history-state--error" role="alert">
+              <strong>Unable to load open positions</strong>
+              <span>{openError}</span>
+              {onOpenRetry ? <button type="button" className="quiet-button" onClick={onOpenRetry}>Retry</button> : null}
+            </div>
+          ) : visiblePositions.length === 0 ? (
             <EmptyState
-              title={'No open position for ' + selectedSymbol}
+              title="No open positions"
               message="Place a trade to see the server position and expiry countdown here."
               icon={<Clock3 size={18} />}
             />
@@ -254,6 +281,7 @@ export function BottomPanel({
               {visiblePositions.map((trade) => {
                 const remaining = tradeRemainingSeconds(trade, now)
                 const progress = tradeProgress(trade, now)
+                const currentPrice = priceBySymbol[trade.symbol]
                 return (
                   <div className="position-row position-row--live" key={trade.id}>
                     <span>
@@ -264,7 +292,7 @@ export function BottomPanel({
                       {trade.direction}
                     </span>
                     <span>{formatPrice(trade.entryPrice, trade.entryPrice < 10 ? 5 : 2)}</span>
-                    <span>{formatPrice(currentPrice, currentPrice < 10 ? 5 : 2)}</span>
+                    <span>{currentPrice !== undefined && currentPrice > 0 ? formatPrice(currentPrice, currentPrice < 10 ? 5 : 2) : '—'}</span>
                     <span className="countdown-cell">
                       <strong>{formatCountdown(remaining)}</strong>
                       <span className="countdown-track">
@@ -468,7 +496,18 @@ export function BottomPanel({
 
       {!collapsed && active === 'wallet' ? (
         <div className="activity-table">
-          {visibleWallet.length === 0 ? (
+          {visibleWallet.length === 0 && walletLoading ? (
+            <div className="trade-history-state" role="status">
+              <span className="loading-spinner" aria-hidden="true" />
+              <strong>Loading wallet activity…</strong>
+            </div>
+          ) : visibleWallet.length === 0 && walletError ? (
+            <div className="trade-history-state trade-history-state--error" role="alert">
+              <strong>Unable to load wallet activity</strong>
+              <span>{walletError}</span>
+              {onWalletRetry ? <button type="button" className="quiet-button" onClick={onWalletRetry}>Retry</button> : null}
+            </div>
+          ) : visibleWallet.length === 0 ? (
             <EmptyState
               title="No wallet activity yet"
               message="Server wallet holds, settlements, fees, deposits, and withdrawals will appear here."

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { applyLivePrice } from './liveCandle'
+import { applyLivePrice, reconcileLiveBar } from './liveCandle'
 
 const bar = { time: 1_000, open: 10, high: 12, low: 9, close: 11, volume: 5 }
 
@@ -28,5 +28,30 @@ describe('applyLivePrice', () => {
 
   it('treats a clock slightly behind the candle as the same candle', () => {
     assert.equal(applyLivePrice(bar, 11, 300, 990).time, 1_000)
+  })
+})
+
+describe('reconcileLiveBar', () => {
+  const server = { time: 1_000, open: 10, high: 12, low: 9, close: 11, volume: 5 }
+
+  it('uses the server bar when there is no local bar', () => {
+    assert.equal(reconcileLiveBar(null, server), server)
+  })
+
+  it('keeps a locally started newer candle when a late event for the old period arrives', () => {
+    const rolled = applyLivePrice(server, 13, 300, 1_310)
+    const afterSpike = applyLivePrice(rolled, 15, 300, 1_320)
+    assert.equal(reconcileLiveBar(afterSpike, server), afterSpike)
+    assert.equal(reconcileLiveBar(afterSpike, server)?.high, 15, 'accumulated high is preserved')
+  })
+
+  it('lets the server bar win once it covers the same or a newer period', () => {
+    const rolled = applyLivePrice(server, 13, 300, 1_310)
+    const serverNext = { ...rolled, open: 11.1, close: 12.9 }
+    assert.equal(reconcileLiveBar(rolled, serverNext), serverNext)
+  })
+
+  it('returns null when the dataset has no candles', () => {
+    assert.equal(reconcileLiveBar(server, null), null)
   })
 })

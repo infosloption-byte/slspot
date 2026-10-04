@@ -41,3 +41,18 @@ export function applyLivePrice<T extends LiveBar>(last: T, price: number, interv
     close: price,
   }
 }
+
+/**
+ * Decide which bar live ticks should keep extending after the server candles changed.
+ *
+ * A candle event or reload replaces the server candles, which do not contain the candle this
+ * client started locally at a period rollover. If the local bar is newer than the server's last
+ * bar it is kept, so its accumulated high/low are not thrown away and a late event for the old
+ * period cannot pull new-period prices back into the old candle. Once the server delivers the
+ * new period's candle, the server bar wins.
+ */
+export function reconcileLiveBar<T extends LiveBar>(live: T | null, serverLast: T | null): T | null {
+  if (!serverLast) return null
+  if (live && live.time > serverLast.time) return live
+  return serverLast
+}

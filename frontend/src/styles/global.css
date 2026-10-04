@@ -1241,21 +1241,6 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
 .chart-rsi-panel line { stroke:rgba(255,255,255,.08); stroke-width:1; vector-effect:non-scaling-stroke; }
 .chart-rsi-panel polyline { fill:none; stroke:var(--accent); stroke-width:2; vector-effect:non-scaling-stroke; }
 
-.trade-chart-markers { position:absolute; inset:0; pointer-events:none; z-index:4; }
-.trade-chart-marker { position:absolute; left:0; right:0; height:0; display:flex; align-items:center; }
-.trade-chart-marker__line { height:1px; width:100%; border-top:1px dashed rgba(255,194,26,.38); }
-.trade-chart-marker--down .trade-chart-marker__line { border-top-color:rgba(255,77,94,.38); }
-.trade-chart-marker__label {
-  position:absolute; right:12px; transform:translateY(-50%); display:grid; grid-template-columns:auto auto auto; align-items:center; gap:7px;
-  padding:5px 8px; border:1px solid var(--accent-line); border-radius:7px; background:rgba(13,13,16,.94); box-shadow:0 8px 24px rgba(0,0,0,.24);
-  font-size:10px; white-space:nowrap;
-}
-.trade-chart-marker__label b { color:var(--green); }
-.trade-chart-marker--down .trade-chart-marker__label { border-color:rgba(255,77,94,.3); }
-.trade-chart-marker--down .trade-chart-marker__label b { color:var(--red); }
-.trade-chart-marker__label small { color:var(--muted); }
-.trade-chart-marker__label em { color:var(--accent); font-style:normal; font-weight:800; font-variant-numeric:tabular-nums; }
-.trade-chart-marker__progress { position:absolute; left:0; bottom:-2px; height:2px; background:var(--accent); opacity:.5; }
 
 .drawing-layer { position:absolute; inset:0; z-index:8; cursor:crosshair; touch-action:none; }
 .drawing-layer__hint { position:absolute; left:50%; top:10px; transform:translateX(-50%); padding:5px 8px; border-radius:7px; background:var(--panel-raised); border:1px solid var(--accent-line); color:var(--accent); font-size:11px; white-space:nowrap; }
@@ -1325,8 +1310,6 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
   .toast-viewport { top:10px; right:8px; width:calc(100vw - 16px); }
   .toast { grid-template-columns:30px 1fr auto; }
   .chart-options__popover { width:min(290px, calc(100vw - 16px)); }
-  .trade-chart-marker__label { right:6px; grid-template-columns:auto auto; }
-  .trade-chart-marker__label small { display:none; }
   .wallet-grid { gap:8px; }
   .wallet-balance-switcher { gap:6px; }
   .wallet-funding-state { padding:13px; }
@@ -1340,7 +1323,6 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
   .drawing-tools { grid-template-columns:1fr; }
   .chart-type-switch { grid-template-columns:1fr 1fr 1fr; }
   .trade-mobile-config__grid { grid-template-columns:1fr 1fr; }
-  .trade-chart-marker__label { padding:4px 6px; font-size:9px; }
 }
 
 .asset-icon--aapl,.asset-icon--nas { background:rgba(255,194,26,.1); color:var(--accent); border-color:var(--accent-line); }
@@ -2820,3 +2802,21 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
   .trade-history-panel .activity-row--trade-history > :nth-child(4)::before { content: 'Open '; color: var(--muted-2); font-size: 11px; }
   .trade-history-panel .activity-row--trade-history > :nth-child(5)::before { content: 'Close '; color: var(--muted-2); font-size: 11px; }
 }
+
+
+/* Account data that failed to load (positions, wallet, permissions) */
+.trading-alert {
+  flex: none;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 12px 0;
+  padding: 8px 10px;
+  border: 1px solid rgba(255, 77, 94, .24);
+  border-radius: var(--radius-sm);
+  background: var(--red-soft);
+  color: var(--muted);
+  font-size: 12px;
+}
+.trading-alert button { margin-left: auto; }

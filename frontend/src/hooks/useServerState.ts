@@ -33,7 +33,7 @@ export function useMarketCandles(assetId: string | undefined, interval: string, 
 export function usePortfolioSummary() {
   const { mode } = useWalletMode()
   const load = useCallback(() => portfolioApi.summary(mode), [mode])
-  const resource = useAsyncResource(load)
+  const resource = useAsyncResource(load, true, mode)
   useEffect(() => { if (resource.data) setPortfolioSummary(resource.data) }, [resource.data])
   return resource
 }
@@ -41,7 +41,7 @@ export function usePortfolioSummary() {
 export function usePortfolioAnalytics() {
   const { mode } = useWalletMode()
   const load = useCallback(() => portfolioApi.analytics(mode), [mode])
-  const resource = useAsyncResource(load)
+  const resource = useAsyncResource(load, true, mode)
   useEffect(() => { if (resource.data) setPortfolioAnalytics(resource.data) }, [resource.data])
   return resource
 }
@@ -49,7 +49,7 @@ export function usePortfolioAnalytics() {
 export function usePortfolioPositions(page: number, pageSize = 25) {
   const { mode } = useWalletMode()
   const load = useCallback(() => portfolioApi.positions({ page, pageSize }, mode), [page, pageSize, mode])
-  const resource = useAsyncResource(load)
+  const resource = useAsyncResource(load, true, mode)
   useEffect(() => { if (resource.data) setPortfolioPositions(resource.data.items) }, [resource.data])
   return resource
 }
@@ -73,13 +73,13 @@ export function useTrades(page: number, pageSize = 25, status?: TradeRecord['sta
     () => tradesApi.list({ page, pageSize, status: status ?? filterStatus, search, assetId, direction, from, to, sortBy, sortOrder, settledOnly }, mode),
     [page, pageSize, status, filterStatus, search, assetId, direction, from, to, sortBy, sortOrder, settledOnly, mode],
   )
-  return useAsyncResource(load)
+  return useAsyncResource(load, true, mode)
 }
 
 export function useWallet() {
   const { mode } = useWalletMode()
   const load = useCallback(() => walletApi.get(mode), [mode])
-  return useAsyncResource(load)
+  return useAsyncResource(load, true, mode)
 }
 
 export function useWallets() {
@@ -98,7 +98,7 @@ export function useWalletTransactions(
     () => walletApi.transactions({ page, pageSize, search, type, status, from, to }, mode),
     [page, pageSize, search, type, status, from, to, mode],
   )
-  return useAsyncResource(load)
+  return useAsyncResource(load, true, mode)
 }
 
 export function useNotifications(page: number, pageSize = 25, unreadOnly = false) {
