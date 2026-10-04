@@ -8,7 +8,6 @@ import {
   History,
   RotateCcw,
   Search,
-  ShieldCheck,
   TimerReset,
   WalletCards,
 } from 'lucide-react'
@@ -508,20 +507,6 @@ export function BottomPanel({
               })}
             </>
           )}
-        </div>
-      ) : null}
-
-      {!collapsed && visiblePositions.length > 0 && active === 'open' ? (
-        <div className="position-detail position-detail--live">
-          <span className="position-detail__icon"><ShieldCheck size={15} /></span>
-          <div className="position-detail__copy">
-            <strong>Server positions</strong>
-            <span>{visiblePositions.length} open · settlement is controlled by the trading engine</span>
-          </div>
-          <div className="position-detail__metrics">
-            <span>Current <b>{formatPrice(currentPrice, currentPrice < 10 ? 5 : 2)}</b></span>
-            <span>Market <b>{selectedSymbol}</b></span>
-          </div>
         </div>
       ) : null}
     </section>
