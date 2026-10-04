@@ -16,7 +16,7 @@ export default defineConfig({
   server: {
     strictPort: true,
     port: 5173,
-    headers: securityHeaders,
+    headers: devSecurityHeaders,
     proxy: {
       '/api': {
         target: 'http://localhost:8080',
