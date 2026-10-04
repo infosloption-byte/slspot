@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AssetList } from '../components/market/AssetList'
 import { BottomPanel } from '../components/layout/BottomPanel'
 import { TradePanel } from '../components/trading/TradePanel'
@@ -229,35 +229,39 @@ export function TradingPage() {
 
   // Safety net for a missed trade.status event: check once shortly after each trade expiry.
   // The same trade expiry is never re-armed just because the refresh still reports it as OPEN.
-  const nextExpiry = useMemo(() => {
-    const next = openTrades
-      .filter((trade) => Number.isFinite(trade.expiresAt))
-      .sort((a, b) => a.expiresAt - b.expiresAt)[0]
-
-    return next ? { tradeId: next.id, expiresAt: next.expiresAt } : null
-  }, [openTrades])
-
-  const expiryCheckKeyRef = useRef<string | null>(null)
+  const expiryCheckKeysRef = useRef<Set<string>>(new Set())
 
   useEffect(() => {
-    if (nextExpiry === null) {
-      expiryCheckKeyRef.current = null
-      return undefined
+    const checkedKeys = expiryCheckKeysRef.current
+    const activeKeys = new Set(
+      openTrades
+        .filter((trade) => Number.isFinite(trade.expiresAt))
+        .map((trade) => trade.id + ':' + trade.expiresAt),
+    )
+
+    // Drop entries for trades that are no longer open so the guard cannot grow forever.
+    for (const key of checkedKeys) {
+      if (!activeKeys.has(key)) checkedKeys.delete(key)
     }
 
-    const checkKey = nextExpiry.tradeId + ':' + nextExpiry.expiresAt
-    if (expiryCheckKeyRef.current === checkKey) return undefined
+    const nextExpiry = openTrades
+      .filter((trade) => Number.isFinite(trade.expiresAt))
+      .filter((trade) => !checkedKeys.has(trade.id + ':' + trade.expiresAt))
+      .sort((a, b) => a.expiresAt - b.expiresAt)[0]
 
+    if (!nextExpiry) return undefined
+
+    const checkKey = nextExpiry.id + ':' + nextExpiry.expiresAt
     const delay = Math.max(2000, nextExpiry.expiresAt - Date.now() + 1500)
     const timer = window.setTimeout(() => {
-      // Mark this expiry as checked before reloading so an unchanged OPEN trade cannot
+      // Mark this expiry before refreshing so an unchanged OPEN trade cannot
       // re-arm the timer every few seconds.
-      expiryCheckKeyRef.current = checkKey
+      checkedKeys.add(checkKey)
       void reloadTradingState()
     }, delay)
 
     return () => window.clearTimeout(timer)
-  }, [nextExpiry, reloadTradingState])
+  }, [openTrades, reloadTradingState])
 
   const settledTrades = useMemo<OpenTrade[]>(() => {
     return (trades.data?.items ?? [])
