@@ -8,6 +8,14 @@ const securityHeaders = {
   'Cross-Origin-Resource-Policy': 'same-origin',
 } as const
 
+const devSecurityHeaders = {
+  ...securityHeaders,
+  'Content-Security-Policy': contentSecurityPolicy.replace(
+    "script-src 'self'",
+    "script-src 'self' 'unsafe-inline'",
+  ),
+} as const
+
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
