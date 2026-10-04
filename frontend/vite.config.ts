@@ -1,5 +1,11 @@
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+
+const contentSecurityPolicy =
+  "default-src 'self'; base-uri 'self'; frame-ancestors 'none'; object-src 'none'; form-action 'self'; script-src 'self'; connect-src 'self' ws: wss:; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:;"
+
 const securityHeaders = {
-  'Content-Security-Policy': "default-src 'self'; base-uri 'self'; frame-ancestors 'none'; object-src 'none'; form-action 'self'; script-src 'self'; connect-src 'self' ws: wss:; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:;",
+  'Content-Security-Policy': contentSecurityPolicy,
   'X-Content-Type-Options': 'nosniff',
   'X-Frame-Options': 'DENY',
   'Referrer-Policy': 'no-referrer',
@@ -8,6 +14,8 @@ const securityHeaders = {
   'Cross-Origin-Resource-Policy': 'same-origin',
 } as const
 
+// Vite's React plugin injects an inline HMR preamble during development.
+// Keep the production/preview policy strict; relax only this dev-only requirement.
 const devSecurityHeaders = {
   ...securityHeaders,
   'Content-Security-Policy': contentSecurityPolicy.replace(
@@ -15,9 +23,6 @@ const devSecurityHeaders = {
     "script-src 'self' 'unsafe-inline'",
   ),
 } as const
-
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
