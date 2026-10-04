@@ -51,7 +51,7 @@ function createMockAuthService(): AuthServiceLike {
 }
 
 function csrfToken(sessionCookie?: string): string {
-  const sessionToken = sessionCookie?.split(';')[0].split('=')[1]
+  const sessionToken = sessionCookie?.split(';')[0]?.split('=')[1]
   return createCsrfToken(sessionToken)
 }
 
