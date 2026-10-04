@@ -145,7 +145,7 @@ function parseDatabaseUrl(
   password: string
   name: string
 } {
-  const fallback = 'mysql://slspot:slspot@127.0.0.1:3307/slspot'
+  const fallback = 'mysql://slspot:slspot@127.0.0.1:3306/slspot'
   const rawUrl = value ?? fallback
 
   if (nodeEnv === 'production' && value === undefined) {
