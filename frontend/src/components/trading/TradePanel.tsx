@@ -26,29 +26,28 @@ function formatDuration(value: number) {
 }
 
 export function TradePanel({ asset, balance, walletMode, canTrade, tradeDisabledReason, soundEnabled, onToggleSound, onOpenTrade }: TradePanelProps) {
-  const [amount, setAmount] = useState(Math.min(50, asset.maxAmount))
+  // The stake is kept as text so an emptied field stays empty; a numeric state turned "" into 0,
+  // and typing after that produced "05".
+  const [amountText, setAmountText] = useState(String(Math.min(50, asset.maxAmount)))
+  const amount = amountText === '' ? 0 : Number(amountText)
+  const setAmount = (value: number) => setAmountText(String(value))
+  const handleAmountInput = (raw: string) => {
+    setAmountText(raw.replace(/^0+(?=\d)/, ''))
+    resetOrder()
+  }
   const [duration, setDuration] = useState(asset.durationsSeconds[0] ?? 60)
   const [durationOpen, setDurationOpen] = useState(false)
   const [stage, setStage] = useState<OrderStage>('draft')
   const [error, setError] = useState('')
-  const [lastOrder, setLastOrder] = useState<TradeCreateResult | null>(null)
   const [mobileConfigOpen, setMobileConfigOpen] = useState(false)
   const [mobileDurationOpen, setMobileDurationOpen] = useState(false)
   const [failedRequest, setFailedRequest] = useState<FailedTradeRequest | null>(null)
-  const [now, setNow] = useState<number | null>(null)
   const durationRef = useRef<HTMLDivElement>(null)
   const payoutRate = Number(asset.payoutRate)
   const estimatedPayout = amount * payoutRate
   const feeRate = Number(asset.feeRate)
   const estimatedFee = Number.isFinite(feeRate) && feeRate > 0 ? amount * feeRate : 0
   const totalReturn = amount + estimatedPayout - estimatedFee
-  const expiryPreview = now === null ? null : new Date(now + duration * 1000)
-
-  useEffect(() => {
-    const updateClock = () => setNow(Date.now())
-    const timer = window.setInterval(updateClock, 1000)
-    return () => window.clearInterval(timer)
-  }, [])
 
   const validate = () => {
     if (!Number.isFinite(amount) || amount < asset.minAmount || amount > asset.maxAmount) {
@@ -112,7 +111,6 @@ export function TradePanel({ asset, balance, walletMode, canTrade, tradeDisabled
         payoutRate,
         clientRequestId: requestId,
       })
-      setLastOrder(result)
       setFailedRequest(null)
       setStage(result.orderStatus === 'PENDING' ? 'pending' : result.orderStatus === 'ACCEPTED' ? 'accepted' : 'open')
       window.setTimeout(() => setStage('draft'), 1600)
@@ -129,7 +127,7 @@ export function TradePanel({ asset, balance, walletMode, canTrade, tradeDisabled
   }
 
   const adjustAmount = (delta: number) => {
-    setAmount((current) => Math.max(asset.minAmount, Math.min(asset.maxAmount, current + delta)))
+    setAmount(Math.max(asset.minAmount, Math.min(asset.maxAmount, amount + delta)))
     if (stage !== 'draft') resetOrder()
   }
 
@@ -157,13 +155,6 @@ export function TradePanel({ asset, balance, walletMode, canTrade, tradeDisabled
   return (
     <>
       <aside className="trade-panel" aria-label="Trade controls">
-        {stage !== 'draft' || lastOrder ? (
-          <div className={'trade-state-banner trade-state-banner--' + stage} role="status">
-            <span>{stage === 'submitting' ? 'Submitting order…' : stage === 'accepted' ? 'Order accepted' : stage === 'open' ? 'Trade open' : stage === 'rejected' ? 'Order rejected' : stage === 'failed' ? 'Order failed' : lastOrder?.status ?? 'Ready'}</span>
-            {lastOrder ? <small>{lastOrder.tradeId} · {lastOrder.orderStatus}</small> : null}
-          </div>
-        ) : null}
-
         <div className="trade-panel__head">
           <div>
             <span className="trade-panel__label">Server account</span>
@@ -180,7 +171,7 @@ export function TradePanel({ asset, balance, walletMode, canTrade, tradeDisabled
             <span className="trade-field__label">Stake · {asset.quoteCurrency}</span>
             <div className="stepper">
               <button type="button" onClick={() => adjustAmount(-10)} aria-label="Decrease stake"><Minus size={17} /></button>
-              <div className="stepper__value"><span>{asset.quoteCurrency}</span><input value={amount} onChange={(event) => { setAmount(Number(event.target.value) || 0); resetOrder() }} type="number" inputMode="decimal" min={asset.minAmount} max={asset.maxAmount} aria-label="Stake amount" /></div>
+              <div className="stepper__value"><span>{asset.quoteCurrency}</span><input value={amount} onChange={(event) => handleAmountInput(event.target.value)} type="number" inputMode="decimal" min={asset.minAmount} max={asset.maxAmount} aria-label="Stake amount" /></div>
               <button type="button" onClick={() => adjustAmount(10)} aria-label="Increase stake"><Plus size={17} /></button>
             </div>
             <div className="chips">
@@ -207,11 +198,9 @@ export function TradePanel({ asset, balance, walletMode, canTrade, tradeDisabled
 
           <div className="payout-card">
             <div><span>Potential return</span><strong>{formatCurrency(estimatedPayout, asset.quoteCurrency)}</strong></div>
-            <div><span>Estimated fee</span><strong>-{formatCurrency(estimatedFee, asset.quoteCurrency)}</strong></div>
             <div><span>Total at expiry</span><strong>{formatCurrency(totalReturn, asset.quoteCurrency)}</strong></div>
             <small>{asset.payout}% server payout · {((Number(asset.feeRate) || 0) * 100).toFixed(2)}% fee · {asset.quoteCurrency}</small>
           </div>
-          <div className="expiry-preview"><Timer size={13} /><span>Expiry</span><strong>{expiryPreview ? expiryPreview.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : 'Calculating…'}</strong><small>in {formatDuration(duration)}</small></div>
 
           {renderActions()}
 
@@ -231,14 +220,14 @@ export function TradePanel({ asset, balance, walletMode, canTrade, tradeDisabled
           {mobileConfigOpen ? (
             <div className="trade-mobile-config__panel">
               <div className="trade-mobile-config__grid">
-                <label><span>Stake</span><div className="stepper"><button type="button" onClick={() => adjustAmount(-10)} aria-label="Decrease stake"><Minus size={15} /></button><div className="stepper__value"><span>{asset.quoteCurrency}</span><input value={amount} onChange={(event) => { setAmount(Number(event.target.value) || 0); resetOrder() }} type="number" inputMode="decimal" /></div><button type="button" onClick={() => adjustAmount(10)} aria-label="Increase stake"><Plus size={15} /></button></div></label>
+                <label><span>Stake</span><div className="stepper"><button type="button" onClick={() => adjustAmount(-10)} aria-label="Decrease stake"><Minus size={15} /></button><div className="stepper__value"><span>{asset.quoteCurrency}</span><input value={amount} onChange={(event) => handleAmountInput(event.target.value)} type="number" inputMode="decimal" /></div><button type="button" onClick={() => adjustAmount(10)} aria-label="Increase stake"><Plus size={15} /></button></div></label>
                 <label>
                   <span>Duration</span>
                   <button className="mobile-duration-button" type="button" onClick={() => setMobileDurationOpen((open) => !open)} aria-expanded={mobileDurationOpen}>{formatDuration(duration)} <ChevronDown size={13} /></button>
                   {mobileDurationOpen ? <div className="mobile-duration-options">{asset.durationsSeconds.map((value) => <button key={value} type="button" className={duration === value ? 'duration-option duration-option--active' : 'duration-option'} onClick={() => { chooseDuration(value); setMobileDurationOpen(false) }}>{formatDuration(value)}</button>)}</div> : null}
                 </label>
               </div>
-              <div className="payout-card"><div><span>Potential return</span><strong>{formatCurrency(estimatedPayout, asset.quoteCurrency)}</strong></div><div><span>Estimated fee</span><strong>-{formatCurrency(estimatedFee, asset.quoteCurrency)}</strong></div><small>{formatCurrency(totalReturn, asset.quoteCurrency)} total · expiry {expiryPreview ? expiryPreview.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Calculating…'}</small></div>
+              <div className="payout-card"><div><span>Potential return</span><strong>{formatCurrency(estimatedPayout, asset.quoteCurrency)}</strong></div><small>{formatCurrency(totalReturn, asset.quoteCurrency)} total at expiry</small></div>
               <button type="button" className="trade-panel__sound-button" onClick={onToggleSound}>{soundEnabled ? <Volume2 size={14} /> : <VolumeX size={14} />} {soundEnabled ? 'Sounds on' : 'Sounds off'}</button>
             </div>
           ) : null}
