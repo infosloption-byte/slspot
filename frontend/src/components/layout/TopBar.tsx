@@ -53,7 +53,7 @@ export function TopBar() {
 
   // Balance and unread count are pushed over the WebSocket. Polling only runs while the socket is down.
   useRealtimeRefresh(() => void reloadWallets(), { events: ['wallet.update', 'trade.status'], fallbackMs: 30_000 })
-  useRealtimeRefresh(() => void reloadNotifications(), { events: ['notification.created'], fallbackMs: 15_000 })
+  useRealtimeRefresh(() => void reloadNotifications(), { events: ['notification.created'], fallbackMs: 60_000 })
 
   useEffect(() => {
     if (!walletMenuOpen) return
