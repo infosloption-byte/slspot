@@ -2,10 +2,10 @@ import { randomUUID } from 'node:crypto'
 import { Prisma, type PrismaClient, type Wallet } from '../generated/prisma/client.js'
 import { env } from '../config/env.js'
 import { createRealtimeEvent, serializeRealtimeEvent } from '../realtime/events.js'
-import { isRedisReady, publish } from '../realtime/redis.js'
+import { publishRealtime } from '../realtime/bus.js'
 import { getTradingRules, TRADING_RULES } from './config.js'
 import { LedgerService } from '../ledger/service.js'
-import { DemoPriceSimulator } from './demoPrice.js'
+import { DEMO_PRICE_BASES, DemoPriceSimulator } from './demoPrice.js'
 
 export type TradeDirection = 'UP' | 'DOWN'
 export type WalletMode = 'DEMO' | 'REAL'
@@ -161,19 +161,6 @@ type TradingMarketSnapshot = {
   status: string
   lastPrice: Prisma.Decimal | null
   lastPriceAt: Date | null
-}
-
-const DEMO_PRICE_BASES: Record<string, string> = {
-  'BTC/USD': '68000',
-  'ETH/USD': '2500',
-  'SOL/USD': '150',
-  'XRP/USD': '2.4',
-  'EUR/USD': '1.17',
-  'GBP/USD': '1.35',
-  'AAPL/USD': '255',
-  'TSLA/USD': '430',
-  'XAU/USD': '3850',
-  'NAS100/USD': '24600',
 }
 
 export class TradingService {
@@ -1145,9 +1132,8 @@ export class TradingService {
   }
 
   private async publishUserEvent(event: ReturnType<typeof createRealtimeEvent>): Promise<void> {
-    if (!isRedisReady()) return
     try {
-      await publish(env.redisChannel, serializeRealtimeEvent(event))
+      await publishRealtime(serializeRealtimeEvent(event))
     } catch (error) {
       this.logger.warn({ err: error }, 'Failed to publish trading realtime event')
     }
