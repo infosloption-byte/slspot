@@ -227,24 +227,37 @@ export function TradingPage() {
       }))
   }, [positions.data])
 
-  // Safety net for a missed trade.status event: check once shortly after the earliest expiry,
-  // not on a fixed interval. It re-arms after every reload, so a trade the server has not settled
-  // yet is checked again, but only while a trade is actually overdue.
+  // Safety net for a missed trade.status event: check once shortly after each trade expiry.
+  // The same trade expiry is never re-armed just because the refresh still reports it as OPEN.
   const nextExpiry = useMemo(() => {
-    const expiries = openTrades.map((trade) => trade.expiresAt).filter((value) => Number.isFinite(value))
-    return expiries.length ? Math.min(...expiries) : null
+    const next = openTrades
+      .filter((trade) => Number.isFinite(trade.expiresAt))
+      .sort((a, b) => a.expiresAt - b.expiresAt)[0]
+
+    return next ? { tradeId: next.id, expiresAt: next.expiresAt } : null
   }, [openTrades])
 
-  useEffect(() => {
-    if (nextExpiry === null) return undefined
+  const expiryCheckKeyRef = useRef<string | null>(null)
 
-    const delay = Math.max(2000, nextExpiry - Date.now() + 1500)
+  useEffect(() => {
+    if (nextExpiry === null) {
+      expiryCheckKeyRef.current = null
+      return undefined
+    }
+
+    const checkKey = nextExpiry.tradeId + ':' + nextExpiry.expiresAt
+    if (expiryCheckKeyRef.current === checkKey) return undefined
+
+    const delay = Math.max(2000, nextExpiry.expiresAt - Date.now() + 1500)
     const timer = window.setTimeout(() => {
+      // Mark this expiry as checked before reloading so an unchanged OPEN trade cannot
+      // re-arm the timer every few seconds.
+      expiryCheckKeyRef.current = checkKey
       void reloadTradingState()
     }, delay)
 
     return () => window.clearTimeout(timer)
-  }, [nextExpiry, openTrades, reloadTradingState])
+  }, [nextExpiry, reloadTradingState])
 
   const settledTrades = useMemo<OpenTrade[]>(() => {
     return (trades.data?.items ?? [])
