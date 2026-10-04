@@ -17,6 +17,7 @@ const WS_PATH = '/ws'
 const HEARTBEAT_MS = 30_000
 
 type AuthenticatedSocket = { userId: string }
+type RealtimeRequest = FastifyRequest & { realtimePrincipal?: AuthenticatedSocket }
 
 export type RealtimeGatewayOptions = {
   authenticate?: (request: FastifyRequest) => Promise<AuthenticatedSocket | null>
@@ -34,39 +35,63 @@ export class RealtimeGateway {
       options: { maxPayload: env.websocketMaxPayloadBytes },
     })
 
-    app.route({
-      method: 'GET',
-      url: WS_PATH,
-      handler: async (_request, reply) => {
-        return reply.code(426).send({ success: false, error: { code: 'UPGRADE_REQUIRED', message: 'WebSocket upgrade required' } })
-      },
-      wsHandler: async (socket, request) => {
-      try {
-        assertTrustedWebSocketOrigin(request)
-        await enforceRateLimit({
-          key: 'ws:' + request.ip,
-          limit: env.security.rateLimit.generalLimit,
-          windowSeconds: env.security.rateLimit.generalWindowSeconds,
-        })
-      } catch (error) {
-        request.log.warn({ securityCode: error instanceof Error ? error.name : 'WS_SECURITY_REJECTED' }, 'WebSocket security check rejected connection')
-        socket.close(1008, 'Connection not allowed')
-        return
-      }
+    app.get(
+      WS_PATH,
+      {
+        websocket: true,
+        preValidation: async (request, reply) => {
+          try {
+            assertTrustedWebSocketOrigin(request)
+            await enforceRateLimit({
+              key: 'ws:' + request.ip,
+              limit: env.security.rateLimit.generalLimit,
+              windowSeconds: env.security.rateLimit.generalWindowSeconds,
+            })
 
-      if (this.options.authenticate) {
-        const principal = await this.options.authenticate(request)
+            if (this.options.authenticate) {
+              const principal = await this.options.authenticate(request)
+              if (!principal) {
+                return reply.code(401).send({
+                  success: false,
+                  error: {
+                    code: 'UNAUTHENTICATED',
+                    message: 'Authentication is required',
+                  },
+                })
+              }
+              ;(request as RealtimeRequest).realtimePrincipal = principal
+            } else {
+              ;(request as RealtimeRequest).realtimePrincipal = { userId: 'anonymous' }
+            }
+          } catch (error) {
+            const statusCode = typeof error === 'object' && error !== null && 'statusCode' in error
+              ? Number((error as { statusCode?: unknown }).statusCode)
+              : 403
+            const code = typeof error === 'object' && error !== null && 'code' in error
+              ? String((error as { code?: unknown }).code)
+              : 'WS_SECURITY_REJECTED'
+            const message = error instanceof Error ? error.message : 'WebSocket connection is not allowed'
+
+            request.log.warn({ securityCode: code }, 'WebSocket security check rejected connection')
+            return reply.code(statusCode >= 400 && statusCode < 500 ? statusCode : 403).send({
+              success: false,
+              error: { code, message },
+            })
+          }
+
+          return undefined
+        },
+      },
+      (socket, request) => {
+        const principal = (request as RealtimeRequest).realtimePrincipal
         if (!principal) {
-          socket.close(1008, 'Authentication required')
+          socket.terminate()
           return
         }
-        this.attach(socket, principal)
-        return
-      }
 
-      this.attach(socket, { userId: 'anonymous' })
+        this.attach(socket, principal)
       },
-    })
+    )
   }
 
   broadcastSerialized(message: string): void {
