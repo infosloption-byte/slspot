@@ -86,12 +86,18 @@ process.once('SIGTERM', () => {
 })
 
 try {
+  app.log.info({ host: env.database.host, port: env.database.port, database: env.database.name }, 'Connecting to database')
   await connectDatabase()
+  app.log.info('Database connection established')
+
+  app.log.info('Bootstrapping configured administrators')
   const bootstrappedAdmins = await adminService.bootstrapConfiguredAdmins()
   if (bootstrappedAdmins > 0) app.log.info({ count: bootstrappedAdmins }, 'Configured administrator access bootstrapped')
 
   try {
+    app.log.info({ host: new URL(env.redisUrl).hostname, port: new URL(env.redisUrl).port || 6379 }, 'Connecting to Redis')
     await connectRedis()
+    app.log.info('Redis connection established')
     await subscribe(env.redisChannel, (message) => {
       if (isRedisReady()) {
         realtimeGateway.broadcastSerialized(message)
@@ -104,12 +110,18 @@ try {
   }
 
   await app.listen({ host: env.host, port: env.port })
-  await marketDataService.start()
-  await tradingService.start()
   app.log.info(
     { host: env.host, port: env.port },
     'SL Spot API listening',
   )
+
+  app.log.info('Starting market data service')
+  await marketDataService.start()
+  app.log.info('Market data service started')
+
+  app.log.info('Starting trading service')
+  await tradingService.start()
+  app.log.info('Trading service started')
 } catch (error) {
   app.log.error({ err: error }, 'API startup failed')
   process.exit(1)
