@@ -34,7 +34,13 @@ export class RealtimeGateway {
       options: { maxPayload: env.websocketMaxPayloadBytes },
     })
 
-    app.get(WS_PATH, { websocket: true }, async (socket, request) => {
+    app.route({
+      method: 'GET',
+      url: WS_PATH,
+      handler: async (_request, reply) => {
+        return reply.code(426).send({ success: false, error: { code: 'UPGRADE_REQUIRED', message: 'WebSocket upgrade required' } })
+      },
+      wsHandler: async (socket, request) => {
       try {
         assertTrustedWebSocketOrigin(request)
         await enforceRateLimit({
@@ -59,6 +65,7 @@ export class RealtimeGateway {
       }
 
       this.attach(socket, { userId: 'anonymous' })
+      },
     })
   }
 
