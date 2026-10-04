@@ -63,8 +63,8 @@ export function TradePanel({ asset, balance, walletMode, canTrade, tradeDisabled
     if (!canTrade) {
       return tradeDisabledReason ?? 'Trading is not currently enabled for this wallet.'
     }
-    if (!asset.tradingEnabled) {
-      return 'This market is currently unavailable for trading.'
+    if (walletMode === 'REAL' && !asset.tradingEnabled) {
+      return 'This market is currently unavailable for real-money trading.'
     }
     return ''
   }
