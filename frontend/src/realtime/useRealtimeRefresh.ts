@@ -17,7 +17,7 @@ type Options = {
  * - one catch-up refresh runs when the socket comes back after an outage,
  * - polling is a fallback that runs only while the socket is down.
  */
-export function useRealtimeRefresh(refresh: () => void, { events, coalesceMs = 200, fallbackMs = 5000 }: Options): void {
+export function useRealtimeRefresh(refresh: () => void, { events, coalesceMs = 200, fallbackMs = 30_000 }: Options): void {
   const realtime = useRealtime()
   const connection = useRealtimeState()
   const refreshRef = useRef(refresh)
