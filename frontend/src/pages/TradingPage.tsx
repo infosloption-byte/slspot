@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AssetList } from '../components/market/AssetList'
 import { BottomPanel } from '../components/layout/BottomPanel'
 import { TradePanel } from '../components/trading/TradePanel'
@@ -16,6 +16,7 @@ import type { OpenTrade } from '../types/trading'
 import { useAuth } from '../auth/useAuth'
 import { useWalletMode } from '../hooks/useWalletMode'
 import { useRealtime, useRealtimeState } from '../realtime/useRealtime'
+import { useRealtimeRefresh } from '../realtime/useRealtimeRefresh'
 import { userChannel } from '../realtime/subscriptions'
 import { defaultHistoryFilters, setSoundEnabled, setTradingUiState, useTradingUiStore } from '../state/tradingUiStore'
 
@@ -94,7 +95,6 @@ export function TradingPage() {
 
   const [now, setNow] = useState(() => Date.now())
   const [toasts, setToasts] = useState<ToastItem[]>([])
-  const eventRefreshTimer = useRef<number | null>(null)
 
   const addToast = useCallback((tone: ToastTone, title: string, message: string) => {
     const id = Date.now() + Math.floor(Math.random() * 1000)
@@ -202,45 +202,13 @@ export function TradingPage() {
     return realtime.subscribe(userChannel(user.id))
   }, [realtime, user?.id])
 
-  useEffect(() => {
-    return realtime.onEvent((event) => {
-      if (
-        event.type !== 'trade.status' &&
-        event.type !== 'position.update' &&
-        event.type !== 'wallet.update'
-      ) {
-        return
-      }
-
-      if (eventRefreshTimer.current !== null) {
-        window.clearTimeout(eventRefreshTimer.current)
-      }
-
-      eventRefreshTimer.current = window.setTimeout(() => {
-        eventRefreshTimer.current = null
-        void reloadTradingState()
-      }, 150)
-    })
-  }, [realtime, reloadTradingState])
-
-  useEffect(() => {
-    return () => {
-      if (eventRefreshTimer.current !== null) {
-        window.clearTimeout(eventRefreshTimer.current)
-        eventRefreshTimer.current = null
-      }
-    }
-  }, [])
-
-  useEffect(() => {
-    if (realtimeState === 'connected' || realtimeState === 'connecting') return undefined
-
-    const timer = window.setInterval(() => {
-      void reloadTradingState()
-    }, 5000)
-
-    return () => window.clearInterval(timer)
-  }, [realtimeState, reloadTradingState])
+  // The WebSocket drives updates. A burst of trade/position/wallet events becomes one refresh,
+  // and polling runs only while the socket is disconnected.
+  useRealtimeRefresh(() => void reloadTradingState(), {
+    events: ['trade.status', 'position.update', 'wallet.update'],
+    coalesceMs: 150,
+    fallbackMs: 5000,
+  })
 
   const openTrades = useMemo<OpenTrade[]>(() => {
     return (positions.data?.items ?? [])
@@ -259,15 +227,24 @@ export function TradingPage() {
       }))
   }, [positions.data])
 
+  // Safety net for a missed trade.status event: check once shortly after the earliest expiry,
+  // not on a fixed interval. It re-arms after every reload, so a trade the server has not settled
+  // yet is checked again, but only while a trade is actually overdue.
+  const nextExpiry = useMemo(() => {
+    const expiries = openTrades.map((trade) => trade.expiresAt).filter((value) => Number.isFinite(value))
+    return expiries.length ? Math.min(...expiries) : null
+  }, [openTrades])
+
   useEffect(() => {
-    if (openTrades.length === 0) return undefined
+    if (nextExpiry === null) return undefined
 
-    const timer = window.setInterval(() => {
+    const delay = Math.max(2000, nextExpiry - Date.now() + 1500)
+    const timer = window.setTimeout(() => {
       void reloadTradingState()
-    }, 2500)
+    }, delay)
 
-    return () => window.clearInterval(timer)
-  }, [openTrades.length, reloadTradingState])
+    return () => window.clearTimeout(timer)
+  }, [nextExpiry, openTrades, reloadTradingState])
 
   const settledTrades = useMemo<OpenTrade[]>(() => {
     return (trades.data?.items ?? [])

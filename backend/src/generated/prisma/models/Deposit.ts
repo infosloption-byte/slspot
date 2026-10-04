@@ -37,6 +37,7 @@ export type DepositSumAggregateOutputType = {
 export type DepositMinAggregateOutputType = {
   id: string | null
   walletId: string | null
+  walletTransactionId: string | null
   provider: string | null
   providerReference: string | null
   amount: runtime.Decimal | null
@@ -52,6 +53,7 @@ export type DepositMinAggregateOutputType = {
 export type DepositMaxAggregateOutputType = {
   id: string | null
   walletId: string | null
+  walletTransactionId: string | null
   provider: string | null
   providerReference: string | null
   amount: runtime.Decimal | null
@@ -67,6 +69,7 @@ export type DepositMaxAggregateOutputType = {
 export type DepositCountAggregateOutputType = {
   id: number
   walletId: number
+  walletTransactionId: number
   provider: number
   providerReference: number
   amount: number
@@ -92,6 +95,7 @@ export type DepositSumAggregateInputType = {
 export type DepositMinAggregateInputType = {
   id?: true
   walletId?: true
+  walletTransactionId?: true
   provider?: true
   providerReference?: true
   amount?: true
@@ -107,6 +111,7 @@ export type DepositMinAggregateInputType = {
 export type DepositMaxAggregateInputType = {
   id?: true
   walletId?: true
+  walletTransactionId?: true
   provider?: true
   providerReference?: true
   amount?: true
@@ -122,6 +127,7 @@ export type DepositMaxAggregateInputType = {
 export type DepositCountAggregateInputType = {
   id?: true
   walletId?: true
+  walletTransactionId?: true
   provider?: true
   providerReference?: true
   amount?: true
@@ -224,6 +230,7 @@ export type DepositGroupByArgs<ExtArgs extends runtime.Types.Extensions.Internal
 export type DepositGroupByOutputType = {
   id: string
   walletId: string
+  walletTransactionId: string | null
   provider: string
   providerReference: string | null
   amount: runtime.Decimal
@@ -262,6 +269,7 @@ export type DepositWhereInput = {
   NOT?: Prisma.DepositWhereInput | Prisma.DepositWhereInput[]
   id?: Prisma.StringFilter<"Deposit"> | string
   walletId?: Prisma.StringFilter<"Deposit"> | string
+  walletTransactionId?: Prisma.StringNullableFilter<"Deposit"> | string | null
   provider?: Prisma.StringFilter<"Deposit"> | string
   providerReference?: Prisma.StringNullableFilter<"Deposit"> | string | null
   amount?: Prisma.DecimalFilter<"Deposit"> | runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -273,11 +281,13 @@ export type DepositWhereInput = {
   createdAt?: Prisma.DateTimeFilter<"Deposit"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Deposit"> | Date | string
   wallet?: Prisma.XOR<Prisma.WalletScalarRelationFilter, Prisma.WalletWhereInput>
+  walletTransaction?: Prisma.XOR<Prisma.WalletTransactionNullableScalarRelationFilter, Prisma.WalletTransactionWhereInput> | null
 }
 
 export type DepositOrderByWithRelationInput = {
   id?: Prisma.SortOrder
   walletId?: Prisma.SortOrder
+  walletTransactionId?: Prisma.SortOrderInput | Prisma.SortOrder
   provider?: Prisma.SortOrder
   providerReference?: Prisma.SortOrderInput | Prisma.SortOrder
   amount?: Prisma.SortOrder
@@ -289,11 +299,13 @@ export type DepositOrderByWithRelationInput = {
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   wallet?: Prisma.WalletOrderByWithRelationInput
+  walletTransaction?: Prisma.WalletTransactionOrderByWithRelationInput
   _relevance?: Prisma.DepositOrderByRelevanceInput
 }
 
 export type DepositWhereUniqueInput = Prisma.AtLeast<{
   id?: string
+  walletTransactionId?: string
   providerReference?: string
   AND?: Prisma.DepositWhereInput | Prisma.DepositWhereInput[]
   OR?: Prisma.DepositWhereInput[]
@@ -309,11 +321,13 @@ export type DepositWhereUniqueInput = Prisma.AtLeast<{
   createdAt?: Prisma.DateTimeFilter<"Deposit"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Deposit"> | Date | string
   wallet?: Prisma.XOR<Prisma.WalletScalarRelationFilter, Prisma.WalletWhereInput>
-}, "id" | "providerReference">
+  walletTransaction?: Prisma.XOR<Prisma.WalletTransactionNullableScalarRelationFilter, Prisma.WalletTransactionWhereInput> | null
+}, "id" | "walletTransactionId" | "providerReference">
 
 export type DepositOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
   walletId?: Prisma.SortOrder
+  walletTransactionId?: Prisma.SortOrderInput | Prisma.SortOrder
   provider?: Prisma.SortOrder
   providerReference?: Prisma.SortOrderInput | Prisma.SortOrder
   amount?: Prisma.SortOrder
@@ -337,6 +351,7 @@ export type DepositScalarWhereWithAggregatesInput = {
   NOT?: Prisma.DepositScalarWhereWithAggregatesInput | Prisma.DepositScalarWhereWithAggregatesInput[]
   id?: Prisma.StringWithAggregatesFilter<"Deposit"> | string
   walletId?: Prisma.StringWithAggregatesFilter<"Deposit"> | string
+  walletTransactionId?: Prisma.StringNullableWithAggregatesFilter<"Deposit"> | string | null
   provider?: Prisma.StringWithAggregatesFilter<"Deposit"> | string
   providerReference?: Prisma.StringNullableWithAggregatesFilter<"Deposit"> | string | null
   amount?: Prisma.DecimalWithAggregatesFilter<"Deposit"> | runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -362,11 +377,13 @@ export type DepositCreateInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   wallet: Prisma.WalletCreateNestedOneWithoutDepositsInput
+  walletTransaction?: Prisma.WalletTransactionCreateNestedOneWithoutDepositInput
 }
 
 export type DepositUncheckedCreateInput = {
   id?: string
   walletId: string
+  walletTransactionId?: string | null
   provider: string
   providerReference?: string | null
   amount: runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -392,11 +409,13 @@ export type DepositUpdateInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   wallet?: Prisma.WalletUpdateOneRequiredWithoutDepositsNestedInput
+  walletTransaction?: Prisma.WalletTransactionUpdateOneWithoutDepositNestedInput
 }
 
 export type DepositUncheckedUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   walletId?: Prisma.StringFieldUpdateOperationsInput | string
+  walletTransactionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   provider?: Prisma.StringFieldUpdateOperationsInput | string
   providerReference?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   amount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -412,6 +431,7 @@ export type DepositUncheckedUpdateInput = {
 export type DepositCreateManyInput = {
   id?: string
   walletId: string
+  walletTransactionId?: string | null
   provider: string
   providerReference?: string | null
   amount: runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -441,6 +461,7 @@ export type DepositUpdateManyMutationInput = {
 export type DepositUncheckedUpdateManyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   walletId?: Prisma.StringFieldUpdateOperationsInput | string
+  walletTransactionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   provider?: Prisma.StringFieldUpdateOperationsInput | string
   providerReference?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   amount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -463,6 +484,11 @@ export type DepositOrderByRelationAggregateInput = {
   _count?: Prisma.SortOrder
 }
 
+export type DepositNullableScalarRelationFilter = {
+  is?: Prisma.DepositWhereInput | null
+  isNot?: Prisma.DepositWhereInput | null
+}
+
 export type DepositOrderByRelevanceInput = {
   fields: Prisma.DepositOrderByRelevanceFieldEnum | Prisma.DepositOrderByRelevanceFieldEnum[]
   sort: Prisma.SortOrder
@@ -472,6 +498,7 @@ export type DepositOrderByRelevanceInput = {
 export type DepositCountOrderByAggregateInput = {
   id?: Prisma.SortOrder
   walletId?: Prisma.SortOrder
+  walletTransactionId?: Prisma.SortOrder
   provider?: Prisma.SortOrder
   providerReference?: Prisma.SortOrder
   amount?: Prisma.SortOrder
@@ -491,6 +518,7 @@ export type DepositAvgOrderByAggregateInput = {
 export type DepositMaxOrderByAggregateInput = {
   id?: Prisma.SortOrder
   walletId?: Prisma.SortOrder
+  walletTransactionId?: Prisma.SortOrder
   provider?: Prisma.SortOrder
   providerReference?: Prisma.SortOrder
   amount?: Prisma.SortOrder
@@ -506,6 +534,7 @@ export type DepositMaxOrderByAggregateInput = {
 export type DepositMinOrderByAggregateInput = {
   id?: Prisma.SortOrder
   walletId?: Prisma.SortOrder
+  walletTransactionId?: Prisma.SortOrder
   provider?: Prisma.SortOrder
   providerReference?: Prisma.SortOrder
   amount?: Prisma.SortOrder
@@ -564,6 +593,38 @@ export type DepositUncheckedUpdateManyWithoutWalletNestedInput = {
   deleteMany?: Prisma.DepositScalarWhereInput | Prisma.DepositScalarWhereInput[]
 }
 
+export type DepositCreateNestedOneWithoutWalletTransactionInput = {
+  create?: Prisma.XOR<Prisma.DepositCreateWithoutWalletTransactionInput, Prisma.DepositUncheckedCreateWithoutWalletTransactionInput>
+  connectOrCreate?: Prisma.DepositCreateOrConnectWithoutWalletTransactionInput
+  connect?: Prisma.DepositWhereUniqueInput
+}
+
+export type DepositUncheckedCreateNestedOneWithoutWalletTransactionInput = {
+  create?: Prisma.XOR<Prisma.DepositCreateWithoutWalletTransactionInput, Prisma.DepositUncheckedCreateWithoutWalletTransactionInput>
+  connectOrCreate?: Prisma.DepositCreateOrConnectWithoutWalletTransactionInput
+  connect?: Prisma.DepositWhereUniqueInput
+}
+
+export type DepositUpdateOneWithoutWalletTransactionNestedInput = {
+  create?: Prisma.XOR<Prisma.DepositCreateWithoutWalletTransactionInput, Prisma.DepositUncheckedCreateWithoutWalletTransactionInput>
+  connectOrCreate?: Prisma.DepositCreateOrConnectWithoutWalletTransactionInput
+  upsert?: Prisma.DepositUpsertWithoutWalletTransactionInput
+  disconnect?: Prisma.DepositWhereInput | boolean
+  delete?: Prisma.DepositWhereInput | boolean
+  connect?: Prisma.DepositWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.DepositUpdateToOneWithWhereWithoutWalletTransactionInput, Prisma.DepositUpdateWithoutWalletTransactionInput>, Prisma.DepositUncheckedUpdateWithoutWalletTransactionInput>
+}
+
+export type DepositUncheckedUpdateOneWithoutWalletTransactionNestedInput = {
+  create?: Prisma.XOR<Prisma.DepositCreateWithoutWalletTransactionInput, Prisma.DepositUncheckedCreateWithoutWalletTransactionInput>
+  connectOrCreate?: Prisma.DepositCreateOrConnectWithoutWalletTransactionInput
+  upsert?: Prisma.DepositUpsertWithoutWalletTransactionInput
+  disconnect?: Prisma.DepositWhereInput | boolean
+  delete?: Prisma.DepositWhereInput | boolean
+  connect?: Prisma.DepositWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.DepositUpdateToOneWithWhereWithoutWalletTransactionInput, Prisma.DepositUpdateWithoutWalletTransactionInput>, Prisma.DepositUncheckedUpdateWithoutWalletTransactionInput>
+}
+
 export type EnumDepositStatusFieldUpdateOperationsInput = {
   set?: $Enums.DepositStatus
 }
@@ -580,10 +641,12 @@ export type DepositCreateWithoutWalletInput = {
   completedAt?: Date | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  walletTransaction?: Prisma.WalletTransactionCreateNestedOneWithoutDepositInput
 }
 
 export type DepositUncheckedCreateWithoutWalletInput = {
   id?: string
+  walletTransactionId?: string | null
   provider: string
   providerReference?: string | null
   amount: runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -628,6 +691,7 @@ export type DepositScalarWhereInput = {
   NOT?: Prisma.DepositScalarWhereInput | Prisma.DepositScalarWhereInput[]
   id?: Prisma.StringFilter<"Deposit"> | string
   walletId?: Prisma.StringFilter<"Deposit"> | string
+  walletTransactionId?: Prisma.StringNullableFilter<"Deposit"> | string | null
   provider?: Prisma.StringFilter<"Deposit"> | string
   providerReference?: Prisma.StringNullableFilter<"Deposit"> | string | null
   amount?: Prisma.DecimalFilter<"Deposit"> | runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -640,8 +704,85 @@ export type DepositScalarWhereInput = {
   updatedAt?: Prisma.DateTimeFilter<"Deposit"> | Date | string
 }
 
+export type DepositCreateWithoutWalletTransactionInput = {
+  id?: string
+  provider: string
+  providerReference?: string | null
+  amount: runtime.Decimal | runtime.DecimalJsLike | number | string
+  currency: string
+  status?: $Enums.DepositStatus
+  failureReason?: string | null
+  requestedAt?: Date | string
+  completedAt?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  wallet: Prisma.WalletCreateNestedOneWithoutDepositsInput
+}
+
+export type DepositUncheckedCreateWithoutWalletTransactionInput = {
+  id?: string
+  walletId: string
+  provider: string
+  providerReference?: string | null
+  amount: runtime.Decimal | runtime.DecimalJsLike | number | string
+  currency: string
+  status?: $Enums.DepositStatus
+  failureReason?: string | null
+  requestedAt?: Date | string
+  completedAt?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+}
+
+export type DepositCreateOrConnectWithoutWalletTransactionInput = {
+  where: Prisma.DepositWhereUniqueInput
+  create: Prisma.XOR<Prisma.DepositCreateWithoutWalletTransactionInput, Prisma.DepositUncheckedCreateWithoutWalletTransactionInput>
+}
+
+export type DepositUpsertWithoutWalletTransactionInput = {
+  update: Prisma.XOR<Prisma.DepositUpdateWithoutWalletTransactionInput, Prisma.DepositUncheckedUpdateWithoutWalletTransactionInput>
+  create: Prisma.XOR<Prisma.DepositCreateWithoutWalletTransactionInput, Prisma.DepositUncheckedCreateWithoutWalletTransactionInput>
+  where?: Prisma.DepositWhereInput
+}
+
+export type DepositUpdateToOneWithWhereWithoutWalletTransactionInput = {
+  where?: Prisma.DepositWhereInput
+  data: Prisma.XOR<Prisma.DepositUpdateWithoutWalletTransactionInput, Prisma.DepositUncheckedUpdateWithoutWalletTransactionInput>
+}
+
+export type DepositUpdateWithoutWalletTransactionInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  provider?: Prisma.StringFieldUpdateOperationsInput | string
+  providerReference?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  amount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  currency?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.EnumDepositStatusFieldUpdateOperationsInput | $Enums.DepositStatus
+  failureReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  requestedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  wallet?: Prisma.WalletUpdateOneRequiredWithoutDepositsNestedInput
+}
+
+export type DepositUncheckedUpdateWithoutWalletTransactionInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  walletId?: Prisma.StringFieldUpdateOperationsInput | string
+  provider?: Prisma.StringFieldUpdateOperationsInput | string
+  providerReference?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  amount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  currency?: Prisma.StringFieldUpdateOperationsInput | string
+  status?: Prisma.EnumDepositStatusFieldUpdateOperationsInput | $Enums.DepositStatus
+  failureReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  requestedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+}
+
 export type DepositCreateManyWalletInput = {
   id?: string
+  walletTransactionId?: string | null
   provider: string
   providerReference?: string | null
   amount: runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -666,10 +807,12 @@ export type DepositUpdateWithoutWalletInput = {
   completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  walletTransaction?: Prisma.WalletTransactionUpdateOneWithoutDepositNestedInput
 }
 
 export type DepositUncheckedUpdateWithoutWalletInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
+  walletTransactionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   provider?: Prisma.StringFieldUpdateOperationsInput | string
   providerReference?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   amount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -684,6 +827,7 @@ export type DepositUncheckedUpdateWithoutWalletInput = {
 
 export type DepositUncheckedUpdateManyWithoutWalletInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
+  walletTransactionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   provider?: Prisma.StringFieldUpdateOperationsInput | string
   providerReference?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   amount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
@@ -701,6 +845,7 @@ export type DepositUncheckedUpdateManyWithoutWalletInput = {
 export type DepositSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
   walletId?: boolean
+  walletTransactionId?: boolean
   provider?: boolean
   providerReference?: boolean
   amount?: boolean
@@ -712,6 +857,7 @@ export type DepositSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs 
   createdAt?: boolean
   updatedAt?: boolean
   wallet?: boolean | Prisma.WalletDefaultArgs<ExtArgs>
+  walletTransaction?: boolean | Prisma.Deposit$walletTransactionArgs<ExtArgs>
 }, ExtArgs["result"]["deposit"]>
 
 
@@ -719,6 +865,7 @@ export type DepositSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs 
 export type DepositSelectScalar = {
   id?: boolean
   walletId?: boolean
+  walletTransactionId?: boolean
   provider?: boolean
   providerReference?: boolean
   amount?: boolean
@@ -731,19 +878,22 @@ export type DepositSelectScalar = {
   updatedAt?: boolean
 }
 
-export type DepositOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "walletId" | "provider" | "providerReference" | "amount" | "currency" | "status" | "failureReason" | "requestedAt" | "completedAt" | "createdAt" | "updatedAt", ExtArgs["result"]["deposit"]>
+export type DepositOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "walletId" | "walletTransactionId" | "provider" | "providerReference" | "amount" | "currency" | "status" | "failureReason" | "requestedAt" | "completedAt" | "createdAt" | "updatedAt", ExtArgs["result"]["deposit"]>
 export type DepositInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   wallet?: boolean | Prisma.WalletDefaultArgs<ExtArgs>
+  walletTransaction?: boolean | Prisma.Deposit$walletTransactionArgs<ExtArgs>
 }
 
 export type $DepositPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "Deposit"
   objects: {
     wallet: Prisma.$WalletPayload<ExtArgs>
+    walletTransaction: Prisma.$WalletTransactionPayload<ExtArgs> | null
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
     walletId: string
+    walletTransactionId: string | null
     provider: string
     providerReference: string | null
     amount: runtime.Decimal
@@ -1095,6 +1245,7 @@ readonly fields: DepositFieldRefs;
 export interface Prisma__DepositClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
   readonly [Symbol.toStringTag]: "PrismaPromise"
   wallet<T extends Prisma.WalletDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.WalletDefaultArgs<ExtArgs>>): Prisma.Prisma__WalletClient<runtime.Types.Result.GetResult<Prisma.$WalletPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+  walletTransaction<T extends Prisma.Deposit$walletTransactionArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Deposit$walletTransactionArgs<ExtArgs>>): Prisma.Prisma__WalletTransactionClient<runtime.Types.Result.GetResult<Prisma.$WalletTransactionPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -1126,6 +1277,7 @@ export interface Prisma__DepositClient<T, Null = never, ExtArgs extends runtime.
 export interface DepositFieldRefs {
   readonly id: Prisma.FieldRef<"Deposit", 'String'>
   readonly walletId: Prisma.FieldRef<"Deposit", 'String'>
+  readonly walletTransactionId: Prisma.FieldRef<"Deposit", 'String'>
   readonly provider: Prisma.FieldRef<"Deposit", 'String'>
   readonly providerReference: Prisma.FieldRef<"Deposit", 'String'>
   readonly amount: Prisma.FieldRef<"Deposit", 'Decimal'>
@@ -1481,6 +1633,25 @@ export type DepositDeleteManyArgs<ExtArgs extends runtime.Types.Extensions.Inter
    * Limit how many Deposits to delete.
    */
   limit?: number
+}
+
+/**
+ * Deposit.walletTransaction
+ */
+export type Deposit$walletTransactionArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the WalletTransaction
+   */
+  select?: Prisma.WalletTransactionSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the WalletTransaction
+   */
+  omit?: Prisma.WalletTransactionOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.WalletTransactionInclude<ExtArgs> | null
+  where?: Prisma.WalletTransactionWhereInput
 }
 
 /**

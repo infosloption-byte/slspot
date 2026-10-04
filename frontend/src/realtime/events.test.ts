@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { parseRealtimeEvent } from './events'
+import { parseRealtimeMessage } from './events'
 
 test('accepts a valid market candle realtime event', () => {
-  const event = parseRealtimeEvent(JSON.stringify({
+  const event = parseRealtimeMessage(JSON.stringify({
     version: 1,
     id: 'event-1',
     type: 'market.candle',
@@ -28,6 +28,6 @@ test('accepts a valid market candle realtime event', () => {
 })
 
 test('rejects malformed realtime events', () => {
-  const event = parseRealtimeEvent('{"version":1,"id":"x","timestamp":"now"}')
+  const event = parseRealtimeMessage('{"version":1,"id":"x","timestamp":"now"}')
   assert.equal(event, null)
 })

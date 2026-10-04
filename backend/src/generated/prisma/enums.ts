@@ -9,6 +9,14 @@
 * 🟢 You can import this file directly.
 */
 
+export const AdminRole = {
+  ADMIN: 'ADMIN',
+  SUPER_ADMIN: 'SUPER_ADMIN'
+} as const
+
+export type AdminRole = (typeof AdminRole)[keyof typeof AdminRole]
+
+
 export const UserStatus = {
   PENDING_VERIFICATION: 'PENDING_VERIFICATION',
   ACTIVE: 'ACTIVE',
@@ -26,6 +34,14 @@ export const AccountStatus = {
 } as const
 
 export type AccountStatus = (typeof AccountStatus)[keyof typeof AccountStatus]
+
+
+export const AccountMode = {
+  DEMO: 'DEMO',
+  REAL: 'REAL'
+} as const
+
+export type AccountMode = (typeof AccountMode)[keyof typeof AccountMode]
 
 
 export const AssetType = {
@@ -146,6 +162,17 @@ export const LedgerDirection = {
 export type LedgerDirection = (typeof LedgerDirection)[keyof typeof LedgerDirection]
 
 
+export const LedgerAccountType = {
+  ASSET: 'ASSET',
+  LIABILITY: 'LIABILITY',
+  EQUITY: 'EQUITY',
+  REVENUE: 'REVENUE',
+  EXPENSE: 'EXPENSE'
+} as const
+
+export type LedgerAccountType = (typeof LedgerAccountType)[keyof typeof LedgerAccountType]
+
+
 export const DepositStatus = {
   PENDING: 'PENDING',
   PROCESSING: 'PROCESSING',
@@ -189,3 +216,12 @@ export const NotificationType = {
 } as const
 
 export type NotificationType = (typeof NotificationType)[keyof typeof NotificationType]
+
+
+export const AuthTokenType = {
+  EMAIL_VERIFICATION: 'EMAIL_VERIFICATION',
+  PASSWORD_RESET: 'PASSWORD_RESET',
+  TWO_FACTOR_CHALLENGE: 'TWO_FACTOR_CHALLENGE'
+} as const
+
+export type AuthTokenType = (typeof AuthTokenType)[keyof typeof AuthTokenType]

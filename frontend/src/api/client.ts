@@ -35,10 +35,28 @@ export class ApiError extends Error {
 
 const viteEnv = (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env
 const apiBaseUrl = (viteEnv?.VITE_API_BASE_URL || DEFAULT_API_BASE_URL).replace(/\/$/, '')
-const apiOrigin = new URL(apiBaseUrl, window.location.origin).origin
+
+/**
+ * Resolved lazily. Reading `window.location` at import time throws anywhere that
+ * has no browser globals yet (unit tests, SSR) and made the whole module unimportable.
+ */
+function currentOrigin(): string {
+  const location = (globalThis as { location?: { origin?: string } }).location
+  return location?.origin ?? 'http://localhost'
+}
+
+function getApiOrigin(): string {
+  return new URL(apiBaseUrl, currentOrigin()).origin
+}
 
 function createRequestId(): string {
   return crypto.randomUUID()
+}
+
+/** Clears the cached CSRF token. Used when the session changes and by tests. */
+export function resetCsrfToken(): void {
+  csrfToken = null
+  csrfFetchPromise = null
 }
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS'])
@@ -141,8 +159,8 @@ export async function apiRequest<T>(
     ? path
     : apiBaseUrl + (path.startsWith('/') ? path : '/' + path)
   const method = String(requestInit.method ?? 'GET').toUpperCase()
-  const requestOrigin = new URL(url, window.location.origin).origin
-  const usesApiSecurity = requestOrigin === apiOrigin
+  const requestOrigin = new URL(url, currentOrigin()).origin
+  const usesApiSecurity = requestOrigin === getApiOrigin()
   if (!usesApiSecurity && isUnsafeMethod(method)) {
     throw new ApiError(400, 'Unsafe cross-origin API requests are not permitted', 'CROSS_ORIGIN_REQUEST_BLOCKED', requestId)
   }
@@ -225,6 +243,10 @@ export async function apiRequest<T>(
           csrfRetryUsed = true
           csrfToken = null
           await ensureCsrfToken()
+          // Refreshing the token is not a failed attempt. Without this, a request that is
+          // not retryable (maxAttempts = 1, e.g. login/logout/register) fell out of the loop
+          // and surfaced as "Request retry limit reached" instead of being re-sent once.
+          attempt -= 1
           continue
         }
 

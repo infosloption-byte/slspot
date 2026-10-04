@@ -9,7 +9,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "typecheck": "tsc -b --pretty false",
-    "test": "node --import tsx --test src/api/integration.test.ts"
+    "test": "tsx --tsconfig tsconfig.app.json --test \"src/**/*.test.ts\""
   },
   "dependencies": {
     "lucide-react": "^1.48.0",

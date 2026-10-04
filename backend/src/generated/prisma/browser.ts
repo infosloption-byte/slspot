@@ -23,15 +23,30 @@ export * from './enums.js';
  */
 export type User = Prisma.UserModel
 /**
+ * Model AdminAccess
+ * 
+ */
+export type AdminAccess = Prisma.AdminAccessModel
+/**
  * Model Session
  * 
  */
 export type Session = Prisma.SessionModel
 /**
+ * Model AuthToken
+ * 
+ */
+export type AuthToken = Prisma.AuthTokenModel
+/**
  * Model Device
  * 
  */
 export type Device = Prisma.DeviceModel
+/**
+ * Model RecoveryCode
+ * 
+ */
+export type RecoveryCode = Prisma.RecoveryCodeModel
 /**
  * Model Account
  * 
@@ -78,10 +93,25 @@ export type Wallet = Prisma.WalletModel
  */
 export type WalletTransaction = Prisma.WalletTransactionModel
 /**
+ * Model LedgerAccount
+ * 
+ */
+export type LedgerAccount = Prisma.LedgerAccountModel
+/**
+ * Model LedgerTransaction
+ * 
+ */
+export type LedgerTransaction = Prisma.LedgerTransactionModel
+/**
  * Model LedgerEntry
  * 
  */
 export type LedgerEntry = Prisma.LedgerEntryModel
+/**
+ * Model LedgerBalanceSnapshot
+ * 
+ */
+export type LedgerBalanceSnapshot = Prisma.LedgerBalanceSnapshotModel
 /**
  * Model Deposit
  * 

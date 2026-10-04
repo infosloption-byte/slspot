@@ -32,6 +32,7 @@ export type OrderAvgAggregateOutputType = {
   executedPrice: runtime.Decimal | null
   durationSeconds: number | null
   fee: runtime.Decimal | null
+  payoutRate: runtime.Decimal | null
 }
 
 export type OrderSumAggregateOutputType = {
@@ -40,6 +41,7 @@ export type OrderSumAggregateOutputType = {
   executedPrice: runtime.Decimal | null
   durationSeconds: number | null
   fee: runtime.Decimal | null
+  payoutRate: runtime.Decimal | null
 }
 
 export type OrderMinAggregateOutputType = {
@@ -57,6 +59,7 @@ export type OrderMinAggregateOutputType = {
   durationSeconds: number | null
   expiresAt: Date | null
   fee: runtime.Decimal | null
+  payoutRate: runtime.Decimal | null
   rejectionReason: string | null
   createdAt: Date | null
   updatedAt: Date | null
@@ -78,6 +81,7 @@ export type OrderMaxAggregateOutputType = {
   durationSeconds: number | null
   expiresAt: Date | null
   fee: runtime.Decimal | null
+  payoutRate: runtime.Decimal | null
   rejectionReason: string | null
   createdAt: Date | null
   updatedAt: Date | null
@@ -99,6 +103,7 @@ export type OrderCountAggregateOutputType = {
   durationSeconds: number
   expiresAt: number
   fee: number
+  payoutRate: number
   rejectionReason: number
   createdAt: number
   updatedAt: number
@@ -113,6 +118,7 @@ export type OrderAvgAggregateInputType = {
   executedPrice?: true
   durationSeconds?: true
   fee?: true
+  payoutRate?: true
 }
 
 export type OrderSumAggregateInputType = {
@@ -121,6 +127,7 @@ export type OrderSumAggregateInputType = {
   executedPrice?: true
   durationSeconds?: true
   fee?: true
+  payoutRate?: true
 }
 
 export type OrderMinAggregateInputType = {
@@ -138,6 +145,7 @@ export type OrderMinAggregateInputType = {
   durationSeconds?: true
   expiresAt?: true
   fee?: true
+  payoutRate?: true
   rejectionReason?: true
   createdAt?: true
   updatedAt?: true
@@ -159,6 +167,7 @@ export type OrderMaxAggregateInputType = {
   durationSeconds?: true
   expiresAt?: true
   fee?: true
+  payoutRate?: true
   rejectionReason?: true
   createdAt?: true
   updatedAt?: true
@@ -180,6 +189,7 @@ export type OrderCountAggregateInputType = {
   durationSeconds?: true
   expiresAt?: true
   fee?: true
+  payoutRate?: true
   rejectionReason?: true
   createdAt?: true
   updatedAt?: true
@@ -288,6 +298,7 @@ export type OrderGroupByOutputType = {
   durationSeconds: number | null
   expiresAt: Date | null
   fee: runtime.Decimal
+  payoutRate: runtime.Decimal
   rejectionReason: string | null
   createdAt: Date
   updatedAt: Date
@@ -332,6 +343,7 @@ export type OrderWhereInput = {
   durationSeconds?: Prisma.IntNullableFilter<"Order"> | number | null
   expiresAt?: Prisma.DateTimeNullableFilter<"Order"> | Date | string | null
   fee?: Prisma.DecimalFilter<"Order"> | runtime.Decimal | runtime.DecimalJsLike | number | string
+  payoutRate?: Prisma.DecimalFilter<"Order"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   rejectionReason?: Prisma.StringNullableFilter<"Order"> | string | null
   createdAt?: Prisma.DateTimeFilter<"Order"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Order"> | Date | string
@@ -357,6 +369,7 @@ export type OrderOrderByWithRelationInput = {
   durationSeconds?: Prisma.SortOrderInput | Prisma.SortOrder
   expiresAt?: Prisma.SortOrderInput | Prisma.SortOrder
   fee?: Prisma.SortOrder
+  payoutRate?: Prisma.SortOrder
   rejectionReason?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -386,6 +399,7 @@ export type OrderWhereUniqueInput = Prisma.AtLeast<{
   durationSeconds?: Prisma.IntNullableFilter<"Order"> | number | null
   expiresAt?: Prisma.DateTimeNullableFilter<"Order"> | Date | string | null
   fee?: Prisma.DecimalFilter<"Order"> | runtime.Decimal | runtime.DecimalJsLike | number | string
+  payoutRate?: Prisma.DecimalFilter<"Order"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   rejectionReason?: Prisma.StringNullableFilter<"Order"> | string | null
   createdAt?: Prisma.DateTimeFilter<"Order"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Order"> | Date | string
@@ -411,6 +425,7 @@ export type OrderOrderByWithAggregationInput = {
   durationSeconds?: Prisma.SortOrderInput | Prisma.SortOrder
   expiresAt?: Prisma.SortOrderInput | Prisma.SortOrder
   fee?: Prisma.SortOrder
+  payoutRate?: Prisma.SortOrder
   rejectionReason?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -440,6 +455,7 @@ export type OrderScalarWhereWithAggregatesInput = {
   durationSeconds?: Prisma.IntNullableWithAggregatesFilter<"Order"> | number | null
   expiresAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Order"> | Date | string | null
   fee?: Prisma.DecimalWithAggregatesFilter<"Order"> | runtime.Decimal | runtime.DecimalJsLike | number | string
+  payoutRate?: Prisma.DecimalWithAggregatesFilter<"Order"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   rejectionReason?: Prisma.StringNullableWithAggregatesFilter<"Order"> | string | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Order"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"Order"> | Date | string
@@ -458,6 +474,7 @@ export type OrderCreateInput = {
   durationSeconds?: number | null
   expiresAt?: Date | string | null
   fee?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  payoutRate?: runtime.Decimal | runtime.DecimalJsLike | number | string
   rejectionReason?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -483,6 +500,7 @@ export type OrderUncheckedCreateInput = {
   durationSeconds?: number | null
   expiresAt?: Date | string | null
   fee?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  payoutRate?: runtime.Decimal | runtime.DecimalJsLike | number | string
   rejectionReason?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -502,6 +520,7 @@ export type OrderUpdateInput = {
   durationSeconds?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   expiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   fee?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  payoutRate?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   rejectionReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -527,6 +546,7 @@ export type OrderUncheckedUpdateInput = {
   durationSeconds?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   expiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   fee?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  payoutRate?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   rejectionReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -549,6 +569,7 @@ export type OrderCreateManyInput = {
   durationSeconds?: number | null
   expiresAt?: Date | string | null
   fee?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  payoutRate?: runtime.Decimal | runtime.DecimalJsLike | number | string
   rejectionReason?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -567,6 +588,7 @@ export type OrderUpdateManyMutationInput = {
   durationSeconds?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   expiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   fee?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  payoutRate?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   rejectionReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -588,6 +610,7 @@ export type OrderUncheckedUpdateManyInput = {
   durationSeconds?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   expiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   fee?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  payoutRate?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   rejectionReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -625,6 +648,7 @@ export type OrderCountOrderByAggregateInput = {
   durationSeconds?: Prisma.SortOrder
   expiresAt?: Prisma.SortOrder
   fee?: Prisma.SortOrder
+  payoutRate?: Prisma.SortOrder
   rejectionReason?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -637,6 +661,7 @@ export type OrderAvgOrderByAggregateInput = {
   executedPrice?: Prisma.SortOrder
   durationSeconds?: Prisma.SortOrder
   fee?: Prisma.SortOrder
+  payoutRate?: Prisma.SortOrder
 }
 
 export type OrderMaxOrderByAggregateInput = {
@@ -654,6 +679,7 @@ export type OrderMaxOrderByAggregateInput = {
   durationSeconds?: Prisma.SortOrder
   expiresAt?: Prisma.SortOrder
   fee?: Prisma.SortOrder
+  payoutRate?: Prisma.SortOrder
   rejectionReason?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -675,6 +701,7 @@ export type OrderMinOrderByAggregateInput = {
   durationSeconds?: Prisma.SortOrder
   expiresAt?: Prisma.SortOrder
   fee?: Prisma.SortOrder
+  payoutRate?: Prisma.SortOrder
   rejectionReason?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -687,6 +714,7 @@ export type OrderSumOrderByAggregateInput = {
   executedPrice?: Prisma.SortOrder
   durationSeconds?: Prisma.SortOrder
   fee?: Prisma.SortOrder
+  payoutRate?: Prisma.SortOrder
 }
 
 export type OrderScalarRelationFilter = {
@@ -874,6 +902,7 @@ export type OrderCreateWithoutUserInput = {
   durationSeconds?: number | null
   expiresAt?: Date | string | null
   fee?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  payoutRate?: runtime.Decimal | runtime.DecimalJsLike | number | string
   rejectionReason?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -897,6 +926,7 @@ export type OrderUncheckedCreateWithoutUserInput = {
   durationSeconds?: number | null
   expiresAt?: Date | string | null
   fee?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  payoutRate?: runtime.Decimal | runtime.DecimalJsLike | number | string
   rejectionReason?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -948,6 +978,7 @@ export type OrderScalarWhereInput = {
   durationSeconds?: Prisma.IntNullableFilter<"Order"> | number | null
   expiresAt?: Prisma.DateTimeNullableFilter<"Order"> | Date | string | null
   fee?: Prisma.DecimalFilter<"Order"> | runtime.Decimal | runtime.DecimalJsLike | number | string
+  payoutRate?: Prisma.DecimalFilter<"Order"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   rejectionReason?: Prisma.StringNullableFilter<"Order"> | string | null
   createdAt?: Prisma.DateTimeFilter<"Order"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Order"> | Date | string
@@ -966,6 +997,7 @@ export type OrderCreateWithoutAccountInput = {
   durationSeconds?: number | null
   expiresAt?: Date | string | null
   fee?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  payoutRate?: runtime.Decimal | runtime.DecimalJsLike | number | string
   rejectionReason?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -989,6 +1021,7 @@ export type OrderUncheckedCreateWithoutAccountInput = {
   durationSeconds?: number | null
   expiresAt?: Date | string | null
   fee?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  payoutRate?: runtime.Decimal | runtime.DecimalJsLike | number | string
   rejectionReason?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -1034,6 +1067,7 @@ export type OrderCreateWithoutAssetInput = {
   durationSeconds?: number | null
   expiresAt?: Date | string | null
   fee?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  payoutRate?: runtime.Decimal | runtime.DecimalJsLike | number | string
   rejectionReason?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -1057,6 +1091,7 @@ export type OrderUncheckedCreateWithoutAssetInput = {
   durationSeconds?: number | null
   expiresAt?: Date | string | null
   fee?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  payoutRate?: runtime.Decimal | runtime.DecimalJsLike | number | string
   rejectionReason?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -1102,6 +1137,7 @@ export type OrderCreateWithoutPositionInput = {
   durationSeconds?: number | null
   expiresAt?: Date | string | null
   fee?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  payoutRate?: runtime.Decimal | runtime.DecimalJsLike | number | string
   rejectionReason?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -1126,6 +1162,7 @@ export type OrderUncheckedCreateWithoutPositionInput = {
   durationSeconds?: number | null
   expiresAt?: Date | string | null
   fee?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  payoutRate?: runtime.Decimal | runtime.DecimalJsLike | number | string
   rejectionReason?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -1160,6 +1197,7 @@ export type OrderUpdateWithoutPositionInput = {
   durationSeconds?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   expiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   fee?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  payoutRate?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   rejectionReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1184,6 +1222,7 @@ export type OrderUncheckedUpdateWithoutPositionInput = {
   durationSeconds?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   expiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   fee?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  payoutRate?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   rejectionReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1204,6 +1243,7 @@ export type OrderCreateManyUserInput = {
   durationSeconds?: number | null
   expiresAt?: Date | string | null
   fee?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  payoutRate?: runtime.Decimal | runtime.DecimalJsLike | number | string
   rejectionReason?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -1222,6 +1262,7 @@ export type OrderUpdateWithoutUserInput = {
   durationSeconds?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   expiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   fee?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  payoutRate?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   rejectionReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1245,6 +1286,7 @@ export type OrderUncheckedUpdateWithoutUserInput = {
   durationSeconds?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   expiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   fee?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  payoutRate?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   rejectionReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1266,6 +1308,7 @@ export type OrderUncheckedUpdateManyWithoutUserInput = {
   durationSeconds?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   expiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   fee?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  payoutRate?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   rejectionReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1286,6 +1329,7 @@ export type OrderCreateManyAccountInput = {
   durationSeconds?: number | null
   expiresAt?: Date | string | null
   fee?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  payoutRate?: runtime.Decimal | runtime.DecimalJsLike | number | string
   rejectionReason?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -1304,6 +1348,7 @@ export type OrderUpdateWithoutAccountInput = {
   durationSeconds?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   expiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   fee?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  payoutRate?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   rejectionReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1327,6 +1372,7 @@ export type OrderUncheckedUpdateWithoutAccountInput = {
   durationSeconds?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   expiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   fee?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  payoutRate?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   rejectionReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1348,6 +1394,7 @@ export type OrderUncheckedUpdateManyWithoutAccountInput = {
   durationSeconds?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   expiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   fee?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  payoutRate?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   rejectionReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1368,6 +1415,7 @@ export type OrderCreateManyAssetInput = {
   durationSeconds?: number | null
   expiresAt?: Date | string | null
   fee?: runtime.Decimal | runtime.DecimalJsLike | number | string
+  payoutRate?: runtime.Decimal | runtime.DecimalJsLike | number | string
   rejectionReason?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -1386,6 +1434,7 @@ export type OrderUpdateWithoutAssetInput = {
   durationSeconds?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   expiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   fee?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  payoutRate?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   rejectionReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1409,6 +1458,7 @@ export type OrderUncheckedUpdateWithoutAssetInput = {
   durationSeconds?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   expiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   fee?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  payoutRate?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   rejectionReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1430,6 +1480,7 @@ export type OrderUncheckedUpdateManyWithoutAssetInput = {
   durationSeconds?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   expiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   fee?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  payoutRate?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   rejectionReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1453,6 +1504,7 @@ export type OrderSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = 
   durationSeconds?: boolean
   expiresAt?: boolean
   fee?: boolean
+  payoutRate?: boolean
   rejectionReason?: boolean
   createdAt?: boolean
   updatedAt?: boolean
@@ -1480,13 +1532,14 @@ export type OrderSelectScalar = {
   durationSeconds?: boolean
   expiresAt?: boolean
   fee?: boolean
+  payoutRate?: boolean
   rejectionReason?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   acceptedAt?: boolean
 }
 
-export type OrderOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "clientRequestId" | "userId" | "accountId" | "assetId" | "type" | "side" | "status" | "amount" | "requestedPrice" | "executedPrice" | "durationSeconds" | "expiresAt" | "fee" | "rejectionReason" | "createdAt" | "updatedAt" | "acceptedAt", ExtArgs["result"]["order"]>
+export type OrderOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "clientRequestId" | "userId" | "accountId" | "assetId" | "type" | "side" | "status" | "amount" | "requestedPrice" | "executedPrice" | "durationSeconds" | "expiresAt" | "fee" | "payoutRate" | "rejectionReason" | "createdAt" | "updatedAt" | "acceptedAt", ExtArgs["result"]["order"]>
 export type OrderInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
   account?: boolean | Prisma.AccountDefaultArgs<ExtArgs>
@@ -1517,6 +1570,7 @@ export type $OrderPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs 
     durationSeconds: number | null
     expiresAt: Date | null
     fee: runtime.Decimal
+    payoutRate: runtime.Decimal
     rejectionReason: string | null
     createdAt: Date
     updatedAt: Date
@@ -1908,6 +1962,7 @@ export interface OrderFieldRefs {
   readonly durationSeconds: Prisma.FieldRef<"Order", 'Int'>
   readonly expiresAt: Prisma.FieldRef<"Order", 'DateTime'>
   readonly fee: Prisma.FieldRef<"Order", 'Decimal'>
+  readonly payoutRate: Prisma.FieldRef<"Order", 'Decimal'>
   readonly rejectionReason: Prisma.FieldRef<"Order", 'String'>
   readonly createdAt: Prisma.FieldRef<"Order", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"Order", 'DateTime'>

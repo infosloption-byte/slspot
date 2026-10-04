@@ -25,7 +25,12 @@ export class RealtimeClient {
   private reconnectTimer: number | null = null
   private heartbeatTimer: number | null = null
   private intentionalClose = false
-  private readonly channels = new Set<RealtimeChannel>()
+  /**
+   * Channel -> number of active subscribers. The top bar, the trading page and the
+   * account pages can all listen to the same channel; one of them unmounting must
+   * not unsubscribe the others.
+   */
+  private readonly channels = new Map<RealtimeChannel, number>()
   private readonly listeners = new Set<Listener>()
   private readonly stateListeners = new Set<StateListener>()
 
@@ -64,9 +69,23 @@ export class RealtimeClient {
   }
 
   subscribe(channel: RealtimeChannel): () => void {
-    this.channels.add(channel)
-    if (this.stateValue === 'connected') this.sendSubscription('subscription.subscribe', channel)
+    const count = this.channels.get(channel) ?? 0
+    this.channels.set(channel, count + 1)
+    // Only the first subscriber triggers a network subscribe.
+    if (count === 0 && this.stateValue === 'connected') this.sendSubscription('subscription.subscribe', channel)
+
+    let released = false
     return () => {
+      // Calling the cleanup twice (StrictMode, double unmount) must not steal another subscriber's count.
+      if (released) return
+      released = true
+
+      const remaining = (this.channels.get(channel) ?? 1) - 1
+      if (remaining > 0) {
+        this.channels.set(channel, remaining)
+        return
+      }
+
       this.channels.delete(channel)
       if (this.stateValue === 'connected') this.sendSubscription('subscription.unsubscribe', channel)
     }
@@ -124,7 +143,7 @@ export class RealtimeClient {
   }
 
   private resubscribeAll(): void {
-    this.channels.forEach((channel) => this.sendSubscription('subscription.subscribe', channel))
+    this.channels.forEach((_count, channel) => this.sendSubscription('subscription.subscribe', channel))
   }
 
   private startHeartbeat(): void {

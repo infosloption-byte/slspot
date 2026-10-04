@@ -1,5 +1,15 @@
 # UI / theme update — Black Gold
 
+## 2026-10-04 — trading page and security fixes
+
+- **Demo prices:** `getDemoPrice` was a pure function of the clock (a sine wave), so demo trades were predictable. It now uses a random walk driven by a cryptographically secure random source (`backend/src/trading/demoPrice.ts`). State is per process.
+- **Realtime subscriptions:** channels are reference-counted, so the top bar, trading page and account pages can share `user:<id>` without one unmounting and unsubscribing the others.
+- **CSRF recovery:** refreshing the CSRF token no longer consumes a request attempt, so non-retryable POSTs (login, logout, register) are re-sent once instead of failing with "retry limit reached".
+- **API client:** the origin is resolved lazily instead of at import time, which made the module unimportable without browser globals.
+- **Tests:** `npm test` now runs every `*.test.ts` through `tsx --tsconfig tsconfig.app.json`. Fixed the events test (wrong parser) and added tests for CSRF recovery, subscriptions and live candles.
+- **Polling:** removed the 2.5s wallet poll and the 2.5s open-trade poll. Data refreshes from WebSocket events (coalesced), once after a reconnect, once after the earliest trade expiry as a safety net, and by polling only while the socket is down. Background refreshes no longer flip `loading`, which stopped the history/positions flicker.
+- **Chart:** candle arrays keep a stable identity between ticks, so a price tick no longer regenerates the series or rebuilds indicators. Live ticks accumulate high/low on the current candle and roll over to a new candle when the period ends.
+
 ## 2026-10-02 — frontend/backend separation
 
 - Moved the React/Vite application from the repository root into `frontend/`.

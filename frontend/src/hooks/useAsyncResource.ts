@@ -19,6 +19,11 @@ export function useAsyncResource<T>(loader: () => Promise<T>, enabled = true): A
   const [loading, setLoading] = useState(enabled)
   const [error, setError] = useState<ApiError | null>(null)
   const requestSequence = useRef(0)
+  const hasDataRef = useRef(false)
+
+  useEffect(() => {
+    hasDataRef.current = data !== null
+  }, [data])
 
   const reload = useCallback(async () => {
     const sequence = ++requestSequence.current
@@ -30,13 +35,19 @@ export function useAsyncResource<T>(loader: () => Promise<T>, enabled = true): A
       return null
     }
 
-    setLoading(true)
-    setError(null)
+    // A refresh while data is already on screen is a background refresh: keep showing the
+    // data and do not flip `loading`, otherwise every poll/event makes tables and panels flicker.
+    // Only a first load, or a retry with nothing to show, uses the loading state.
+    if (!hasDataRef.current) {
+      setLoading(true)
+      setError(null)
+    }
 
     try {
       const next = await loader()
       if (requestSequence.current !== sequence) return null
       setData(next)
+      setError(null)
       return next
     } catch (cause) {
       if (requestSequence.current !== sequence) return null

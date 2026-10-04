@@ -52,8 +52,11 @@ export const AnyNull = runtime.AnyNull
 
 export const ModelName = {
   User: 'User',
+  AdminAccess: 'AdminAccess',
   Session: 'Session',
+  AuthToken: 'AuthToken',
   Device: 'Device',
+  RecoveryCode: 'RecoveryCode',
   Account: 'Account',
   Asset: 'Asset',
   Market: 'Market',
@@ -63,7 +66,10 @@ export const ModelName = {
   Settlement: 'Settlement',
   Wallet: 'Wallet',
   WalletTransaction: 'WalletTransaction',
+  LedgerAccount: 'LedgerAccount',
+  LedgerTransaction: 'LedgerTransaction',
   LedgerEntry: 'LedgerEntry',
+  LedgerBalanceSnapshot: 'LedgerBalanceSnapshot',
   Deposit: 'Deposit',
   Withdrawal: 'Withdrawal',
   KycCase: 'KycCase',
@@ -95,15 +101,35 @@ export const UserScalarFieldEnum = {
   countryCode: 'countryCode',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt',
-  lastLoginAt: 'lastLoginAt'
+  lastLoginAt: 'lastLoginAt',
+  emailVerifiedAt: 'emailVerifiedAt',
+  twoFactorEnabled: 'twoFactorEnabled',
+  twoFactorSecretEnc: 'twoFactorSecretEnc',
+  twoFactorPendingSecretEnc: 'twoFactorPendingSecretEnc',
+  loginFailedCount: 'loginFailedCount',
+  loginLockedUntil: 'loginLockedUntil',
+  termsAcceptedAt: 'termsAcceptedAt',
+  termsVersion: 'termsVersion'
 } as const
 
 export type UserScalarFieldEnum = (typeof UserScalarFieldEnum)[keyof typeof UserScalarFieldEnum]
 
 
+export const AdminAccessScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  role: 'role',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type AdminAccessScalarFieldEnum = (typeof AdminAccessScalarFieldEnum)[keyof typeof AdminAccessScalarFieldEnum]
+
+
 export const SessionScalarFieldEnum = {
   id: 'id',
   userId: 'userId',
+  deviceId: 'deviceId',
   tokenHash: 'tokenHash',
   expiresAt: 'expiresAt',
   revokedAt: 'revokedAt',
@@ -114,6 +140,20 @@ export const SessionScalarFieldEnum = {
 } as const
 
 export type SessionScalarFieldEnum = (typeof SessionScalarFieldEnum)[keyof typeof SessionScalarFieldEnum]
+
+
+export const AuthTokenScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  type: 'type',
+  tokenHash: 'tokenHash',
+  expiresAt: 'expiresAt',
+  consumedAt: 'consumedAt',
+  createdAt: 'createdAt',
+  attempts: 'attempts'
+} as const
+
+export type AuthTokenScalarFieldEnum = (typeof AuthTokenScalarFieldEnum)[keyof typeof AuthTokenScalarFieldEnum]
 
 
 export const DeviceScalarFieldEnum = {
@@ -131,11 +171,23 @@ export const DeviceScalarFieldEnum = {
 export type DeviceScalarFieldEnum = (typeof DeviceScalarFieldEnum)[keyof typeof DeviceScalarFieldEnum]
 
 
+export const RecoveryCodeScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  codeHash: 'codeHash',
+  usedAt: 'usedAt',
+  createdAt: 'createdAt'
+} as const
+
+export type RecoveryCodeScalarFieldEnum = (typeof RecoveryCodeScalarFieldEnum)[keyof typeof RecoveryCodeScalarFieldEnum]
+
+
 export const AccountScalarFieldEnum = {
   id: 'id',
   userId: 'userId',
   name: 'name',
   currency: 'currency',
+  mode: 'mode',
   status: 'status',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
@@ -170,6 +222,8 @@ export const MarketScalarFieldEnum = {
   status: 'status',
   lastPrice: 'lastPrice',
   lastPriceAt: 'lastPriceAt',
+  lastChangePct: 'lastChangePct',
+  lastVolume: 'lastVolume',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
@@ -192,6 +246,7 @@ export const OrderScalarFieldEnum = {
   durationSeconds: 'durationSeconds',
   expiresAt: 'expiresAt',
   fee: 'fee',
+  payoutRate: 'payoutRate',
   rejectionReason: 'rejectionReason',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt',
@@ -280,6 +335,8 @@ export const WalletTransactionScalarFieldEnum = {
   referenceType: 'referenceType',
   referenceId: 'referenceId',
   description: 'description',
+  availableBalanceAfter: 'availableBalanceAfter',
+  heldBalanceAfter: 'heldBalanceAfter',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
@@ -287,11 +344,39 @@ export const WalletTransactionScalarFieldEnum = {
 export type WalletTransactionScalarFieldEnum = (typeof WalletTransactionScalarFieldEnum)[keyof typeof WalletTransactionScalarFieldEnum]
 
 
+export const LedgerAccountScalarFieldEnum = {
+  id: 'id',
+  code: 'code',
+  name: 'name',
+  type: 'type',
+  currency: 'currency',
+  accountId: 'accountId',
+  active: 'active',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type LedgerAccountScalarFieldEnum = (typeof LedgerAccountScalarFieldEnum)[keyof typeof LedgerAccountScalarFieldEnum]
+
+
+export const LedgerTransactionScalarFieldEnum = {
+  id: 'id',
+  walletTransactionId: 'walletTransactionId',
+  currency: 'currency',
+  referenceType: 'referenceType',
+  referenceId: 'referenceId',
+  description: 'description',
+  metadata: 'metadata',
+  createdAt: 'createdAt'
+} as const
+
+export type LedgerTransactionScalarFieldEnum = (typeof LedgerTransactionScalarFieldEnum)[keyof typeof LedgerTransactionScalarFieldEnum]
+
+
 export const LedgerEntryScalarFieldEnum = {
   id: 'id',
-  transactionId: 'transactionId',
-  accountId: 'accountId',
-  walletTransactionId: 'walletTransactionId',
+  ledgerTransactionId: 'ledgerTransactionId',
+  ledgerAccountId: 'ledgerAccountId',
   direction: 'direction',
   amount: 'amount',
   currency: 'currency',
@@ -303,9 +388,22 @@ export const LedgerEntryScalarFieldEnum = {
 export type LedgerEntryScalarFieldEnum = (typeof LedgerEntryScalarFieldEnum)[keyof typeof LedgerEntryScalarFieldEnum]
 
 
+export const LedgerBalanceSnapshotScalarFieldEnum = {
+  id: 'id',
+  ledgerAccountId: 'ledgerAccountId',
+  ledgerTransactionId: 'ledgerTransactionId',
+  currency: 'currency',
+  balance: 'balance',
+  createdAt: 'createdAt'
+} as const
+
+export type LedgerBalanceSnapshotScalarFieldEnum = (typeof LedgerBalanceSnapshotScalarFieldEnum)[keyof typeof LedgerBalanceSnapshotScalarFieldEnum]
+
+
 export const DepositScalarFieldEnum = {
   id: 'id',
   walletId: 'walletId',
+  walletTransactionId: 'walletTransactionId',
   provider: 'provider',
   providerReference: 'providerReference',
   amount: 'amount',
@@ -324,8 +422,10 @@ export type DepositScalarFieldEnum = (typeof DepositScalarFieldEnum)[keyof typeo
 export const WithdrawalScalarFieldEnum = {
   id: 'id',
   walletId: 'walletId',
+  walletTransactionId: 'walletTransactionId',
   provider: 'provider',
   providerReference: 'providerReference',
+  destination: 'destination',
   amount: 'amount',
   currency: 'currency',
   status: 'status',
@@ -410,21 +510,42 @@ export const UserOrderByRelevanceFieldEnum = {
   id: 'id',
   email: 'email',
   passwordHash: 'passwordHash',
-  countryCode: 'countryCode'
+  countryCode: 'countryCode',
+  twoFactorSecretEnc: 'twoFactorSecretEnc',
+  twoFactorPendingSecretEnc: 'twoFactorPendingSecretEnc',
+  termsVersion: 'termsVersion'
 } as const
 
 export type UserOrderByRelevanceFieldEnum = (typeof UserOrderByRelevanceFieldEnum)[keyof typeof UserOrderByRelevanceFieldEnum]
 
 
+export const AdminAccessOrderByRelevanceFieldEnum = {
+  id: 'id',
+  userId: 'userId'
+} as const
+
+export type AdminAccessOrderByRelevanceFieldEnum = (typeof AdminAccessOrderByRelevanceFieldEnum)[keyof typeof AdminAccessOrderByRelevanceFieldEnum]
+
+
 export const SessionOrderByRelevanceFieldEnum = {
   id: 'id',
   userId: 'userId',
+  deviceId: 'deviceId',
   tokenHash: 'tokenHash',
   ipAddress: 'ipAddress',
   userAgent: 'userAgent'
 } as const
 
 export type SessionOrderByRelevanceFieldEnum = (typeof SessionOrderByRelevanceFieldEnum)[keyof typeof SessionOrderByRelevanceFieldEnum]
+
+
+export const AuthTokenOrderByRelevanceFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  tokenHash: 'tokenHash'
+} as const
+
+export type AuthTokenOrderByRelevanceFieldEnum = (typeof AuthTokenOrderByRelevanceFieldEnum)[keyof typeof AuthTokenOrderByRelevanceFieldEnum]
 
 
 export const DeviceOrderByRelevanceFieldEnum = {
@@ -436,6 +557,15 @@ export const DeviceOrderByRelevanceFieldEnum = {
 } as const
 
 export type DeviceOrderByRelevanceFieldEnum = (typeof DeviceOrderByRelevanceFieldEnum)[keyof typeof DeviceOrderByRelevanceFieldEnum]
+
+
+export const RecoveryCodeOrderByRelevanceFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  codeHash: 'codeHash'
+} as const
+
+export type RecoveryCodeOrderByRelevanceFieldEnum = (typeof RecoveryCodeOrderByRelevanceFieldEnum)[keyof typeof RecoveryCodeOrderByRelevanceFieldEnum]
 
 
 export const AccountOrderByRelevanceFieldEnum = {
@@ -532,11 +662,50 @@ export const WalletTransactionOrderByRelevanceFieldEnum = {
 export type WalletTransactionOrderByRelevanceFieldEnum = (typeof WalletTransactionOrderByRelevanceFieldEnum)[keyof typeof WalletTransactionOrderByRelevanceFieldEnum]
 
 
+export const LedgerAccountOrderByRelevanceFieldEnum = {
+  id: 'id',
+  code: 'code',
+  name: 'name',
+  currency: 'currency',
+  accountId: 'accountId'
+} as const
+
+export type LedgerAccountOrderByRelevanceFieldEnum = (typeof LedgerAccountOrderByRelevanceFieldEnum)[keyof typeof LedgerAccountOrderByRelevanceFieldEnum]
+
+
+export const JsonNullValueFilter = {
+  DbNull: DbNull,
+  JsonNull: JsonNull,
+  AnyNull: AnyNull
+} as const
+
+export type JsonNullValueFilter = (typeof JsonNullValueFilter)[keyof typeof JsonNullValueFilter]
+
+
+export const QueryMode = {
+  default: 'default',
+  insensitive: 'insensitive'
+} as const
+
+export type QueryMode = (typeof QueryMode)[keyof typeof QueryMode]
+
+
+export const LedgerTransactionOrderByRelevanceFieldEnum = {
+  id: 'id',
+  walletTransactionId: 'walletTransactionId',
+  currency: 'currency',
+  referenceType: 'referenceType',
+  referenceId: 'referenceId',
+  description: 'description'
+} as const
+
+export type LedgerTransactionOrderByRelevanceFieldEnum = (typeof LedgerTransactionOrderByRelevanceFieldEnum)[keyof typeof LedgerTransactionOrderByRelevanceFieldEnum]
+
+
 export const LedgerEntryOrderByRelevanceFieldEnum = {
   id: 'id',
-  transactionId: 'transactionId',
-  accountId: 'accountId',
-  walletTransactionId: 'walletTransactionId',
+  ledgerTransactionId: 'ledgerTransactionId',
+  ledgerAccountId: 'ledgerAccountId',
   currency: 'currency',
   referenceType: 'referenceType',
   referenceId: 'referenceId'
@@ -545,9 +714,20 @@ export const LedgerEntryOrderByRelevanceFieldEnum = {
 export type LedgerEntryOrderByRelevanceFieldEnum = (typeof LedgerEntryOrderByRelevanceFieldEnum)[keyof typeof LedgerEntryOrderByRelevanceFieldEnum]
 
 
+export const LedgerBalanceSnapshotOrderByRelevanceFieldEnum = {
+  id: 'id',
+  ledgerAccountId: 'ledgerAccountId',
+  ledgerTransactionId: 'ledgerTransactionId',
+  currency: 'currency'
+} as const
+
+export type LedgerBalanceSnapshotOrderByRelevanceFieldEnum = (typeof LedgerBalanceSnapshotOrderByRelevanceFieldEnum)[keyof typeof LedgerBalanceSnapshotOrderByRelevanceFieldEnum]
+
+
 export const DepositOrderByRelevanceFieldEnum = {
   id: 'id',
   walletId: 'walletId',
+  walletTransactionId: 'walletTransactionId',
   provider: 'provider',
   providerReference: 'providerReference',
   currency: 'currency',
@@ -560,8 +740,10 @@ export type DepositOrderByRelevanceFieldEnum = (typeof DepositOrderByRelevanceFi
 export const WithdrawalOrderByRelevanceFieldEnum = {
   id: 'id',
   walletId: 'walletId',
+  walletTransactionId: 'walletTransactionId',
   provider: 'provider',
   providerReference: 'providerReference',
+  destination: 'destination',
   currency: 'currency',
   failureReason: 'failureReason'
 } as const
@@ -587,23 +769,6 @@ export const NotificationOrderByRelevanceFieldEnum = {
 } as const
 
 export type NotificationOrderByRelevanceFieldEnum = (typeof NotificationOrderByRelevanceFieldEnum)[keyof typeof NotificationOrderByRelevanceFieldEnum]
-
-
-export const JsonNullValueFilter = {
-  DbNull: DbNull,
-  JsonNull: JsonNull,
-  AnyNull: AnyNull
-} as const
-
-export type JsonNullValueFilter = (typeof JsonNullValueFilter)[keyof typeof JsonNullValueFilter]
-
-
-export const QueryMode = {
-  default: 'default',
-  insensitive: 'insensitive'
-} as const
-
-export type QueryMode = (typeof QueryMode)[keyof typeof QueryMode]
 
 
 export const AuditLogOrderByRelevanceFieldEnum = {

@@ -5,6 +5,7 @@ import { createRealtimeEvent, serializeRealtimeEvent } from '../realtime/events.
 import { isRedisReady, publish } from '../realtime/redis.js'
 import { getTradingRules, TRADING_RULES } from './config.js'
 import { LedgerService } from '../ledger/service.js'
+import { DemoPriceSimulator } from './demoPrice.js'
 
 export type TradeDirection = 'UP' | 'DOWN'
 export type WalletMode = 'DEMO' | 'REAL'
@@ -179,6 +180,8 @@ export class TradingService {
   private timer: ReturnType<typeof setTimeout> | null = null
   private running = false
   private readonly ledger: LedgerService
+  /** Unpredictable fallback prices for DEMO trading while the live feed is stale. */
+  private readonly demoPrices = new DemoPriceSimulator()
 
   constructor(
     private readonly prisma: PrismaClient,
@@ -857,11 +860,7 @@ export class TradingService {
     const base = marketPrice?.gt(0)
       ? marketPrice
       : new Prisma.Decimal(DEMO_PRICE_BASES[symbol] ?? '100')
-    let hash = 0
-    for (const char of symbol) hash = (hash * 31 + char.charCodeAt(0)) % 1000
-    const phase = Date.now() / 5000 + hash
-    const movement = Math.sin(phase) * 0.003
-    return base.mul(new Prisma.Decimal(1 + movement)).toDecimalPlaces(8)
+    return new Prisma.Decimal(this.demoPrices.quote(symbol, base.toNumber())).toDecimalPlaces(8)
   }
 
   private parseAmount(value: string): Prisma.Decimal {

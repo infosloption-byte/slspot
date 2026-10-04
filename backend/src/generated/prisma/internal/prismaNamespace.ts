@@ -398,8 +398,11 @@ type FieldRefInputType<Model, FieldType> = Model extends never ? never : FieldRe
 
 export const ModelName = {
   User: 'User',
+  AdminAccess: 'AdminAccess',
   Session: 'Session',
+  AuthToken: 'AuthToken',
   Device: 'Device',
+  RecoveryCode: 'RecoveryCode',
   Account: 'Account',
   Asset: 'Asset',
   Market: 'Market',
@@ -409,7 +412,10 @@ export const ModelName = {
   Settlement: 'Settlement',
   Wallet: 'Wallet',
   WalletTransaction: 'WalletTransaction',
+  LedgerAccount: 'LedgerAccount',
+  LedgerTransaction: 'LedgerTransaction',
   LedgerEntry: 'LedgerEntry',
+  LedgerBalanceSnapshot: 'LedgerBalanceSnapshot',
   Deposit: 'Deposit',
   Withdrawal: 'Withdrawal',
   KycCase: 'KycCase',
@@ -430,7 +436,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "session" | "device" | "account" | "asset" | "market" | "order" | "position" | "trade" | "settlement" | "wallet" | "walletTransaction" | "ledgerEntry" | "deposit" | "withdrawal" | "kycCase" | "notification" | "auditLog"
+    modelProps: "user" | "adminAccess" | "session" | "authToken" | "device" | "recoveryCode" | "account" | "asset" | "market" | "order" | "position" | "trade" | "settlement" | "wallet" | "walletTransaction" | "ledgerAccount" | "ledgerTransaction" | "ledgerEntry" | "ledgerBalanceSnapshot" | "deposit" | "withdrawal" | "kycCase" | "notification" | "auditLog"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -500,6 +506,72 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    AdminAccess: {
+      payload: Prisma.$AdminAccessPayload<ExtArgs>
+      fields: Prisma.AdminAccessFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.AdminAccessFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AdminAccessPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.AdminAccessFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AdminAccessPayload>
+        }
+        findFirst: {
+          args: Prisma.AdminAccessFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AdminAccessPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.AdminAccessFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AdminAccessPayload>
+        }
+        findMany: {
+          args: Prisma.AdminAccessFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AdminAccessPayload>[]
+        }
+        create: {
+          args: Prisma.AdminAccessCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AdminAccessPayload>
+        }
+        createMany: {
+          args: Prisma.AdminAccessCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        delete: {
+          args: Prisma.AdminAccessDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AdminAccessPayload>
+        }
+        update: {
+          args: Prisma.AdminAccessUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AdminAccessPayload>
+        }
+        deleteMany: {
+          args: Prisma.AdminAccessDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.AdminAccessUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        upsert: {
+          args: Prisma.AdminAccessUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AdminAccessPayload>
+        }
+        aggregate: {
+          args: Prisma.AdminAccessAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateAdminAccess>
+        }
+        groupBy: {
+          args: Prisma.AdminAccessGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AdminAccessGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.AdminAccessCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AdminAccessCountAggregateOutputType> | number
+        }
+      }
+    }
     Session: {
       payload: Prisma.$SessionPayload<ExtArgs>
       fields: Prisma.SessionFieldRefs
@@ -566,6 +638,72 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    AuthToken: {
+      payload: Prisma.$AuthTokenPayload<ExtArgs>
+      fields: Prisma.AuthTokenFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.AuthTokenFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AuthTokenPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.AuthTokenFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AuthTokenPayload>
+        }
+        findFirst: {
+          args: Prisma.AuthTokenFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AuthTokenPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.AuthTokenFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AuthTokenPayload>
+        }
+        findMany: {
+          args: Prisma.AuthTokenFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AuthTokenPayload>[]
+        }
+        create: {
+          args: Prisma.AuthTokenCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AuthTokenPayload>
+        }
+        createMany: {
+          args: Prisma.AuthTokenCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        delete: {
+          args: Prisma.AuthTokenDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AuthTokenPayload>
+        }
+        update: {
+          args: Prisma.AuthTokenUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AuthTokenPayload>
+        }
+        deleteMany: {
+          args: Prisma.AuthTokenDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.AuthTokenUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        upsert: {
+          args: Prisma.AuthTokenUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AuthTokenPayload>
+        }
+        aggregate: {
+          args: Prisma.AuthTokenAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateAuthToken>
+        }
+        groupBy: {
+          args: Prisma.AuthTokenGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AuthTokenGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.AuthTokenCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AuthTokenCountAggregateOutputType> | number
+        }
+      }
+    }
     Device: {
       payload: Prisma.$DevicePayload<ExtArgs>
       fields: Prisma.DeviceFieldRefs
@@ -629,6 +767,72 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         count: {
           args: Prisma.DeviceCountArgs<ExtArgs>
           result: runtime.Types.Utils.Optional<Prisma.DeviceCountAggregateOutputType> | number
+        }
+      }
+    }
+    RecoveryCode: {
+      payload: Prisma.$RecoveryCodePayload<ExtArgs>
+      fields: Prisma.RecoveryCodeFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.RecoveryCodeFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RecoveryCodePayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.RecoveryCodeFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RecoveryCodePayload>
+        }
+        findFirst: {
+          args: Prisma.RecoveryCodeFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RecoveryCodePayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.RecoveryCodeFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RecoveryCodePayload>
+        }
+        findMany: {
+          args: Prisma.RecoveryCodeFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RecoveryCodePayload>[]
+        }
+        create: {
+          args: Prisma.RecoveryCodeCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RecoveryCodePayload>
+        }
+        createMany: {
+          args: Prisma.RecoveryCodeCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        delete: {
+          args: Prisma.RecoveryCodeDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RecoveryCodePayload>
+        }
+        update: {
+          args: Prisma.RecoveryCodeUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RecoveryCodePayload>
+        }
+        deleteMany: {
+          args: Prisma.RecoveryCodeDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.RecoveryCodeUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        upsert: {
+          args: Prisma.RecoveryCodeUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$RecoveryCodePayload>
+        }
+        aggregate: {
+          args: Prisma.RecoveryCodeAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateRecoveryCode>
+        }
+        groupBy: {
+          args: Prisma.RecoveryCodeGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.RecoveryCodeGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.RecoveryCodeCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.RecoveryCodeCountAggregateOutputType> | number
         }
       }
     }
@@ -1226,6 +1430,138 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    LedgerAccount: {
+      payload: Prisma.$LedgerAccountPayload<ExtArgs>
+      fields: Prisma.LedgerAccountFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.LedgerAccountFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LedgerAccountPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.LedgerAccountFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LedgerAccountPayload>
+        }
+        findFirst: {
+          args: Prisma.LedgerAccountFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LedgerAccountPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.LedgerAccountFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LedgerAccountPayload>
+        }
+        findMany: {
+          args: Prisma.LedgerAccountFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LedgerAccountPayload>[]
+        }
+        create: {
+          args: Prisma.LedgerAccountCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LedgerAccountPayload>
+        }
+        createMany: {
+          args: Prisma.LedgerAccountCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        delete: {
+          args: Prisma.LedgerAccountDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LedgerAccountPayload>
+        }
+        update: {
+          args: Prisma.LedgerAccountUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LedgerAccountPayload>
+        }
+        deleteMany: {
+          args: Prisma.LedgerAccountDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.LedgerAccountUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        upsert: {
+          args: Prisma.LedgerAccountUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LedgerAccountPayload>
+        }
+        aggregate: {
+          args: Prisma.LedgerAccountAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateLedgerAccount>
+        }
+        groupBy: {
+          args: Prisma.LedgerAccountGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.LedgerAccountGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.LedgerAccountCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.LedgerAccountCountAggregateOutputType> | number
+        }
+      }
+    }
+    LedgerTransaction: {
+      payload: Prisma.$LedgerTransactionPayload<ExtArgs>
+      fields: Prisma.LedgerTransactionFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.LedgerTransactionFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LedgerTransactionPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.LedgerTransactionFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LedgerTransactionPayload>
+        }
+        findFirst: {
+          args: Prisma.LedgerTransactionFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LedgerTransactionPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.LedgerTransactionFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LedgerTransactionPayload>
+        }
+        findMany: {
+          args: Prisma.LedgerTransactionFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LedgerTransactionPayload>[]
+        }
+        create: {
+          args: Prisma.LedgerTransactionCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LedgerTransactionPayload>
+        }
+        createMany: {
+          args: Prisma.LedgerTransactionCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        delete: {
+          args: Prisma.LedgerTransactionDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LedgerTransactionPayload>
+        }
+        update: {
+          args: Prisma.LedgerTransactionUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LedgerTransactionPayload>
+        }
+        deleteMany: {
+          args: Prisma.LedgerTransactionDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.LedgerTransactionUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        upsert: {
+          args: Prisma.LedgerTransactionUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LedgerTransactionPayload>
+        }
+        aggregate: {
+          args: Prisma.LedgerTransactionAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateLedgerTransaction>
+        }
+        groupBy: {
+          args: Prisma.LedgerTransactionGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.LedgerTransactionGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.LedgerTransactionCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.LedgerTransactionCountAggregateOutputType> | number
+        }
+      }
+    }
     LedgerEntry: {
       payload: Prisma.$LedgerEntryPayload<ExtArgs>
       fields: Prisma.LedgerEntryFieldRefs
@@ -1289,6 +1625,72 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         count: {
           args: Prisma.LedgerEntryCountArgs<ExtArgs>
           result: runtime.Types.Utils.Optional<Prisma.LedgerEntryCountAggregateOutputType> | number
+        }
+      }
+    }
+    LedgerBalanceSnapshot: {
+      payload: Prisma.$LedgerBalanceSnapshotPayload<ExtArgs>
+      fields: Prisma.LedgerBalanceSnapshotFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.LedgerBalanceSnapshotFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LedgerBalanceSnapshotPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.LedgerBalanceSnapshotFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LedgerBalanceSnapshotPayload>
+        }
+        findFirst: {
+          args: Prisma.LedgerBalanceSnapshotFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LedgerBalanceSnapshotPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.LedgerBalanceSnapshotFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LedgerBalanceSnapshotPayload>
+        }
+        findMany: {
+          args: Prisma.LedgerBalanceSnapshotFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LedgerBalanceSnapshotPayload>[]
+        }
+        create: {
+          args: Prisma.LedgerBalanceSnapshotCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LedgerBalanceSnapshotPayload>
+        }
+        createMany: {
+          args: Prisma.LedgerBalanceSnapshotCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        delete: {
+          args: Prisma.LedgerBalanceSnapshotDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LedgerBalanceSnapshotPayload>
+        }
+        update: {
+          args: Prisma.LedgerBalanceSnapshotUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LedgerBalanceSnapshotPayload>
+        }
+        deleteMany: {
+          args: Prisma.LedgerBalanceSnapshotDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.LedgerBalanceSnapshotUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        upsert: {
+          args: Prisma.LedgerBalanceSnapshotUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LedgerBalanceSnapshotPayload>
+        }
+        aggregate: {
+          args: Prisma.LedgerBalanceSnapshotAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateLedgerBalanceSnapshot>
+        }
+        groupBy: {
+          args: Prisma.LedgerBalanceSnapshotGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.LedgerBalanceSnapshotGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.LedgerBalanceSnapshotCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.LedgerBalanceSnapshotCountAggregateOutputType> | number
         }
       }
     }
@@ -1669,15 +2071,35 @@ export const UserScalarFieldEnum = {
   countryCode: 'countryCode',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt',
-  lastLoginAt: 'lastLoginAt'
+  lastLoginAt: 'lastLoginAt',
+  emailVerifiedAt: 'emailVerifiedAt',
+  twoFactorEnabled: 'twoFactorEnabled',
+  twoFactorSecretEnc: 'twoFactorSecretEnc',
+  twoFactorPendingSecretEnc: 'twoFactorPendingSecretEnc',
+  loginFailedCount: 'loginFailedCount',
+  loginLockedUntil: 'loginLockedUntil',
+  termsAcceptedAt: 'termsAcceptedAt',
+  termsVersion: 'termsVersion'
 } as const
 
 export type UserScalarFieldEnum = (typeof UserScalarFieldEnum)[keyof typeof UserScalarFieldEnum]
 
 
+export const AdminAccessScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  role: 'role',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type AdminAccessScalarFieldEnum = (typeof AdminAccessScalarFieldEnum)[keyof typeof AdminAccessScalarFieldEnum]
+
+
 export const SessionScalarFieldEnum = {
   id: 'id',
   userId: 'userId',
+  deviceId: 'deviceId',
   tokenHash: 'tokenHash',
   expiresAt: 'expiresAt',
   revokedAt: 'revokedAt',
@@ -1688,6 +2110,20 @@ export const SessionScalarFieldEnum = {
 } as const
 
 export type SessionScalarFieldEnum = (typeof SessionScalarFieldEnum)[keyof typeof SessionScalarFieldEnum]
+
+
+export const AuthTokenScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  type: 'type',
+  tokenHash: 'tokenHash',
+  expiresAt: 'expiresAt',
+  consumedAt: 'consumedAt',
+  createdAt: 'createdAt',
+  attempts: 'attempts'
+} as const
+
+export type AuthTokenScalarFieldEnum = (typeof AuthTokenScalarFieldEnum)[keyof typeof AuthTokenScalarFieldEnum]
 
 
 export const DeviceScalarFieldEnum = {
@@ -1705,11 +2141,23 @@ export const DeviceScalarFieldEnum = {
 export type DeviceScalarFieldEnum = (typeof DeviceScalarFieldEnum)[keyof typeof DeviceScalarFieldEnum]
 
 
+export const RecoveryCodeScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  codeHash: 'codeHash',
+  usedAt: 'usedAt',
+  createdAt: 'createdAt'
+} as const
+
+export type RecoveryCodeScalarFieldEnum = (typeof RecoveryCodeScalarFieldEnum)[keyof typeof RecoveryCodeScalarFieldEnum]
+
+
 export const AccountScalarFieldEnum = {
   id: 'id',
   userId: 'userId',
   name: 'name',
   currency: 'currency',
+  mode: 'mode',
   status: 'status',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
@@ -1744,6 +2192,8 @@ export const MarketScalarFieldEnum = {
   status: 'status',
   lastPrice: 'lastPrice',
   lastPriceAt: 'lastPriceAt',
+  lastChangePct: 'lastChangePct',
+  lastVolume: 'lastVolume',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
@@ -1766,6 +2216,7 @@ export const OrderScalarFieldEnum = {
   durationSeconds: 'durationSeconds',
   expiresAt: 'expiresAt',
   fee: 'fee',
+  payoutRate: 'payoutRate',
   rejectionReason: 'rejectionReason',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt',
@@ -1854,6 +2305,8 @@ export const WalletTransactionScalarFieldEnum = {
   referenceType: 'referenceType',
   referenceId: 'referenceId',
   description: 'description',
+  availableBalanceAfter: 'availableBalanceAfter',
+  heldBalanceAfter: 'heldBalanceAfter',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
@@ -1861,11 +2314,39 @@ export const WalletTransactionScalarFieldEnum = {
 export type WalletTransactionScalarFieldEnum = (typeof WalletTransactionScalarFieldEnum)[keyof typeof WalletTransactionScalarFieldEnum]
 
 
+export const LedgerAccountScalarFieldEnum = {
+  id: 'id',
+  code: 'code',
+  name: 'name',
+  type: 'type',
+  currency: 'currency',
+  accountId: 'accountId',
+  active: 'active',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type LedgerAccountScalarFieldEnum = (typeof LedgerAccountScalarFieldEnum)[keyof typeof LedgerAccountScalarFieldEnum]
+
+
+export const LedgerTransactionScalarFieldEnum = {
+  id: 'id',
+  walletTransactionId: 'walletTransactionId',
+  currency: 'currency',
+  referenceType: 'referenceType',
+  referenceId: 'referenceId',
+  description: 'description',
+  metadata: 'metadata',
+  createdAt: 'createdAt'
+} as const
+
+export type LedgerTransactionScalarFieldEnum = (typeof LedgerTransactionScalarFieldEnum)[keyof typeof LedgerTransactionScalarFieldEnum]
+
+
 export const LedgerEntryScalarFieldEnum = {
   id: 'id',
-  transactionId: 'transactionId',
-  accountId: 'accountId',
-  walletTransactionId: 'walletTransactionId',
+  ledgerTransactionId: 'ledgerTransactionId',
+  ledgerAccountId: 'ledgerAccountId',
   direction: 'direction',
   amount: 'amount',
   currency: 'currency',
@@ -1877,9 +2358,22 @@ export const LedgerEntryScalarFieldEnum = {
 export type LedgerEntryScalarFieldEnum = (typeof LedgerEntryScalarFieldEnum)[keyof typeof LedgerEntryScalarFieldEnum]
 
 
+export const LedgerBalanceSnapshotScalarFieldEnum = {
+  id: 'id',
+  ledgerAccountId: 'ledgerAccountId',
+  ledgerTransactionId: 'ledgerTransactionId',
+  currency: 'currency',
+  balance: 'balance',
+  createdAt: 'createdAt'
+} as const
+
+export type LedgerBalanceSnapshotScalarFieldEnum = (typeof LedgerBalanceSnapshotScalarFieldEnum)[keyof typeof LedgerBalanceSnapshotScalarFieldEnum]
+
+
 export const DepositScalarFieldEnum = {
   id: 'id',
   walletId: 'walletId',
+  walletTransactionId: 'walletTransactionId',
   provider: 'provider',
   providerReference: 'providerReference',
   amount: 'amount',
@@ -1898,8 +2392,10 @@ export type DepositScalarFieldEnum = (typeof DepositScalarFieldEnum)[keyof typeo
 export const WithdrawalScalarFieldEnum = {
   id: 'id',
   walletId: 'walletId',
+  walletTransactionId: 'walletTransactionId',
   provider: 'provider',
   providerReference: 'providerReference',
+  destination: 'destination',
   amount: 'amount',
   currency: 'currency',
   status: 'status',
@@ -1984,21 +2480,42 @@ export const UserOrderByRelevanceFieldEnum = {
   id: 'id',
   email: 'email',
   passwordHash: 'passwordHash',
-  countryCode: 'countryCode'
+  countryCode: 'countryCode',
+  twoFactorSecretEnc: 'twoFactorSecretEnc',
+  twoFactorPendingSecretEnc: 'twoFactorPendingSecretEnc',
+  termsVersion: 'termsVersion'
 } as const
 
 export type UserOrderByRelevanceFieldEnum = (typeof UserOrderByRelevanceFieldEnum)[keyof typeof UserOrderByRelevanceFieldEnum]
 
 
+export const AdminAccessOrderByRelevanceFieldEnum = {
+  id: 'id',
+  userId: 'userId'
+} as const
+
+export type AdminAccessOrderByRelevanceFieldEnum = (typeof AdminAccessOrderByRelevanceFieldEnum)[keyof typeof AdminAccessOrderByRelevanceFieldEnum]
+
+
 export const SessionOrderByRelevanceFieldEnum = {
   id: 'id',
   userId: 'userId',
+  deviceId: 'deviceId',
   tokenHash: 'tokenHash',
   ipAddress: 'ipAddress',
   userAgent: 'userAgent'
 } as const
 
 export type SessionOrderByRelevanceFieldEnum = (typeof SessionOrderByRelevanceFieldEnum)[keyof typeof SessionOrderByRelevanceFieldEnum]
+
+
+export const AuthTokenOrderByRelevanceFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  tokenHash: 'tokenHash'
+} as const
+
+export type AuthTokenOrderByRelevanceFieldEnum = (typeof AuthTokenOrderByRelevanceFieldEnum)[keyof typeof AuthTokenOrderByRelevanceFieldEnum]
 
 
 export const DeviceOrderByRelevanceFieldEnum = {
@@ -2010,6 +2527,15 @@ export const DeviceOrderByRelevanceFieldEnum = {
 } as const
 
 export type DeviceOrderByRelevanceFieldEnum = (typeof DeviceOrderByRelevanceFieldEnum)[keyof typeof DeviceOrderByRelevanceFieldEnum]
+
+
+export const RecoveryCodeOrderByRelevanceFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  codeHash: 'codeHash'
+} as const
+
+export type RecoveryCodeOrderByRelevanceFieldEnum = (typeof RecoveryCodeOrderByRelevanceFieldEnum)[keyof typeof RecoveryCodeOrderByRelevanceFieldEnum]
 
 
 export const AccountOrderByRelevanceFieldEnum = {
@@ -2106,11 +2632,50 @@ export const WalletTransactionOrderByRelevanceFieldEnum = {
 export type WalletTransactionOrderByRelevanceFieldEnum = (typeof WalletTransactionOrderByRelevanceFieldEnum)[keyof typeof WalletTransactionOrderByRelevanceFieldEnum]
 
 
+export const LedgerAccountOrderByRelevanceFieldEnum = {
+  id: 'id',
+  code: 'code',
+  name: 'name',
+  currency: 'currency',
+  accountId: 'accountId'
+} as const
+
+export type LedgerAccountOrderByRelevanceFieldEnum = (typeof LedgerAccountOrderByRelevanceFieldEnum)[keyof typeof LedgerAccountOrderByRelevanceFieldEnum]
+
+
+export const JsonNullValueFilter = {
+  DbNull: DbNull,
+  JsonNull: JsonNull,
+  AnyNull: AnyNull
+} as const
+
+export type JsonNullValueFilter = (typeof JsonNullValueFilter)[keyof typeof JsonNullValueFilter]
+
+
+export const QueryMode = {
+  default: 'default',
+  insensitive: 'insensitive'
+} as const
+
+export type QueryMode = (typeof QueryMode)[keyof typeof QueryMode]
+
+
+export const LedgerTransactionOrderByRelevanceFieldEnum = {
+  id: 'id',
+  walletTransactionId: 'walletTransactionId',
+  currency: 'currency',
+  referenceType: 'referenceType',
+  referenceId: 'referenceId',
+  description: 'description'
+} as const
+
+export type LedgerTransactionOrderByRelevanceFieldEnum = (typeof LedgerTransactionOrderByRelevanceFieldEnum)[keyof typeof LedgerTransactionOrderByRelevanceFieldEnum]
+
+
 export const LedgerEntryOrderByRelevanceFieldEnum = {
   id: 'id',
-  transactionId: 'transactionId',
-  accountId: 'accountId',
-  walletTransactionId: 'walletTransactionId',
+  ledgerTransactionId: 'ledgerTransactionId',
+  ledgerAccountId: 'ledgerAccountId',
   currency: 'currency',
   referenceType: 'referenceType',
   referenceId: 'referenceId'
@@ -2119,9 +2684,20 @@ export const LedgerEntryOrderByRelevanceFieldEnum = {
 export type LedgerEntryOrderByRelevanceFieldEnum = (typeof LedgerEntryOrderByRelevanceFieldEnum)[keyof typeof LedgerEntryOrderByRelevanceFieldEnum]
 
 
+export const LedgerBalanceSnapshotOrderByRelevanceFieldEnum = {
+  id: 'id',
+  ledgerAccountId: 'ledgerAccountId',
+  ledgerTransactionId: 'ledgerTransactionId',
+  currency: 'currency'
+} as const
+
+export type LedgerBalanceSnapshotOrderByRelevanceFieldEnum = (typeof LedgerBalanceSnapshotOrderByRelevanceFieldEnum)[keyof typeof LedgerBalanceSnapshotOrderByRelevanceFieldEnum]
+
+
 export const DepositOrderByRelevanceFieldEnum = {
   id: 'id',
   walletId: 'walletId',
+  walletTransactionId: 'walletTransactionId',
   provider: 'provider',
   providerReference: 'providerReference',
   currency: 'currency',
@@ -2134,8 +2710,10 @@ export type DepositOrderByRelevanceFieldEnum = (typeof DepositOrderByRelevanceFi
 export const WithdrawalOrderByRelevanceFieldEnum = {
   id: 'id',
   walletId: 'walletId',
+  walletTransactionId: 'walletTransactionId',
   provider: 'provider',
   providerReference: 'providerReference',
+  destination: 'destination',
   currency: 'currency',
   failureReason: 'failureReason'
 } as const
@@ -2161,23 +2739,6 @@ export const NotificationOrderByRelevanceFieldEnum = {
 } as const
 
 export type NotificationOrderByRelevanceFieldEnum = (typeof NotificationOrderByRelevanceFieldEnum)[keyof typeof NotificationOrderByRelevanceFieldEnum]
-
-
-export const JsonNullValueFilter = {
-  DbNull: DbNull,
-  JsonNull: JsonNull,
-  AnyNull: AnyNull
-} as const
-
-export type JsonNullValueFilter = (typeof JsonNullValueFilter)[keyof typeof JsonNullValueFilter]
-
-
-export const QueryMode = {
-  default: 'default',
-  insensitive: 'insensitive'
-} as const
-
-export type QueryMode = (typeof QueryMode)[keyof typeof QueryMode]
 
 
 export const AuditLogOrderByRelevanceFieldEnum = {
@@ -2221,16 +2782,9 @@ export type DateTimeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel
 
 
 /**
- * Reference to a field of type 'AccountStatus'
+ * Reference to a field of type 'Boolean'
  */
-export type EnumAccountStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'AccountStatus'>
-    
-
-
-/**
- * Reference to a field of type 'AssetType'
- */
-export type EnumAssetTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'AssetType'>
+export type BooleanFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Boolean'>
     
 
 
@@ -2242,9 +2796,37 @@ export type IntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'In
 
 
 /**
- * Reference to a field of type 'Boolean'
+ * Reference to a field of type 'AdminRole'
  */
-export type BooleanFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Boolean'>
+export type EnumAdminRoleFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'AdminRole'>
+    
+
+
+/**
+ * Reference to a field of type 'AuthTokenType'
+ */
+export type EnumAuthTokenTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'AuthTokenType'>
+    
+
+
+/**
+ * Reference to a field of type 'AccountMode'
+ */
+export type EnumAccountModeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'AccountMode'>
+    
+
+
+/**
+ * Reference to a field of type 'AccountStatus'
+ */
+export type EnumAccountStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'AccountStatus'>
+    
+
+
+/**
+ * Reference to a field of type 'AssetType'
+ */
+export type EnumAssetTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'AssetType'>
     
 
 
@@ -2326,6 +2908,27 @@ export type EnumWalletTransactionStatusFieldRefInput<$PrismaModel> = FieldRefInp
 
 
 /**
+ * Reference to a field of type 'LedgerAccountType'
+ */
+export type EnumLedgerAccountTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'LedgerAccountType'>
+    
+
+
+/**
+ * Reference to a field of type 'Json'
+ */
+export type JsonFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Json'>
+    
+
+
+/**
+ * Reference to a field of type 'QueryMode'
+ */
+export type EnumQueryModeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'QueryMode'>
+    
+
+
+/**
  * Reference to a field of type 'LedgerDirection'
  */
 export type EnumLedgerDirectionFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'LedgerDirection'>
@@ -2357,20 +2960,6 @@ export type EnumKycStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$Prisma
  * Reference to a field of type 'NotificationType'
  */
 export type EnumNotificationTypeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'NotificationType'>
-    
-
-
-/**
- * Reference to a field of type 'Json'
- */
-export type JsonFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Json'>
-    
-
-
-/**
- * Reference to a field of type 'QueryMode'
- */
-export type EnumQueryModeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'QueryMode'>
     
 
 
@@ -2532,8 +3121,11 @@ export interface PrismaClientOptionsWithAdapter extends PrismaClientBaseOptions 
 export type PrismaClientOptions = PrismaClientOptionsWithAccelerateUrl | PrismaClientOptionsWithAdapter
 export type GlobalOmitConfig = {
   user?: Prisma.UserOmit
+  adminAccess?: Prisma.AdminAccessOmit
   session?: Prisma.SessionOmit
+  authToken?: Prisma.AuthTokenOmit
   device?: Prisma.DeviceOmit
+  recoveryCode?: Prisma.RecoveryCodeOmit
   account?: Prisma.AccountOmit
   asset?: Prisma.AssetOmit
   market?: Prisma.MarketOmit
@@ -2543,7 +3135,10 @@ export type GlobalOmitConfig = {
   settlement?: Prisma.SettlementOmit
   wallet?: Prisma.WalletOmit
   walletTransaction?: Prisma.WalletTransactionOmit
+  ledgerAccount?: Prisma.LedgerAccountOmit
+  ledgerTransaction?: Prisma.LedgerTransactionOmit
   ledgerEntry?: Prisma.LedgerEntryOmit
+  ledgerBalanceSnapshot?: Prisma.LedgerBalanceSnapshotOmit
   deposit?: Prisma.DepositOmit
   withdrawal?: Prisma.WithdrawalOmit
   kycCase?: Prisma.KycCaseOmit

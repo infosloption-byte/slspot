@@ -29,6 +29,7 @@ export type AccountMinAggregateOutputType = {
   userId: string | null
   name: string | null
   currency: string | null
+  mode: $Enums.AccountMode | null
   status: $Enums.AccountStatus | null
   createdAt: Date | null
   updatedAt: Date | null
@@ -39,6 +40,7 @@ export type AccountMaxAggregateOutputType = {
   userId: string | null
   name: string | null
   currency: string | null
+  mode: $Enums.AccountMode | null
   status: $Enums.AccountStatus | null
   createdAt: Date | null
   updatedAt: Date | null
@@ -49,6 +51,7 @@ export type AccountCountAggregateOutputType = {
   userId: number
   name: number
   currency: number
+  mode: number
   status: number
   createdAt: number
   updatedAt: number
@@ -61,6 +64,7 @@ export type AccountMinAggregateInputType = {
   userId?: true
   name?: true
   currency?: true
+  mode?: true
   status?: true
   createdAt?: true
   updatedAt?: true
@@ -71,6 +75,7 @@ export type AccountMaxAggregateInputType = {
   userId?: true
   name?: true
   currency?: true
+  mode?: true
   status?: true
   createdAt?: true
   updatedAt?: true
@@ -81,6 +86,7 @@ export type AccountCountAggregateInputType = {
   userId?: true
   name?: true
   currency?: true
+  mode?: true
   status?: true
   createdAt?: true
   updatedAt?: true
@@ -164,6 +170,7 @@ export type AccountGroupByOutputType = {
   userId: string
   name: string
   currency: string
+  mode: $Enums.AccountMode
   status: $Enums.AccountStatus
   createdAt: Date
   updatedAt: Date
@@ -195,6 +202,7 @@ export type AccountWhereInput = {
   userId?: Prisma.StringFilter<"Account"> | string
   name?: Prisma.StringFilter<"Account"> | string
   currency?: Prisma.StringFilter<"Account"> | string
+  mode?: Prisma.EnumAccountModeFilter<"Account"> | $Enums.AccountMode
   status?: Prisma.EnumAccountStatusFilter<"Account"> | $Enums.AccountStatus
   createdAt?: Prisma.DateTimeFilter<"Account"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Account"> | Date | string
@@ -202,7 +210,7 @@ export type AccountWhereInput = {
   orders?: Prisma.OrderListRelationFilter
   positions?: Prisma.PositionListRelationFilter
   wallets?: Prisma.WalletListRelationFilter
-  ledgerEntries?: Prisma.LedgerEntryListRelationFilter
+  ledgerAccounts?: Prisma.LedgerAccountListRelationFilter
 }
 
 export type AccountOrderByWithRelationInput = {
@@ -210,6 +218,7 @@ export type AccountOrderByWithRelationInput = {
   userId?: Prisma.SortOrder
   name?: Prisma.SortOrder
   currency?: Prisma.SortOrder
+  mode?: Prisma.SortOrder
   status?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -217,19 +226,20 @@ export type AccountOrderByWithRelationInput = {
   orders?: Prisma.OrderOrderByRelationAggregateInput
   positions?: Prisma.PositionOrderByRelationAggregateInput
   wallets?: Prisma.WalletOrderByRelationAggregateInput
-  ledgerEntries?: Prisma.LedgerEntryOrderByRelationAggregateInput
+  ledgerAccounts?: Prisma.LedgerAccountOrderByRelationAggregateInput
   _relevance?: Prisma.AccountOrderByRelevanceInput
 }
 
 export type AccountWhereUniqueInput = Prisma.AtLeast<{
   id?: string
-  userId_currency?: Prisma.AccountUserIdCurrencyCompoundUniqueInput
+  userId_currency_mode?: Prisma.AccountUserIdCurrencyModeCompoundUniqueInput
   AND?: Prisma.AccountWhereInput | Prisma.AccountWhereInput[]
   OR?: Prisma.AccountWhereInput[]
   NOT?: Prisma.AccountWhereInput | Prisma.AccountWhereInput[]
   userId?: Prisma.StringFilter<"Account"> | string
   name?: Prisma.StringFilter<"Account"> | string
   currency?: Prisma.StringFilter<"Account"> | string
+  mode?: Prisma.EnumAccountModeFilter<"Account"> | $Enums.AccountMode
   status?: Prisma.EnumAccountStatusFilter<"Account"> | $Enums.AccountStatus
   createdAt?: Prisma.DateTimeFilter<"Account"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Account"> | Date | string
@@ -237,14 +247,15 @@ export type AccountWhereUniqueInput = Prisma.AtLeast<{
   orders?: Prisma.OrderListRelationFilter
   positions?: Prisma.PositionListRelationFilter
   wallets?: Prisma.WalletListRelationFilter
-  ledgerEntries?: Prisma.LedgerEntryListRelationFilter
-}, "id" | "userId_currency">
+  ledgerAccounts?: Prisma.LedgerAccountListRelationFilter
+}, "id" | "userId_currency_mode">
 
 export type AccountOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
   userId?: Prisma.SortOrder
   name?: Prisma.SortOrder
   currency?: Prisma.SortOrder
+  mode?: Prisma.SortOrder
   status?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -261,6 +272,7 @@ export type AccountScalarWhereWithAggregatesInput = {
   userId?: Prisma.StringWithAggregatesFilter<"Account"> | string
   name?: Prisma.StringWithAggregatesFilter<"Account"> | string
   currency?: Prisma.StringWithAggregatesFilter<"Account"> | string
+  mode?: Prisma.EnumAccountModeWithAggregatesFilter<"Account"> | $Enums.AccountMode
   status?: Prisma.EnumAccountStatusWithAggregatesFilter<"Account"> | $Enums.AccountStatus
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Account"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"Account"> | Date | string
@@ -270,6 +282,7 @@ export type AccountCreateInput = {
   id?: string
   name: string
   currency: string
+  mode?: $Enums.AccountMode
   status?: $Enums.AccountStatus
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -277,7 +290,7 @@ export type AccountCreateInput = {
   orders?: Prisma.OrderCreateNestedManyWithoutAccountInput
   positions?: Prisma.PositionCreateNestedManyWithoutAccountInput
   wallets?: Prisma.WalletCreateNestedManyWithoutAccountInput
-  ledgerEntries?: Prisma.LedgerEntryCreateNestedManyWithoutAccountInput
+  ledgerAccounts?: Prisma.LedgerAccountCreateNestedManyWithoutAccountInput
 }
 
 export type AccountUncheckedCreateInput = {
@@ -285,19 +298,21 @@ export type AccountUncheckedCreateInput = {
   userId: string
   name: string
   currency: string
+  mode?: $Enums.AccountMode
   status?: $Enums.AccountStatus
   createdAt?: Date | string
   updatedAt?: Date | string
   orders?: Prisma.OrderUncheckedCreateNestedManyWithoutAccountInput
   positions?: Prisma.PositionUncheckedCreateNestedManyWithoutAccountInput
   wallets?: Prisma.WalletUncheckedCreateNestedManyWithoutAccountInput
-  ledgerEntries?: Prisma.LedgerEntryUncheckedCreateNestedManyWithoutAccountInput
+  ledgerAccounts?: Prisma.LedgerAccountUncheckedCreateNestedManyWithoutAccountInput
 }
 
 export type AccountUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   currency?: Prisma.StringFieldUpdateOperationsInput | string
+  mode?: Prisma.EnumAccountModeFieldUpdateOperationsInput | $Enums.AccountMode
   status?: Prisma.EnumAccountStatusFieldUpdateOperationsInput | $Enums.AccountStatus
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -305,7 +320,7 @@ export type AccountUpdateInput = {
   orders?: Prisma.OrderUpdateManyWithoutAccountNestedInput
   positions?: Prisma.PositionUpdateManyWithoutAccountNestedInput
   wallets?: Prisma.WalletUpdateManyWithoutAccountNestedInput
-  ledgerEntries?: Prisma.LedgerEntryUpdateManyWithoutAccountNestedInput
+  ledgerAccounts?: Prisma.LedgerAccountUpdateManyWithoutAccountNestedInput
 }
 
 export type AccountUncheckedUpdateInput = {
@@ -313,13 +328,14 @@ export type AccountUncheckedUpdateInput = {
   userId?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   currency?: Prisma.StringFieldUpdateOperationsInput | string
+  mode?: Prisma.EnumAccountModeFieldUpdateOperationsInput | $Enums.AccountMode
   status?: Prisma.EnumAccountStatusFieldUpdateOperationsInput | $Enums.AccountStatus
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   orders?: Prisma.OrderUncheckedUpdateManyWithoutAccountNestedInput
   positions?: Prisma.PositionUncheckedUpdateManyWithoutAccountNestedInput
   wallets?: Prisma.WalletUncheckedUpdateManyWithoutAccountNestedInput
-  ledgerEntries?: Prisma.LedgerEntryUncheckedUpdateManyWithoutAccountNestedInput
+  ledgerAccounts?: Prisma.LedgerAccountUncheckedUpdateManyWithoutAccountNestedInput
 }
 
 export type AccountCreateManyInput = {
@@ -327,6 +343,7 @@ export type AccountCreateManyInput = {
   userId: string
   name: string
   currency: string
+  mode?: $Enums.AccountMode
   status?: $Enums.AccountStatus
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -336,6 +353,7 @@ export type AccountUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   currency?: Prisma.StringFieldUpdateOperationsInput | string
+  mode?: Prisma.EnumAccountModeFieldUpdateOperationsInput | $Enums.AccountMode
   status?: Prisma.EnumAccountStatusFieldUpdateOperationsInput | $Enums.AccountStatus
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -346,6 +364,7 @@ export type AccountUncheckedUpdateManyInput = {
   userId?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   currency?: Prisma.StringFieldUpdateOperationsInput | string
+  mode?: Prisma.EnumAccountModeFieldUpdateOperationsInput | $Enums.AccountMode
   status?: Prisma.EnumAccountStatusFieldUpdateOperationsInput | $Enums.AccountStatus
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -367,9 +386,10 @@ export type AccountOrderByRelevanceInput = {
   search: string
 }
 
-export type AccountUserIdCurrencyCompoundUniqueInput = {
+export type AccountUserIdCurrencyModeCompoundUniqueInput = {
   userId: string
   currency: string
+  mode: $Enums.AccountMode
 }
 
 export type AccountCountOrderByAggregateInput = {
@@ -377,6 +397,7 @@ export type AccountCountOrderByAggregateInput = {
   userId?: Prisma.SortOrder
   name?: Prisma.SortOrder
   currency?: Prisma.SortOrder
+  mode?: Prisma.SortOrder
   status?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -387,6 +408,7 @@ export type AccountMaxOrderByAggregateInput = {
   userId?: Prisma.SortOrder
   name?: Prisma.SortOrder
   currency?: Prisma.SortOrder
+  mode?: Prisma.SortOrder
   status?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -397,6 +419,7 @@ export type AccountMinOrderByAggregateInput = {
   userId?: Prisma.SortOrder
   name?: Prisma.SortOrder
   currency?: Prisma.SortOrder
+  mode?: Prisma.SortOrder
   status?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -405,6 +428,11 @@ export type AccountMinOrderByAggregateInput = {
 export type AccountScalarRelationFilter = {
   is?: Prisma.AccountWhereInput
   isNot?: Prisma.AccountWhereInput
+}
+
+export type AccountNullableScalarRelationFilter = {
+  is?: Prisma.AccountWhereInput | null
+  isNot?: Prisma.AccountWhereInput | null
 }
 
 export type AccountCreateNestedManyWithoutUserInput = {
@@ -447,6 +475,10 @@ export type AccountUncheckedUpdateManyWithoutUserNestedInput = {
   update?: Prisma.AccountUpdateWithWhereUniqueWithoutUserInput | Prisma.AccountUpdateWithWhereUniqueWithoutUserInput[]
   updateMany?: Prisma.AccountUpdateManyWithWhereWithoutUserInput | Prisma.AccountUpdateManyWithWhereWithoutUserInput[]
   deleteMany?: Prisma.AccountScalarWhereInput | Prisma.AccountScalarWhereInput[]
+}
+
+export type EnumAccountModeFieldUpdateOperationsInput = {
+  set?: $Enums.AccountMode
 }
 
 export type EnumAccountStatusFieldUpdateOperationsInput = {
@@ -495,44 +527,48 @@ export type AccountUpdateOneRequiredWithoutWalletsNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.AccountUpdateToOneWithWhereWithoutWalletsInput, Prisma.AccountUpdateWithoutWalletsInput>, Prisma.AccountUncheckedUpdateWithoutWalletsInput>
 }
 
-export type AccountCreateNestedOneWithoutLedgerEntriesInput = {
-  create?: Prisma.XOR<Prisma.AccountCreateWithoutLedgerEntriesInput, Prisma.AccountUncheckedCreateWithoutLedgerEntriesInput>
-  connectOrCreate?: Prisma.AccountCreateOrConnectWithoutLedgerEntriesInput
+export type AccountCreateNestedOneWithoutLedgerAccountsInput = {
+  create?: Prisma.XOR<Prisma.AccountCreateWithoutLedgerAccountsInput, Prisma.AccountUncheckedCreateWithoutLedgerAccountsInput>
+  connectOrCreate?: Prisma.AccountCreateOrConnectWithoutLedgerAccountsInput
   connect?: Prisma.AccountWhereUniqueInput
 }
 
-export type AccountUpdateOneRequiredWithoutLedgerEntriesNestedInput = {
-  create?: Prisma.XOR<Prisma.AccountCreateWithoutLedgerEntriesInput, Prisma.AccountUncheckedCreateWithoutLedgerEntriesInput>
-  connectOrCreate?: Prisma.AccountCreateOrConnectWithoutLedgerEntriesInput
-  upsert?: Prisma.AccountUpsertWithoutLedgerEntriesInput
+export type AccountUpdateOneWithoutLedgerAccountsNestedInput = {
+  create?: Prisma.XOR<Prisma.AccountCreateWithoutLedgerAccountsInput, Prisma.AccountUncheckedCreateWithoutLedgerAccountsInput>
+  connectOrCreate?: Prisma.AccountCreateOrConnectWithoutLedgerAccountsInput
+  upsert?: Prisma.AccountUpsertWithoutLedgerAccountsInput
+  disconnect?: Prisma.AccountWhereInput | boolean
+  delete?: Prisma.AccountWhereInput | boolean
   connect?: Prisma.AccountWhereUniqueInput
-  update?: Prisma.XOR<Prisma.XOR<Prisma.AccountUpdateToOneWithWhereWithoutLedgerEntriesInput, Prisma.AccountUpdateWithoutLedgerEntriesInput>, Prisma.AccountUncheckedUpdateWithoutLedgerEntriesInput>
+  update?: Prisma.XOR<Prisma.XOR<Prisma.AccountUpdateToOneWithWhereWithoutLedgerAccountsInput, Prisma.AccountUpdateWithoutLedgerAccountsInput>, Prisma.AccountUncheckedUpdateWithoutLedgerAccountsInput>
 }
 
 export type AccountCreateWithoutUserInput = {
   id?: string
   name: string
   currency: string
+  mode?: $Enums.AccountMode
   status?: $Enums.AccountStatus
   createdAt?: Date | string
   updatedAt?: Date | string
   orders?: Prisma.OrderCreateNestedManyWithoutAccountInput
   positions?: Prisma.PositionCreateNestedManyWithoutAccountInput
   wallets?: Prisma.WalletCreateNestedManyWithoutAccountInput
-  ledgerEntries?: Prisma.LedgerEntryCreateNestedManyWithoutAccountInput
+  ledgerAccounts?: Prisma.LedgerAccountCreateNestedManyWithoutAccountInput
 }
 
 export type AccountUncheckedCreateWithoutUserInput = {
   id?: string
   name: string
   currency: string
+  mode?: $Enums.AccountMode
   status?: $Enums.AccountStatus
   createdAt?: Date | string
   updatedAt?: Date | string
   orders?: Prisma.OrderUncheckedCreateNestedManyWithoutAccountInput
   positions?: Prisma.PositionUncheckedCreateNestedManyWithoutAccountInput
   wallets?: Prisma.WalletUncheckedCreateNestedManyWithoutAccountInput
-  ledgerEntries?: Prisma.LedgerEntryUncheckedCreateNestedManyWithoutAccountInput
+  ledgerAccounts?: Prisma.LedgerAccountUncheckedCreateNestedManyWithoutAccountInput
 }
 
 export type AccountCreateOrConnectWithoutUserInput = {
@@ -569,6 +605,7 @@ export type AccountScalarWhereInput = {
   userId?: Prisma.StringFilter<"Account"> | string
   name?: Prisma.StringFilter<"Account"> | string
   currency?: Prisma.StringFilter<"Account"> | string
+  mode?: Prisma.EnumAccountModeFilter<"Account"> | $Enums.AccountMode
   status?: Prisma.EnumAccountStatusFilter<"Account"> | $Enums.AccountStatus
   createdAt?: Prisma.DateTimeFilter<"Account"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Account"> | Date | string
@@ -578,13 +615,14 @@ export type AccountCreateWithoutOrdersInput = {
   id?: string
   name: string
   currency: string
+  mode?: $Enums.AccountMode
   status?: $Enums.AccountStatus
   createdAt?: Date | string
   updatedAt?: Date | string
   user: Prisma.UserCreateNestedOneWithoutAccountsInput
   positions?: Prisma.PositionCreateNestedManyWithoutAccountInput
   wallets?: Prisma.WalletCreateNestedManyWithoutAccountInput
-  ledgerEntries?: Prisma.LedgerEntryCreateNestedManyWithoutAccountInput
+  ledgerAccounts?: Prisma.LedgerAccountCreateNestedManyWithoutAccountInput
 }
 
 export type AccountUncheckedCreateWithoutOrdersInput = {
@@ -592,12 +630,13 @@ export type AccountUncheckedCreateWithoutOrdersInput = {
   userId: string
   name: string
   currency: string
+  mode?: $Enums.AccountMode
   status?: $Enums.AccountStatus
   createdAt?: Date | string
   updatedAt?: Date | string
   positions?: Prisma.PositionUncheckedCreateNestedManyWithoutAccountInput
   wallets?: Prisma.WalletUncheckedCreateNestedManyWithoutAccountInput
-  ledgerEntries?: Prisma.LedgerEntryUncheckedCreateNestedManyWithoutAccountInput
+  ledgerAccounts?: Prisma.LedgerAccountUncheckedCreateNestedManyWithoutAccountInput
 }
 
 export type AccountCreateOrConnectWithoutOrdersInput = {
@@ -620,13 +659,14 @@ export type AccountUpdateWithoutOrdersInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   currency?: Prisma.StringFieldUpdateOperationsInput | string
+  mode?: Prisma.EnumAccountModeFieldUpdateOperationsInput | $Enums.AccountMode
   status?: Prisma.EnumAccountStatusFieldUpdateOperationsInput | $Enums.AccountStatus
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   user?: Prisma.UserUpdateOneRequiredWithoutAccountsNestedInput
   positions?: Prisma.PositionUpdateManyWithoutAccountNestedInput
   wallets?: Prisma.WalletUpdateManyWithoutAccountNestedInput
-  ledgerEntries?: Prisma.LedgerEntryUpdateManyWithoutAccountNestedInput
+  ledgerAccounts?: Prisma.LedgerAccountUpdateManyWithoutAccountNestedInput
 }
 
 export type AccountUncheckedUpdateWithoutOrdersInput = {
@@ -634,25 +674,27 @@ export type AccountUncheckedUpdateWithoutOrdersInput = {
   userId?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   currency?: Prisma.StringFieldUpdateOperationsInput | string
+  mode?: Prisma.EnumAccountModeFieldUpdateOperationsInput | $Enums.AccountMode
   status?: Prisma.EnumAccountStatusFieldUpdateOperationsInput | $Enums.AccountStatus
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   positions?: Prisma.PositionUncheckedUpdateManyWithoutAccountNestedInput
   wallets?: Prisma.WalletUncheckedUpdateManyWithoutAccountNestedInput
-  ledgerEntries?: Prisma.LedgerEntryUncheckedUpdateManyWithoutAccountNestedInput
+  ledgerAccounts?: Prisma.LedgerAccountUncheckedUpdateManyWithoutAccountNestedInput
 }
 
 export type AccountCreateWithoutPositionsInput = {
   id?: string
   name: string
   currency: string
+  mode?: $Enums.AccountMode
   status?: $Enums.AccountStatus
   createdAt?: Date | string
   updatedAt?: Date | string
   user: Prisma.UserCreateNestedOneWithoutAccountsInput
   orders?: Prisma.OrderCreateNestedManyWithoutAccountInput
   wallets?: Prisma.WalletCreateNestedManyWithoutAccountInput
-  ledgerEntries?: Prisma.LedgerEntryCreateNestedManyWithoutAccountInput
+  ledgerAccounts?: Prisma.LedgerAccountCreateNestedManyWithoutAccountInput
 }
 
 export type AccountUncheckedCreateWithoutPositionsInput = {
@@ -660,12 +702,13 @@ export type AccountUncheckedCreateWithoutPositionsInput = {
   userId: string
   name: string
   currency: string
+  mode?: $Enums.AccountMode
   status?: $Enums.AccountStatus
   createdAt?: Date | string
   updatedAt?: Date | string
   orders?: Prisma.OrderUncheckedCreateNestedManyWithoutAccountInput
   wallets?: Prisma.WalletUncheckedCreateNestedManyWithoutAccountInput
-  ledgerEntries?: Prisma.LedgerEntryUncheckedCreateNestedManyWithoutAccountInput
+  ledgerAccounts?: Prisma.LedgerAccountUncheckedCreateNestedManyWithoutAccountInput
 }
 
 export type AccountCreateOrConnectWithoutPositionsInput = {
@@ -688,13 +731,14 @@ export type AccountUpdateWithoutPositionsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   currency?: Prisma.StringFieldUpdateOperationsInput | string
+  mode?: Prisma.EnumAccountModeFieldUpdateOperationsInput | $Enums.AccountMode
   status?: Prisma.EnumAccountStatusFieldUpdateOperationsInput | $Enums.AccountStatus
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   user?: Prisma.UserUpdateOneRequiredWithoutAccountsNestedInput
   orders?: Prisma.OrderUpdateManyWithoutAccountNestedInput
   wallets?: Prisma.WalletUpdateManyWithoutAccountNestedInput
-  ledgerEntries?: Prisma.LedgerEntryUpdateManyWithoutAccountNestedInput
+  ledgerAccounts?: Prisma.LedgerAccountUpdateManyWithoutAccountNestedInput
 }
 
 export type AccountUncheckedUpdateWithoutPositionsInput = {
@@ -702,25 +746,27 @@ export type AccountUncheckedUpdateWithoutPositionsInput = {
   userId?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   currency?: Prisma.StringFieldUpdateOperationsInput | string
+  mode?: Prisma.EnumAccountModeFieldUpdateOperationsInput | $Enums.AccountMode
   status?: Prisma.EnumAccountStatusFieldUpdateOperationsInput | $Enums.AccountStatus
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   orders?: Prisma.OrderUncheckedUpdateManyWithoutAccountNestedInput
   wallets?: Prisma.WalletUncheckedUpdateManyWithoutAccountNestedInput
-  ledgerEntries?: Prisma.LedgerEntryUncheckedUpdateManyWithoutAccountNestedInput
+  ledgerAccounts?: Prisma.LedgerAccountUncheckedUpdateManyWithoutAccountNestedInput
 }
 
 export type AccountCreateWithoutWalletsInput = {
   id?: string
   name: string
   currency: string
+  mode?: $Enums.AccountMode
   status?: $Enums.AccountStatus
   createdAt?: Date | string
   updatedAt?: Date | string
   user: Prisma.UserCreateNestedOneWithoutAccountsInput
   orders?: Prisma.OrderCreateNestedManyWithoutAccountInput
   positions?: Prisma.PositionCreateNestedManyWithoutAccountInput
-  ledgerEntries?: Prisma.LedgerEntryCreateNestedManyWithoutAccountInput
+  ledgerAccounts?: Prisma.LedgerAccountCreateNestedManyWithoutAccountInput
 }
 
 export type AccountUncheckedCreateWithoutWalletsInput = {
@@ -728,12 +774,13 @@ export type AccountUncheckedCreateWithoutWalletsInput = {
   userId: string
   name: string
   currency: string
+  mode?: $Enums.AccountMode
   status?: $Enums.AccountStatus
   createdAt?: Date | string
   updatedAt?: Date | string
   orders?: Prisma.OrderUncheckedCreateNestedManyWithoutAccountInput
   positions?: Prisma.PositionUncheckedCreateNestedManyWithoutAccountInput
-  ledgerEntries?: Prisma.LedgerEntryUncheckedCreateNestedManyWithoutAccountInput
+  ledgerAccounts?: Prisma.LedgerAccountUncheckedCreateNestedManyWithoutAccountInput
 }
 
 export type AccountCreateOrConnectWithoutWalletsInput = {
@@ -756,13 +803,14 @@ export type AccountUpdateWithoutWalletsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   currency?: Prisma.StringFieldUpdateOperationsInput | string
+  mode?: Prisma.EnumAccountModeFieldUpdateOperationsInput | $Enums.AccountMode
   status?: Prisma.EnumAccountStatusFieldUpdateOperationsInput | $Enums.AccountStatus
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   user?: Prisma.UserUpdateOneRequiredWithoutAccountsNestedInput
   orders?: Prisma.OrderUpdateManyWithoutAccountNestedInput
   positions?: Prisma.PositionUpdateManyWithoutAccountNestedInput
-  ledgerEntries?: Prisma.LedgerEntryUpdateManyWithoutAccountNestedInput
+  ledgerAccounts?: Prisma.LedgerAccountUpdateManyWithoutAccountNestedInput
 }
 
 export type AccountUncheckedUpdateWithoutWalletsInput = {
@@ -770,18 +818,20 @@ export type AccountUncheckedUpdateWithoutWalletsInput = {
   userId?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   currency?: Prisma.StringFieldUpdateOperationsInput | string
+  mode?: Prisma.EnumAccountModeFieldUpdateOperationsInput | $Enums.AccountMode
   status?: Prisma.EnumAccountStatusFieldUpdateOperationsInput | $Enums.AccountStatus
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   orders?: Prisma.OrderUncheckedUpdateManyWithoutAccountNestedInput
   positions?: Prisma.PositionUncheckedUpdateManyWithoutAccountNestedInput
-  ledgerEntries?: Prisma.LedgerEntryUncheckedUpdateManyWithoutAccountNestedInput
+  ledgerAccounts?: Prisma.LedgerAccountUncheckedUpdateManyWithoutAccountNestedInput
 }
 
-export type AccountCreateWithoutLedgerEntriesInput = {
+export type AccountCreateWithoutLedgerAccountsInput = {
   id?: string
   name: string
   currency: string
+  mode?: $Enums.AccountMode
   status?: $Enums.AccountStatus
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -791,11 +841,12 @@ export type AccountCreateWithoutLedgerEntriesInput = {
   wallets?: Prisma.WalletCreateNestedManyWithoutAccountInput
 }
 
-export type AccountUncheckedCreateWithoutLedgerEntriesInput = {
+export type AccountUncheckedCreateWithoutLedgerAccountsInput = {
   id?: string
   userId: string
   name: string
   currency: string
+  mode?: $Enums.AccountMode
   status?: $Enums.AccountStatus
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -804,26 +855,27 @@ export type AccountUncheckedCreateWithoutLedgerEntriesInput = {
   wallets?: Prisma.WalletUncheckedCreateNestedManyWithoutAccountInput
 }
 
-export type AccountCreateOrConnectWithoutLedgerEntriesInput = {
+export type AccountCreateOrConnectWithoutLedgerAccountsInput = {
   where: Prisma.AccountWhereUniqueInput
-  create: Prisma.XOR<Prisma.AccountCreateWithoutLedgerEntriesInput, Prisma.AccountUncheckedCreateWithoutLedgerEntriesInput>
+  create: Prisma.XOR<Prisma.AccountCreateWithoutLedgerAccountsInput, Prisma.AccountUncheckedCreateWithoutLedgerAccountsInput>
 }
 
-export type AccountUpsertWithoutLedgerEntriesInput = {
-  update: Prisma.XOR<Prisma.AccountUpdateWithoutLedgerEntriesInput, Prisma.AccountUncheckedUpdateWithoutLedgerEntriesInput>
-  create: Prisma.XOR<Prisma.AccountCreateWithoutLedgerEntriesInput, Prisma.AccountUncheckedCreateWithoutLedgerEntriesInput>
+export type AccountUpsertWithoutLedgerAccountsInput = {
+  update: Prisma.XOR<Prisma.AccountUpdateWithoutLedgerAccountsInput, Prisma.AccountUncheckedUpdateWithoutLedgerAccountsInput>
+  create: Prisma.XOR<Prisma.AccountCreateWithoutLedgerAccountsInput, Prisma.AccountUncheckedCreateWithoutLedgerAccountsInput>
   where?: Prisma.AccountWhereInput
 }
 
-export type AccountUpdateToOneWithWhereWithoutLedgerEntriesInput = {
+export type AccountUpdateToOneWithWhereWithoutLedgerAccountsInput = {
   where?: Prisma.AccountWhereInput
-  data: Prisma.XOR<Prisma.AccountUpdateWithoutLedgerEntriesInput, Prisma.AccountUncheckedUpdateWithoutLedgerEntriesInput>
+  data: Prisma.XOR<Prisma.AccountUpdateWithoutLedgerAccountsInput, Prisma.AccountUncheckedUpdateWithoutLedgerAccountsInput>
 }
 
-export type AccountUpdateWithoutLedgerEntriesInput = {
+export type AccountUpdateWithoutLedgerAccountsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   currency?: Prisma.StringFieldUpdateOperationsInput | string
+  mode?: Prisma.EnumAccountModeFieldUpdateOperationsInput | $Enums.AccountMode
   status?: Prisma.EnumAccountStatusFieldUpdateOperationsInput | $Enums.AccountStatus
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -833,11 +885,12 @@ export type AccountUpdateWithoutLedgerEntriesInput = {
   wallets?: Prisma.WalletUpdateManyWithoutAccountNestedInput
 }
 
-export type AccountUncheckedUpdateWithoutLedgerEntriesInput = {
+export type AccountUncheckedUpdateWithoutLedgerAccountsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   userId?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   currency?: Prisma.StringFieldUpdateOperationsInput | string
+  mode?: Prisma.EnumAccountModeFieldUpdateOperationsInput | $Enums.AccountMode
   status?: Prisma.EnumAccountStatusFieldUpdateOperationsInput | $Enums.AccountStatus
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -850,6 +903,7 @@ export type AccountCreateManyUserInput = {
   id?: string
   name: string
   currency: string
+  mode?: $Enums.AccountMode
   status?: $Enums.AccountStatus
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -859,32 +913,35 @@ export type AccountUpdateWithoutUserInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   currency?: Prisma.StringFieldUpdateOperationsInput | string
+  mode?: Prisma.EnumAccountModeFieldUpdateOperationsInput | $Enums.AccountMode
   status?: Prisma.EnumAccountStatusFieldUpdateOperationsInput | $Enums.AccountStatus
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   orders?: Prisma.OrderUpdateManyWithoutAccountNestedInput
   positions?: Prisma.PositionUpdateManyWithoutAccountNestedInput
   wallets?: Prisma.WalletUpdateManyWithoutAccountNestedInput
-  ledgerEntries?: Prisma.LedgerEntryUpdateManyWithoutAccountNestedInput
+  ledgerAccounts?: Prisma.LedgerAccountUpdateManyWithoutAccountNestedInput
 }
 
 export type AccountUncheckedUpdateWithoutUserInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   currency?: Prisma.StringFieldUpdateOperationsInput | string
+  mode?: Prisma.EnumAccountModeFieldUpdateOperationsInput | $Enums.AccountMode
   status?: Prisma.EnumAccountStatusFieldUpdateOperationsInput | $Enums.AccountStatus
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   orders?: Prisma.OrderUncheckedUpdateManyWithoutAccountNestedInput
   positions?: Prisma.PositionUncheckedUpdateManyWithoutAccountNestedInput
   wallets?: Prisma.WalletUncheckedUpdateManyWithoutAccountNestedInput
-  ledgerEntries?: Prisma.LedgerEntryUncheckedUpdateManyWithoutAccountNestedInput
+  ledgerAccounts?: Prisma.LedgerAccountUncheckedUpdateManyWithoutAccountNestedInput
 }
 
 export type AccountUncheckedUpdateManyWithoutUserInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   currency?: Prisma.StringFieldUpdateOperationsInput | string
+  mode?: Prisma.EnumAccountModeFieldUpdateOperationsInput | $Enums.AccountMode
   status?: Prisma.EnumAccountStatusFieldUpdateOperationsInput | $Enums.AccountStatus
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -899,14 +956,14 @@ export type AccountCountOutputType = {
   orders: number
   positions: number
   wallets: number
-  ledgerEntries: number
+  ledgerAccounts: number
 }
 
 export type AccountCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   orders?: boolean | AccountCountOutputTypeCountOrdersArgs
   positions?: boolean | AccountCountOutputTypeCountPositionsArgs
   wallets?: boolean | AccountCountOutputTypeCountWalletsArgs
-  ledgerEntries?: boolean | AccountCountOutputTypeCountLedgerEntriesArgs
+  ledgerAccounts?: boolean | AccountCountOutputTypeCountLedgerAccountsArgs
 }
 
 /**
@@ -943,8 +1000,8 @@ export type AccountCountOutputTypeCountWalletsArgs<ExtArgs extends runtime.Types
 /**
  * AccountCountOutputType without action
  */
-export type AccountCountOutputTypeCountLedgerEntriesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  where?: Prisma.LedgerEntryWhereInput
+export type AccountCountOutputTypeCountLedgerAccountsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.LedgerAccountWhereInput
 }
 
 
@@ -953,6 +1010,7 @@ export type AccountSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs 
   userId?: boolean
   name?: boolean
   currency?: boolean
+  mode?: boolean
   status?: boolean
   createdAt?: boolean
   updatedAt?: boolean
@@ -960,7 +1018,7 @@ export type AccountSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs 
   orders?: boolean | Prisma.Account$ordersArgs<ExtArgs>
   positions?: boolean | Prisma.Account$positionsArgs<ExtArgs>
   wallets?: boolean | Prisma.Account$walletsArgs<ExtArgs>
-  ledgerEntries?: boolean | Prisma.Account$ledgerEntriesArgs<ExtArgs>
+  ledgerAccounts?: boolean | Prisma.Account$ledgerAccountsArgs<ExtArgs>
   _count?: boolean | Prisma.AccountCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["account"]>
 
@@ -971,18 +1029,19 @@ export type AccountSelectScalar = {
   userId?: boolean
   name?: boolean
   currency?: boolean
+  mode?: boolean
   status?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type AccountOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "userId" | "name" | "currency" | "status" | "createdAt" | "updatedAt", ExtArgs["result"]["account"]>
+export type AccountOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "userId" | "name" | "currency" | "mode" | "status" | "createdAt" | "updatedAt", ExtArgs["result"]["account"]>
 export type AccountInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
   orders?: boolean | Prisma.Account$ordersArgs<ExtArgs>
   positions?: boolean | Prisma.Account$positionsArgs<ExtArgs>
   wallets?: boolean | Prisma.Account$walletsArgs<ExtArgs>
-  ledgerEntries?: boolean | Prisma.Account$ledgerEntriesArgs<ExtArgs>
+  ledgerAccounts?: boolean | Prisma.Account$ledgerAccountsArgs<ExtArgs>
   _count?: boolean | Prisma.AccountCountOutputTypeDefaultArgs<ExtArgs>
 }
 
@@ -993,13 +1052,14 @@ export type $AccountPayload<ExtArgs extends runtime.Types.Extensions.InternalArg
     orders: Prisma.$OrderPayload<ExtArgs>[]
     positions: Prisma.$PositionPayload<ExtArgs>[]
     wallets: Prisma.$WalletPayload<ExtArgs>[]
-    ledgerEntries: Prisma.$LedgerEntryPayload<ExtArgs>[]
+    ledgerAccounts: Prisma.$LedgerAccountPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
     userId: string
     name: string
     currency: string
+    mode: $Enums.AccountMode
     status: $Enums.AccountStatus
     createdAt: Date
     updatedAt: Date
@@ -1347,7 +1407,7 @@ export interface Prisma__AccountClient<T, Null = never, ExtArgs extends runtime.
   orders<T extends Prisma.Account$ordersArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Account$ordersArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$OrderPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   positions<T extends Prisma.Account$positionsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Account$positionsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$PositionPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   wallets<T extends Prisma.Account$walletsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Account$walletsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$WalletPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
-  ledgerEntries<T extends Prisma.Account$ledgerEntriesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Account$ledgerEntriesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$LedgerEntryPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  ledgerAccounts<T extends Prisma.Account$ledgerAccountsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Account$ledgerAccountsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$LedgerAccountPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -1381,6 +1441,7 @@ export interface AccountFieldRefs {
   readonly userId: Prisma.FieldRef<"Account", 'String'>
   readonly name: Prisma.FieldRef<"Account", 'String'>
   readonly currency: Prisma.FieldRef<"Account", 'String'>
+  readonly mode: Prisma.FieldRef<"Account", 'AccountMode'>
   readonly status: Prisma.FieldRef<"Account", 'AccountStatus'>
   readonly createdAt: Prisma.FieldRef<"Account", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"Account", 'DateTime'>
@@ -1804,27 +1865,27 @@ export type Account$walletsArgs<ExtArgs extends runtime.Types.Extensions.Interna
 }
 
 /**
- * Account.ledgerEntries
+ * Account.ledgerAccounts
  */
-export type Account$ledgerEntriesArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+export type Account$ledgerAccountsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   /**
-   * Select specific fields to fetch from the LedgerEntry
+   * Select specific fields to fetch from the LedgerAccount
    */
-  select?: Prisma.LedgerEntrySelect<ExtArgs> | null
+  select?: Prisma.LedgerAccountSelect<ExtArgs> | null
   /**
-   * Omit specific fields from the LedgerEntry
+   * Omit specific fields from the LedgerAccount
    */
-  omit?: Prisma.LedgerEntryOmit<ExtArgs> | null
+  omit?: Prisma.LedgerAccountOmit<ExtArgs> | null
   /**
    * Choose, which related nodes to fetch as well
    */
-  include?: Prisma.LedgerEntryInclude<ExtArgs> | null
-  where?: Prisma.LedgerEntryWhereInput
-  orderBy?: Prisma.LedgerEntryOrderByWithRelationInput | Prisma.LedgerEntryOrderByWithRelationInput[]
-  cursor?: Prisma.LedgerEntryWhereUniqueInput
+  include?: Prisma.LedgerAccountInclude<ExtArgs> | null
+  where?: Prisma.LedgerAccountWhereInput
+  orderBy?: Prisma.LedgerAccountOrderByWithRelationInput | Prisma.LedgerAccountOrderByWithRelationInput[]
+  cursor?: Prisma.LedgerAccountWhereUniqueInput
   take?: number
   skip?: number
-  distinct?: Prisma.LedgerEntryScalarFieldEnum | Prisma.LedgerEntryScalarFieldEnum[]
+  distinct?: Prisma.LedgerAccountScalarFieldEnum | Prisma.LedgerAccountScalarFieldEnum[]
 }
 
 /**

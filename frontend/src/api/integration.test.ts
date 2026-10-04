@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { beforeEach, afterEach, describe, it } from 'node:test'
-import { apiRequest } from './client'
+import { ApiError, apiRequest, resetCsrfToken } from './client'
 import { marketApi } from './market'
 import { portfolioApi } from './portfolio'
 import { tradesApi } from './trades'
@@ -21,10 +21,33 @@ function installWindow() {
   Object.assign(globalThis, { window: fakeWindow })
 }
 
-beforeEach(() => installWindow())
+beforeEach(() => {
+  installWindow()
+  resetCsrfToken()
+})
 afterEach(() => {
   globalThis.fetch = originalFetch
 })
+
+const json = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } })
+
+/**
+ * Serves /auth/csrf with a fresh token each call and forwards every other request to `handler`.
+ * Unsafe requests need a CSRF token, so any POST test has to provide one.
+ */
+function installFetch(handler: (url: string, init: RequestInit | undefined, csrfFetches: number) => Response | Promise<Response>) {
+  let csrfFetches = 0
+  globalThis.fetch = async (input, init) => {
+    const url = String(input)
+    if (url.endsWith('/auth/csrf')) {
+      csrfFetches += 1
+      return json({ success: true, data: { csrfToken: 'token-' + csrfFetches }, requestId: 'csrf' })
+    }
+    return handler(url, init, csrfFetches)
+  }
+  return { csrfFetches: () => csrfFetches }
+}
 
 describe('frontend API bindings', () => {
   it('binds market asset queries and pagination', async () => {
@@ -131,13 +154,10 @@ describe('frontend API bindings', () => {
 
   it('keeps bodyless POSTs free of a JSON content type', async () => {
     let contentType: string | null = null
-    globalThis.fetch = async (_input, init) => {
+    installFetch((_url, init) => {
       contentType = new Headers(init?.headers).get('content-type')
-      return new Response(JSON.stringify({ success: true, data: { read: true }, requestId: 'request-1' }), {
-        status: 200,
-        headers: { 'content-type': 'application/json' },
-      })
-    }
+      return json({ success: true, data: { read: true }, requestId: 'request-1' })
+    })
 
     await notificationsApi.markRead('notification-1')
     assert.equal(contentType, null)
@@ -166,19 +186,49 @@ describe('frontend API bindings', () => {
 
   it('does not retry a non-idempotent POST without an idempotency key', async () => {
     let attempts = 0
-    globalThis.fetch = async () => {
+    installFetch(() => {
       attempts += 1
-      return new Response(JSON.stringify({ success: false, error: { code: 'TEMPORARY', message: 'Try again' }, requestId: 'request-1' }), {
-        status: 503,
-        headers: { 'content-type': 'application/json' },
-      })
-    }
+      return json({ success: false, error: { code: 'TEMPORARY', message: 'Try again' }, requestId: 'request-1' }, 503)
+    })
 
     await assert.rejects(
       () => apiRequest('/trades', { method: 'POST', body: '{}', timeoutMs: 100 }),
       /Try again/,
     )
     assert.equal(attempts, 1)
+  })
+
+  it('refreshes the CSRF token and re-sends a non-retryable POST once', async () => {
+    const sentTokens: Array<string | null> = []
+    const fetches = installFetch((_url, init) => {
+      const token = new Headers(init?.headers).get('x-csrf-token')
+      sentTokens.push(token)
+      // The first token is rejected (stale after logout/login); the refreshed one is accepted.
+      if (token === 'token-1') {
+        return json({ success: false, error: { code: 'CSRF_INVALID', message: 'Invalid CSRF token' }, requestId: 'r' }, 403)
+      }
+      return json({ success: true, data: { loggedOut: true }, requestId: 'r' })
+    })
+
+    const result = await apiRequest<{ success: boolean }>('/auth/logout', { method: 'POST' })
+
+    assert.equal(result.success, true)
+    assert.deepEqual(sentTokens, ['token-1', 'token-2'])
+    assert.equal(fetches.csrfFetches(), 2)
+  })
+
+  it('gives up after a single CSRF refresh and reports the CSRF error', async () => {
+    let attempts = 0
+    installFetch(() => {
+      attempts += 1
+      return json({ success: false, error: { code: 'CSRF_INVALID', message: 'Invalid CSRF token' }, requestId: 'r' }, 403)
+    })
+
+    await assert.rejects(
+      () => apiRequest('/auth/logout', { method: 'POST' }),
+      (error: unknown) => error instanceof ApiError && error.code === 'CSRF_INVALID',
+    )
+    assert.equal(attempts, 2)
   })
 
 })

@@ -37,6 +37,8 @@ import type { OpenTrade } from '../../types/trading'
 import { tradeProgress, tradeRemainingSeconds } from '../../types/trading'
 import type { RealtimeConnectionState } from '../../realtime/connection'
 import { formatPercent, formatPrice } from '../../lib/format'
+import { applyLivePrice } from '../../lib/liveCandle'
+import { timeframeSeconds } from '../../lib/timeframes'
 import { ErrorState } from '../ui/ErrorState'
 import { IconButton } from '../ui/IconButton'
 
@@ -59,6 +61,9 @@ const indicatorDefinitions: Array<{ id: IndicatorId; label: string; description:
   { id: 'fractal', label: 'Fractals', description: 'Swing high and low markers', group: 'overlay' },
 ]
 const defaultIndicators: IndicatorId[] = ['sma']
+
+// One shared empty array, so "no data" has a stable identity and does not look like new data to effects.
+const NO_CANDLES: ChartCandle[] = []
 const indicatorStorageKey = 'slspot.chart.indicators'
 const indicatorPeriodStorageKey = 'slspot.chart.indicator-period'
 const drawingStoragePrefix = 'slspot.chart.drawings:'
@@ -295,6 +300,7 @@ function formatCountdown(seconds: number) {
 function ChartCanvas({
   asset,
   datasetKey,
+  intervalSeconds,
   chartType,
   crosshairEnabled,
   gridEnabled,
@@ -307,6 +313,8 @@ function ChartCanvas({
 }: {
   asset: MarketAsset
   datasetKey: string
+  /** Candle length in seconds, used to roll the live candle over at the period boundary. */
+  intervalSeconds: number
   chartType: ChartType
   crosshairEnabled: boolean
   gridEnabled: boolean
@@ -324,6 +332,8 @@ function ChartCanvas({
   const volumeSeriesRef = useRef<unknown>(null)
   const priceLineRef = useRef<{ applyOptions: (options: { price: number }) => void } | null>(null)
   const fittedDatasetRef = useRef<string | null>(null)
+  /** The candle currently being extended by live ticks (accumulates high/low between ticks). */
+  const liveBarRef = useRef<ChartCandle | null>(null)
   const closes = useMemo(
     () => candles.map((candle) => ({ time: candle.time, value: candle.close })),
     [candles],
@@ -559,33 +569,32 @@ function ChartCanvas({
     })))
   }, [candles, chartType, volumeEnabled])
 
+  // New candle data (load, timeframe change, server candle event) restarts the live candle from the server's last bar.
+  useEffect(() => {
+    liveBarRef.current = candles[candles.length - 1] ?? null
+  }, [candles])
+
+  // Live ticks update the last candle in place with series.update(). The series is never rebuilt
+  // and the view is never refitted, so the user's zoom and pan survive every tick.
   useEffect(() => {
     const price = asset.price
-    if (!Number.isFinite(price) || price <= 0 || candles.length === 0) return
+    const last = liveBarRef.current
+    if (!Number.isFinite(price) || price <= 0 || !last) return
 
-    const last = candles[candles.length - 1]
-    if (!last) return
-
-    const nextCandle = {
-      ...last,
-      close: price,
-      high: Math.max(last.high, price),
-      low: Math.min(last.low, price),
-    }
+    const next = applyLivePrice(last, price, intervalSeconds, Date.now() / 1000)
+    liveBarRef.current = next
 
     const primary = primarySeriesRef.current as {
       update: (data: unknown) => void
     } | null
+    if (!primary) return
 
-    if (primary) {
-      if (chartType === 'candles') {
-        primary.update(nextCandle)
-      } else {
-        primary.update({ time: last.time, value: price })
-      }
+    if (chartType === 'candles') {
+      primary.update(next)
+    } else {
+      primary.update({ time: next.time, value: next.close })
     }
-
-  }, [asset.price, candles, chartType, enabledIndicators, indicatorPeriod])
+  }, [asset.price, candles, chartType, intervalSeconds])
 
   return (
     <div className="chart-canvas-shell">
@@ -660,21 +669,26 @@ export function ChartWorkspace({ asset, onOpenMarkets, openTrades, now, realtime
     Boolean(candleResource.error) ||
     (candleResource.data !== null && candleResource.data.candles.length === 0)
   )
+  // Dev-only demo series. Generated once per symbol/timeframe: depending on the whole `asset`
+  // object regenerated it (and rebuilt every chart series) on every live price tick.
   const mockCandles = useMemo(
-    () => generateMockCandles(asset, timeframe).map((candle) => ({
-      time: candle.time,
-      open: candle.open,
-      high: candle.high,
-      low: candle.low,
-      close: candle.close,
-      volume: 0,
-    })),
-    [asset, timeframe],
+    () => (usingMockCandles
+      ? generateMockCandles(asset, timeframe).map((candle) => ({
+        time: candle.time,
+        open: candle.open,
+        high: candle.high,
+        low: candle.low,
+        close: candle.close,
+        volume: 0,
+      }))
+      : NO_CANDLES),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [asset.symbol, timeframe, usingMockCandles],
   )
   const datasetKey = asset.symbol + ':' + marketInterval
   const [liveCandleUpdates, setLiveCandleUpdates] = useState<Array<ChartCandle & { datasetKey: string }>>([])
   const baseCandles = useMemo(
-    () => candleResource.data?.candles.length ? toChartCandles(candleResource.data.candles) : usingMockCandles ? mockCandles : [],
+    () => candleResource.data?.candles.length ? toChartCandles(candleResource.data.candles) : usingMockCandles ? mockCandles : NO_CANDLES,
     [candleResource.data, mockCandles, usingMockCandles],
   )
 
@@ -981,6 +995,7 @@ export function ChartWorkspace({ asset, onOpenMarkets, openTrades, now, realtime
           <ChartCanvas
             asset={asset}
             datasetKey={asset.symbol + ':' + marketInterval}
+            intervalSeconds={timeframeSeconds[timeframe] ?? 300}
             chartType={chartType}
             crosshairEnabled={crosshairEnabled}
             gridEnabled={gridEnabled}

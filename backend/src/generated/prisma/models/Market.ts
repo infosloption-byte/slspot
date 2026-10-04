@@ -28,10 +28,14 @@ export type AggregateMarket = {
 
 export type MarketAvgAggregateOutputType = {
   lastPrice: runtime.Decimal | null
+  lastChangePct: runtime.Decimal | null
+  lastVolume: runtime.Decimal | null
 }
 
 export type MarketSumAggregateOutputType = {
   lastPrice: runtime.Decimal | null
+  lastChangePct: runtime.Decimal | null
+  lastVolume: runtime.Decimal | null
 }
 
 export type MarketMinAggregateOutputType = {
@@ -42,6 +46,8 @@ export type MarketMinAggregateOutputType = {
   status: $Enums.MarketStatus | null
   lastPrice: runtime.Decimal | null
   lastPriceAt: Date | null
+  lastChangePct: runtime.Decimal | null
+  lastVolume: runtime.Decimal | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -54,6 +60,8 @@ export type MarketMaxAggregateOutputType = {
   status: $Enums.MarketStatus | null
   lastPrice: runtime.Decimal | null
   lastPriceAt: Date | null
+  lastChangePct: runtime.Decimal | null
+  lastVolume: runtime.Decimal | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -66,6 +74,8 @@ export type MarketCountAggregateOutputType = {
   status: number
   lastPrice: number
   lastPriceAt: number
+  lastChangePct: number
+  lastVolume: number
   createdAt: number
   updatedAt: number
   _all: number
@@ -74,10 +84,14 @@ export type MarketCountAggregateOutputType = {
 
 export type MarketAvgAggregateInputType = {
   lastPrice?: true
+  lastChangePct?: true
+  lastVolume?: true
 }
 
 export type MarketSumAggregateInputType = {
   lastPrice?: true
+  lastChangePct?: true
+  lastVolume?: true
 }
 
 export type MarketMinAggregateInputType = {
@@ -88,6 +102,8 @@ export type MarketMinAggregateInputType = {
   status?: true
   lastPrice?: true
   lastPriceAt?: true
+  lastChangePct?: true
+  lastVolume?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -100,6 +116,8 @@ export type MarketMaxAggregateInputType = {
   status?: true
   lastPrice?: true
   lastPriceAt?: true
+  lastChangePct?: true
+  lastVolume?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -112,6 +130,8 @@ export type MarketCountAggregateInputType = {
   status?: true
   lastPrice?: true
   lastPriceAt?: true
+  lastChangePct?: true
+  lastVolume?: true
   createdAt?: true
   updatedAt?: true
   _all?: true
@@ -211,6 +231,8 @@ export type MarketGroupByOutputType = {
   status: $Enums.MarketStatus
   lastPrice: runtime.Decimal | null
   lastPriceAt: Date | null
+  lastChangePct: runtime.Decimal | null
+  lastVolume: runtime.Decimal | null
   createdAt: Date
   updatedAt: Date
   _count: MarketCountAggregateOutputType | null
@@ -246,6 +268,8 @@ export type MarketWhereInput = {
   status?: Prisma.EnumMarketStatusFilter<"Market"> | $Enums.MarketStatus
   lastPrice?: Prisma.DecimalNullableFilter<"Market"> | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   lastPriceAt?: Prisma.DateTimeNullableFilter<"Market"> | Date | string | null
+  lastChangePct?: Prisma.DecimalNullableFilter<"Market"> | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  lastVolume?: Prisma.DecimalNullableFilter<"Market"> | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   createdAt?: Prisma.DateTimeFilter<"Market"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Market"> | Date | string
   asset?: Prisma.XOR<Prisma.AssetScalarRelationFilter, Prisma.AssetWhereInput>
@@ -259,6 +283,8 @@ export type MarketOrderByWithRelationInput = {
   status?: Prisma.SortOrder
   lastPrice?: Prisma.SortOrderInput | Prisma.SortOrder
   lastPriceAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  lastChangePct?: Prisma.SortOrderInput | Prisma.SortOrder
+  lastVolume?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   asset?: Prisma.AssetOrderByWithRelationInput
@@ -277,6 +303,8 @@ export type MarketWhereUniqueInput = Prisma.AtLeast<{
   status?: Prisma.EnumMarketStatusFilter<"Market"> | $Enums.MarketStatus
   lastPrice?: Prisma.DecimalNullableFilter<"Market"> | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   lastPriceAt?: Prisma.DateTimeNullableFilter<"Market"> | Date | string | null
+  lastChangePct?: Prisma.DecimalNullableFilter<"Market"> | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  lastVolume?: Prisma.DecimalNullableFilter<"Market"> | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   createdAt?: Prisma.DateTimeFilter<"Market"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Market"> | Date | string
   asset?: Prisma.XOR<Prisma.AssetScalarRelationFilter, Prisma.AssetWhereInput>
@@ -290,6 +318,8 @@ export type MarketOrderByWithAggregationInput = {
   status?: Prisma.SortOrder
   lastPrice?: Prisma.SortOrderInput | Prisma.SortOrder
   lastPriceAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  lastChangePct?: Prisma.SortOrderInput | Prisma.SortOrder
+  lastVolume?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   _count?: Prisma.MarketCountOrderByAggregateInput
@@ -310,6 +340,8 @@ export type MarketScalarWhereWithAggregatesInput = {
   status?: Prisma.EnumMarketStatusWithAggregatesFilter<"Market"> | $Enums.MarketStatus
   lastPrice?: Prisma.DecimalNullableWithAggregatesFilter<"Market"> | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   lastPriceAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Market"> | Date | string | null
+  lastChangePct?: Prisma.DecimalNullableWithAggregatesFilter<"Market"> | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  lastVolume?: Prisma.DecimalNullableWithAggregatesFilter<"Market"> | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Market"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"Market"> | Date | string
 }
@@ -321,6 +353,8 @@ export type MarketCreateInput = {
   status?: $Enums.MarketStatus
   lastPrice?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
   lastPriceAt?: Date | string | null
+  lastChangePct?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  lastVolume?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   asset: Prisma.AssetCreateNestedOneWithoutMarketsInput
@@ -334,6 +368,8 @@ export type MarketUncheckedCreateInput = {
   status?: $Enums.MarketStatus
   lastPrice?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
   lastPriceAt?: Date | string | null
+  lastChangePct?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  lastVolume?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -345,6 +381,8 @@ export type MarketUpdateInput = {
   status?: Prisma.EnumMarketStatusFieldUpdateOperationsInput | $Enums.MarketStatus
   lastPrice?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   lastPriceAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastChangePct?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  lastVolume?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   asset?: Prisma.AssetUpdateOneRequiredWithoutMarketsNestedInput
@@ -358,6 +396,8 @@ export type MarketUncheckedUpdateInput = {
   status?: Prisma.EnumMarketStatusFieldUpdateOperationsInput | $Enums.MarketStatus
   lastPrice?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   lastPriceAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastChangePct?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  lastVolume?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -370,6 +410,8 @@ export type MarketCreateManyInput = {
   status?: $Enums.MarketStatus
   lastPrice?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
   lastPriceAt?: Date | string | null
+  lastChangePct?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  lastVolume?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -381,6 +423,8 @@ export type MarketUpdateManyMutationInput = {
   status?: Prisma.EnumMarketStatusFieldUpdateOperationsInput | $Enums.MarketStatus
   lastPrice?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   lastPriceAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastChangePct?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  lastVolume?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -393,6 +437,8 @@ export type MarketUncheckedUpdateManyInput = {
   status?: Prisma.EnumMarketStatusFieldUpdateOperationsInput | $Enums.MarketStatus
   lastPrice?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   lastPriceAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastChangePct?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  lastVolume?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -426,12 +472,16 @@ export type MarketCountOrderByAggregateInput = {
   status?: Prisma.SortOrder
   lastPrice?: Prisma.SortOrder
   lastPriceAt?: Prisma.SortOrder
+  lastChangePct?: Prisma.SortOrder
+  lastVolume?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
 
 export type MarketAvgOrderByAggregateInput = {
   lastPrice?: Prisma.SortOrder
+  lastChangePct?: Prisma.SortOrder
+  lastVolume?: Prisma.SortOrder
 }
 
 export type MarketMaxOrderByAggregateInput = {
@@ -442,6 +492,8 @@ export type MarketMaxOrderByAggregateInput = {
   status?: Prisma.SortOrder
   lastPrice?: Prisma.SortOrder
   lastPriceAt?: Prisma.SortOrder
+  lastChangePct?: Prisma.SortOrder
+  lastVolume?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -454,12 +506,16 @@ export type MarketMinOrderByAggregateInput = {
   status?: Prisma.SortOrder
   lastPrice?: Prisma.SortOrder
   lastPriceAt?: Prisma.SortOrder
+  lastChangePct?: Prisma.SortOrder
+  lastVolume?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
 
 export type MarketSumOrderByAggregateInput = {
   lastPrice?: Prisma.SortOrder
+  lastChangePct?: Prisma.SortOrder
+  lastVolume?: Prisma.SortOrder
 }
 
 export type MarketCreateNestedManyWithoutAssetInput = {
@@ -523,6 +579,8 @@ export type MarketCreateWithoutAssetInput = {
   status?: $Enums.MarketStatus
   lastPrice?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
   lastPriceAt?: Date | string | null
+  lastChangePct?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  lastVolume?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -534,6 +592,8 @@ export type MarketUncheckedCreateWithoutAssetInput = {
   status?: $Enums.MarketStatus
   lastPrice?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
   lastPriceAt?: Date | string | null
+  lastChangePct?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  lastVolume?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -575,6 +635,8 @@ export type MarketScalarWhereInput = {
   status?: Prisma.EnumMarketStatusFilter<"Market"> | $Enums.MarketStatus
   lastPrice?: Prisma.DecimalNullableFilter<"Market"> | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   lastPriceAt?: Prisma.DateTimeNullableFilter<"Market"> | Date | string | null
+  lastChangePct?: Prisma.DecimalNullableFilter<"Market"> | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  lastVolume?: Prisma.DecimalNullableFilter<"Market"> | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   createdAt?: Prisma.DateTimeFilter<"Market"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Market"> | Date | string
 }
@@ -586,6 +648,8 @@ export type MarketCreateManyAssetInput = {
   status?: $Enums.MarketStatus
   lastPrice?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
   lastPriceAt?: Date | string | null
+  lastChangePct?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  lastVolume?: runtime.Decimal | runtime.DecimalJsLike | number | string | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -597,6 +661,8 @@ export type MarketUpdateWithoutAssetInput = {
   status?: Prisma.EnumMarketStatusFieldUpdateOperationsInput | $Enums.MarketStatus
   lastPrice?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   lastPriceAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastChangePct?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  lastVolume?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -608,6 +674,8 @@ export type MarketUncheckedUpdateWithoutAssetInput = {
   status?: Prisma.EnumMarketStatusFieldUpdateOperationsInput | $Enums.MarketStatus
   lastPrice?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   lastPriceAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastChangePct?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  lastVolume?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -619,6 +687,8 @@ export type MarketUncheckedUpdateManyWithoutAssetInput = {
   status?: Prisma.EnumMarketStatusFieldUpdateOperationsInput | $Enums.MarketStatus
   lastPrice?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   lastPriceAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastChangePct?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
+  lastVolume?: Prisma.NullableDecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -633,6 +703,8 @@ export type MarketSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs =
   status?: boolean
   lastPrice?: boolean
   lastPriceAt?: boolean
+  lastChangePct?: boolean
+  lastVolume?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   asset?: boolean | Prisma.AssetDefaultArgs<ExtArgs>
@@ -648,11 +720,13 @@ export type MarketSelectScalar = {
   status?: boolean
   lastPrice?: boolean
   lastPriceAt?: boolean
+  lastChangePct?: boolean
+  lastVolume?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type MarketOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "assetId" | "provider" | "externalSymbol" | "status" | "lastPrice" | "lastPriceAt" | "createdAt" | "updatedAt", ExtArgs["result"]["market"]>
+export type MarketOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "assetId" | "provider" | "externalSymbol" | "status" | "lastPrice" | "lastPriceAt" | "lastChangePct" | "lastVolume" | "createdAt" | "updatedAt", ExtArgs["result"]["market"]>
 export type MarketInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   asset?: boolean | Prisma.AssetDefaultArgs<ExtArgs>
 }
@@ -670,6 +744,8 @@ export type $MarketPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs
     status: $Enums.MarketStatus
     lastPrice: runtime.Decimal | null
     lastPriceAt: Date | null
+    lastChangePct: runtime.Decimal | null
+    lastVolume: runtime.Decimal | null
     createdAt: Date
     updatedAt: Date
   }, ExtArgs["result"]["market"]>
@@ -1049,6 +1125,8 @@ export interface MarketFieldRefs {
   readonly status: Prisma.FieldRef<"Market", 'MarketStatus'>
   readonly lastPrice: Prisma.FieldRef<"Market", 'Decimal'>
   readonly lastPriceAt: Prisma.FieldRef<"Market", 'DateTime'>
+  readonly lastChangePct: Prisma.FieldRef<"Market", 'Decimal'>
+  readonly lastVolume: Prisma.FieldRef<"Market", 'Decimal'>
   readonly createdAt: Prisma.FieldRef<"Market", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"Market", 'DateTime'>
 }

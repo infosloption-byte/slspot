@@ -6,6 +6,7 @@ import { useNotifications, useWallets } from '../../hooks/useServerState'
 import { useWalletMode } from '../../hooks/useWalletMode'
 import { setUnreadCount, useNotificationStore } from '../../state/notificationStore'
 import { useRealtime, useRealtimeState } from '../../realtime/useRealtime'
+import { useRealtimeRefresh } from '../../realtime/useRealtimeRefresh'
 import { userChannel } from '../../realtime/subscriptions'
 
 function formatBalance(value: string | null | undefined, currency: string | null | undefined): string {
@@ -50,24 +51,9 @@ export function TopBar() {
     return realtime.subscribe(userChannel(user.id))
   }, [realtime, user?.id])
 
-  useEffect(() => {
-    return realtime.onEvent((event) => {
-      if (event.type === 'wallet.update') {
-        void reloadWallets()
-        return
-      }
-      if (event.type === 'notification.created') {
-        void reloadNotifications()
-      }
-    })
-  }, [reloadNotifications, reloadWallets, realtime])
-
-  useEffect(() => {
-    const timer = window.setInterval(() => {
-      void reloadWallets()
-    }, 2500)
-    return () => window.clearInterval(timer)
-  }, [reloadWallets])
+  // Balance and unread count are pushed over the WebSocket. Polling only runs while the socket is down.
+  useRealtimeRefresh(() => void reloadWallets(), { events: ['wallet.update', 'trade.status'], fallbackMs: 5000 })
+  useRealtimeRefresh(() => void reloadNotifications(), { events: ['notification.created'], fallbackMs: 15_000 })
 
   useEffect(() => {
     if (!walletMenuOpen) return

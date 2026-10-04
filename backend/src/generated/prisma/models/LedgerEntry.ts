@@ -36,9 +36,8 @@ export type LedgerEntrySumAggregateOutputType = {
 
 export type LedgerEntryMinAggregateOutputType = {
   id: string | null
-  transactionId: string | null
-  accountId: string | null
-  walletTransactionId: string | null
+  ledgerTransactionId: string | null
+  ledgerAccountId: string | null
   direction: $Enums.LedgerDirection | null
   amount: runtime.Decimal | null
   currency: string | null
@@ -49,9 +48,8 @@ export type LedgerEntryMinAggregateOutputType = {
 
 export type LedgerEntryMaxAggregateOutputType = {
   id: string | null
-  transactionId: string | null
-  accountId: string | null
-  walletTransactionId: string | null
+  ledgerTransactionId: string | null
+  ledgerAccountId: string | null
   direction: $Enums.LedgerDirection | null
   amount: runtime.Decimal | null
   currency: string | null
@@ -62,9 +60,8 @@ export type LedgerEntryMaxAggregateOutputType = {
 
 export type LedgerEntryCountAggregateOutputType = {
   id: number
-  transactionId: number
-  accountId: number
-  walletTransactionId: number
+  ledgerTransactionId: number
+  ledgerAccountId: number
   direction: number
   amount: number
   currency: number
@@ -85,9 +82,8 @@ export type LedgerEntrySumAggregateInputType = {
 
 export type LedgerEntryMinAggregateInputType = {
   id?: true
-  transactionId?: true
-  accountId?: true
-  walletTransactionId?: true
+  ledgerTransactionId?: true
+  ledgerAccountId?: true
   direction?: true
   amount?: true
   currency?: true
@@ -98,9 +94,8 @@ export type LedgerEntryMinAggregateInputType = {
 
 export type LedgerEntryMaxAggregateInputType = {
   id?: true
-  transactionId?: true
-  accountId?: true
-  walletTransactionId?: true
+  ledgerTransactionId?: true
+  ledgerAccountId?: true
   direction?: true
   amount?: true
   currency?: true
@@ -111,9 +106,8 @@ export type LedgerEntryMaxAggregateInputType = {
 
 export type LedgerEntryCountAggregateInputType = {
   id?: true
-  transactionId?: true
-  accountId?: true
-  walletTransactionId?: true
+  ledgerTransactionId?: true
+  ledgerAccountId?: true
   direction?: true
   amount?: true
   currency?: true
@@ -211,9 +205,8 @@ export type LedgerEntryGroupByArgs<ExtArgs extends runtime.Types.Extensions.Inte
 
 export type LedgerEntryGroupByOutputType = {
   id: string
-  transactionId: string
-  accountId: string
-  walletTransactionId: string | null
+  ledgerTransactionId: string
+  ledgerAccountId: string
   direction: $Enums.LedgerDirection
   amount: runtime.Decimal
   currency: string
@@ -247,32 +240,30 @@ export type LedgerEntryWhereInput = {
   OR?: Prisma.LedgerEntryWhereInput[]
   NOT?: Prisma.LedgerEntryWhereInput | Prisma.LedgerEntryWhereInput[]
   id?: Prisma.StringFilter<"LedgerEntry"> | string
-  transactionId?: Prisma.StringFilter<"LedgerEntry"> | string
-  accountId?: Prisma.StringFilter<"LedgerEntry"> | string
-  walletTransactionId?: Prisma.StringNullableFilter<"LedgerEntry"> | string | null
+  ledgerTransactionId?: Prisma.StringFilter<"LedgerEntry"> | string
+  ledgerAccountId?: Prisma.StringFilter<"LedgerEntry"> | string
   direction?: Prisma.EnumLedgerDirectionFilter<"LedgerEntry"> | $Enums.LedgerDirection
   amount?: Prisma.DecimalFilter<"LedgerEntry"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   currency?: Prisma.StringFilter<"LedgerEntry"> | string
   referenceType?: Prisma.StringNullableFilter<"LedgerEntry"> | string | null
   referenceId?: Prisma.StringNullableFilter<"LedgerEntry"> | string | null
   createdAt?: Prisma.DateTimeFilter<"LedgerEntry"> | Date | string
-  account?: Prisma.XOR<Prisma.AccountScalarRelationFilter, Prisma.AccountWhereInput>
-  walletTransaction?: Prisma.XOR<Prisma.WalletTransactionNullableScalarRelationFilter, Prisma.WalletTransactionWhereInput> | null
+  ledgerTransaction?: Prisma.XOR<Prisma.LedgerTransactionScalarRelationFilter, Prisma.LedgerTransactionWhereInput>
+  ledgerAccount?: Prisma.XOR<Prisma.LedgerAccountScalarRelationFilter, Prisma.LedgerAccountWhereInput>
 }
 
 export type LedgerEntryOrderByWithRelationInput = {
   id?: Prisma.SortOrder
-  transactionId?: Prisma.SortOrder
-  accountId?: Prisma.SortOrder
-  walletTransactionId?: Prisma.SortOrderInput | Prisma.SortOrder
+  ledgerTransactionId?: Prisma.SortOrder
+  ledgerAccountId?: Prisma.SortOrder
   direction?: Prisma.SortOrder
   amount?: Prisma.SortOrder
   currency?: Prisma.SortOrder
   referenceType?: Prisma.SortOrderInput | Prisma.SortOrder
   referenceId?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
-  account?: Prisma.AccountOrderByWithRelationInput
-  walletTransaction?: Prisma.WalletTransactionOrderByWithRelationInput
+  ledgerTransaction?: Prisma.LedgerTransactionOrderByWithRelationInput
+  ledgerAccount?: Prisma.LedgerAccountOrderByWithRelationInput
   _relevance?: Prisma.LedgerEntryOrderByRelevanceInput
 }
 
@@ -281,24 +272,22 @@ export type LedgerEntryWhereUniqueInput = Prisma.AtLeast<{
   AND?: Prisma.LedgerEntryWhereInput | Prisma.LedgerEntryWhereInput[]
   OR?: Prisma.LedgerEntryWhereInput[]
   NOT?: Prisma.LedgerEntryWhereInput | Prisma.LedgerEntryWhereInput[]
-  transactionId?: Prisma.StringFilter<"LedgerEntry"> | string
-  accountId?: Prisma.StringFilter<"LedgerEntry"> | string
-  walletTransactionId?: Prisma.StringNullableFilter<"LedgerEntry"> | string | null
+  ledgerTransactionId?: Prisma.StringFilter<"LedgerEntry"> | string
+  ledgerAccountId?: Prisma.StringFilter<"LedgerEntry"> | string
   direction?: Prisma.EnumLedgerDirectionFilter<"LedgerEntry"> | $Enums.LedgerDirection
   amount?: Prisma.DecimalFilter<"LedgerEntry"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   currency?: Prisma.StringFilter<"LedgerEntry"> | string
   referenceType?: Prisma.StringNullableFilter<"LedgerEntry"> | string | null
   referenceId?: Prisma.StringNullableFilter<"LedgerEntry"> | string | null
   createdAt?: Prisma.DateTimeFilter<"LedgerEntry"> | Date | string
-  account?: Prisma.XOR<Prisma.AccountScalarRelationFilter, Prisma.AccountWhereInput>
-  walletTransaction?: Prisma.XOR<Prisma.WalletTransactionNullableScalarRelationFilter, Prisma.WalletTransactionWhereInput> | null
+  ledgerTransaction?: Prisma.XOR<Prisma.LedgerTransactionScalarRelationFilter, Prisma.LedgerTransactionWhereInput>
+  ledgerAccount?: Prisma.XOR<Prisma.LedgerAccountScalarRelationFilter, Prisma.LedgerAccountWhereInput>
 }, "id">
 
 export type LedgerEntryOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
-  transactionId?: Prisma.SortOrder
-  accountId?: Prisma.SortOrder
-  walletTransactionId?: Prisma.SortOrderInput | Prisma.SortOrder
+  ledgerTransactionId?: Prisma.SortOrder
+  ledgerAccountId?: Prisma.SortOrder
   direction?: Prisma.SortOrder
   amount?: Prisma.SortOrder
   currency?: Prisma.SortOrder
@@ -317,9 +306,8 @@ export type LedgerEntryScalarWhereWithAggregatesInput = {
   OR?: Prisma.LedgerEntryScalarWhereWithAggregatesInput[]
   NOT?: Prisma.LedgerEntryScalarWhereWithAggregatesInput | Prisma.LedgerEntryScalarWhereWithAggregatesInput[]
   id?: Prisma.StringWithAggregatesFilter<"LedgerEntry"> | string
-  transactionId?: Prisma.StringWithAggregatesFilter<"LedgerEntry"> | string
-  accountId?: Prisma.StringWithAggregatesFilter<"LedgerEntry"> | string
-  walletTransactionId?: Prisma.StringNullableWithAggregatesFilter<"LedgerEntry"> | string | null
+  ledgerTransactionId?: Prisma.StringWithAggregatesFilter<"LedgerEntry"> | string
+  ledgerAccountId?: Prisma.StringWithAggregatesFilter<"LedgerEntry"> | string
   direction?: Prisma.EnumLedgerDirectionWithAggregatesFilter<"LedgerEntry"> | $Enums.LedgerDirection
   amount?: Prisma.DecimalWithAggregatesFilter<"LedgerEntry"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   currency?: Prisma.StringWithAggregatesFilter<"LedgerEntry"> | string
@@ -330,22 +318,20 @@ export type LedgerEntryScalarWhereWithAggregatesInput = {
 
 export type LedgerEntryCreateInput = {
   id?: string
-  transactionId: string
   direction: $Enums.LedgerDirection
   amount: runtime.Decimal | runtime.DecimalJsLike | number | string
   currency: string
   referenceType?: string | null
   referenceId?: string | null
   createdAt?: Date | string
-  account: Prisma.AccountCreateNestedOneWithoutLedgerEntriesInput
-  walletTransaction?: Prisma.WalletTransactionCreateNestedOneWithoutLedgerEntriesInput
+  ledgerTransaction: Prisma.LedgerTransactionCreateNestedOneWithoutEntriesInput
+  ledgerAccount: Prisma.LedgerAccountCreateNestedOneWithoutEntriesInput
 }
 
 export type LedgerEntryUncheckedCreateInput = {
   id?: string
-  transactionId: string
-  accountId: string
-  walletTransactionId?: string | null
+  ledgerTransactionId: string
+  ledgerAccountId: string
   direction: $Enums.LedgerDirection
   amount: runtime.Decimal | runtime.DecimalJsLike | number | string
   currency: string
@@ -356,22 +342,20 @@ export type LedgerEntryUncheckedCreateInput = {
 
 export type LedgerEntryUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  transactionId?: Prisma.StringFieldUpdateOperationsInput | string
   direction?: Prisma.EnumLedgerDirectionFieldUpdateOperationsInput | $Enums.LedgerDirection
   amount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   currency?: Prisma.StringFieldUpdateOperationsInput | string
   referenceType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   referenceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  account?: Prisma.AccountUpdateOneRequiredWithoutLedgerEntriesNestedInput
-  walletTransaction?: Prisma.WalletTransactionUpdateOneWithoutLedgerEntriesNestedInput
+  ledgerTransaction?: Prisma.LedgerTransactionUpdateOneRequiredWithoutEntriesNestedInput
+  ledgerAccount?: Prisma.LedgerAccountUpdateOneRequiredWithoutEntriesNestedInput
 }
 
 export type LedgerEntryUncheckedUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  transactionId?: Prisma.StringFieldUpdateOperationsInput | string
-  accountId?: Prisma.StringFieldUpdateOperationsInput | string
-  walletTransactionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  ledgerTransactionId?: Prisma.StringFieldUpdateOperationsInput | string
+  ledgerAccountId?: Prisma.StringFieldUpdateOperationsInput | string
   direction?: Prisma.EnumLedgerDirectionFieldUpdateOperationsInput | $Enums.LedgerDirection
   amount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   currency?: Prisma.StringFieldUpdateOperationsInput | string
@@ -382,9 +366,8 @@ export type LedgerEntryUncheckedUpdateInput = {
 
 export type LedgerEntryCreateManyInput = {
   id?: string
-  transactionId: string
-  accountId: string
-  walletTransactionId?: string | null
+  ledgerTransactionId: string
+  ledgerAccountId: string
   direction: $Enums.LedgerDirection
   amount: runtime.Decimal | runtime.DecimalJsLike | number | string
   currency: string
@@ -395,7 +378,6 @@ export type LedgerEntryCreateManyInput = {
 
 export type LedgerEntryUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  transactionId?: Prisma.StringFieldUpdateOperationsInput | string
   direction?: Prisma.EnumLedgerDirectionFieldUpdateOperationsInput | $Enums.LedgerDirection
   amount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   currency?: Prisma.StringFieldUpdateOperationsInput | string
@@ -406,9 +388,8 @@ export type LedgerEntryUpdateManyMutationInput = {
 
 export type LedgerEntryUncheckedUpdateManyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  transactionId?: Prisma.StringFieldUpdateOperationsInput | string
-  accountId?: Prisma.StringFieldUpdateOperationsInput | string
-  walletTransactionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  ledgerTransactionId?: Prisma.StringFieldUpdateOperationsInput | string
+  ledgerAccountId?: Prisma.StringFieldUpdateOperationsInput | string
   direction?: Prisma.EnumLedgerDirectionFieldUpdateOperationsInput | $Enums.LedgerDirection
   amount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   currency?: Prisma.StringFieldUpdateOperationsInput | string
@@ -435,9 +416,8 @@ export type LedgerEntryOrderByRelevanceInput = {
 
 export type LedgerEntryCountOrderByAggregateInput = {
   id?: Prisma.SortOrder
-  transactionId?: Prisma.SortOrder
-  accountId?: Prisma.SortOrder
-  walletTransactionId?: Prisma.SortOrder
+  ledgerTransactionId?: Prisma.SortOrder
+  ledgerAccountId?: Prisma.SortOrder
   direction?: Prisma.SortOrder
   amount?: Prisma.SortOrder
   currency?: Prisma.SortOrder
@@ -452,9 +432,8 @@ export type LedgerEntryAvgOrderByAggregateInput = {
 
 export type LedgerEntryMaxOrderByAggregateInput = {
   id?: Prisma.SortOrder
-  transactionId?: Prisma.SortOrder
-  accountId?: Prisma.SortOrder
-  walletTransactionId?: Prisma.SortOrder
+  ledgerTransactionId?: Prisma.SortOrder
+  ledgerAccountId?: Prisma.SortOrder
   direction?: Prisma.SortOrder
   amount?: Prisma.SortOrder
   currency?: Prisma.SortOrder
@@ -465,9 +444,8 @@ export type LedgerEntryMaxOrderByAggregateInput = {
 
 export type LedgerEntryMinOrderByAggregateInput = {
   id?: Prisma.SortOrder
-  transactionId?: Prisma.SortOrder
-  accountId?: Prisma.SortOrder
-  walletTransactionId?: Prisma.SortOrder
+  ledgerTransactionId?: Prisma.SortOrder
+  ledgerAccountId?: Prisma.SortOrder
   direction?: Prisma.SortOrder
   amount?: Prisma.SortOrder
   currency?: Prisma.SortOrder
@@ -480,87 +458,87 @@ export type LedgerEntrySumOrderByAggregateInput = {
   amount?: Prisma.SortOrder
 }
 
-export type LedgerEntryCreateNestedManyWithoutAccountInput = {
-  create?: Prisma.XOR<Prisma.LedgerEntryCreateWithoutAccountInput, Prisma.LedgerEntryUncheckedCreateWithoutAccountInput> | Prisma.LedgerEntryCreateWithoutAccountInput[] | Prisma.LedgerEntryUncheckedCreateWithoutAccountInput[]
-  connectOrCreate?: Prisma.LedgerEntryCreateOrConnectWithoutAccountInput | Prisma.LedgerEntryCreateOrConnectWithoutAccountInput[]
-  createMany?: Prisma.LedgerEntryCreateManyAccountInputEnvelope
+export type LedgerEntryCreateNestedManyWithoutLedgerAccountInput = {
+  create?: Prisma.XOR<Prisma.LedgerEntryCreateWithoutLedgerAccountInput, Prisma.LedgerEntryUncheckedCreateWithoutLedgerAccountInput> | Prisma.LedgerEntryCreateWithoutLedgerAccountInput[] | Prisma.LedgerEntryUncheckedCreateWithoutLedgerAccountInput[]
+  connectOrCreate?: Prisma.LedgerEntryCreateOrConnectWithoutLedgerAccountInput | Prisma.LedgerEntryCreateOrConnectWithoutLedgerAccountInput[]
+  createMany?: Prisma.LedgerEntryCreateManyLedgerAccountInputEnvelope
   connect?: Prisma.LedgerEntryWhereUniqueInput | Prisma.LedgerEntryWhereUniqueInput[]
 }
 
-export type LedgerEntryUncheckedCreateNestedManyWithoutAccountInput = {
-  create?: Prisma.XOR<Prisma.LedgerEntryCreateWithoutAccountInput, Prisma.LedgerEntryUncheckedCreateWithoutAccountInput> | Prisma.LedgerEntryCreateWithoutAccountInput[] | Prisma.LedgerEntryUncheckedCreateWithoutAccountInput[]
-  connectOrCreate?: Prisma.LedgerEntryCreateOrConnectWithoutAccountInput | Prisma.LedgerEntryCreateOrConnectWithoutAccountInput[]
-  createMany?: Prisma.LedgerEntryCreateManyAccountInputEnvelope
+export type LedgerEntryUncheckedCreateNestedManyWithoutLedgerAccountInput = {
+  create?: Prisma.XOR<Prisma.LedgerEntryCreateWithoutLedgerAccountInput, Prisma.LedgerEntryUncheckedCreateWithoutLedgerAccountInput> | Prisma.LedgerEntryCreateWithoutLedgerAccountInput[] | Prisma.LedgerEntryUncheckedCreateWithoutLedgerAccountInput[]
+  connectOrCreate?: Prisma.LedgerEntryCreateOrConnectWithoutLedgerAccountInput | Prisma.LedgerEntryCreateOrConnectWithoutLedgerAccountInput[]
+  createMany?: Prisma.LedgerEntryCreateManyLedgerAccountInputEnvelope
   connect?: Prisma.LedgerEntryWhereUniqueInput | Prisma.LedgerEntryWhereUniqueInput[]
 }
 
-export type LedgerEntryUpdateManyWithoutAccountNestedInput = {
-  create?: Prisma.XOR<Prisma.LedgerEntryCreateWithoutAccountInput, Prisma.LedgerEntryUncheckedCreateWithoutAccountInput> | Prisma.LedgerEntryCreateWithoutAccountInput[] | Prisma.LedgerEntryUncheckedCreateWithoutAccountInput[]
-  connectOrCreate?: Prisma.LedgerEntryCreateOrConnectWithoutAccountInput | Prisma.LedgerEntryCreateOrConnectWithoutAccountInput[]
-  upsert?: Prisma.LedgerEntryUpsertWithWhereUniqueWithoutAccountInput | Prisma.LedgerEntryUpsertWithWhereUniqueWithoutAccountInput[]
-  createMany?: Prisma.LedgerEntryCreateManyAccountInputEnvelope
+export type LedgerEntryUpdateManyWithoutLedgerAccountNestedInput = {
+  create?: Prisma.XOR<Prisma.LedgerEntryCreateWithoutLedgerAccountInput, Prisma.LedgerEntryUncheckedCreateWithoutLedgerAccountInput> | Prisma.LedgerEntryCreateWithoutLedgerAccountInput[] | Prisma.LedgerEntryUncheckedCreateWithoutLedgerAccountInput[]
+  connectOrCreate?: Prisma.LedgerEntryCreateOrConnectWithoutLedgerAccountInput | Prisma.LedgerEntryCreateOrConnectWithoutLedgerAccountInput[]
+  upsert?: Prisma.LedgerEntryUpsertWithWhereUniqueWithoutLedgerAccountInput | Prisma.LedgerEntryUpsertWithWhereUniqueWithoutLedgerAccountInput[]
+  createMany?: Prisma.LedgerEntryCreateManyLedgerAccountInputEnvelope
   set?: Prisma.LedgerEntryWhereUniqueInput | Prisma.LedgerEntryWhereUniqueInput[]
   disconnect?: Prisma.LedgerEntryWhereUniqueInput | Prisma.LedgerEntryWhereUniqueInput[]
   delete?: Prisma.LedgerEntryWhereUniqueInput | Prisma.LedgerEntryWhereUniqueInput[]
   connect?: Prisma.LedgerEntryWhereUniqueInput | Prisma.LedgerEntryWhereUniqueInput[]
-  update?: Prisma.LedgerEntryUpdateWithWhereUniqueWithoutAccountInput | Prisma.LedgerEntryUpdateWithWhereUniqueWithoutAccountInput[]
-  updateMany?: Prisma.LedgerEntryUpdateManyWithWhereWithoutAccountInput | Prisma.LedgerEntryUpdateManyWithWhereWithoutAccountInput[]
+  update?: Prisma.LedgerEntryUpdateWithWhereUniqueWithoutLedgerAccountInput | Prisma.LedgerEntryUpdateWithWhereUniqueWithoutLedgerAccountInput[]
+  updateMany?: Prisma.LedgerEntryUpdateManyWithWhereWithoutLedgerAccountInput | Prisma.LedgerEntryUpdateManyWithWhereWithoutLedgerAccountInput[]
   deleteMany?: Prisma.LedgerEntryScalarWhereInput | Prisma.LedgerEntryScalarWhereInput[]
 }
 
-export type LedgerEntryUncheckedUpdateManyWithoutAccountNestedInput = {
-  create?: Prisma.XOR<Prisma.LedgerEntryCreateWithoutAccountInput, Prisma.LedgerEntryUncheckedCreateWithoutAccountInput> | Prisma.LedgerEntryCreateWithoutAccountInput[] | Prisma.LedgerEntryUncheckedCreateWithoutAccountInput[]
-  connectOrCreate?: Prisma.LedgerEntryCreateOrConnectWithoutAccountInput | Prisma.LedgerEntryCreateOrConnectWithoutAccountInput[]
-  upsert?: Prisma.LedgerEntryUpsertWithWhereUniqueWithoutAccountInput | Prisma.LedgerEntryUpsertWithWhereUniqueWithoutAccountInput[]
-  createMany?: Prisma.LedgerEntryCreateManyAccountInputEnvelope
+export type LedgerEntryUncheckedUpdateManyWithoutLedgerAccountNestedInput = {
+  create?: Prisma.XOR<Prisma.LedgerEntryCreateWithoutLedgerAccountInput, Prisma.LedgerEntryUncheckedCreateWithoutLedgerAccountInput> | Prisma.LedgerEntryCreateWithoutLedgerAccountInput[] | Prisma.LedgerEntryUncheckedCreateWithoutLedgerAccountInput[]
+  connectOrCreate?: Prisma.LedgerEntryCreateOrConnectWithoutLedgerAccountInput | Prisma.LedgerEntryCreateOrConnectWithoutLedgerAccountInput[]
+  upsert?: Prisma.LedgerEntryUpsertWithWhereUniqueWithoutLedgerAccountInput | Prisma.LedgerEntryUpsertWithWhereUniqueWithoutLedgerAccountInput[]
+  createMany?: Prisma.LedgerEntryCreateManyLedgerAccountInputEnvelope
   set?: Prisma.LedgerEntryWhereUniqueInput | Prisma.LedgerEntryWhereUniqueInput[]
   disconnect?: Prisma.LedgerEntryWhereUniqueInput | Prisma.LedgerEntryWhereUniqueInput[]
   delete?: Prisma.LedgerEntryWhereUniqueInput | Prisma.LedgerEntryWhereUniqueInput[]
   connect?: Prisma.LedgerEntryWhereUniqueInput | Prisma.LedgerEntryWhereUniqueInput[]
-  update?: Prisma.LedgerEntryUpdateWithWhereUniqueWithoutAccountInput | Prisma.LedgerEntryUpdateWithWhereUniqueWithoutAccountInput[]
-  updateMany?: Prisma.LedgerEntryUpdateManyWithWhereWithoutAccountInput | Prisma.LedgerEntryUpdateManyWithWhereWithoutAccountInput[]
+  update?: Prisma.LedgerEntryUpdateWithWhereUniqueWithoutLedgerAccountInput | Prisma.LedgerEntryUpdateWithWhereUniqueWithoutLedgerAccountInput[]
+  updateMany?: Prisma.LedgerEntryUpdateManyWithWhereWithoutLedgerAccountInput | Prisma.LedgerEntryUpdateManyWithWhereWithoutLedgerAccountInput[]
   deleteMany?: Prisma.LedgerEntryScalarWhereInput | Prisma.LedgerEntryScalarWhereInput[]
 }
 
-export type LedgerEntryCreateNestedManyWithoutWalletTransactionInput = {
-  create?: Prisma.XOR<Prisma.LedgerEntryCreateWithoutWalletTransactionInput, Prisma.LedgerEntryUncheckedCreateWithoutWalletTransactionInput> | Prisma.LedgerEntryCreateWithoutWalletTransactionInput[] | Prisma.LedgerEntryUncheckedCreateWithoutWalletTransactionInput[]
-  connectOrCreate?: Prisma.LedgerEntryCreateOrConnectWithoutWalletTransactionInput | Prisma.LedgerEntryCreateOrConnectWithoutWalletTransactionInput[]
-  createMany?: Prisma.LedgerEntryCreateManyWalletTransactionInputEnvelope
+export type LedgerEntryCreateNestedManyWithoutLedgerTransactionInput = {
+  create?: Prisma.XOR<Prisma.LedgerEntryCreateWithoutLedgerTransactionInput, Prisma.LedgerEntryUncheckedCreateWithoutLedgerTransactionInput> | Prisma.LedgerEntryCreateWithoutLedgerTransactionInput[] | Prisma.LedgerEntryUncheckedCreateWithoutLedgerTransactionInput[]
+  connectOrCreate?: Prisma.LedgerEntryCreateOrConnectWithoutLedgerTransactionInput | Prisma.LedgerEntryCreateOrConnectWithoutLedgerTransactionInput[]
+  createMany?: Prisma.LedgerEntryCreateManyLedgerTransactionInputEnvelope
   connect?: Prisma.LedgerEntryWhereUniqueInput | Prisma.LedgerEntryWhereUniqueInput[]
 }
 
-export type LedgerEntryUncheckedCreateNestedManyWithoutWalletTransactionInput = {
-  create?: Prisma.XOR<Prisma.LedgerEntryCreateWithoutWalletTransactionInput, Prisma.LedgerEntryUncheckedCreateWithoutWalletTransactionInput> | Prisma.LedgerEntryCreateWithoutWalletTransactionInput[] | Prisma.LedgerEntryUncheckedCreateWithoutWalletTransactionInput[]
-  connectOrCreate?: Prisma.LedgerEntryCreateOrConnectWithoutWalletTransactionInput | Prisma.LedgerEntryCreateOrConnectWithoutWalletTransactionInput[]
-  createMany?: Prisma.LedgerEntryCreateManyWalletTransactionInputEnvelope
+export type LedgerEntryUncheckedCreateNestedManyWithoutLedgerTransactionInput = {
+  create?: Prisma.XOR<Prisma.LedgerEntryCreateWithoutLedgerTransactionInput, Prisma.LedgerEntryUncheckedCreateWithoutLedgerTransactionInput> | Prisma.LedgerEntryCreateWithoutLedgerTransactionInput[] | Prisma.LedgerEntryUncheckedCreateWithoutLedgerTransactionInput[]
+  connectOrCreate?: Prisma.LedgerEntryCreateOrConnectWithoutLedgerTransactionInput | Prisma.LedgerEntryCreateOrConnectWithoutLedgerTransactionInput[]
+  createMany?: Prisma.LedgerEntryCreateManyLedgerTransactionInputEnvelope
   connect?: Prisma.LedgerEntryWhereUniqueInput | Prisma.LedgerEntryWhereUniqueInput[]
 }
 
-export type LedgerEntryUpdateManyWithoutWalletTransactionNestedInput = {
-  create?: Prisma.XOR<Prisma.LedgerEntryCreateWithoutWalletTransactionInput, Prisma.LedgerEntryUncheckedCreateWithoutWalletTransactionInput> | Prisma.LedgerEntryCreateWithoutWalletTransactionInput[] | Prisma.LedgerEntryUncheckedCreateWithoutWalletTransactionInput[]
-  connectOrCreate?: Prisma.LedgerEntryCreateOrConnectWithoutWalletTransactionInput | Prisma.LedgerEntryCreateOrConnectWithoutWalletTransactionInput[]
-  upsert?: Prisma.LedgerEntryUpsertWithWhereUniqueWithoutWalletTransactionInput | Prisma.LedgerEntryUpsertWithWhereUniqueWithoutWalletTransactionInput[]
-  createMany?: Prisma.LedgerEntryCreateManyWalletTransactionInputEnvelope
+export type LedgerEntryUpdateManyWithoutLedgerTransactionNestedInput = {
+  create?: Prisma.XOR<Prisma.LedgerEntryCreateWithoutLedgerTransactionInput, Prisma.LedgerEntryUncheckedCreateWithoutLedgerTransactionInput> | Prisma.LedgerEntryCreateWithoutLedgerTransactionInput[] | Prisma.LedgerEntryUncheckedCreateWithoutLedgerTransactionInput[]
+  connectOrCreate?: Prisma.LedgerEntryCreateOrConnectWithoutLedgerTransactionInput | Prisma.LedgerEntryCreateOrConnectWithoutLedgerTransactionInput[]
+  upsert?: Prisma.LedgerEntryUpsertWithWhereUniqueWithoutLedgerTransactionInput | Prisma.LedgerEntryUpsertWithWhereUniqueWithoutLedgerTransactionInput[]
+  createMany?: Prisma.LedgerEntryCreateManyLedgerTransactionInputEnvelope
   set?: Prisma.LedgerEntryWhereUniqueInput | Prisma.LedgerEntryWhereUniqueInput[]
   disconnect?: Prisma.LedgerEntryWhereUniqueInput | Prisma.LedgerEntryWhereUniqueInput[]
   delete?: Prisma.LedgerEntryWhereUniqueInput | Prisma.LedgerEntryWhereUniqueInput[]
   connect?: Prisma.LedgerEntryWhereUniqueInput | Prisma.LedgerEntryWhereUniqueInput[]
-  update?: Prisma.LedgerEntryUpdateWithWhereUniqueWithoutWalletTransactionInput | Prisma.LedgerEntryUpdateWithWhereUniqueWithoutWalletTransactionInput[]
-  updateMany?: Prisma.LedgerEntryUpdateManyWithWhereWithoutWalletTransactionInput | Prisma.LedgerEntryUpdateManyWithWhereWithoutWalletTransactionInput[]
+  update?: Prisma.LedgerEntryUpdateWithWhereUniqueWithoutLedgerTransactionInput | Prisma.LedgerEntryUpdateWithWhereUniqueWithoutLedgerTransactionInput[]
+  updateMany?: Prisma.LedgerEntryUpdateManyWithWhereWithoutLedgerTransactionInput | Prisma.LedgerEntryUpdateManyWithWhereWithoutLedgerTransactionInput[]
   deleteMany?: Prisma.LedgerEntryScalarWhereInput | Prisma.LedgerEntryScalarWhereInput[]
 }
 
-export type LedgerEntryUncheckedUpdateManyWithoutWalletTransactionNestedInput = {
-  create?: Prisma.XOR<Prisma.LedgerEntryCreateWithoutWalletTransactionInput, Prisma.LedgerEntryUncheckedCreateWithoutWalletTransactionInput> | Prisma.LedgerEntryCreateWithoutWalletTransactionInput[] | Prisma.LedgerEntryUncheckedCreateWithoutWalletTransactionInput[]
-  connectOrCreate?: Prisma.LedgerEntryCreateOrConnectWithoutWalletTransactionInput | Prisma.LedgerEntryCreateOrConnectWithoutWalletTransactionInput[]
-  upsert?: Prisma.LedgerEntryUpsertWithWhereUniqueWithoutWalletTransactionInput | Prisma.LedgerEntryUpsertWithWhereUniqueWithoutWalletTransactionInput[]
-  createMany?: Prisma.LedgerEntryCreateManyWalletTransactionInputEnvelope
+export type LedgerEntryUncheckedUpdateManyWithoutLedgerTransactionNestedInput = {
+  create?: Prisma.XOR<Prisma.LedgerEntryCreateWithoutLedgerTransactionInput, Prisma.LedgerEntryUncheckedCreateWithoutLedgerTransactionInput> | Prisma.LedgerEntryCreateWithoutLedgerTransactionInput[] | Prisma.LedgerEntryUncheckedCreateWithoutLedgerTransactionInput[]
+  connectOrCreate?: Prisma.LedgerEntryCreateOrConnectWithoutLedgerTransactionInput | Prisma.LedgerEntryCreateOrConnectWithoutLedgerTransactionInput[]
+  upsert?: Prisma.LedgerEntryUpsertWithWhereUniqueWithoutLedgerTransactionInput | Prisma.LedgerEntryUpsertWithWhereUniqueWithoutLedgerTransactionInput[]
+  createMany?: Prisma.LedgerEntryCreateManyLedgerTransactionInputEnvelope
   set?: Prisma.LedgerEntryWhereUniqueInput | Prisma.LedgerEntryWhereUniqueInput[]
   disconnect?: Prisma.LedgerEntryWhereUniqueInput | Prisma.LedgerEntryWhereUniqueInput[]
   delete?: Prisma.LedgerEntryWhereUniqueInput | Prisma.LedgerEntryWhereUniqueInput[]
   connect?: Prisma.LedgerEntryWhereUniqueInput | Prisma.LedgerEntryWhereUniqueInput[]
-  update?: Prisma.LedgerEntryUpdateWithWhereUniqueWithoutWalletTransactionInput | Prisma.LedgerEntryUpdateWithWhereUniqueWithoutWalletTransactionInput[]
-  updateMany?: Prisma.LedgerEntryUpdateManyWithWhereWithoutWalletTransactionInput | Prisma.LedgerEntryUpdateManyWithWhereWithoutWalletTransactionInput[]
+  update?: Prisma.LedgerEntryUpdateWithWhereUniqueWithoutLedgerTransactionInput | Prisma.LedgerEntryUpdateWithWhereUniqueWithoutLedgerTransactionInput[]
+  updateMany?: Prisma.LedgerEntryUpdateManyWithWhereWithoutLedgerTransactionInput | Prisma.LedgerEntryUpdateManyWithWhereWithoutLedgerTransactionInput[]
   deleteMany?: Prisma.LedgerEntryScalarWhereInput | Prisma.LedgerEntryScalarWhereInput[]
 }
 
@@ -568,22 +546,20 @@ export type EnumLedgerDirectionFieldUpdateOperationsInput = {
   set?: $Enums.LedgerDirection
 }
 
-export type LedgerEntryCreateWithoutAccountInput = {
+export type LedgerEntryCreateWithoutLedgerAccountInput = {
   id?: string
-  transactionId: string
   direction: $Enums.LedgerDirection
   amount: runtime.Decimal | runtime.DecimalJsLike | number | string
   currency: string
   referenceType?: string | null
   referenceId?: string | null
   createdAt?: Date | string
-  walletTransaction?: Prisma.WalletTransactionCreateNestedOneWithoutLedgerEntriesInput
+  ledgerTransaction: Prisma.LedgerTransactionCreateNestedOneWithoutEntriesInput
 }
 
-export type LedgerEntryUncheckedCreateWithoutAccountInput = {
+export type LedgerEntryUncheckedCreateWithoutLedgerAccountInput = {
   id?: string
-  transactionId: string
-  walletTransactionId?: string | null
+  ledgerTransactionId: string
   direction: $Enums.LedgerDirection
   amount: runtime.Decimal | runtime.DecimalJsLike | number | string
   currency: string
@@ -592,30 +568,30 @@ export type LedgerEntryUncheckedCreateWithoutAccountInput = {
   createdAt?: Date | string
 }
 
-export type LedgerEntryCreateOrConnectWithoutAccountInput = {
+export type LedgerEntryCreateOrConnectWithoutLedgerAccountInput = {
   where: Prisma.LedgerEntryWhereUniqueInput
-  create: Prisma.XOR<Prisma.LedgerEntryCreateWithoutAccountInput, Prisma.LedgerEntryUncheckedCreateWithoutAccountInput>
+  create: Prisma.XOR<Prisma.LedgerEntryCreateWithoutLedgerAccountInput, Prisma.LedgerEntryUncheckedCreateWithoutLedgerAccountInput>
 }
 
-export type LedgerEntryCreateManyAccountInputEnvelope = {
-  data: Prisma.LedgerEntryCreateManyAccountInput | Prisma.LedgerEntryCreateManyAccountInput[]
+export type LedgerEntryCreateManyLedgerAccountInputEnvelope = {
+  data: Prisma.LedgerEntryCreateManyLedgerAccountInput | Prisma.LedgerEntryCreateManyLedgerAccountInput[]
   skipDuplicates?: boolean
 }
 
-export type LedgerEntryUpsertWithWhereUniqueWithoutAccountInput = {
+export type LedgerEntryUpsertWithWhereUniqueWithoutLedgerAccountInput = {
   where: Prisma.LedgerEntryWhereUniqueInput
-  update: Prisma.XOR<Prisma.LedgerEntryUpdateWithoutAccountInput, Prisma.LedgerEntryUncheckedUpdateWithoutAccountInput>
-  create: Prisma.XOR<Prisma.LedgerEntryCreateWithoutAccountInput, Prisma.LedgerEntryUncheckedCreateWithoutAccountInput>
+  update: Prisma.XOR<Prisma.LedgerEntryUpdateWithoutLedgerAccountInput, Prisma.LedgerEntryUncheckedUpdateWithoutLedgerAccountInput>
+  create: Prisma.XOR<Prisma.LedgerEntryCreateWithoutLedgerAccountInput, Prisma.LedgerEntryUncheckedCreateWithoutLedgerAccountInput>
 }
 
-export type LedgerEntryUpdateWithWhereUniqueWithoutAccountInput = {
+export type LedgerEntryUpdateWithWhereUniqueWithoutLedgerAccountInput = {
   where: Prisma.LedgerEntryWhereUniqueInput
-  data: Prisma.XOR<Prisma.LedgerEntryUpdateWithoutAccountInput, Prisma.LedgerEntryUncheckedUpdateWithoutAccountInput>
+  data: Prisma.XOR<Prisma.LedgerEntryUpdateWithoutLedgerAccountInput, Prisma.LedgerEntryUncheckedUpdateWithoutLedgerAccountInput>
 }
 
-export type LedgerEntryUpdateManyWithWhereWithoutAccountInput = {
+export type LedgerEntryUpdateManyWithWhereWithoutLedgerAccountInput = {
   where: Prisma.LedgerEntryScalarWhereInput
-  data: Prisma.XOR<Prisma.LedgerEntryUpdateManyMutationInput, Prisma.LedgerEntryUncheckedUpdateManyWithoutAccountInput>
+  data: Prisma.XOR<Prisma.LedgerEntryUpdateManyMutationInput, Prisma.LedgerEntryUncheckedUpdateManyWithoutLedgerAccountInput>
 }
 
 export type LedgerEntryScalarWhereInput = {
@@ -623,9 +599,8 @@ export type LedgerEntryScalarWhereInput = {
   OR?: Prisma.LedgerEntryScalarWhereInput[]
   NOT?: Prisma.LedgerEntryScalarWhereInput | Prisma.LedgerEntryScalarWhereInput[]
   id?: Prisma.StringFilter<"LedgerEntry"> | string
-  transactionId?: Prisma.StringFilter<"LedgerEntry"> | string
-  accountId?: Prisma.StringFilter<"LedgerEntry"> | string
-  walletTransactionId?: Prisma.StringNullableFilter<"LedgerEntry"> | string | null
+  ledgerTransactionId?: Prisma.StringFilter<"LedgerEntry"> | string
+  ledgerAccountId?: Prisma.StringFilter<"LedgerEntry"> | string
   direction?: Prisma.EnumLedgerDirectionFilter<"LedgerEntry"> | $Enums.LedgerDirection
   amount?: Prisma.DecimalFilter<"LedgerEntry"> | runtime.Decimal | runtime.DecimalJsLike | number | string
   currency?: Prisma.StringFilter<"LedgerEntry"> | string
@@ -634,22 +609,20 @@ export type LedgerEntryScalarWhereInput = {
   createdAt?: Prisma.DateTimeFilter<"LedgerEntry"> | Date | string
 }
 
-export type LedgerEntryCreateWithoutWalletTransactionInput = {
+export type LedgerEntryCreateWithoutLedgerTransactionInput = {
   id?: string
-  transactionId: string
   direction: $Enums.LedgerDirection
   amount: runtime.Decimal | runtime.DecimalJsLike | number | string
   currency: string
   referenceType?: string | null
   referenceId?: string | null
   createdAt?: Date | string
-  account: Prisma.AccountCreateNestedOneWithoutLedgerEntriesInput
+  ledgerAccount: Prisma.LedgerAccountCreateNestedOneWithoutEntriesInput
 }
 
-export type LedgerEntryUncheckedCreateWithoutWalletTransactionInput = {
+export type LedgerEntryUncheckedCreateWithoutLedgerTransactionInput = {
   id?: string
-  transactionId: string
-  accountId: string
+  ledgerAccountId: string
   direction: $Enums.LedgerDirection
   amount: runtime.Decimal | runtime.DecimalJsLike | number | string
   currency: string
@@ -658,36 +631,35 @@ export type LedgerEntryUncheckedCreateWithoutWalletTransactionInput = {
   createdAt?: Date | string
 }
 
-export type LedgerEntryCreateOrConnectWithoutWalletTransactionInput = {
+export type LedgerEntryCreateOrConnectWithoutLedgerTransactionInput = {
   where: Prisma.LedgerEntryWhereUniqueInput
-  create: Prisma.XOR<Prisma.LedgerEntryCreateWithoutWalletTransactionInput, Prisma.LedgerEntryUncheckedCreateWithoutWalletTransactionInput>
+  create: Prisma.XOR<Prisma.LedgerEntryCreateWithoutLedgerTransactionInput, Prisma.LedgerEntryUncheckedCreateWithoutLedgerTransactionInput>
 }
 
-export type LedgerEntryCreateManyWalletTransactionInputEnvelope = {
-  data: Prisma.LedgerEntryCreateManyWalletTransactionInput | Prisma.LedgerEntryCreateManyWalletTransactionInput[]
+export type LedgerEntryCreateManyLedgerTransactionInputEnvelope = {
+  data: Prisma.LedgerEntryCreateManyLedgerTransactionInput | Prisma.LedgerEntryCreateManyLedgerTransactionInput[]
   skipDuplicates?: boolean
 }
 
-export type LedgerEntryUpsertWithWhereUniqueWithoutWalletTransactionInput = {
+export type LedgerEntryUpsertWithWhereUniqueWithoutLedgerTransactionInput = {
   where: Prisma.LedgerEntryWhereUniqueInput
-  update: Prisma.XOR<Prisma.LedgerEntryUpdateWithoutWalletTransactionInput, Prisma.LedgerEntryUncheckedUpdateWithoutWalletTransactionInput>
-  create: Prisma.XOR<Prisma.LedgerEntryCreateWithoutWalletTransactionInput, Prisma.LedgerEntryUncheckedCreateWithoutWalletTransactionInput>
+  update: Prisma.XOR<Prisma.LedgerEntryUpdateWithoutLedgerTransactionInput, Prisma.LedgerEntryUncheckedUpdateWithoutLedgerTransactionInput>
+  create: Prisma.XOR<Prisma.LedgerEntryCreateWithoutLedgerTransactionInput, Prisma.LedgerEntryUncheckedCreateWithoutLedgerTransactionInput>
 }
 
-export type LedgerEntryUpdateWithWhereUniqueWithoutWalletTransactionInput = {
+export type LedgerEntryUpdateWithWhereUniqueWithoutLedgerTransactionInput = {
   where: Prisma.LedgerEntryWhereUniqueInput
-  data: Prisma.XOR<Prisma.LedgerEntryUpdateWithoutWalletTransactionInput, Prisma.LedgerEntryUncheckedUpdateWithoutWalletTransactionInput>
+  data: Prisma.XOR<Prisma.LedgerEntryUpdateWithoutLedgerTransactionInput, Prisma.LedgerEntryUncheckedUpdateWithoutLedgerTransactionInput>
 }
 
-export type LedgerEntryUpdateManyWithWhereWithoutWalletTransactionInput = {
+export type LedgerEntryUpdateManyWithWhereWithoutLedgerTransactionInput = {
   where: Prisma.LedgerEntryScalarWhereInput
-  data: Prisma.XOR<Prisma.LedgerEntryUpdateManyMutationInput, Prisma.LedgerEntryUncheckedUpdateManyWithoutWalletTransactionInput>
+  data: Prisma.XOR<Prisma.LedgerEntryUpdateManyMutationInput, Prisma.LedgerEntryUncheckedUpdateManyWithoutLedgerTransactionInput>
 }
 
-export type LedgerEntryCreateManyAccountInput = {
+export type LedgerEntryCreateManyLedgerAccountInput = {
   id?: string
-  transactionId: string
-  walletTransactionId?: string | null
+  ledgerTransactionId: string
   direction: $Enums.LedgerDirection
   amount: runtime.Decimal | runtime.DecimalJsLike | number | string
   currency: string
@@ -696,34 +668,20 @@ export type LedgerEntryCreateManyAccountInput = {
   createdAt?: Date | string
 }
 
-export type LedgerEntryUpdateWithoutAccountInput = {
+export type LedgerEntryUpdateWithoutLedgerAccountInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  transactionId?: Prisma.StringFieldUpdateOperationsInput | string
   direction?: Prisma.EnumLedgerDirectionFieldUpdateOperationsInput | $Enums.LedgerDirection
   amount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   currency?: Prisma.StringFieldUpdateOperationsInput | string
   referenceType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   referenceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  walletTransaction?: Prisma.WalletTransactionUpdateOneWithoutLedgerEntriesNestedInput
+  ledgerTransaction?: Prisma.LedgerTransactionUpdateOneRequiredWithoutEntriesNestedInput
 }
 
-export type LedgerEntryUncheckedUpdateWithoutAccountInput = {
+export type LedgerEntryUncheckedUpdateWithoutLedgerAccountInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  transactionId?: Prisma.StringFieldUpdateOperationsInput | string
-  walletTransactionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  direction?: Prisma.EnumLedgerDirectionFieldUpdateOperationsInput | $Enums.LedgerDirection
-  amount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
-  currency?: Prisma.StringFieldUpdateOperationsInput | string
-  referenceType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  referenceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-}
-
-export type LedgerEntryUncheckedUpdateManyWithoutAccountInput = {
-  id?: Prisma.StringFieldUpdateOperationsInput | string
-  transactionId?: Prisma.StringFieldUpdateOperationsInput | string
-  walletTransactionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  ledgerTransactionId?: Prisma.StringFieldUpdateOperationsInput | string
   direction?: Prisma.EnumLedgerDirectionFieldUpdateOperationsInput | $Enums.LedgerDirection
   amount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   currency?: Prisma.StringFieldUpdateOperationsInput | string
@@ -732,10 +690,20 @@ export type LedgerEntryUncheckedUpdateManyWithoutAccountInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
-export type LedgerEntryCreateManyWalletTransactionInput = {
+export type LedgerEntryUncheckedUpdateManyWithoutLedgerAccountInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  ledgerTransactionId?: Prisma.StringFieldUpdateOperationsInput | string
+  direction?: Prisma.EnumLedgerDirectionFieldUpdateOperationsInput | $Enums.LedgerDirection
+  amount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
+  currency?: Prisma.StringFieldUpdateOperationsInput | string
+  referenceType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  referenceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+}
+
+export type LedgerEntryCreateManyLedgerTransactionInput = {
   id?: string
-  transactionId: string
-  accountId: string
+  ledgerAccountId: string
   direction: $Enums.LedgerDirection
   amount: runtime.Decimal | runtime.DecimalJsLike | number | string
   currency: string
@@ -744,22 +712,20 @@ export type LedgerEntryCreateManyWalletTransactionInput = {
   createdAt?: Date | string
 }
 
-export type LedgerEntryUpdateWithoutWalletTransactionInput = {
+export type LedgerEntryUpdateWithoutLedgerTransactionInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  transactionId?: Prisma.StringFieldUpdateOperationsInput | string
   direction?: Prisma.EnumLedgerDirectionFieldUpdateOperationsInput | $Enums.LedgerDirection
   amount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   currency?: Prisma.StringFieldUpdateOperationsInput | string
   referenceType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   referenceId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  account?: Prisma.AccountUpdateOneRequiredWithoutLedgerEntriesNestedInput
+  ledgerAccount?: Prisma.LedgerAccountUpdateOneRequiredWithoutEntriesNestedInput
 }
 
-export type LedgerEntryUncheckedUpdateWithoutWalletTransactionInput = {
+export type LedgerEntryUncheckedUpdateWithoutLedgerTransactionInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  transactionId?: Prisma.StringFieldUpdateOperationsInput | string
-  accountId?: Prisma.StringFieldUpdateOperationsInput | string
+  ledgerAccountId?: Prisma.StringFieldUpdateOperationsInput | string
   direction?: Prisma.EnumLedgerDirectionFieldUpdateOperationsInput | $Enums.LedgerDirection
   amount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   currency?: Prisma.StringFieldUpdateOperationsInput | string
@@ -768,10 +734,9 @@ export type LedgerEntryUncheckedUpdateWithoutWalletTransactionInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
-export type LedgerEntryUncheckedUpdateManyWithoutWalletTransactionInput = {
+export type LedgerEntryUncheckedUpdateManyWithoutLedgerTransactionInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
-  transactionId?: Prisma.StringFieldUpdateOperationsInput | string
-  accountId?: Prisma.StringFieldUpdateOperationsInput | string
+  ledgerAccountId?: Prisma.StringFieldUpdateOperationsInput | string
   direction?: Prisma.EnumLedgerDirectionFieldUpdateOperationsInput | $Enums.LedgerDirection
   amount?: Prisma.DecimalFieldUpdateOperationsInput | runtime.Decimal | runtime.DecimalJsLike | number | string
   currency?: Prisma.StringFieldUpdateOperationsInput | string
@@ -784,26 +749,24 @@ export type LedgerEntryUncheckedUpdateManyWithoutWalletTransactionInput = {
 
 export type LedgerEntrySelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
-  transactionId?: boolean
-  accountId?: boolean
-  walletTransactionId?: boolean
+  ledgerTransactionId?: boolean
+  ledgerAccountId?: boolean
   direction?: boolean
   amount?: boolean
   currency?: boolean
   referenceType?: boolean
   referenceId?: boolean
   createdAt?: boolean
-  account?: boolean | Prisma.AccountDefaultArgs<ExtArgs>
-  walletTransaction?: boolean | Prisma.LedgerEntry$walletTransactionArgs<ExtArgs>
+  ledgerTransaction?: boolean | Prisma.LedgerTransactionDefaultArgs<ExtArgs>
+  ledgerAccount?: boolean | Prisma.LedgerAccountDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["ledgerEntry"]>
 
 
 
 export type LedgerEntrySelectScalar = {
   id?: boolean
-  transactionId?: boolean
-  accountId?: boolean
-  walletTransactionId?: boolean
+  ledgerTransactionId?: boolean
+  ledgerAccountId?: boolean
   direction?: boolean
   amount?: boolean
   currency?: boolean
@@ -812,23 +775,22 @@ export type LedgerEntrySelectScalar = {
   createdAt?: boolean
 }
 
-export type LedgerEntryOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "transactionId" | "accountId" | "walletTransactionId" | "direction" | "amount" | "currency" | "referenceType" | "referenceId" | "createdAt", ExtArgs["result"]["ledgerEntry"]>
+export type LedgerEntryOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "ledgerTransactionId" | "ledgerAccountId" | "direction" | "amount" | "currency" | "referenceType" | "referenceId" | "createdAt", ExtArgs["result"]["ledgerEntry"]>
 export type LedgerEntryInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  account?: boolean | Prisma.AccountDefaultArgs<ExtArgs>
-  walletTransaction?: boolean | Prisma.LedgerEntry$walletTransactionArgs<ExtArgs>
+  ledgerTransaction?: boolean | Prisma.LedgerTransactionDefaultArgs<ExtArgs>
+  ledgerAccount?: boolean | Prisma.LedgerAccountDefaultArgs<ExtArgs>
 }
 
 export type $LedgerEntryPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "LedgerEntry"
   objects: {
-    account: Prisma.$AccountPayload<ExtArgs>
-    walletTransaction: Prisma.$WalletTransactionPayload<ExtArgs> | null
+    ledgerTransaction: Prisma.$LedgerTransactionPayload<ExtArgs>
+    ledgerAccount: Prisma.$LedgerAccountPayload<ExtArgs>
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
-    transactionId: string
-    accountId: string
-    walletTransactionId: string | null
+    ledgerTransactionId: string
+    ledgerAccountId: string
     direction: $Enums.LedgerDirection
     amount: runtime.Decimal
     currency: string
@@ -1175,8 +1137,8 @@ readonly fields: LedgerEntryFieldRefs;
  */
 export interface Prisma__LedgerEntryClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
   readonly [Symbol.toStringTag]: "PrismaPromise"
-  account<T extends Prisma.AccountDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.AccountDefaultArgs<ExtArgs>>): Prisma.Prisma__AccountClient<runtime.Types.Result.GetResult<Prisma.$AccountPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
-  walletTransaction<T extends Prisma.LedgerEntry$walletTransactionArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.LedgerEntry$walletTransactionArgs<ExtArgs>>): Prisma.Prisma__WalletTransactionClient<runtime.Types.Result.GetResult<Prisma.$WalletTransactionPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+  ledgerTransaction<T extends Prisma.LedgerTransactionDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.LedgerTransactionDefaultArgs<ExtArgs>>): Prisma.Prisma__LedgerTransactionClient<runtime.Types.Result.GetResult<Prisma.$LedgerTransactionPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+  ledgerAccount<T extends Prisma.LedgerAccountDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.LedgerAccountDefaultArgs<ExtArgs>>): Prisma.Prisma__LedgerAccountClient<runtime.Types.Result.GetResult<Prisma.$LedgerAccountPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -1207,9 +1169,8 @@ export interface Prisma__LedgerEntryClient<T, Null = never, ExtArgs extends runt
  */
 export interface LedgerEntryFieldRefs {
   readonly id: Prisma.FieldRef<"LedgerEntry", 'String'>
-  readonly transactionId: Prisma.FieldRef<"LedgerEntry", 'String'>
-  readonly accountId: Prisma.FieldRef<"LedgerEntry", 'String'>
-  readonly walletTransactionId: Prisma.FieldRef<"LedgerEntry", 'String'>
+  readonly ledgerTransactionId: Prisma.FieldRef<"LedgerEntry", 'String'>
+  readonly ledgerAccountId: Prisma.FieldRef<"LedgerEntry", 'String'>
   readonly direction: Prisma.FieldRef<"LedgerEntry", 'LedgerDirection'>
   readonly amount: Prisma.FieldRef<"LedgerEntry", 'Decimal'>
   readonly currency: Prisma.FieldRef<"LedgerEntry", 'String'>
@@ -1561,25 +1522,6 @@ export type LedgerEntryDeleteManyArgs<ExtArgs extends runtime.Types.Extensions.I
    * Limit how many LedgerEntries to delete.
    */
   limit?: number
-}
-
-/**
- * LedgerEntry.walletTransaction
- */
-export type LedgerEntry$walletTransactionArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  /**
-   * Select specific fields to fetch from the WalletTransaction
-   */
-  select?: Prisma.WalletTransactionSelect<ExtArgs> | null
-  /**
-   * Omit specific fields from the WalletTransaction
-   */
-  omit?: Prisma.WalletTransactionOmit<ExtArgs> | null
-  /**
-   * Choose, which related nodes to fetch as well
-   */
-  include?: Prisma.WalletTransactionInclude<ExtArgs> | null
-  where?: Prisma.WalletTransactionWhereInput
 }
 
 /**
