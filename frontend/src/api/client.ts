@@ -268,11 +268,9 @@ export async function apiRequest<T>(
           throw new ApiError(408, 'The request timed out', 'REQUEST_TIMEOUT', requestId)
         }
 
-        if (attempt < maxAttempts && error instanceof TypeError) {
-          await sleep(retryDelayMs(attempt), callerSignal)
-          continue
-        }
-
+        // A network connection failure is already handled by the realtime/dashboard
+        // fallback scheduler. Retrying each GET here can create a request storm while the
+        // backend is offline, especially when several server-state hooks mount together.
         throw error
       } finally {
         window.clearTimeout(timeoutId)
