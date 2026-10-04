@@ -12,6 +12,12 @@ function createRedisClient(): RedisClient {
     url: env.redisUrl,
     socket: {
       connectTimeout: env.redisConnectTimeoutMs,
+      // Do not let an unavailable optional Redis instance block backend startup.
+      // The server handles the connection error and continues when REDIS_REQUIRED=false.
+      reconnectStrategy: (retries) => {
+        if (retries >= 2) return new Error('Redis connection unavailable')
+        return Math.min(250 * 2 ** retries, 1_000)
+      },
     },
   }) as RedisClient
 
