@@ -185,6 +185,14 @@ export class RealtimeClient {
 function defaultRealtimeUrl(): string {
   if (typeof window === 'undefined') return 'ws://localhost:8080/ws'
 
+  // Vite proxies /ws to the backend during development, so always keep the
+  // browser connection same-origin. This also prevents a stale VITE_WS_URL from
+  // bypassing the dev proxy.
+  if (import.meta.env.DEV) {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+    return protocol + '//' + window.location.host + '/ws'
+  }
+
   if (import.meta.env.VITE_WS_URL) return import.meta.env.VITE_WS_URL
   if (import.meta.env.VITE_WS_BASE_URL) return import.meta.env.VITE_WS_BASE_URL
 
