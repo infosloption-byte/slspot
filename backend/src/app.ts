@@ -95,6 +95,9 @@ export function buildApp(options: AppOptions = {}) {
     const isAuthRoute = path.startsWith(API_PREFIX + '/auth/')
     const isTradingRoute = path.startsWith(API_PREFIX + '/trades') || path.startsWith(API_PREFIX + '/wallet')
     const isUnsafe = !SAFE_METHODS.has(request.method)
+    // Authentication reads such as /auth/me are normal dashboard reads. Reserve the
+    // stricter auth bucket for state-changing authentication operations.
+    const isAuthMutation = isAuthRoute && isUnsafe
     // Read-heavy trading/wallet dashboards should use the general read quota.
     // Reserve the stricter trading bucket for state-changing trade/wallet requests.
     const isTradingMutation = isTradingRoute && isUnsafe
@@ -120,9 +123,9 @@ export function buildApp(options: AppOptions = {}) {
     }
 
     await enforceRateLimit({
-      key: (isAuthRoute ? 'auth:' : isTradingMutation ? 'trading:' : 'api:') + request.ip,
-      limit: isAuthRoute ? env.security.rateLimit.authLimit : isTradingMutation ? env.security.rateLimit.tradingLimit : env.security.rateLimit.generalLimit,
-      windowSeconds: isAuthRoute ? env.security.rateLimit.authWindowSeconds : isTradingMutation ? env.security.rateLimit.tradingWindowSeconds : env.security.rateLimit.generalWindowSeconds,
+      key: (isAuthMutation ? 'auth:' : isTradingMutation ? 'trading:' : 'api:') + request.ip,
+      limit: isAuthMutation ? env.security.rateLimit.authLimit : isTradingMutation ? env.security.rateLimit.tradingLimit : env.security.rateLimit.generalLimit,
+      windowSeconds: isAuthMutation ? env.security.rateLimit.authWindowSeconds : isTradingMutation ? env.security.rateLimit.tradingWindowSeconds : env.security.rateLimit.generalWindowSeconds,
     })
   })
 
