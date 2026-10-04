@@ -117,7 +117,9 @@ function requestCanRetry(method: string, idempotencyKey?: string): boolean {
 }
 
 function statusCanRetry(status: number): boolean {
-  return status === 408 || status === 429 || status === 500 || status === 502 || status === 503 || status === 504
+  // A 429 response means the server is intentionally throttling this client.
+  // Retrying it would immediately consume another rate-limit slot and amplify the outage.
+  return status === 408 || status === 500 || status === 502 || status === 503 || status === 504
 }
 
 function retryDelayMs(attempt: number, retryAfterSeconds?: number): number {
