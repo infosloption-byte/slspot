@@ -303,8 +303,8 @@ export function TradingPage() {
       clientRequestId: request.clientRequestId,
     }, mode)
 
-    await reloadTradingState()
-
+    // The server publishes trade/position/wallet events immediately after opening the trade.
+    // The realtime refresh hook will coalesce those events into one authoritative refresh.
     addToast(
       'success',
       'Trade opened',
