@@ -1,4 +1,4 @@
-import { ChevronDown, Minus, Plus, RefreshCcw, ShieldAlert, Timer, TrendingDown, TrendingUp, Volume2, VolumeX, X } from 'lucide-react'
+import { ChevronDown, Minus, Plus, RefreshCcw, ShieldAlert, Timer, TrendingDown, TrendingUp, X } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import type { MarketAsset } from '../../data/mockMarket'
 import type { TradeDirection } from '../../types/trading'
@@ -9,12 +9,10 @@ import { Modal } from '../ui/Modal'
 
 type TradePanelProps = {
   asset: MarketAsset
-  soundEnabled: boolean
   balance: number
   walletMode: WalletMode
   canTrade: boolean
   tradeDisabledReason?: string | null
-  onToggleSound: () => void
   onOpenTrade: (trade: { direction: TradeDirection; amount: number; durationSeconds: number; entryPrice: number; payoutRate: number; clientRequestId: string }) => Promise<TradeCreateResult>
 }
 
@@ -25,7 +23,7 @@ function formatDuration(value: number) {
   return value < 60 ? value + 's' : value / 60 + 'm'
 }
 
-export function TradePanel({ asset, balance, walletMode, canTrade, tradeDisabledReason, soundEnabled, onToggleSound, onOpenTrade }: TradePanelProps) {
+export function TradePanel({ asset, balance, walletMode, canTrade, tradeDisabledReason, onOpenTrade }: TradePanelProps) {
   // The stake is kept as text so an emptied field stays empty; a numeric state turned "" into 0,
   // and typing after that produced "05".
   const [amountText, setAmountText] = useState(String(Math.min(50, asset.maxAmount)))
@@ -39,7 +37,7 @@ export function TradePanel({ asset, balance, walletMode, canTrade, tradeDisabled
   const [durationOpen, setDurationOpen] = useState(false)
   const [stage, setStage] = useState<OrderStage>('draft')
   const [error, setError] = useState('')
-  const [mobileConfigOpen, setMobileConfigOpen] = useState(false)
+  const [mobileConfigOpen, setMobileConfigOpen] = useState(true)
   const [mobileDurationOpen, setMobileDurationOpen] = useState(false)
   const [failedRequest, setFailedRequest] = useState<FailedTradeRequest | null>(null)
   const durationRef = useRef<HTMLDivElement>(null)
@@ -206,9 +204,6 @@ export function TradePanel({ asset, balance, walletMode, canTrade, tradeDisabled
 
           <div className="trade-panel__footer-row">
             <span className="trade-panel__note"><i className="live-dot" /> {canTrade ? (walletMode === 'DEMO' ? 'Demo market · Practice balance' : 'Real wallet · Trading enabled') : (tradeDisabledReason ?? 'Trading unavailable')} · Balance {formatCurrency(balance, asset.quoteCurrency)}</span>
-            <button type="button" className="icon-button" onClick={onToggleSound} aria-label={soundEnabled ? 'Disable trade sounds' : 'Enable trade sounds'} title={soundEnabled ? 'Disable trade sounds' : 'Enable trade sounds'}>
-              {soundEnabled ? <Volume2 size={15} /> : <VolumeX size={15} />}
-            </button>
           </div>
         </div>
 
@@ -228,7 +223,6 @@ export function TradePanel({ asset, balance, walletMode, canTrade, tradeDisabled
                 </label>
               </div>
               <div className="payout-card"><div><span>Potential return</span><strong>{formatCurrency(estimatedPayout, asset.quoteCurrency)}</strong></div><small>{formatCurrency(totalReturn, asset.quoteCurrency)} total at expiry</small></div>
-              <button type="button" className="trade-panel__sound-button" onClick={onToggleSound}>{soundEnabled ? <Volume2 size={14} /> : <VolumeX size={14} />} {soundEnabled ? 'Sounds on' : 'Sounds off'}</button>
             </div>
           ) : null}
           {renderActions(true)}

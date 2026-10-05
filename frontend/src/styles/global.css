@@ -2963,3 +2963,47 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
   .chart-indicator-panel__actions button { width: 28px; height: 28px; }
   .chart-legend__icon { opacity: 1; }
 }
+
+.chart-timeframe-chip { display: none; }
+.chart-timeframe-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(54px, 1fr)); gap: 6px; }
+.chart-timeframe-grid .timeframe { height: 38px; border: 1px solid var(--line); background: var(--bg-2); }
+.chart-timeframe-grid .timeframe--active { border-color: var(--accent); }
+
+/* ---- Mobile polish: toolbar, wallet chip, compact trade panel ---- */
+@media (max-width: 820px) {
+  /* Top bar: wallet chip is two short lines and its menu is anchored to the screen edge */
+  .topbar__connection { display: none; }
+  .account-chip { min-width: 0; max-width: none; height: 40px; padding: 4px 8px; grid-template-columns: minmax(0, 1fr) auto; gap: 6px; }
+  .account-chip__icon, .account-chip__body small { display: none; }
+  .account-chip__body { display: grid; gap: 3px; }
+  .account-chip__body strong { font-size: 13px; line-height: 1; }
+  .account-chip__body em { display: block; margin: 0; font-size: 11px; line-height: 1; }
+  .wallet-selector { position: static; }
+  .wallet-selector__menu { position: fixed; top: calc(var(--topbar-h, 56px) + 6px); left: 10px; right: 10px; width: auto; max-width: 380px; margin-left: auto; }
+
+  /* Chart toolbar: one slim row (market, timeframe chip, positions, settings) */
+  .simple-chart-toolbar { flex-wrap: nowrap; min-height: 0; padding: 8px 10px; gap: 8px; }
+  .asset-tabs { flex: 0 1 auto; min-width: 0; }
+  .market-trigger { flex: 0 1 auto; height: 36px; padding: 0 8px 0 10px; gap: 8px; box-shadow: inset 0 -2px 0 var(--accent); }
+  .market-trigger .asset-icon, .market-trigger__copy small, .market-trigger > svg { display: none; }
+  .market-trigger__copy strong { font-size: 13px; }
+  .market-trigger__price { padding-left: 8px; }
+  .market-trigger__price strong { font-size: 13px; }
+  .market-trigger__price small { font-size: 10px; }
+  .chart-timeframes { display: none; }
+  .chart-tools { order: 0; margin-left: auto; gap: 4px; flex: none; }
+  .chart-timeframe-chip { display: inline-flex; align-items: center; justify-content: center; height: 34px; min-width: 40px; padding: 0 8px; border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--accent-soft); color: var(--accent); font-size: 13px; font-weight: 800; }
+  .chart-tools .icon-button, .chart-activity-button { width: 34px; height: 34px; }
+  .chart-activity-button { padding: 0; justify-content: center; position: relative; }
+  .chart-activity-button__count { position: absolute; top: -5px; right: -5px; }
+
+  /* Trade panel: compact, expanded by default, pinned to the bottom edge */
+  .trade-panel { padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px)); gap: 4px; }
+  .trade-panel__mobile-content { gap: 6px; }
+  .trade-mobile-config { height: 28px; }
+  .trade-mobile-config__panel { gap: 6px; padding: 6px; }
+  .trade-mobile-config__grid .stepper { height: 38px; }
+  .trade-mobile-config__panel .payout-card { padding: 6px 10px; }
+  .trade-actions--mobile { margin-top: 0; }
+  .trade-actions--mobile .trade-btn { height: 46px; min-height: 46px; font-size: 16px; }
+}
