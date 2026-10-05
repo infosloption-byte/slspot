@@ -77,7 +77,7 @@ export function TradingPage() {
     return {
       page: historyPage,
       pageSize: 25,
-      status: historyFilters.status || 'WON,LOST,CANCELLED,EXPIRED',
+      status: historyFilters.status || 'WON,LOST,DRAW,CANCELLED,EXPIRED',
       search: historyFilters.search.trim() || undefined,
       assetId: historyFilters.assetId || undefined,
       direction: historyFilters.direction || undefined,
@@ -266,7 +266,7 @@ export function TradingPage() {
     const unsubscribe = realtime.onEvent((event) => {
       if (event.type === 'position.update') {
         const data = event.data as { tradeId?: unknown; status?: unknown; netPnl?: unknown }
-        if (typeof data.tradeId === 'string' && (data.status === 'WON' || data.status === 'LOST') && data.netPnl != null) {
+        if (typeof data.tradeId === 'string' && (data.status === 'WON' || data.status === 'LOST' || data.status === 'DRAW') && data.netPnl != null) {
           const pnl = Number(data.netPnl)
           if (Number.isFinite(pnl)) settledPnlRef.current.set(data.tradeId, pnl)
         }
@@ -275,7 +275,7 @@ export function TradingPage() {
 
       if (event.type !== 'trade.status') return
       const data = event.data as { tradeId?: unknown; status?: unknown }
-      if (typeof data.tradeId !== 'string' || (data.status !== 'WON' && data.status !== 'LOST')) return
+      if (typeof data.tradeId !== 'string' || (data.status !== 'WON' && data.status !== 'LOST' && data.status !== 'DRAW')) return
 
       const tradeId = data.tradeId
       const outcome = data.status
@@ -286,12 +286,16 @@ export function TradingPage() {
       const timer = window.setTimeout(() => {
         timers.delete(timer)
         const trade = knownTradesRef.current.get(tradeId)
-        const estimate = trade ? (outcome === 'WON' ? trade.amount * trade.payoutRate : -trade.amount) : undefined
+        const estimate = trade ? (outcome === 'WON' ? trade.amount * trade.payoutRate : outcome === 'DRAW' ? 0 : -trade.amount) : undefined
         const pnl = settledPnlRef.current.get(tradeId) ?? estimate
         settledPnlRef.current.delete(tradeId)
 
         const label = trade ? trade.symbol + ' · ' + trade.direction : 'Trade ' + tradeId
         const pnlText = pnl === undefined ? '' : ' · ' + (pnl >= 0 ? '+' : '-') + '$' + Math.abs(pnl).toFixed(2)
+        if (outcome === 'DRAW') {
+          addToast('info', 'Draw: stake returned', label + ' · price unchanged')
+          return
+        }
         addToast(outcome === 'WON' ? 'success' : 'error', outcome === 'WON' ? 'Trade won' : 'Trade lost', label + pnlText)
         if (soundEnabledRef.current) playTradeSound(outcome === 'WON' ? 'win' : 'lose')
       }, 250)
@@ -353,7 +357,7 @@ export function TradingPage() {
         expiresAt: Date.parse(trade.expiresAt ?? trade.openedAt),
         entryPrice: Number(trade.position.entryPrice),
         payoutRate: Number(trade.payoutRate),
-        status: trade.status === 'WON' ? 'WON' : trade.status === 'LOST' ? 'LOST' : 'CLOSED',
+        status: trade.status === 'WON' ? 'WON' : trade.status === 'LOST' ? 'LOST' : trade.status === 'DRAW' ? 'DRAW' : 'CLOSED',
         closedAt: trade.closedAt ? Date.parse(trade.closedAt) : undefined,
         exitPrice: trade.position.exitPrice !== null ? Number(trade.position.exitPrice) : undefined,
         netPnl: trade.netPnl !== null ? Number(trade.netPnl) : undefined,

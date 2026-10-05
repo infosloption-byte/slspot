@@ -6,7 +6,7 @@ import { AdminError, AdminService, type AdminStatus } from './service.js'
 
 const PREFIX = '/api/v1/admin'
 const STATUSES = ['PENDING_VERIFICATION', 'ACTIVE', 'SUSPENDED', 'DISABLED'] as const
-const TRADE_STATUSES = ['OPEN', 'WON', 'LOST', 'CANCELLED', 'EXPIRED'] as const
+const TRADE_STATUSES = ['OPEN', 'WON', 'LOST', 'DRAW', 'CANCELLED', 'EXPIRED'] as const
 const SETTLEMENT_STATUSES = ['PENDING', 'COMPLETED', 'FAILED'] as const
 const FUNDING_STATUSES = ['PENDING', 'PROCESSING', 'COMPLETED', 'FAILED', 'REJECTED'] as const
 const MARKET_STATUSES = ['OPEN', 'CLOSED', 'HALTED', 'MAINTENANCE'] as const

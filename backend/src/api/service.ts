@@ -401,7 +401,7 @@ export class PlatformApiService {
     input: {
       page?: number
       pageSize?: number
-      statuses?: Array<'OPEN' | 'WON' | 'LOST' | 'CANCELLED' | 'EXPIRED'>
+      statuses?: Array<'OPEN' | 'WON' | 'LOST' | 'DRAW' | 'CANCELLED' | 'EXPIRED'>
       search?: string
       assetId?: string
       direction?: 'UP' | 'DOWN'
@@ -616,7 +616,7 @@ export class PlatformApiService {
     const trades = await this.prisma.trade.findMany({
       where: {
         userId,
-        status: { in: ['WON', 'LOST', 'CANCELLED', 'EXPIRED'] },
+        status: { in: ['WON', 'LOST', 'DRAW', 'CANCELLED', 'EXPIRED'] },
         openedAt: { gte: seriesStart },
         position: { account: { mode } },
       },

@@ -1,5 +1,5 @@
 export type TradeDirection = 'UP' | 'DOWN'
-export type TradeStatus = 'OPEN' | 'WON' | 'LOST' | 'CLOSED'
+export type TradeStatus = 'OPEN' | 'WON' | 'LOST' | 'DRAW' | 'CLOSED'
 
 export type OpenTrade = {
   id: string
