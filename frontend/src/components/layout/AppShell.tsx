@@ -1,5 +1,5 @@
 import { Outlet } from 'react-router'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useRealtimeState } from '../../realtime/useRealtime'
 import { Sidebar } from './Sidebar'
 import { TopBar } from './TopBar'
@@ -19,14 +19,23 @@ export function AppShell() {
       window.removeEventListener('slspot:network-end', end)
     }
   }, [])
+  const [menuOpen, setMenuOpen] = useState(false)
+  const closeMenu = useCallback(() => setMenuOpen(false), [])
+  useEffect(() => {
+    if (!menuOpen) return undefined
+    const onKeyDown = (event: KeyboardEvent) => { if (event.key === 'Escape') setMenuOpen(false) }
+    document.addEventListener('keydown', onKeyDown)
+    return () => document.removeEventListener('keydown', onKeyDown)
+  }, [menuOpen])
   const busy = realtimeState === 'connecting' || realtimeState === 'reconnecting' || networkBusyCount > 0
 
   return (
     <div className={'app-shell' + (busy ? ' app-shell--busy' : '')}>
       {busy ? <div className="app-shell__loading-bar" role="status" aria-label="Loading or connecting to live services" /> : null}
-      <Sidebar />
+      <Sidebar open={menuOpen} onClose={closeMenu} />
+      {menuOpen ? <div className="sidebar-backdrop" onClick={closeMenu} aria-hidden="true" /> : null}
       <div className="app-main">
-        <TopBar />
+        <TopBar onMenuClick={() => setMenuOpen((value) => !value)} menuOpen={menuOpen} />
         <NetworkStatus />
         <div className="app-content">
           <Outlet />

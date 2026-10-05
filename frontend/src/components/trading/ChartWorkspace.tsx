@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRealtime } from '../../realtime/useRealtime'
+import { useMediaQuery } from '../../hooks/useMediaQuery'
 import type { PointerEvent as ReactPointerEvent } from 'react'
 import {
   AreaSeries,
@@ -34,7 +35,7 @@ import { IconButton } from '../ui/IconButton'
 import { ChartSettingsDialog, type ChartType, type DrawingTool, type SettingsTab } from './ChartSettingsDialog'
 import { IndicatorLegend, IndicatorPanels } from './IndicatorPanels'
 import {
-  OSCILLATOR_PANEL_HEIGHT, alligator as calcAlligator, bollinger as calcBollinger, defaultIndicatorSettings, emaOfCloses, fractals as calcFractals, getIndicator,
+  COMPACT_PANEL_HEIGHT, OSCILLATOR_PANEL_HEIGHT, alligator as calcAlligator, bollinger as calcBollinger, defaultIndicatorSettings, emaOfCloses, fractals as calcFractals, getIndicator,
   parabolicSar, sanitizeIndicatorSettings, sma as calcSma, toPoints,
   type IndicatorId, type IndicatorSettings, type Series,
 } from '../../lib/indicators'
@@ -497,6 +498,7 @@ export function ChartWorkspace({ asset, onOpenMarkets, onOpenActivity, openTrade
   })
   const [volumeEnabled, setVolumeEnabled] = useState(true)
   const [chartType, setChartType] = useState<ChartType>('candles')
+  const compact = useMediaQuery('(max-width: 820px)')
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [settingsTab, setSettingsTab] = useState<SettingsTab>('chart')
   const [selectedIndicator, setSelectedIndicator] = useState<IndicatorId>('sma')
@@ -736,18 +738,22 @@ export function ChartWorkspace({ asset, onOpenMarkets, onOpenActivity, openTrade
         </div>
 
         <div className="chart-tools" aria-label="Chart controls">
-          <IconButton label={crosshairEnabled ? 'Disable crosshair' : 'Enable crosshair'} active={crosshairEnabled} onClick={() => setCrosshairEnabled((value) => !value)}><Crosshair size={16} /></IconButton>
+          <span className="chart-tools__extra">
+            <IconButton label={crosshairEnabled ? 'Disable crosshair' : 'Enable crosshair'} active={crosshairEnabled} onClick={() => setCrosshairEnabled((value) => !value)}><Crosshair size={16} /></IconButton>
+          </span>
           <IconButton label="Chart settings" active={settingsOpen} onClick={() => openSettings('chart')} aria-haspopup="dialog"><Settings2 size={16} /></IconButton>
           <button type="button" className="chart-activity-button" onClick={() => { if (document.fullscreenElement) void document.exitFullscreen(); onOpenActivity() }} title="Open positions, trade history and wallet activity">
             <Clock3 size={15} />
             <span>Positions</span>
             {openTrades.length > 0 ? <span className="chart-activity-button__count">{openTrades.length}</span> : null}
           </button>
-          <IconButton label="Fullscreen chart" onClick={handleFullscreen}><Maximize2 size={16} /></IconButton>
+          <span className="chart-tools__extra">
+            <IconButton label="Fullscreen chart" onClick={handleFullscreen}><Maximize2 size={16} /></IconButton>
+          </span>
         </div>
       </div>
 
-      <div className={'chart-stage' + (hasOscillators ? ' chart-stage--oscillators' : '')} ref={stageRef} style={hasOscillators ? ({ '--oscillator-height': oscillatorCount * OSCILLATOR_PANEL_HEIGHT + 'px' } as React.CSSProperties) : undefined}>
+      <div className={'chart-stage' + (hasOscillators ? ' chart-stage--oscillators' : '')} ref={stageRef} style={hasOscillators ? ({ '--oscillator-height': (compact ? COMPACT_PANEL_HEIGHT : oscillatorCount * OSCILLATOR_PANEL_HEIGHT) + 'px' } as React.CSSProperties) : undefined}>
         {candleResource.loading ? (
           <div className="chart-data-state">
             <span className="loading-spinner" aria-hidden="true" />
@@ -828,7 +834,7 @@ export function ChartWorkspace({ asset, onOpenMarkets, onOpenActivity, openTrade
         {candles.length ? (
           <>
             <IndicatorLegend candles={candles} settings={indicators} onEdit={(id) => openSettings('indicators', id)} onRemove={removeIndicator} />
-            <IndicatorPanels candles={candles} settings={indicators} onEdit={(id) => openSettings('indicators', id)} onRemove={removeIndicator} />
+            <IndicatorPanels candles={candles} settings={indicators} compact={compact} onEdit={(id) => openSettings('indicators', id)} onRemove={removeIndicator} />
           </>
         ) : null}
       </div>

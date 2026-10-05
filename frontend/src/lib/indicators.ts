@@ -11,6 +11,8 @@ export type Series = Array<number | null>
 
 /** Height in pixels of one oscillator panel under the chart. */
 export const OSCILLATOR_PANEL_HEIGHT = 84
+/** Phones show a single, shorter oscillator panel so the price chart keeps most of the screen. */
+export const COMPACT_PANEL_HEIGHT = 68
 
 export type IndicatorId = 'sma' | 'ema' | 'bollinger' | 'psar' | 'alligator' | 'fractal' | 'rsi' | 'macd' | 'stochastic' | 'atr' | 'ao'
 
