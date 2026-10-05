@@ -13,16 +13,26 @@ export class CompositeProvider implements MarketDataProvider {
   }
 
   async quote(market: MarketDefinition): Promise<ProviderQuote> {
-    return this.pick(market).quote(market)
+    return this.run(market, (provider) => provider.quote(market))
   }
 
   async candles(market: MarketDefinition, interval: CandleInterval, limit: number): Promise<ProviderCandle[]> {
-    return this.pick(market).candles(market, interval, limit)
+    return this.run(market, (provider) => provider.candles(market, interval, limit))
   }
 
-  private pick(market: MarketDefinition): MarketDataProvider {
-    const provider = market.assetType === 'CRYPTO' ? (this.crypto ?? this.general) : this.general
-    if (!provider) throw new Error('No market data provider is configured for ' + market.assetType)
-    return provider
+  /** Crypto tries the exchange feed first and falls back to the general provider if it fails. */
+  private async run<T>(market: MarketDefinition, call: (provider: MarketDataProvider) => Promise<T>): Promise<T> {
+    const chain = (market.assetType === 'CRYPTO' ? [this.crypto, this.general] : [this.general])
+      .filter((provider): provider is MarketDataProvider => provider !== null)
+    if (chain.length === 0) throw new Error('No market data provider is configured for ' + market.assetType)
+    let lastError: unknown
+    for (const provider of chain) {
+      try {
+        return await call(provider)
+      } catch (error) {
+        lastError = error
+      }
+    }
+    throw lastError
   }
 }

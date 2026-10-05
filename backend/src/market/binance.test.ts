@@ -3,6 +3,7 @@ import test from 'node:test'
 import { BinanceProvider, toBinanceSymbol } from './binance.js'
 import { BinanceTickStream } from './binance-stream.js'
 import { CompositeProvider } from './composite.js'
+import { syntheticCandles } from './synthetic.js'
 import { clearLivePrices, getLivePrice, setLivePrice } from './live-prices.js'
 import type { MarketDefinition } from './types.js'
 
@@ -32,7 +33,8 @@ test('quote and candles are parsed from Binance responses', async () => {
   const candles = await provider.candles(btc, '5min', 2)
   assert.equal(candles[0]?.close, '105')
   assert.equal(candles[0]?.closeTime, new Date(1_700_000_300_000).toISOString())
-  assert.ok(urls[1]?.includes('symbol=BTCUSDT') && urls[1].includes('interval=5m'))
+  const klines = urls.find((url) => url.includes('klines'))
+  assert.ok(klines?.includes('symbol=BTCUSDT') && klines.includes('interval=5m'))
 })
 
 test('composite routes crypto to Binance and the rest to the general provider', async () => {
@@ -77,4 +79,60 @@ test('live price cache honours freshness', () => {
   setLivePrice('a1', '5', 1_000)
   assert.equal(getLivePrice('a1', 500, 1_400)?.price, '5')
   assert.equal(getLivePrice('a1', 500, 1_600), null)
+})
+
+test('binance provider answers from a fallback host when the primary is unreachable', async () => {
+  const hosts: string[] = []
+  const fetcher = (async (input: URL | string) => {
+    const url = new URL(String(input))
+    hosts.push(url.host)
+    if (url.host === 'api.binance.com') throw new DOMException('aborted', 'AbortError')
+    return new Response(JSON.stringify({ lastPrice: '7', closeTime: 1 }), { status: 200 })
+  }) as typeof fetch
+  const quote = await new BinanceProvider({ fetcher }).quote(btc)
+  assert.equal(quote.last, '7')
+  assert.ok(hosts.includes('api.binance.com') && hosts.includes('data-api.binance.vision'))
+})
+
+test('composite falls back to the general provider when the crypto feed fails', async () => {
+  const failing = { name: 'binance', quote: async () => { throw new Error('down') }, candles: async () => { throw new Error('down') } }
+  const general = {
+    name: 'twelve',
+    quote: async () => ({ externalSymbol: 'twelve', last: '1', bid: '1', ask: '1', changePct: '0', volume: null, timestamp: '', status: 'OPEN' as const }),
+    candles: async () => [],
+  }
+  const composite = new CompositeProvider(failing, general)
+  assert.equal((await composite.quote(btc)).externalSymbol, 'twelve')
+  await assert.rejects(new CompositeProvider(failing, null).candles(btc, '1min', 5))
+})
+
+test('tick stream rotates to the next host when one never opens', async () => {
+  const urls: string[] = []
+  const sockets: Array<{ onclose: any }> = []
+  const stream = new BinanceTickStream({
+    url: 'wss://a.example',
+    fallbackUrls: ['wss://b.example'],
+    reconnectBaseMs: 1,
+    onTick: () => undefined,
+    createSocket: (url) => {
+      urls.push(url)
+      const socket = { onopen: null, onmessage: null, onclose: null as any, onerror: null, close() {} }
+      sockets.push(socket)
+      return socket
+    },
+  })
+  stream.start(['BTC/USD'])
+  sockets[0]!.onclose({})
+  await new Promise((resolve) => setTimeout(resolve, 30))
+  stream.stop()
+  assert.ok(urls[0]?.startsWith('wss://a.example') && urls[1]?.startsWith('wss://b.example'))
+})
+
+test('synthetic candles end exactly at the live price with aligned buckets', () => {
+  const now = Date.parse('2026-10-05T04:00:30.000Z')
+  const candles = syntheticCandles('1min', 50, 68000.5, now, 'BTC/USD')
+  assert.equal(candles.length, 50)
+  assert.equal(candles.at(-1)?.close, '68000.50')
+  assert.equal(candles.at(-1)?.openTime, '2026-10-05T04:00:00.000Z')
+  for (const candle of candles) assert.ok(Number(candle.high) >= Number(candle.low))
 })
