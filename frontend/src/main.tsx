@@ -7,6 +7,7 @@ import { WalletModeProvider } from './hooks/WalletModeProvider'
 import { RealtimeProvider } from './realtime/RealtimeProvider'
 import './styles/theme.css'
 import './styles/global.css'
+import './styles/mobile-sidebar.css'
 
 const rootElement = document.getElementById('root')
 
