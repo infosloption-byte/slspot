@@ -3000,6 +3000,47 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
   /* Trade panel: compact, expanded by default, pinned to the bottom edge */
   .trade-panel { padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px)); gap: 4px; }
   .trade-panel__mobile-content { gap: 6px; }
+  .trade-mobile-config-row {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .trade-mobile-config-row .trade-mobile-config {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .trade-mobile-payout-summary {
+    flex: none;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(50px, auto));
+    align-items: center;
+    gap: 9px;
+    white-space: nowrap;
+  }
+
+  .trade-mobile-payout-summary > span {
+    display: grid;
+    justify-items: end;
+    gap: 1px;
+  }
+
+  .trade-mobile-payout-summary small {
+    color: var(--muted-2);
+    font-size: 9px;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  .trade-mobile-payout-summary strong {
+    color: var(--text);
+    font-size: 12px;
+    line-height: 1.1;
+    font-variant-numeric: tabular-nums;
+  }
+
   .trade-mobile-config { height: 28px; }
   .trade-mobile-config__panel { gap: 6px; padding: 6px; }
   .trade-mobile-config__grid .stepper { height: 38px; }
@@ -3292,6 +3333,23 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
 }
 
 @media (max-width: 420px) {
+  .trade-mobile-config-row {
+    gap: 6px;
+  }
+
+  .trade-mobile-payout-summary {
+    gap: 6px;
+    grid-template-columns: repeat(2, minmax(44px, auto));
+  }
+
+  .trade-mobile-payout-summary strong {
+    font-size: 11px;
+  }
+
+  .trade-mobile-config {
+    padding-inline: 2px;
+  }
+
   .trading-room {
     grid-template-rows: minmax(190px, 1fr) auto;
   }
