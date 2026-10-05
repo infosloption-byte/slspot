@@ -188,6 +188,10 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
 
 .chart-workspace { flex: 1; min-height: 0; display: flex; flex-direction: column; background: var(--bg-0); }
 .chart-workspace:fullscreen { background: var(--bg-0); }
+/* .panel clips its children; the chart options popover is taller than the toolbar and must be able to overflow it. */
+.chart-workspace.panel { overflow: visible; }
+.chart-workspace > .simple-chart-toolbar { border-radius: var(--radius-lg) var(--radius-lg) 0 0; }
+.chart-workspace > .chart-stage { border-radius: 0 0 var(--radius-lg) var(--radius-lg); }
 
 .simple-chart-toolbar {
   flex: none; display: flex; align-items: center; gap: 12px; padding: 8px 12px; min-height: 58px;
@@ -230,6 +234,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
 .chart-options { position: relative; }
 .chart-options__popover {
   position: absolute; right: 0; top: calc(100% + 8px); width: 280px; z-index: 30; padding: 8px;
+  max-height: calc(100dvh - var(--topbar-h, 56px) - 96px); overflow-y: auto; overscroll-behavior: contain;
   background: var(--panel-raised); border: 1px solid var(--line-strong); border-radius: var(--radius-lg); box-shadow: var(--shadow);
 }
 .chart-options__header { display: flex; align-items: center; justify-content: space-between; padding: 6px 8px 10px; color: var(--muted); }
