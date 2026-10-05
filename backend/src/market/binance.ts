@@ -3,7 +3,7 @@ import type { CandleInterval, MarketDefinition, ProviderCandle, ProviderQuote } 
 
 type FetchLike = typeof fetch
 
-export type BinanceProviderOptions = { baseUrl?: string; requestTimeoutMs?: number; fetcher?: FetchLike }
+export type BinanceProviderOptions = { baseUrl?: string; fallbackUrls?: string[]; requestTimeoutMs?: number; fetcher?: FetchLike }
 
 const INTERVALS: Record<CandleInterval, { binance: string; ms: number } | undefined> = {
   '1min': { binance: '1m', ms: 60_000 },
@@ -26,14 +26,21 @@ export function toBinanceSymbol(externalSymbol: string): string {
   return base + (quote === 'USD' ? 'USDT' : quote)
 }
 
+export const DEFAULT_FALLBACK_URLS = ['https://data-api.binance.vision', 'https://api1.binance.com', 'https://api2.binance.com']
+
 export class BinanceProvider implements MarketDataProvider {
   readonly name = 'binance'
-  private readonly baseUrl: string
+  private readonly baseUrls: string[]
   private readonly requestTimeoutMs: number
   private readonly fetcher: FetchLike
 
   constructor(options: BinanceProviderOptions = {}) {
-    this.baseUrl = (options.baseUrl ?? 'https://api.binance.com').replace(/\/$/, '')
+    // Several public hosts: some networks block or throttle api.binance.com while the
+    // market-data-only mirror still answers. Requests race and the first good answer wins.
+    this.baseUrls = [...new Set([
+      options.baseUrl ?? 'https://api.binance.com',
+      ...(options.fallbackUrls ?? DEFAULT_FALLBACK_URLS),
+    ].map((url) => url.replace(/\/$/, '')))]
     this.requestTimeoutMs = options.requestTimeoutMs ?? 10_000
     this.fetcher = options.fetcher ?? fetch
   }
@@ -77,17 +84,28 @@ export class BinanceProvider implements MarketDataProvider {
   }
 
   private async request<T>(path: string, params: Record<string, string>): Promise<T> {
-    const url = new URL(this.baseUrl + path)
-    Object.entries(params).forEach(([key, value]) => url.searchParams.set(key, value))
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), this.requestTimeoutMs)
-    timeout.unref?.()
+    const controllers = this.baseUrls.map(() => new AbortController())
+    const attempts = this.baseUrls.map(async (baseUrl, index) => {
+      const url = new URL(baseUrl + path)
+      Object.entries(params).forEach(([key, value]) => url.searchParams.set(key, value))
+      const controller = controllers[index]!
+      const timeout = setTimeout(() => controller.abort(), this.requestTimeoutMs)
+      timeout.unref?.()
+      try {
+        const response = await this.fetcher(url, { headers: { Accept: 'application/json' }, signal: controller.signal })
+        if (!response.ok) throw new Error('Binance HTTP ' + response.status + ' from ' + url.host)
+        return await response.json() as T
+      } finally {
+        clearTimeout(timeout)
+      }
+    })
     try {
-      const response = await this.fetcher(url, { headers: { Accept: 'application/json' }, signal: controller.signal })
-      if (!response.ok) throw new Error('Binance HTTP ' + response.status)
-      return await response.json() as T
+      return await Promise.any(attempts)
+    } catch (error) {
+      const reasons = error instanceof AggregateError ? error.errors.map((reason) => String(reason instanceof Error ? reason.message : reason)) : [String(error)]
+      throw new Error('Binance request failed on every endpoint: ' + reasons.join('; '))
     } finally {
-      clearTimeout(timeout)
+      controllers.forEach((controller) => controller.abort())
     }
   }
 }

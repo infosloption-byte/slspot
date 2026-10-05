@@ -8,6 +8,7 @@ import { ensureDefaultMarketRegistry } from './registry.js'
 import { DEMO_PRICE_BASES, DemoPriceSimulator } from '../trading/demoPrice.js'
 import { BinanceTickStream, type Tick } from './binance-stream.js'
 import { getLivePrice, setLivePrice } from './live-prices.js'
+import { syntheticCandles } from './synthetic.js'
 
 const SIMULATION_INTERVAL_MS = 1_000
 const TICK_PUBLISH_INTERVAL_MS = 250
@@ -162,7 +163,7 @@ export class MarketDataService {
   }
 
   async getCandles(assetId: string, intervalValue: string, limit: number): Promise<MarketCandleResult> {
-    if (!this.provider || !isCandleInterval(intervalValue)) {
+    if (!isCandleInterval(intervalValue) || (!this.provider && !env.marketData.simulate)) {
       throw new MarketDataUnavailableError()
     }
 
@@ -186,6 +187,7 @@ export class MarketDataService {
     let candles: Awaited<ReturnType<MarketDataProvider['candles']>>
 
     try {
+      if (!this.provider) throw new Error('No market data provider is configured')
       candles = await this.provider.candles(
         definition,
         intervalValue as CandleInterval,
@@ -198,15 +200,14 @@ export class MarketDataService {
       )
 
       if (env.nodeEnv !== 'production') {
-        return {
-          assetId: market.assetId,
-          symbol: market.asset.symbol,
-          interval: intervalValue as CandleInterval,
-          candles: [],
-        }
+        // Keep the chart usable in development: history that ends at the current price.
+        const live = getLivePrice(market.assetId, 60_000)
+        const stored = market.lastPrice ? Number(market.lastPrice.toString()) : 0
+        const anchor = live ? Number(live.price) : this.simulationAnchors.get(market.asset.symbol) ?? (stored > 0 ? stored : Number(DEMO_PRICE_BASES[market.asset.symbol] ?? '100'))
+        candles = syntheticCandles(intervalValue as CandleInterval, Math.min(500, Math.max(1, limit)), anchor, Date.now(), market.asset.symbol)
+      } else {
+        throw new MarketDataUnavailableError('Market data provider request failed')
       }
-
-      throw new MarketDataUnavailableError('Market data provider request failed')
     }
 
     return {

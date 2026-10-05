@@ -12,10 +12,12 @@ type SocketLike = {
 
 export type BinanceTickStreamOptions = {
   url?: string
+  fallbackUrls?: string[]
   onTick: (tick: Tick) => void
   onStatus?: (connected: boolean) => void
   createSocket?: (url: string) => SocketLike
   logger?: { info: (v: unknown, m?: string) => void; warn: (v: unknown, m?: string) => void }
+  connectTimeoutMs?: number
   reconnectBaseMs?: number
   reconnectMaxMs?: number
 }
@@ -27,10 +29,15 @@ export class BinanceTickStream {
   private attempts = 0
   private stopped = true
   private readonly bySymbol = new Map<string, string>()
-  private readonly url: string
+  private readonly urls: string[]
+  private urlIndex = 0
+  private opened = false
 
   constructor(private readonly options: BinanceTickStreamOptions) {
-    this.url = (options.url ?? 'wss://stream.binance.com:9443').replace(/\/$/, '')
+    this.urls = [...new Set([
+      options.url ?? 'wss://stream.binance.com:9443',
+      ...(options.fallbackUrls ?? ['wss://stream.binance.com:443', 'wss://data-stream.binance.vision']),
+    ].map((url) => url.replace(/\/$/, '')))]
   }
 
   start(externalSymbols: string[]): void {
@@ -55,7 +62,8 @@ export class BinanceTickStream {
 
   private connect(): void {
     const streams = [...this.bySymbol.keys()].map((symbol) => symbol.toLowerCase() + '@trade').join('/')
-    const url = this.url + '/stream?streams=' + streams
+    this.opened = false
+    const url = this.urls[this.urlIndex % this.urls.length] + '/stream?streams=' + streams
     let socket: SocketLike
     try {
       socket = (this.options.createSocket ?? ((target) => new WebSocket(target) as unknown as SocketLike))(url)
@@ -65,15 +73,22 @@ export class BinanceTickStream {
       return
     }
     this.socket = socket
+    // A blocked network can leave the handshake hanging; give up on this host and rotate.
+    const connectTimer = setTimeout(() => { if (!this.opened) socket.close() }, this.options.connectTimeoutMs ?? 8_000)
+    connectTimer.unref?.()
     socket.onopen = () => {
       this.attempts = 0
+      this.opened = true
       this.options.onStatus?.(true)
       this.options.logger?.info({ symbols: this.bySymbol.size }, 'Binance tick stream connected')
     }
     socket.onmessage = (event) => this.handleMessage(event.data)
     socket.onerror = () => undefined
     socket.onclose = () => {
+      clearTimeout(connectTimer)
       this.socket = null
+      // An endpoint that never opened is probably blocked here: try the next host.
+      if (!this.opened) this.urlIndex += 1
       this.options.onStatus?.(false)
       this.scheduleReconnect()
     }
