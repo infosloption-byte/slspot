@@ -1,4 +1,4 @@
-import { Bell, Check, ChevronDown, LogOut, WalletCards } from 'lucide-react'
+import { Bell, Check, ChevronDown, LogOut, Menu, WalletCards } from 'lucide-react'
 import { useEffect, useId, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { useAuth } from '../../auth/useAuth'
@@ -21,7 +21,7 @@ function formatBalance(value: string | null | undefined, currency: string | null
   }).format(amount)
 }
 
-export function TopBar() {
+export function TopBar({ onMenuClick, menuOpen }: { onMenuClick: () => void; menuOpen: boolean }) {
   const navigate = useNavigate()
   const { user, logout } = useAuth()
   const { mode, setMode } = useWalletMode()
@@ -90,6 +90,7 @@ export function TopBar() {
 
   return (
     <header className="topbar">
+      <button type="button" className="icon-button topbar__menu" onClick={onMenuClick} aria-label="Open menu" aria-expanded={menuOpen} aria-controls="app-menu"><Menu size={20} /></button>
       <Link to="/app/trading" className="topbar__brand" aria-label="SL Spot home">
         <span className="topbar__brand-name">SL<b>SPOT</b></span>
         <span className="topbar__live"><i className="live-dot" /> Live</span>
