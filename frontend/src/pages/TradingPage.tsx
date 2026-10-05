@@ -481,6 +481,8 @@ export function TradingPage() {
           asset={selectedAsset}
           onOpenMarkets={() => setTradingUiState({ marketPickerOpen: true })}
           onOpenActivity={() => setActivityTab(lastActivityTab)}
+          soundEnabled={soundEnabled}
+          onToggleSound={toggleSound}
           openTrades={openTrades}
           now={now}
           realtimeState={realtimeState}
@@ -523,10 +525,8 @@ export function TradingPage() {
         asset={selectedAsset}
         balance={Number(wallet.data?.availableBalance ?? '0')}
         walletMode={mode}
-        soundEnabled={soundEnabled}
         canTrade={canTrade}
         tradeDisabledReason={tradeDisabledReason}
-        onToggleSound={toggleSound}
         onOpenTrade={openTrade}
       />
 

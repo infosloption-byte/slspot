@@ -1,5 +1,5 @@
 import {
-  AreaChart, ArrowRight, BarChart3, Check, Crosshair, Eraser, Grid2X2, LineChart, Minus, PenLine, RotateCcw, Slash, Square, TrendingUp,
+  AreaChart, ArrowRight, BarChart3, Check, Crosshair, Eraser, Grid2X2, LineChart, Minus, PenLine, RotateCcw, Slash, Square, TrendingUp, Volume2, VolumeX,
 } from 'lucide-react'
 import { useState } from 'react'
 import { Modal } from '../ui/Modal'
@@ -41,6 +41,11 @@ type Props = {
   onRemoveSelectedDrawing: () => void
   onRemoveAllDrawings: () => void
   onResetChart: () => void
+  timeframe: string
+  timeframes: string[]
+  onTimeframe: (value: string) => void
+  soundEnabled: boolean
+  onSound: () => void
 }
 
 function Switch({ checked, onChange, label }: { checked: boolean; onChange: (value: boolean) => void; label: string }) {
@@ -183,6 +188,12 @@ export function ChartSettingsDialog(props: Props) {
 
       {props.tab === 'chart' ? (
         <div className="chart-dialog__panel">
+          <span className="chart-option-group__label">Timeframe</span>
+          <div className="chart-timeframe-grid" role="group" aria-label="Chart timeframe">
+            {props.timeframes.map((value) => (
+              <button key={value} type="button" className={props.timeframe === value ? 'timeframe timeframe--active' : 'timeframe'} aria-pressed={props.timeframe === value} onClick={() => props.onTimeframe(value)}>{value}</button>
+            ))}
+          </div>
           <span className="chart-option-group__label">Chart type</span>
           <div className="chart-type-switch">
             {([['candles', 'Candles', TrendingUp], ['line', 'Line', LineChart], ['area', 'Area', AreaChart]] as const).map(([value, label, Icon]) => (
@@ -196,6 +207,7 @@ export function ChartSettingsDialog(props: Props) {
             <ToggleRow icon={<Grid2X2 size={16} />} title="Grid" hint="Show guide lines behind the candles" checked={props.grid} onChange={props.onGrid} />
             <ToggleRow icon={<span className="chart-option__line-icon" />} title="Last price" hint="Show the current-price line and tag" checked={props.priceLine} onChange={props.onPriceLine} />
             <ToggleRow icon={<BarChart3 size={16} />} title="Volume" hint="Volume histogram under the price" checked={props.volume} onChange={props.onVolume} />
+            <ToggleRow icon={props.soundEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />} title="Trade sounds" hint="Play a sound when a trade opens or settles" checked={props.soundEnabled} onChange={props.onSound} />
           </div>
         </div>
       ) : null}

@@ -78,6 +78,8 @@ type ChartWorkspaceProps = {
   onOpenMarkets: () => void
   /** Opens the positions / history / wallet dialog. */
   onOpenActivity: () => void
+  soundEnabled: boolean
+  onToggleSound: () => void
   openTrades: OpenTrade[]
   now: number
   realtimeState: RealtimeConnectionState
@@ -480,7 +482,7 @@ function toChartCandles(candles: MarketCandle[]) {
   }))
 }
 
-export function ChartWorkspace({ asset, onOpenMarkets, onOpenActivity, openTrades, now, realtimeState }: ChartWorkspaceProps) {
+export function ChartWorkspace({ asset, onOpenMarkets, onOpenActivity, soundEnabled, onToggleSound, openTrades, now, realtimeState }: ChartWorkspaceProps) {
   const [timeframe, setTimeframe] = useState('5m')
   const [crosshairEnabled, setCrosshairEnabled] = useState(true)
   const [gridEnabled, setGridEnabled] = useState(true)
@@ -616,6 +618,12 @@ export function ChartWorkspace({ asset, onOpenMarkets, onOpenActivity, openTrade
     window.localStorage.setItem(drawingStorageKey, JSON.stringify(drawings))
   }, [drawingStorageKey, drawings])
 
+  const changeTimeframe = (value: string) => {
+    setTimeframe(value)
+    setDrawings(readStoredDrawings(drawingStoragePrefix + asset.symbol + ':' + value))
+    setSelectedDrawingId(null)
+    setActiveDrawing(null)
+  }
   const openSettings = (tab: SettingsTab, indicator?: IndicatorId) => {
     // The dialog is rendered on the page, so leave fullscreen first or it would be hidden.
     if (document.fullscreenElement) void document.exitFullscreen()
@@ -728,16 +736,12 @@ export function ChartWorkspace({ asset, onOpenMarkets, onOpenActivity, openTrade
 
         <div className="chart-timeframes" aria-label="Chart timeframe">
           {timeframes.map((value) => (
-            <button className={timeframe === value ? 'timeframe timeframe--active' : 'timeframe'} key={value} onClick={() => {
-              setTimeframe(value)
-              setDrawings(readStoredDrawings(drawingStoragePrefix + asset.symbol + ':' + value))
-              setSelectedDrawingId(null)
-              setActiveDrawing(null)
-            }} type="button" aria-pressed={timeframe === value}>{value}</button>
+            <button className={timeframe === value ? 'timeframe timeframe--active' : 'timeframe'} key={value} onClick={() => changeTimeframe(value)} type="button" aria-pressed={timeframe === value}>{value}</button>
           ))}
         </div>
 
         <div className="chart-tools" aria-label="Chart controls">
+          <button type="button" className="chart-timeframe-chip" onClick={() => openSettings('chart')} aria-label={'Timeframe ' + timeframe + '. Change in chart settings'}>{timeframe}</button>
           <span className="chart-tools__extra">
             <IconButton label={crosshairEnabled ? 'Disable crosshair' : 'Enable crosshair'} active={crosshairEnabled} onClick={() => setCrosshairEnabled((value) => !value)}><Crosshair size={16} /></IconButton>
           </span>
@@ -883,6 +887,11 @@ export function ChartWorkspace({ asset, onOpenMarkets, onOpenActivity, openTrade
         onRemoveSelectedDrawing={() => { if (!selectedDrawingId) return; setDrawings((current) => current.filter((item) => item.id !== selectedDrawingId)); setSelectedDrawingId(null) }}
         onRemoveAllDrawings={() => { setDrawings([]); setSelectedDrawingId(null) }}
         onResetChart={resetChart}
+        timeframe={timeframe}
+        timeframes={timeframes}
+        onTimeframe={changeTimeframe}
+        soundEnabled={soundEnabled}
+        onSound={onToggleSound}
       />
     </section>
   )
