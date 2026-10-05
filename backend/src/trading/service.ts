@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { Prisma, type PrismaClient, type Wallet } from '../generated/prisma/client.js'
 import { env } from '../config/env.js'
+import { getLivePrice } from '../market/live-prices.js'
 import { createRealtimeEvent, serializeRealtimeEvent } from '../realtime/events.js'
 import { publishRealtime } from '../realtime/bus.js'
 import { getTradingRules, TRADING_RULES } from './config.js'
@@ -77,24 +78,30 @@ export function assertManualSettlementAllowed(expiresAt: Date, now = new Date())
   }
 }
 
-export function evaluateTrade(direction: TradeDirection, entryPrice: string, exitPrice: string): boolean {
+export type TradeOutcome = 'WON' | 'LOST' | 'DRAW'
+
+/** An exit price equal to the entry price is a draw: the stake is returned with no profit. */
+export function evaluateTrade(direction: TradeDirection, entryPrice: string, exitPrice: string): TradeOutcome {
   const entry = new Prisma.Decimal(entryPrice)
   const exit = new Prisma.Decimal(exitPrice)
-  return direction === 'UP' ? exit.gte(entry) : exit.lte(entry)
+  if (exit.eq(entry)) return 'DRAW'
+  const won = direction === 'UP' ? exit.gt(entry) : exit.lt(entry)
+  return won ? 'WON' : 'LOST'
 }
 
 export function calculateSettlementTerms(input: {
   amount: string
   payoutRate: string
   fee: string
-  won: boolean
+  outcome: TradeOutcome
 }) {
   const amount = new Prisma.Decimal(input.amount)
   const payoutRate = new Prisma.Decimal(input.payoutRate)
   const fee = new Prisma.Decimal(input.fee)
-  const profit = input.won ? amount.mul(payoutRate) : new Prisma.Decimal(0)
-  const grossPnl = input.won ? profit : amount.neg()
-  const grossPayout = input.won ? amount.plus(profit) : new Prisma.Decimal(0)
+  const zero = new Prisma.Decimal(0)
+  const profit = input.outcome === 'WON' ? amount.mul(payoutRate) : zero
+  const grossPnl = input.outcome === 'WON' ? profit : input.outcome === 'DRAW' ? zero : amount.neg()
+  const grossPayout = input.outcome === 'WON' ? amount.plus(profit) : input.outcome === 'DRAW' ? amount : zero
   const netPnl = grossPnl.minus(fee)
 
   return {
@@ -243,7 +250,7 @@ export class TradingService {
           throw new TradingError(404, 'ASSET_UNAVAILABLE', 'The selected asset is unavailable')
         }
 
-        const market = asset.markets[0]
+        const market = this.withLivePrice(asset.id, asset.markets[0])
         const now = new Date()
         const marketIsFresh = Boolean(
           market?.status === 'OPEN' &&
@@ -556,11 +563,11 @@ export class TradingService {
 
     assertManualSettlementAllowed(details.position.order.expiresAt)
 
-    const market = await this.prisma.market.findFirst({
+    const market = this.withLivePrice(details.position.assetId, await this.prisma.market.findFirst({
       where: { assetId: details.position.assetId },
       orderBy: { updatedAt: 'desc' },
       select: { lastPrice: true, lastPriceAt: true, status: true },
-    })
+    }) ?? undefined)
 
     const marketIsFresh = Boolean(
       market?.lastPrice &&
@@ -602,11 +609,11 @@ export class TradingService {
     })
 
     for (const trade of trades) {
-      const market = await this.prisma.market.findFirst({
+      const market = this.withLivePrice(trade.position.assetId, await this.prisma.market.findFirst({
         where: { assetId: trade.position.assetId },
         orderBy: { updatedAt: 'desc' },
         select: { lastPrice: true, lastPriceAt: true },
-      })
+      }) ?? undefined)
       const account = await this.prisma.account.findUnique({
         where: { id: trade.position.accountId },
         select: { mode: true },
@@ -653,15 +660,15 @@ export class TradingService {
 
       const exitPrice = new Prisma.Decimal(settlementPrice)
       const direction = details.position.side === 'BUY' ? 'UP' : 'DOWN'
-      const won = evaluateTrade(direction, details.position.entryPrice.toString(), exitPrice.toString())
+      const outcome = evaluateTrade(direction, details.position.entryPrice.toString(), exitPrice.toString())
       const terms = calculateSettlementTerms({
         amount: details.position.amount.toString(),
         payoutRate: details.position.order.payoutRate.toString(),
         fee: details.position.order.fee.toString(),
-        won,
+        outcome,
       })
       const settledAt = new Date()
-      const tradeStatus = won ? 'WON' : 'LOST'
+      const tradeStatus = outcome
       const referenceId = reason.toLowerCase() + ':' + tradeId
 
       const claimed = await tx.trade.updateMany({
@@ -726,7 +733,24 @@ export class TradingService {
         wallet.currency,
       )
       const walletLedger = await this.ledger.ensureWalletLedgerAccounts(tx, details.position.accountId, wallet.currency)
-      const settlementLines = won
+      const settlementLines = outcome === 'DRAW'
+        ? [
+            {
+              accountCode: walletLedger.heldCode,
+              accountName: 'User held balance',
+              accountType: 'LIABILITY' as const,
+              direction: 'DEBIT' as const,
+              amount: terms.holdAmount,
+            },
+            {
+              accountCode: walletLedger.availableCode,
+              accountName: 'User available balance',
+              accountType: 'LIABILITY' as const,
+              direction: 'CREDIT' as const,
+              amount: terms.grossPayout,
+            },
+          ]
+        : outcome === 'WON'
         ? [
             {
               accountCode: walletLedger.heldCode,
@@ -830,7 +854,7 @@ export class TradingService {
         direction: position.side === 'BUY' ? 'UP' : 'DOWN',
         amount: position.amount.toString(),
         entryPrice: position.entryPrice.toString(),
-        currentPrice: market?.lastPrice?.toString() ?? null,
+        currentPrice: (this.withLivePrice(position.assetId, market)?.lastPrice ?? market?.lastPrice)?.toString() ?? null,
         exitPrice: position.exitPrice?.toString() ?? null,
         payoutRate: position.order.payoutRate.toString(),
         fee: position.order.fee.toString(),
@@ -841,6 +865,17 @@ export class TradingService {
         asset: { id: position.asset.id, symbol: position.asset.symbol, name: position.asset.name },
       }
     })
+  }
+
+  /** Prefers the newest live tick (from the Binance stream) over the stored market snapshot. */
+  private withLivePrice<T extends { lastPrice: Prisma.Decimal | null; lastPriceAt: Date | null; status?: string }>(
+    assetId: string,
+    market: T | undefined,
+  ): T | undefined {
+    const live = getLivePrice(assetId, env.trading.marketMaxAgeMs)
+    if (!live) return market
+    if (market?.lastPriceAt && market.lastPriceAt.getTime() >= live.at) return market
+    return { ...(market ?? ({} as T)), lastPrice: new Prisma.Decimal(live.price), lastPriceAt: new Date(live.at), ...(market?.status !== undefined || !market ? { status: 'OPEN' } : {}) } as T
   }
 
   private getDemoPrice(symbol: string, marketPrice: Prisma.Decimal | null | undefined): Prisma.Decimal {
@@ -1088,8 +1123,7 @@ export class TradingService {
     result: ApiTradingResult,
     symbol: string,
   ): Promise<void> {
-    const won = result.status === 'WON'
-    const title = won ? 'Trade won' : 'Trade settled'
+    const title = result.status === 'WON' ? 'Trade won' : result.status === 'DRAW' ? 'Trade draw: stake returned' : 'Trade settled'
     const pnl = result.netPnl ?? '0'
     const message = symbol + ' · ' + result.direction + ' · P&L ' + (Number(pnl) >= 0 ? '+' : '') + pnl
 

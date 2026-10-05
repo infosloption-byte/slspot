@@ -6,8 +6,14 @@ import type { MarketDataProvider } from './provider.js'
 import { CANDLE_INTERVALS, isCandleInterval, type CandleInterval, type MarketDefinition } from './types.js'
 import { ensureDefaultMarketRegistry } from './registry.js'
 import { DEMO_PRICE_BASES, DemoPriceSimulator } from '../trading/demoPrice.js'
+import { BinanceTickStream, type Tick } from './binance-stream.js'
+import { getLivePrice, setLivePrice } from './live-prices.js'
 
-const SIMULATION_INTERVAL_MS = 2_000
+const SIMULATION_INTERVAL_MS = 1_000
+const TICK_PUBLISH_INTERVAL_MS = 250
+const TICK_PERSIST_INTERVAL_MS = 2_000
+/** A live tick younger than this means the stream owns the price. */
+const TICK_FRESH_MS = 10_000
 
 export type MarketCandleResult = {
   assetId: string
@@ -49,6 +55,10 @@ export class MarketDataService {
   private readonly simulationAnchors = new Map<string, number>()
   /** Assets currently priced by the simulation rather than the live provider. */
   private readonly simulatedAssets = new Set<string>()
+  private tickStream: BinanceTickStream | null = null
+  private readonly tickMarkets = new Map<string, { id: string; assetId: string; symbol: string }>()
+  private readonly tickState = new Map<string, { published: number; persisted: number; first: boolean }>()
+  private readonly changePct = new Map<string, string>()
 
   constructor(
     private readonly prisma: PrismaClient,
@@ -78,11 +88,69 @@ export class MarketDataService {
     }
 
     this.running = true
+    await this.startTickStream()
     await this.poll()
+  }
+
+  /** Tick-level crypto prices straight from Binance's trade stream. */
+  private async startTickStream(): Promise<void> {
+    if (!env.marketData.binance.enabled || typeof WebSocket === 'undefined') return
+    try {
+      const markets = await this.prisma.market.findMany({
+        where: { provider: env.marketData.provider, asset: { isActive: true, type: 'CRYPTO' } },
+        include: { asset: true },
+      })
+      for (const market of markets) {
+        this.tickMarkets.set(market.externalSymbol, { id: market.id, assetId: market.assetId, symbol: market.asset.symbol })
+      }
+      this.tickStream = new BinanceTickStream({
+        url: env.marketData.binance.wsUrl,
+        logger: this.logger,
+        onTick: (tick) => void this.handleTick(tick),
+      })
+      this.tickStream.start([...this.tickMarkets.keys()])
+    } catch (error) {
+      this.logger.warn({ err: error }, 'Binance tick stream could not be started')
+    }
+  }
+
+  async handleTick(tick: Tick): Promise<void> {
+    const market = this.tickMarkets.get(tick.externalSymbol)
+    if (!market) return
+    setLivePrice(market.assetId, tick.price, tick.at)
+    this.simulatedAssets.delete(market.assetId)
+
+    const state = this.tickState.get(market.assetId) ?? { published: 0, persisted: 0, first: true }
+    this.tickState.set(market.assetId, state)
+
+    if (tick.at - state.published >= TICK_PUBLISH_INTERVAL_MS) {
+      state.published = tick.at
+      await this.publishEvent(createRealtimeEvent('market.price', {
+        assetId: market.assetId,
+        symbol: market.symbol,
+        bid: tick.price,
+        ask: tick.price,
+        last: tick.price,
+        changePct: this.changePct.get(market.assetId) ?? '0',
+        volume: null,
+        timestamp: new Date(tick.at).toISOString(),
+      }, ('market:' + market.assetId) as `market:${string}`))
+    }
+
+    if (state.first || tick.at - state.persisted >= TICK_PERSIST_INTERVAL_MS) {
+      state.first = false
+      state.persisted = tick.at
+      await this.prisma.market.update({
+        where: { id: market.id },
+        data: { status: 'OPEN', lastPrice: tick.price, lastPriceAt: new Date(tick.at) },
+      }).catch((error: unknown) => this.logger.warn({ err: error }, 'Failed to persist live tick'))
+    }
   }
 
   async stop(): Promise<void> {
     this.running = false
+    this.tickStream?.stop()
+    this.tickStream = null
     if (this.simulationTimer) {
       clearInterval(this.simulationTimer)
       this.simulationTimer = null
@@ -290,14 +358,21 @@ export class MarketDataService {
     try {
       const quote = await this.provider!.quote(definition)
       this.simulatedAssets.delete(market.assetId)
+      this.changePct.set(market.assetId, quote.changePct)
+
+      const channel = ('market:' + market.assetId) as `market:${string}`
+      // While the tick stream is delivering, the REST quote (older by definition) must not
+      // overwrite the price; it only refreshes the 24h change and volume.
+      const streaming = getLivePrice(market.assetId, TICK_FRESH_MS) !== null
+      const where = { provider_externalSymbol: { provider: market.provider, externalSymbol: market.externalSymbol } }
+
+      if (streaming) {
+        await this.prisma.market.update({ where, data: { lastChangePct: quote.changePct, lastVolume: quote.volume } })
+        return
+      }
 
       await this.prisma.market.update({
-        where: {
-          provider_externalSymbol: {
-            provider: market.provider,
-            externalSymbol: market.externalSymbol,
-          },
-        },
+        where,
         data: {
           status: quote.status,
           lastPrice: quote.last,
@@ -306,8 +381,6 @@ export class MarketDataService {
           lastVolume: quote.volume,
         },
       })
-
-      const channel = ('market:' + market.assetId) as `market:${string}`
 
       await this.publishEvent(createRealtimeEvent('market.price', {
         assetId: market.assetId,
@@ -326,48 +399,23 @@ export class MarketDataService {
         status: quote.status.toLowerCase(),
         timestamp: quote.timestamp,
       }, channel))
-
-      try {
-        const candles = await this.provider!.candles(definition, '5min', 1)
-        const candle = candles.at(-1)
-        if (candle) {
-          await this.publishEvent(createRealtimeEvent('market.candle', {
-            assetId: market.assetId,
-            symbol: market.asset.symbol,
-            interval: candle.interval,
-            openTime: candle.openTime,
-            closeTime: candle.closeTime,
-            open: candle.open,
-            high: candle.high,
-            low: candle.low,
-            close: candle.close,
-            volume: candle.volume,
-          }, channel))
-        }
-      } catch (error) {
-        this.logger.warn(
-          { err: error, assetId: market.assetId, symbol: market.asset.symbol },
-          'Market candle realtime update failed',
-        )
-      }
     } catch (error) {
-      await this.prisma.market.update({
-        where: {
-          provider_externalSymbol: {
-            provider: market.provider,
-            externalSymbol: market.externalSymbol,
-          },
-        },
-        data: { status: 'MAINTENANCE' },
-      }).catch(() => undefined)
+      // A failing poll must not flag the market as down while ticks or the dev simulation are
+      // still keeping it priced.
+      const covered = env.marketData.simulate || getLivePrice(market.assetId, TICK_FRESH_MS) !== null
+      if (!covered) {
+        await this.prisma.market.update({
+          where: { provider_externalSymbol: { provider: market.provider, externalSymbol: market.externalSymbol } },
+          data: { status: 'MAINTENANCE' },
+        }).catch(() => undefined)
 
-      const channel = ('market:' + market.assetId) as `market:${string}`
-      await this.publishEvent(createRealtimeEvent('market.status', {
-        assetId: market.assetId,
-        symbol: market.asset.symbol,
-        status: 'maintenance',
-        timestamp: new Date().toISOString(),
-      }, channel))
+        await this.publishEvent(createRealtimeEvent('market.status', {
+          assetId: market.assetId,
+          symbol: market.asset.symbol,
+          status: 'maintenance',
+          timestamp: new Date().toISOString(),
+        }, ('market:' + market.assetId) as `market:${string}`))
+      }
 
       throw error
     }

@@ -11,7 +11,7 @@ type ApiEnvelope<T> = {
 
 export type TradeHistorySortBy = 'openedAt' | 'closedAt' | 'amount' | 'netPnl'
 export type TradeHistorySortOrder = 'asc' | 'desc'
-export type TradeHistoryStatus = '' | 'WON' | 'LOST' | 'CANCELLED' | 'EXPIRED'
+export type TradeHistoryStatus = '' | 'WON' | 'LOST' | 'DRAW' | 'CANCELLED' | 'EXPIRED'
 export type TradeHistoryDirection = '' | 'UP' | 'DOWN'
 
 export type TradeHistoryFilters = {
@@ -39,7 +39,7 @@ export type TradeListFilters = {
 export type TradeRecord = {
   id: string
   orderId: string
-  status: 'OPEN' | 'WON' | 'LOST' | 'CANCELLED' | 'EXPIRED'
+  status: 'OPEN' | 'WON' | 'LOST' | 'DRAW' | 'CANCELLED' | 'EXPIRED'
   direction: 'UP' | 'DOWN'
   amount: string
   payoutRate: string

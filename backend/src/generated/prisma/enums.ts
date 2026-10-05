@@ -105,6 +105,7 @@ export const TradeStatus = {
   OPEN: 'OPEN',
   WON: 'WON',
   LOST: 'LOST',
+  DRAW: 'DRAW',
   CANCELLED: 'CANCELLED',
   EXPIRED: 'EXPIRED'
 } as const

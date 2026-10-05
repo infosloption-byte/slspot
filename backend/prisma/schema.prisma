@@ -73,6 +73,7 @@ enum TradeStatus {
   OPEN
   WON
   LOST
+  DRAW
   CANCELLED
   EXPIRED
 }

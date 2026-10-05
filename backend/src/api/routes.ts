@@ -67,7 +67,7 @@ function queryDate(value: string | undefined, name: string): Date | undefined {
 }
 
 const ASSET_TYPES = ['CRYPTO', 'FOREX', 'STOCK', 'COMMODITY', 'INDEX', 'OTHER'] as const
-const TRADE_STATUSES = ['OPEN', 'WON', 'LOST', 'CANCELLED', 'EXPIRED'] as const
+const TRADE_STATUSES = ['OPEN', 'WON', 'LOST', 'DRAW', 'CANCELLED', 'EXPIRED'] as const
 const WALLET_MODES = ['DEMO', 'REAL'] as const
 const WALLET_TRANSACTION_TYPES = ['DEPOSIT', 'WITHDRAWAL', 'TRADE_HOLD', 'TRADE_RELEASE', 'SETTLEMENT', 'FEE', 'ADJUSTMENT'] as const
 const WALLET_TRANSACTION_STATUSES = ['PENDING', 'PROCESSING', 'COMPLETED', 'FAILED', 'REJECTED'] as const

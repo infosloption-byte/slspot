@@ -7,14 +7,27 @@ import {
   TradingError,
 } from './service.js'
 
-test('UP wins when settlement price is equal to entry', () => {
-  assert.equal(evaluateTrade('UP', '100', '100'), true)
-  assert.equal(evaluateTrade('UP', '100', '99.99'), false)
+test('UP wins only when the settlement price is above entry', () => {
+  assert.equal(evaluateTrade('UP', '100', '100.01'), 'WON')
+  assert.equal(evaluateTrade('UP', '100', '99.99'), 'LOST')
 })
 
-test('DOWN wins when settlement price is equal to entry', () => {
-  assert.equal(evaluateTrade('DOWN', '100', '100'), true)
-  assert.equal(evaluateTrade('DOWN', '100', '100.01'), false)
+test('DOWN wins only when the settlement price is below entry', () => {
+  assert.equal(evaluateTrade('DOWN', '100', '99.99'), 'WON')
+  assert.equal(evaluateTrade('DOWN', '100', '100.01'), 'LOST')
+})
+
+test('an unchanged price is a draw for both directions', () => {
+  assert.equal(evaluateTrade('UP', '100', '100.000000'), 'DRAW')
+  assert.equal(evaluateTrade('DOWN', '100', '100'), 'DRAW')
+})
+
+test('draw settlement returns the stake with no profit; only the fee is lost', () => {
+  const terms = calculateSettlementTerms({ amount: '50', payoutRate: '0.88', fee: '1', outcome: 'DRAW' })
+  assert.equal(terms.profit.toFixed(2), '0.00')
+  assert.equal(terms.grossPnl.toFixed(2), '0.00')
+  assert.equal(terms.grossPayout.toFixed(2), '50.00')
+  assert.equal(terms.netPnl.toFixed(2), '-1.00')
 })
 
 test('winning settlement returns stake plus profit and subtracts fee from P&L', () => {
@@ -22,7 +35,7 @@ test('winning settlement returns stake plus profit and subtracts fee from P&L', 
     amount: '50',
     payoutRate: '0.88',
     fee: '1',
-    won: true,
+    outcome: 'WON',
   })
 
   assert.equal(terms.profit.toFixed(2), '44.00')
@@ -37,7 +50,7 @@ test('losing settlement releases no payout and records the stake loss plus fee',
     amount: '50',
     payoutRate: '0.88',
     fee: '1',
-    won: false,
+    outcome: 'LOST',
   })
 
   assert.equal(terms.grossPayout.toFixed(2), '0.00')

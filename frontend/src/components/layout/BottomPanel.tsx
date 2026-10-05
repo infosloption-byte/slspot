@@ -330,6 +330,7 @@ export function BottomPanel({
                 { value: '', label: 'All settled' },
                 { value: 'WON', label: 'Won' },
                 { value: 'LOST', label: 'Lost' },
+                { value: 'DRAW', label: 'Draw' },
                 { value: 'CANCELLED', label: 'Cancelled' },
                 { value: 'EXPIRED', label: 'Expired' },
               ]}
@@ -475,7 +476,9 @@ export function BottomPanel({
                       ? 'status-pill status-pill--positive'
                       : trade.status === 'LOST'
                         ? 'status-pill status-pill--negative'
-                        : 'status-pill status-pill--pending'
+                        : trade.status === 'DRAW'
+                          ? 'status-pill status-pill--draw'
+                          : 'status-pill status-pill--pending'
                   }>
                     {trade.status}
                   </span>

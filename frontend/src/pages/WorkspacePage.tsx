@@ -628,7 +628,7 @@ function WalletPage() {
 
 function HistoryPage() {
   const [page, setPage] = useState(1)
-  const [status, setStatus] = useState<'' | 'OPEN' | 'WON' | 'LOST' | 'CANCELLED' | 'EXPIRED'>('')
+  const [status, setStatus] = useState<'' | 'OPEN' | 'WON' | 'LOST' | 'DRAW' | 'CANCELLED' | 'EXPIRED'>('')
   const [search, setSearch] = useState('')
   const [assetId, setAssetId] = useState('')
   const [direction, setDirection] = useState<'' | 'UP' | 'DOWN'>('')
@@ -753,6 +753,7 @@ function HistoryPage() {
               { value: 'OPEN', label: 'Open' },
               { value: 'WON', label: 'Won' },
               { value: 'LOST', label: 'Lost' },
+              { value: 'DRAW', label: 'Draw' },
               { value: 'CANCELLED', label: 'Cancelled' },
               { value: 'EXPIRED', label: 'Expired' },
             ]}
@@ -845,7 +846,7 @@ function HistoryPage() {
                   {trade.position.side === 'BUY' ? 'UP' : 'DOWN'}
                 </span>
                 <span>{formatMoney(trade.position.amount)}</span>
-                <span className={trade.status === 'WON' ? 'status-pill status-pill--positive' : trade.status === 'LOST' ? 'status-pill status-pill--negative' : 'status-pill status-pill--pending'}>
+                <span className={trade.status === 'WON' ? 'status-pill status-pill--positive' : trade.status === 'LOST' ? 'status-pill status-pill--negative' : trade.status === 'DRAW' ? 'status-pill status-pill--draw' : 'status-pill status-pill--pending'}>
                   {trade.status}
                 </span>
                 <strong className={Number(trade.netPnl ?? 0) >= 0 ? 'text-positive' : 'text-negative'}>

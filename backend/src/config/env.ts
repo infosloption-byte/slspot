@@ -270,6 +270,10 @@ const marketDataBootstrapAssets = parseBoolean('MARKET_DATA_BOOTSTRAP_ASSETS', p
 // Simulated prices keep the DEMO market usable when no live feed is configured or the feed is
 // failing (missing/rate-limited API key). Never allowed in production.
 const marketDataSimulate = parseBoolean('MARKET_DATA_SIMULATE', process.env.MARKET_DATA_SIMULATE, nodeEnv !== 'production')
+// Crypto is priced from Binance's public feed (tick-level WebSocket + REST); Twelve Data covers the rest.
+const binanceEnabled = parseBoolean('BINANCE_ENABLED', process.env.BINANCE_ENABLED, marketDataProvider !== 'disabled')
+const binanceRestUrl = (process.env.BINANCE_REST_URL?.trim() || 'https://api.binance.com').replace(/\/$/, '')
+const binanceWsUrl = (process.env.BINANCE_WS_URL?.trim() || 'wss://stream.binance.com:9443').replace(/\/$/, '')
 const adminBootstrapEmails = [...new Set((process.env.ADMIN_BOOTSTRAP_EMAILS ?? '').split(',').map((value) => value.trim().toLowerCase()).filter(Boolean))]
 const authCookieName = parseCookieName(process.env.AUTH_COOKIE_NAME, nodeEnv, nodeEnv === 'production' ? '__Host-slspot_session' : 'slspot_session')
 const csrfCookieName = parseCookieName(process.env.CSRF_COOKIE_NAME, nodeEnv, nodeEnv === 'production' ? '__Host-slspot_csrf' : 'slspot_csrf')
@@ -351,6 +355,7 @@ export const env = {
     requestTimeoutMs: parsePositiveInteger('MARKET_DATA_REQUEST_TIMEOUT_MS', process.env.MARKET_DATA_REQUEST_TIMEOUT_MS, 10_000, 1_000, 60_000),
     bootstrapAssets: marketDataBootstrapAssets,
     simulate: marketDataSimulate,
+    binance: { enabled: binanceEnabled, restUrl: binanceRestUrl, wsUrl: binanceWsUrl },
   },
   trading: {
     feeRate: parseDecimalString('TRADING_FEE_RATE', process.env.TRADING_FEE_RATE, '0'),
