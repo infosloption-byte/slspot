@@ -1,5 +1,5 @@
 import { Settings2, X } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import {
   alligator as calcAlligator, atr as calcAtr, awesomeOscillator, bollinger as calcBollinger, emaOfCloses, fractals as calcFractals,
   getIndicator, indicatorLabel, macd as calcMacd, parabolicSar, rsi as calcRsi, sma as calcSma, stochastic as calcStochastic,
@@ -57,7 +57,7 @@ function buildPanel(id: IndicatorId, candles: IndicatorCandle[], settings: Indic
   return { id, title, layers: [{ kind: 'bars', values, up: colors.up!, down: colors.down! }], guides: [], zero: true, readings: [{ text: fmt(last(values)), color: (last(values) ?? 0) >= 0 ? colors.up! : colors.down! }] }
 }
 
-function Panel({ spec, onEdit, onRemove, switcher }: { spec: PanelSpec; onEdit: (id: IndicatorId) => void; onRemove: (id: IndicatorId) => void; switcher?: { options: PanelSpec[]; onSelect: (id: IndicatorId) => void } }) {
+function Panel({ spec, onEdit, onRemove }: { spec: PanelSpec; onEdit: (id: IndicatorId) => void; onRemove: (id: IndicatorId) => void }) {
   const geometry = useMemo(() => {
     const count = spec.layers.reduce((max, layer) => Math.max(max, layer.values.length), 0)
     let min = spec.range?.[0] ?? Infinity
@@ -82,13 +82,6 @@ function Panel({ spec, onEdit, onRemove, switcher }: { spec: PanelSpec; onEdit: 
   return (
     <div className="chart-indicator-panel">
       <div className="chart-indicator-panel__label">
-        {switcher && switcher.options.length > 1 ? (
-          <span className="chart-indicator-panel__tabs" role="tablist">
-            {switcher.options.map((option) => (
-              <button type="button" role="tab" key={option.id} aria-selected={option.id === spec.id} className={option.id === spec.id ? 'is-active' : undefined} onClick={() => switcher.onSelect(option.id)}>{getIndicator(option.id).name}</button>
-            ))}
-          </span>
-        ) : null}
         <span>{spec.title}</span>
         {spec.readings.map((reading, index) => <strong key={index} style={{ color: reading.color }}>{reading.text}</strong>)}
       </div>
@@ -119,11 +112,9 @@ function Panel({ spec, onEdit, onRemove, switcher }: { spec: PanelSpec; onEdit: 
   )
 }
 
-export function IndicatorPanels({ candles, settings, compact, onEdit, onRemove }: {
+export function IndicatorPanels({ candles, settings, onEdit, onRemove }: {
   candles: IndicatorCandle[]
   settings: IndicatorSettings
-  /** Phone layout: one panel at a time with a switcher, instead of a stack. */
-  compact: boolean
   onEdit: (id: IndicatorId) => void
   onRemove: (id: IndicatorId) => void
 }) {
@@ -131,16 +122,7 @@ export function IndicatorPanels({ candles, settings, compact, onEdit, onRemove }
     () => settings.enabled.filter((id) => getIndicator(id).group === 'oscillator').map((id) => buildPanel(id, candles, settings)),
     [candles, settings],
   )
-  const [chosen, setChosen] = useState<IndicatorId | null>(null)
   if (!specs.length) return null
-  if (compact) {
-    const shown = specs.find((spec) => spec.id === chosen) ?? specs[0]!
-    return (
-      <div className="chart-indicator-stack">
-        <Panel spec={shown} onEdit={onEdit} onRemove={onRemove} switcher={{ options: specs, onSelect: setChosen }} />
-      </div>
-    )
-  }
   return (
     <div className="chart-indicator-stack">
       {specs.map((spec) => <Panel key={spec.id} spec={spec} onEdit={onEdit} onRemove={onRemove} />)}

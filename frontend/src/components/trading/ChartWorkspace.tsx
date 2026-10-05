@@ -757,7 +757,7 @@ export function ChartWorkspace({ asset, onOpenMarkets, onOpenActivity, soundEnab
         </div>
       </div>
 
-      <div className={'chart-stage' + (hasOscillators ? ' chart-stage--oscillators' : '')} ref={stageRef} style={hasOscillators ? ({ '--oscillator-height': (compact ? COMPACT_PANEL_HEIGHT : oscillatorCount * OSCILLATOR_PANEL_HEIGHT) + 'px' } as React.CSSProperties) : undefined}>
+      <div className={'chart-stage' + (hasOscillators ? ' chart-stage--oscillators' : '')} ref={stageRef} style={hasOscillators ? ({ '--oscillator-height': (oscillatorCount * (compact ? COMPACT_PANEL_HEIGHT : OSCILLATOR_PANEL_HEIGHT)) + 'px' } as React.CSSProperties) : undefined}>
         {candleResource.loading ? (
           <div className="chart-data-state">
             <span className="loading-spinner" aria-hidden="true" />
@@ -838,7 +838,7 @@ export function ChartWorkspace({ asset, onOpenMarkets, onOpenActivity, soundEnab
         {candles.length ? (
           <>
             <IndicatorLegend candles={candles} settings={indicators} onEdit={(id) => openSettings('indicators', id)} onRemove={removeIndicator} />
-            <IndicatorPanels candles={candles} settings={indicators} compact={compact} onEdit={(id) => openSettings('indicators', id)} onRemove={removeIndicator} />
+            <IndicatorPanels candles={candles} settings={indicators} onEdit={(id) => openSettings('indicators', id)} onRemove={removeIndicator} />
           </>
         ) : null}
       </div>
