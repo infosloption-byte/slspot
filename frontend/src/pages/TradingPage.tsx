@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AssetList } from '../components/market/AssetList'
-import { BottomPanel } from '../components/layout/BottomPanel'
+import { BottomPanel, type ActivityTab } from '../components/layout/BottomPanel'
 import { TradePanel } from '../components/trading/TradePanel'
 import { ChartWorkspace } from '../components/trading/ChartWorkspace'
 import { Toast, type ToastTone } from '../components/ui/Toast'
@@ -64,7 +64,10 @@ export function TradingPage() {
   const positions = usePortfolioPositions(1, 50)
   const capabilities = useTradingCapabilities()
   const tradingUi = useTradingUiStore()
-  const { historyPage, historyFilters, historyExporting, selectedSymbol, marketPickerOpen, activityOpen, soundEnabled } = tradingUi
+  // The activity dialog is closed (null) until opened; it reopens on the tab last used.
+  const [activityTab, setActivityTab] = useState<ActivityTab | null>(null)
+  const [lastActivityTab, setLastActivityTab] = useState<ActivityTab>('open')
+  const { historyPage, historyFilters, historyExporting, selectedSymbol, marketPickerOpen, soundEnabled } = tradingUi
 
   const historyQuery = useMemo<TradeListQuery>(() => {
     const from = historyFilters.from
@@ -477,6 +480,7 @@ export function TradingPage() {
           key={selectedAsset.assetId + ':' + selectedAsset.symbol}
           asset={selectedAsset}
           onOpenMarkets={() => setTradingUiState({ marketPickerOpen: true })}
+          onOpenActivity={() => setActivityTab(lastActivityTab)}
           openTrades={openTrades}
           now={now}
           realtimeState={realtimeState}
@@ -494,7 +498,10 @@ export function TradingPage() {
           settledTrades={settledTrades}
           walletTransactions={walletTransactions.data?.items ?? []}
           now={now}
-          collapsed={!activityOpen}
+          open={activityTab !== null}
+          onClose={() => setActivityTab(null)}
+          tab={activityTab ?? lastActivityTab}
+          onTabChange={(next) => { setLastActivityTab(next); setActivityTab(next) }}
           historyPage={historyPage}
           historyTotalPages={trades.data?.pagination.totalPages ?? 1}
           historyTotal={trades.data?.pagination.total ?? 0}
@@ -508,7 +515,6 @@ export function TradingPage() {
           onHistoryReset={resetHistoryFilters}
           onHistoryRetry={() => void trades.reload()}
           onHistoryExport={() => void exportTradeHistory()}
-          onToggle={() => setTradingUiState({ activityOpen: !activityOpen })}
         />
       </div>
 

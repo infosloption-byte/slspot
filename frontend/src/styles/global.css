@@ -2902,3 +2902,14 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
   .chart-color-row { flex-direction: column; align-items: flex-start; }
   .chart-swatches { justify-content: flex-start; }
 }
+
+/* ---- Trading activity dialog ---- */
+.ui-modal__panel--xl { width: min(100%, 1120px); }
+.ui-modal__body--flush { padding: 0; }
+.ui-modal__body--flush .bottom-panel { max-height: none; border: 0; background: transparent; }
+.ui-modal__body--flush .bottom-panel__tabs { top: 0; z-index: 3; }
+.ui-modal__body--flush .positions-table, .ui-modal__body--flush .activity-table { min-height: 320px; padding: 10px 14px 16px; }
+.chart-activity-button { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 10px; border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--bg-2); color: var(--text); font-size: 13px; font-weight: 600; }
+.chart-activity-button:hover { border-color: var(--accent-line); color: var(--accent); }
+.chart-activity-button__count { min-width: 18px; height: 18px; padding: 0 5px; display: grid; place-items: center; border-radius: 999px; background: var(--accent); color: var(--accent-ink); font-size: 11px; font-weight: 800; }
+@media (max-width: 760px) { .chart-activity-button span:not(.chart-activity-button__count) { display: none; } }

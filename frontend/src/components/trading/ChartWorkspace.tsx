@@ -1,5 +1,6 @@
 import {
   ChevronDown,
+  Clock3,
   Crosshair,
   Maximize2,
   Settings2,
@@ -74,6 +75,8 @@ type ChartCandle = {
 type ChartWorkspaceProps = {
   asset: MarketAsset
   onOpenMarkets: () => void
+  /** Opens the positions / history / wallet dialog. */
+  onOpenActivity: () => void
   openTrades: OpenTrade[]
   now: number
   realtimeState: RealtimeConnectionState
@@ -476,7 +479,7 @@ function toChartCandles(candles: MarketCandle[]) {
   }))
 }
 
-export function ChartWorkspace({ asset, onOpenMarkets, openTrades, now, realtimeState }: ChartWorkspaceProps) {
+export function ChartWorkspace({ asset, onOpenMarkets, onOpenActivity, openTrades, now, realtimeState }: ChartWorkspaceProps) {
   const [timeframe, setTimeframe] = useState('5m')
   const [crosshairEnabled, setCrosshairEnabled] = useState(true)
   const [gridEnabled, setGridEnabled] = useState(true)
@@ -735,6 +738,11 @@ export function ChartWorkspace({ asset, onOpenMarkets, openTrades, now, realtime
         <div className="chart-tools" aria-label="Chart controls">
           <IconButton label={crosshairEnabled ? 'Disable crosshair' : 'Enable crosshair'} active={crosshairEnabled} onClick={() => setCrosshairEnabled((value) => !value)}><Crosshair size={16} /></IconButton>
           <IconButton label="Chart settings" active={settingsOpen} onClick={() => openSettings('chart')} aria-haspopup="dialog"><Settings2 size={16} /></IconButton>
+          <button type="button" className="chart-activity-button" onClick={() => { if (document.fullscreenElement) void document.exitFullscreen(); onOpenActivity() }} title="Open positions, trade history and wallet activity">
+            <Clock3 size={15} />
+            <span>Positions</span>
+            {openTrades.length > 0 ? <span className="chart-activity-button__count">{openTrades.length}</span> : null}
+          </button>
           <IconButton label="Fullscreen chart" onClick={handleFullscreen}><Maximize2 size={16} /></IconButton>
         </div>
       </div>

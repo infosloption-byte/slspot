@@ -10,11 +10,13 @@ type ModalProps = {
   description?: string
   children: ReactNode
   footer?: ReactNode
-  size?: 'sm' | 'md' | 'lg'
+  size?: 'sm' | 'md' | 'lg' | 'xl'
+  /** Removes the body padding so tables and tab bars can run edge to edge. */
+  flush?: boolean
   closeLabel?: string
 }
 
-export function Modal({ open, onClose, title, description, children, footer, size = 'md', closeLabel = 'Close dialog' }: ModalProps) {
+export function Modal({ open, onClose, title, description, children, footer, size = 'md', flush = false, closeLabel = 'Close dialog' }: ModalProps) {
   const panelRef = useRef<HTMLDivElement>(null)
   const titleId = useId()
   const previousFocusRef = useRef<HTMLElement | null>(null)
@@ -70,7 +72,7 @@ export function Modal({ open, onClose, title, description, children, footer, siz
           </div>
           <button type="button" className="icon-button" onClick={onClose} aria-label={closeLabel}><X size={16} /></button>
         </header>
-        <div className="ui-modal__body">{children}</div>
+        <div className={flush ? 'ui-modal__body ui-modal__body--flush' : 'ui-modal__body'}>{children}</div>
         {footer ? <footer className="ui-modal__footer">{footer}</footer> : null}
       </section>
     </div>,
