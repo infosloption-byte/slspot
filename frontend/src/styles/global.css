@@ -3008,8 +3008,9 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
   }
 
   .trade-mobile-config-row .trade-mobile-config {
-    flex: 1 1 auto;
+    flex: none;
     min-width: 0;
+    padding-inline: 6px 0;
   }
 
   .trade-mobile-payout-summary {
@@ -3018,6 +3019,22 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
     grid-template-columns: repeat(2, minmax(50px, auto));
     align-items: center;
     gap: 9px;
+    white-space: nowrap;
+  }
+
+  .trade-mobile-rate {
+    flex: none;
+    height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    padding: 0 2px;
+    border: 0;
+    background: transparent;
+    color: var(--accent);
+    font-size: 12px;
+    font-weight: 800;
     white-space: nowrap;
   }
 
@@ -3346,8 +3363,16 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
     font-size: 11px;
   }
 
+  .trade-mobile-config-row {
+    gap: 6px;
+  }
+
   .trade-mobile-config {
     padding-inline: 2px;
+  }
+
+  .trade-mobile-rate {
+    font-size: 11px;
   }
 
   .trading-room {
