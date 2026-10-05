@@ -208,10 +208,16 @@ export function TradePanel({ asset, balance, walletMode, canTrade, tradeDisabled
         </div>
 
         <div className="trade-panel__mobile-content">
-          <button className="trade-mobile-config" type="button" onClick={() => setMobileConfigOpen((current) => !current)} aria-expanded={mobileConfigOpen}>
-            <span>Stake <strong>{formatCurrency(amount, asset.quoteCurrency)}</strong> · {formatDuration(duration)}</span>
-            <span>{asset.payout}% <ChevronDown size={14} /></span>
-          </button>
+          <div className="trade-mobile-config-row">
+            <button className="trade-mobile-config" type="button" onClick={() => setMobileConfigOpen((current) => !current)} aria-expanded={mobileConfigOpen}>
+              <span>Stake <strong>{formatCurrency(amount, asset.quoteCurrency)}</strong> · {formatDuration(duration)}</span>
+              <span>{asset.payout}% <ChevronDown size={14} /></span>
+            </button>
+            <div className="trade-mobile-payout-summary" aria-label="Trade payout summary">
+              <span><small>Return</small><strong>{formatCurrency(estimatedPayout, asset.quoteCurrency)}</strong></span>
+              <span><small>Total</small><strong>{formatCurrency(totalReturn, asset.quoteCurrency)}</strong></span>
+            </div>
+          </div>
           {mobileConfigOpen ? (
             <div className="trade-mobile-config__panel">
               <div className="trade-mobile-config__grid">
@@ -222,7 +228,6 @@ export function TradePanel({ asset, balance, walletMode, canTrade, tradeDisabled
                   {mobileDurationOpen ? <div className="mobile-duration-options">{asset.durationsSeconds.map((value) => <button key={value} type="button" className={duration === value ? 'duration-option duration-option--active' : 'duration-option'} onClick={() => { chooseDuration(value); setMobileDurationOpen(false) }}>{formatDuration(value)}</button>)}</div> : null}
                 </label>
               </div>
-              <div className="payout-card"><div><span>Potential return</span><strong>{formatCurrency(estimatedPayout, asset.quoteCurrency)}</strong></div><small>{formatCurrency(totalReturn, asset.quoteCurrency)} total at expiry</small></div>
             </div>
           ) : null}
           {renderActions(true)}
