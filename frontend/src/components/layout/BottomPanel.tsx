@@ -3,7 +3,6 @@ import {
   CalendarDays,
   Check,
   ChevronDown,
-  ChevronUp,
   Clock3,
   History,
   RotateCcw,
@@ -18,9 +17,10 @@ import type { OpenTrade } from '../../types/trading'
 import { tradeProgress, tradeRemainingSeconds } from '../../types/trading'
 import { formatPrice } from '../../lib/format'
 import { EmptyState } from '../ui/EmptyState'
+import { Modal } from '../ui/Modal'
 import { Pagination } from '../ui/Pagination'
 
-type TabId = 'open' | 'history' | 'wallet'
+export type ActivityTab = 'open' | 'history' | 'wallet'
 
 type BottomPanelProps = {
   /** Latest price per symbol, so every open position shows its own market's price. */
@@ -35,8 +35,10 @@ type BottomPanelProps = {
   settledTrades: OpenTrade[]
   walletTransactions: WalletTransaction[]
   now: number
-  collapsed: boolean
-  onToggle: () => void
+  open: boolean
+  onClose: () => void
+  tab: ActivityTab
+  onTabChange: (tab: ActivityTab) => void
   historyPage: number
   historyTotalPages: number
   historyTotal: number
@@ -158,8 +160,10 @@ export function BottomPanel({
   settledTrades,
   walletTransactions,
   now,
-  collapsed,
-  onToggle,
+  open,
+  onClose,
+  tab: active,
+  onTabChange: setActive,
   historyPage,
   historyTotalPages,
   historyTotal,
@@ -174,8 +178,6 @@ export function BottomPanel({
   onHistoryRetry,
   onHistoryExport,
 }: BottomPanelProps) {
-  const [active, setActive] = useState<TabId>('open')
-
   // Every open position is shown whichever market is selected on the chart.
   const visiblePositions = openTrades
 
@@ -190,8 +192,9 @@ export function BottomPanel({
   )
 
   return (
-    <section className={'bottom-panel' + (collapsed ? ' bottom-panel--collapsed' : '')}>
-      <div className="bottom-panel__tabs">
+    <Modal open={open} onClose={onClose} title="Trading activity" size="xl" flush closeLabel="Close trading activity">
+    <section className="bottom-panel">
+      <div className="bottom-panel__tabs" role="tablist">
         {tabs.map(({ id, label, icon: Icon }) => {
           const count = id === 'open'
             ? visiblePositions.length
@@ -203,6 +206,8 @@ export function BottomPanel({
             <button
               key={id}
               className={active === id ? 'bottom-tab bottom-tab--active' : 'bottom-tab'}
+              role="tab"
+              aria-selected={active === id}
               type="button"
               onClick={() => setActive(id)}
             >
@@ -215,32 +220,19 @@ export function BottomPanel({
 
         <div className="bottom-panel__spacer" />
 
-        {!collapsed ? (
-          <button
-            className="bottom-link"
-            type="button"
-            title={active === 'history' ? 'Export trade history CSV' : 'Export is available for trade history'}
-            onClick={active === 'history' ? onHistoryExport : undefined}
-            disabled={active !== 'history' || historyExporting || historyLoading}
-          >
-            <ArrowDownToLine size={14} />
-            <span>{active === 'history' && historyExporting ? 'Exporting…' : 'Export'}</span>
-          </button>
-        ) : null}
-
         <button
-          className="activity-toggle"
+          className="bottom-link"
           type="button"
-          onClick={onToggle}
-          aria-expanded={!collapsed}
-          title={collapsed ? 'Open activity' : 'Collapse activity'}
+          title={active === 'history' ? 'Export trade history CSV' : 'Export is available for trade history'}
+          onClick={active === 'history' ? onHistoryExport : undefined}
+          disabled={active !== 'history' || historyExporting || historyLoading}
         >
-          {collapsed ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
-          <span>{collapsed ? 'Activity' : 'Hide'}</span>
+          <ArrowDownToLine size={14} />
+          <span>{active === 'history' && historyExporting ? 'Exporting…' : 'Export'}</span>
         </button>
       </div>
 
-      {!collapsed && active === 'open' ? (
+      {active === 'open' ? (
         <div className="positions-table">
           {openError && visiblePositions.length > 0 ? (
             <div className="trade-history-error" role="alert">
@@ -309,7 +301,7 @@ export function BottomPanel({
         </div>
       ) : null}
 
-      {!collapsed && active === 'history' ? (
+      {active === 'history' ? (
         <div className="activity-table trade-history-panel">
           <div className="trade-history-toolbar">
             <label className="trade-history-control trade-history-search">
@@ -497,7 +489,7 @@ export function BottomPanel({
         </div>
       ) : null}
 
-      {!collapsed && active === 'wallet' ? (
+      {active === 'wallet' ? (
         <div className="activity-table">
           {visibleWallet.length === 0 && walletLoading ? (
             <div className="trade-history-state" role="status">
@@ -552,5 +544,6 @@ export function BottomPanel({
         </div>
       ) : null}
     </section>
+    </Modal>
   )
 }

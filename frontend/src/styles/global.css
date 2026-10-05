@@ -2826,3 +2826,90 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
   font-size: 12px;
 }
 .trading-alert button { margin-left: auto; }
+
+/* ---- Chart settings dialog, indicator legend and panels ---- */
+.chart-stage--oscillators .chart-canvas-shell { inset: 0 0 var(--oscillator-height, 0); }
+.chart-dialog__tabs { margin-bottom: 14px; }
+.chart-dialog__panel { display: grid; gap: 12px; }
+.chart-dialog__rows { display: grid; gap: 2px; margin-top: 4px; }
+.chart-dialog__row { display: flex; align-items: center; gap: 12px; padding: 10px 4px; border-top: 1px solid var(--line); }
+.chart-dialog__row-icon { width: 28px; display: grid; place-items: center; color: var(--muted); }
+.chart-dialog__row-copy { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.chart-dialog__row-copy strong { font-size: 14px; }
+.chart-dialog__row-copy small { color: var(--muted); font-size: 12px; }
+.chart-dialog__actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.chart-dialog__panel .chart-type { min-height: 56px; font-size: 12px; }
+.chart-dialog__panel .drawing-tools { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+.chart-dialog__panel .drawing-tool { min-height: 40px; font-size: 12px; }
+
+.switch { flex: none; width: 40px; height: 22px; padding: 2px; border: 0; border-radius: 999px; background: var(--bg-3); transition: background .15s; }
+.switch span { display: block; width: 18px; height: 18px; border-radius: 50%; background: #fff; transition: transform .15s; }
+.switch--on { background: var(--accent); }
+.switch--on span { transform: translateX(18px); }
+.switch:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.chart-indicators-layout { display: grid; grid-template-columns: minmax(220px, 280px) minmax(0, 1fr); gap: 16px; align-items: start; }
+.chart-indicator-list { display: grid; gap: 14px; max-height: min(60dvh, 520px); overflow-y: auto; padding-right: 4px; }
+.chart-indicator-item { display: flex; align-items: center; gap: 8px; padding: 4px 6px 4px 4px; border: 1px solid transparent; border-radius: var(--radius-md); }
+.chart-indicator-item:hover { background: var(--bg-2); }
+.chart-indicator-item--selected { background: var(--accent-soft); border-color: var(--accent-line); }
+.chart-indicator-item__main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 6px; border: 0; background: transparent; color: var(--text); text-align: left; }
+.chart-indicator-item__main > span:last-child { display: grid; gap: 1px; min-width: 0; }
+.chart-indicator-item__main strong { font-size: 13px; }
+.chart-indicator-item__main small { color: var(--muted); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chart-indicator-item__swatch { flex: none; width: 10px; height: 10px; border-radius: 3px; }
+
+.chart-indicator-editor { display: grid; gap: 16px; padding: 14px; border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--bg-1); }
+.chart-indicator-editor header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.chart-indicator-editor h3 { margin: 0; font-size: 16px; }
+.chart-indicator-editor header p { margin: 3px 0 0; color: var(--muted); font-size: 12px; }
+.chart-indicator-editor h4 { margin: 0 0 8px; color: var(--muted-2, var(--muted)); font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.chart-indicator-editor .quiet-button { justify-self: start; display: inline-flex; align-items: center; gap: 6px; }
+.chart-fields { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+.chart-field { display: grid; gap: 5px; font-size: 12px; color: var(--muted); }
+.chart-field input { height: 36px; padding: 0 10px; border: 1px solid var(--line-strong); border-radius: var(--radius-sm); background: var(--bg-2); color: var(--text); font: inherit; font-variant-numeric: tabular-nums; }
+.chart-field input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.chart-field input[aria-invalid="true"] { border-color: var(--red); }
+.chart-field__error { color: var(--red); font-size: 11px; }
+.chart-color-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 0; border-top: 1px solid var(--line); font-size: 13px; }
+.chart-swatches { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 5px; }
+.chart-swatch { width: 20px; height: 20px; border-radius: 50%; border: 2px solid transparent; box-shadow: inset 0 0 0 1px rgba(255,255,255,.2); }
+.chart-swatch--active { border-color: var(--text); }
+.chart-swatches input[type="color"] { width: 26px; height: 26px; padding: 0; border: 0; background: none; cursor: pointer; }
+.chart-width { display: flex; gap: 4px; }
+.chart-width__option { display: flex; align-items: center; gap: 6px; height: 30px; padding: 0 9px; border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--bg-2); color: var(--muted); font-size: 11px; }
+.chart-width__option i { display: block; width: 14px; background: currentColor; border-radius: 2px; }
+.chart-width__option--active { border-color: var(--accent-line); color: var(--accent); background: var(--accent-soft); }
+
+.chart-legend { position: absolute; top: 8px; left: 8px; z-index: 8; margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; max-width: calc(100% - 90px); pointer-events: none; }
+.chart-legend__item { display: inline-flex; align-items: center; gap: 6px; width: fit-content; max-width: 100%; padding: 3px 4px 3px 8px; border-radius: 6px; background: rgba(13,13,16,.72); backdrop-filter: blur(4px); font-size: 12px; pointer-events: auto; }
+.chart-legend__swatches { display: inline-flex; gap: 2px; }
+.chart-legend__swatches i { width: 8px; height: 8px; border-radius: 2px; }
+.chart-legend__name { border: 0; background: transparent; color: var(--text); font: inherit; font-weight: 600; padding: 0; }
+.chart-legend__name:hover { color: var(--accent); }
+.chart-legend__value { font-variant-numeric: tabular-nums; }
+.chart-legend__icon, .chart-indicator-panel__actions button { display: grid; place-items: center; width: 22px; height: 22px; border: 0; border-radius: 5px; background: transparent; color: var(--muted); }
+.chart-legend__icon:hover, .chart-indicator-panel__actions button:hover { background: var(--bg-3); color: var(--text); }
+.chart-indicator-panel { height: 84px; }
+.chart-indicator-panel__label { gap: 8px; font-size: 11px; }
+.chart-indicator-panel__label strong { font-variant-numeric: tabular-nums; }
+.chart-indicator-panel__actions { position: absolute; top: 3px; right: 6px; z-index: 3; display: flex; gap: 2px; }
+.chart-indicator-panel .chart-indicator-panel__guide { stroke: rgba(255,255,255,.12); stroke-dasharray: 3 3; }
+
+@media (max-width: 760px) {
+  .chart-indicators-layout { grid-template-columns: 1fr; }
+  .chart-indicator-list { max-height: 220px; }
+  .chart-color-row { flex-direction: column; align-items: flex-start; }
+  .chart-swatches { justify-content: flex-start; }
+}
+
+/* ---- Trading activity dialog ---- */
+.ui-modal__panel--xl { width: min(100%, 1120px); }
+.ui-modal__body--flush { padding: 0; }
+.ui-modal__body--flush .bottom-panel { max-height: none; border: 0; background: transparent; }
+.ui-modal__body--flush .bottom-panel__tabs { top: 0; z-index: 3; }
+.ui-modal__body--flush .positions-table, .ui-modal__body--flush .activity-table { min-height: 320px; padding: 10px 14px 16px; }
+.chart-activity-button { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 10px; border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--bg-2); color: var(--text); font-size: 13px; font-weight: 600; }
+.chart-activity-button:hover { border-color: var(--accent-line); color: var(--accent); }
+.chart-activity-button__count { min-width: 18px; height: 18px; padding: 0 5px; display: grid; place-items: center; border-radius: 999px; background: var(--accent); color: var(--accent-ink); font-size: 11px; font-weight: 800; }
+@media (max-width: 760px) { .chart-activity-button span:not(.chart-activity-button__count) { display: none; } }

@@ -14,7 +14,6 @@ function readSoundPreference(): boolean {
 export type TradingUiState = {
   selectedSymbol: string
   marketPickerOpen: boolean
-  activityOpen: boolean
   soundEnabled: boolean
   historyPage: number
   historyFilters: TradeHistoryFilters
@@ -35,7 +34,6 @@ export const defaultHistoryFilters: TradeHistoryFilters = {
 export const tradingUiStore = createStore<TradingUiState>({
   selectedSymbol: '',
   marketPickerOpen: false,
-  activityOpen: true,
   soundEnabled: readSoundPreference(),
   historyPage: 1,
   historyFilters: defaultHistoryFilters,
