@@ -3246,17 +3246,27 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
     padding: 8px;
   }
 
-  /* Compact two-column cards instead of forcing a wide table viewport. */
+  /* Mobile activity uses full-width structured cards, not nested mini-cards. */
+  .ui-modal__body--flush .positions-table,
+  .ui-modal__body--flush .activity-table {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+    padding: 10px;
+    overscroll-behavior: contain;
+  }
+
   .ui-modal__body--flush .position-row,
   .ui-modal__body--flush .activity-row {
     min-width: 0;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 6px;
-    margin-bottom: 6px;
-    padding: 6px;
+    display: grid;
+    gap: 0;
+    margin: 0 0 8px;
+    padding: 0;
     border: 1px solid var(--line);
-    border-radius: 9px;
+    border-radius: 11px;
     background: var(--bg-2);
+    overflow: hidden;
   }
 
   .ui-modal__body--flush .position-row--header,
@@ -3264,28 +3274,30 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
     display: none;
   }
 
-  .ui-modal__body--flush .position-row:not(.position-row--header) > *,
-  .ui-modal__body--flush .activity-row:not(.activity-row--header) > * {
-    position: relative;
+  .ui-modal__body--flush .position-row:not(.position-row--header) {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "instrument side"
+      "entry current"
+      "time time"
+      "status settlement";
+  }
+
+  .ui-modal__body--flush .position-row:not(.position-row--header) > * {
     min-width: 0;
-    min-height: 42px;
+    min-height: 0;
     display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    justify-content: center;
-    gap: 2px;
-    padding: 17px 8px 5px;
-    border: 1px solid var(--line);
-    border-radius: 7px;
-    background: var(--bg-1);
-    overflow: hidden;
+    align-items: center;
+    padding: 10px;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
   }
 
   .ui-modal__body--flush .position-row:not(.position-row--header) > *::before,
   .ui-modal__body--flush .activity-row:not(.activity-row--header) > *::before {
-    position: absolute;
-    left: 8px;
-    top: 4px;
+    display: block;
+    margin-bottom: 3px;
     color: var(--muted-2);
     font-size: 9px;
     font-weight: 800;
@@ -3295,26 +3307,186 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
     white-space: nowrap;
   }
 
+  .ui-modal__body--flush .position-row:not(.position-row--header) > *:nth-child(1) {
+    grid-area: instrument;
+    align-items: flex-start;
+    flex-direction: column;
+    justify-content: center;
+  }
   .ui-modal__body--flush .position-row:not(.position-row--header) > *:nth-child(1)::before { content: "Instrument"; }
+  .ui-modal__body--flush .position-row:not(.position-row--header) > *:nth-child(2) {
+    grid-area: side;
+    justify-content: flex-end;
+    align-items: flex-end;
+  }
   .ui-modal__body--flush .position-row:not(.position-row--header) > *:nth-child(2)::before { content: "Side"; }
+  .ui-modal__body--flush .position-row:not(.position-row--header) > *:nth-child(3) {
+    grid-area: entry;
+    flex-direction: column;
+    align-items: flex-start;
+    border-top: 1px solid var(--line);
+  }
   .ui-modal__body--flush .position-row:not(.position-row--header) > *:nth-child(3)::before { content: "Entry"; }
+  .ui-modal__body--flush .position-row:not(.position-row--header) > *:nth-child(4) {
+    grid-area: current;
+    flex-direction: column;
+    align-items: flex-end;
+    justify-content: center;
+    border-top: 1px solid var(--line);
+  }
   .ui-modal__body--flush .position-row:not(.position-row--header) > *:nth-child(4)::before { content: "Current"; }
-  .ui-modal__body--flush .position-row:not(.position-row--header) > *:nth-child(5)::before { content: "Time left"; }
+  .ui-modal__body--flush .position-row:not(.position-row--header) > *:nth-child(5) {
+    grid-area: time;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 5px;
+    border-top: 1px solid var(--line);
+  }
+  .ui-modal__body--flush .position-row:not(.position-row--header) > *:nth-child(5)::before { content: "Time left"; align-self: flex-start; }
+  .ui-modal__body--flush .position-row:not(.position-row--header) > *:nth-child(6) {
+    grid-area: status;
+    align-items: flex-start;
+    flex-direction: column;
+    border-top: 1px solid var(--line);
+  }
   .ui-modal__body--flush .position-row:not(.position-row--header) > *:nth-child(6)::before { content: "Status"; }
+  .ui-modal__body--flush .position-row:not(.position-row--header) > *:nth-child(7) {
+    grid-area: settlement;
+    align-items: flex-end;
+    flex-direction: column;
+    border-top: 1px solid var(--line);
+  }
   .ui-modal__body--flush .position-row:not(.position-row--header) > *:nth-child(7)::before { content: "Settlement"; }
 
+  .ui-modal__body--flush .countdown-cell {
+    width: 100%;
+  }
+  .ui-modal__body--flush .countdown-track {
+    width: 100%;
+  }
+
+  .ui-modal__body--flush .activity-row--trade-history:not(.activity-row--header) {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "trade result"
+      "side amount"
+      "open closed"
+      "pnl pnl";
+  }
+
+  .ui-modal__body--flush .activity-row--trade-history:not(.activity-row--header) > * {
+    min-width: 0;
+    min-height: 0;
+    display: flex;
+    align-items: center;
+    padding: 10px;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+  }
+  .ui-modal__body--flush .activity-row--trade-history:not(.activity-row--header) > *:nth-child(1) {
+    grid-area: trade;
+    align-items: flex-start;
+    flex-direction: column;
+  }
   .ui-modal__body--flush .activity-row--trade-history:not(.activity-row--header) > *:nth-child(1)::before { content: "Trade"; }
+  .ui-modal__body--flush .activity-row--trade-history:not(.activity-row--header) > *:nth-child(2) {
+    grid-area: side;
+    align-items: flex-start;
+    flex-direction: column;
+    border-top: 1px solid var(--line);
+  }
   .ui-modal__body--flush .activity-row--trade-history:not(.activity-row--header) > *:nth-child(2)::before { content: "Side"; }
+  .ui-modal__body--flush .activity-row--trade-history:not(.activity-row--header) > *:nth-child(3) {
+    grid-area: amount;
+    justify-content: flex-end;
+    align-items: flex-end;
+    flex-direction: column;
+    border-top: 1px solid var(--line);
+  }
   .ui-modal__body--flush .activity-row--trade-history:not(.activity-row--header) > *:nth-child(3)::before { content: "Amount"; }
+  .ui-modal__body--flush .activity-row--trade-history:not(.activity-row--header) > *:nth-child(4) {
+    grid-area: open;
+    align-items: flex-start;
+    flex-direction: column;
+    border-top: 1px solid var(--line);
+  }
   .ui-modal__body--flush .activity-row--trade-history:not(.activity-row--header) > *:nth-child(4)::before { content: "Open price"; }
+  .ui-modal__body--flush .activity-row--trade-history:not(.activity-row--header) > *:nth-child(5) {
+    grid-area: closed;
+    justify-content: flex-end;
+    align-items: flex-end;
+    flex-direction: column;
+    border-top: 1px solid var(--line);
+  }
   .ui-modal__body--flush .activity-row--trade-history:not(.activity-row--header) > *:nth-child(5)::before { content: "Closed price"; }
+  .ui-modal__body--flush .activity-row--trade-history:not(.activity-row--header) > *:nth-child(6) {
+    grid-area: result;
+    justify-content: flex-end;
+    align-items: flex-end;
+    flex-direction: column;
+  }
   .ui-modal__body--flush .activity-row--trade-history:not(.activity-row--header) > *:nth-child(6)::before { content: "Result"; }
+  .ui-modal__body--flush .activity-row--trade-history:not(.activity-row--header) > *:nth-child(7) {
+    grid-area: pnl;
+    align-items: flex-start;
+    flex-direction: column;
+    border-top: 1px solid var(--line);
+  }
   .ui-modal__body--flush .activity-row--trade-history:not(.activity-row--header) > *:nth-child(7)::before { content: "Net P&L"; }
 
+  .ui-modal__body--flush .activity-row:not(.activity-row--header):not(.activity-row--trade-history) {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "activity status"
+      "type amount"
+      "time time";
+  }
+
+  .ui-modal__body--flush .activity-row:not(.activity-row--header):not(.activity-row--trade-history) > * {
+    min-width: 0;
+    min-height: 0;
+    display: flex;
+    align-items: center;
+    padding: 10px;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+  }
+  .ui-modal__body--flush .activity-row:not(.activity-row--header):not(.activity-row--trade-history) > *:nth-child(1) {
+    grid-area: activity;
+    align-items: flex-start;
+    flex-direction: column;
+  }
   .ui-modal__body--flush .activity-row:not(.activity-row--header):not(.activity-row--trade-history) > *:nth-child(1)::before { content: "Activity"; }
+  .ui-modal__body--flush .activity-row:not(.activity-row--header):not(.activity-row--trade-history) > *:nth-child(2) {
+    grid-area: type;
+    align-items: flex-start;
+    flex-direction: column;
+    border-top: 1px solid var(--line);
+  }
   .ui-modal__body--flush .activity-row:not(.activity-row--header):not(.activity-row--trade-history) > *:nth-child(2)::before { content: "Type"; }
+  .ui-modal__body--flush .activity-row:not(.activity-row--header):not(.activity-row--trade-history) > *:nth-child(3) {
+    grid-area: amount;
+    justify-content: flex-end;
+    align-items: flex-end;
+    flex-direction: column;
+    border-top: 1px solid var(--line);
+  }
   .ui-modal__body--flush .activity-row:not(.activity-row--header):not(.activity-row--trade-history) > *:nth-child(3)::before { content: "Amount"; }
+  .ui-modal__body--flush .activity-row:not(.activity-row--header):not(.activity-row--trade-history) > *:nth-child(4) {
+    grid-area: status;
+    justify-content: flex-end;
+    align-items: flex-end;
+    flex-direction: column;
+  }
   .ui-modal__body--flush .activity-row:not(.activity-row--header):not(.activity-row--trade-history) > *:nth-child(4)::before { content: "Status"; }
+  .ui-modal__body--flush .activity-row:not(.activity-row--header):not(.activity-row--trade-history) > *:nth-child(5) {
+    grid-area: time;
+    align-items: flex-start;
+    flex-direction: column;
+    border-top: 1px solid var(--line);
+  }
   .ui-modal__body--flush .activity-row:not(.activity-row--header):not(.activity-row--trade-history) > *:nth-child(5)::before { content: "Time"; }
 
   .ui-modal__body--flush .position-row > div,
@@ -3323,6 +3495,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
     flex-direction: column;
     align-items: flex-start;
     gap: 2px;
+    min-width: 0;
   }
 
   .ui-modal__body--flush .position-row small,
@@ -3353,7 +3526,6 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
     flex-direction: column;
     gap: 8px;
   }
-}
 
 @media (max-width: 420px) {
   .trade-mobile-config-row {
