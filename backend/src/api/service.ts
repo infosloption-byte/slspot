@@ -322,6 +322,7 @@ export class PlatformApiService {
                 lastPriceAt: market.lastPriceAt?.toISOString() ?? null,
                 lastChangePct: market.lastChangePct?.toString() ?? null,
                 lastVolume: market.lastVolume?.toString() ?? null,
+                lastPriceProvider: market.lastPriceProvider ?? null,
               }
             : null,
         }
@@ -491,6 +492,10 @@ export class PlatformApiService {
         fee: trade.fee.toString(),
         netPnl: trade.netPnl?.toString() ?? null,
         settlementReference: trade.settlement?.referenceId ?? null,
+        entryProvider: trade.entryProvider ?? null,
+        entryTimestamp: trade.entryTimestamp?.toISOString() ?? null,
+        settlementProvider: trade.settlement?.settlementProvider ?? null,
+        settlementTimestamp: trade.settlement?.settlementTimestamp?.toISOString() ?? null,
         openedAt: trade.openedAt.toISOString(),
         closedAt: trade.closedAt?.toISOString() ?? null,
         position: {
