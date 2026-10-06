@@ -151,6 +151,15 @@ export const tradesApi = {
         { headers: { 'x-wallet-mode': mode } },
       )
       .then(unwrap),
+
+  cancel: (tradeId: string, mode: WalletMode = 'DEMO'): Promise<TradeCloseResult> =>
+    apiClient
+      .post<ApiEnvelope<TradeCloseResult>>(
+        '/trades/' + encodeURIComponent(tradeId) + '/cancel',
+        undefined,
+        { headers: { 'x-wallet-mode': mode } },
+      )
+      .then(unwrap),
 }
 
 function toQueryString(query: {
