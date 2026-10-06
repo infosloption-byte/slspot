@@ -55,7 +55,7 @@ export class KrakenTickStream {
     socket.onopen = () => {
       this.attempts = 0
       this.options.onStatus?.(true)
-      socket.send(JSON.stringify({
+      socket.send?.(JSON.stringify({
         method: 'subscribe',
         params: { channel: 'trade', symbol: externalSymbols, snapshot: false },
       }))
