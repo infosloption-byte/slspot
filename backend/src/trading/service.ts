@@ -137,6 +137,7 @@ type TradingPositionRecord = {
   accountId: string
   assetId: string
   side: 'BUY' | 'SELL'
+  status: 'OPEN' | 'CLOSED'
   amount: Prisma.Decimal
   entryPrice: Prisma.Decimal
   exitPrice: Prisma.Decimal | null
@@ -709,7 +710,7 @@ export class TradingService {
       throw new TradingError(404, 'TRADE_NOT_FOUND', 'Trade was not found')
     }
 
-    if (details.trade.status !== 'OPEN' || details.position.order.status !== 'ACCEPTED') {
+    if (details.trade.status !== 'OPEN' || details.position.status !== 'OPEN' || details.position.order.status !== 'ACCEPTED') {
       return this.toTradingResult(details.trade, details.position, details.settlement)
     }
 
@@ -721,7 +722,7 @@ export class TradingService {
           settlement: true,
         },
       })
-      if (!current || current.userId !== userId || current.status !== 'OPEN' || current.position.order.status !== 'ACCEPTED') return null
+      if (!current || current.userId !== userId || current.status !== 'OPEN' || current.position.status !== 'OPEN' || current.position.order.status !== 'ACCEPTED') return null
       if (current.position.order.expiresAt && current.position.order.expiresAt.getTime() <= Date.now()) {
         throw new TradingError(409, 'TRADE_EXPIRED', 'This trade has already expired and is being settled')
       }
@@ -877,7 +878,7 @@ export class TradingService {
         },
       })
 
-      if (!details || details.status !== 'OPEN') return null
+      if (!details || details.status !== 'OPEN' || details.position.status !== 'OPEN' || details.position.order.status !== 'ACCEPTED') return null
 
       if (reason === 'MANUAL' && details.position.order.expiresAt) {
         assertManualSettlementAllowed(details.position.order.expiresAt, new Date())
