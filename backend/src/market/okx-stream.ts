@@ -59,7 +59,7 @@ export class OkxTickStream {
     socket.onopen = () => {
       this.attempts = 0
       this.options.onStatus?.(true)
-      socket.send(JSON.stringify({
+      socket.send?.(JSON.stringify({
         op: 'subscribe',
         args: [...this.byInstrument.keys()].map((instId) => ({ channel: 'trades', instId })),
       }))
