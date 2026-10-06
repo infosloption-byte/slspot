@@ -10,6 +10,7 @@ export type MarketAsset = {
   volumeValue: number | null
   lastUpdatedAt: string | null
   marketStatus: 'OPEN' | 'CLOSED' | 'HALTED' | 'MAINTENANCE' | null
+  priceProvider: string | null
   accent: string
   payout: number
   payoutRate: string
