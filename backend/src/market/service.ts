@@ -437,7 +437,7 @@ export class MarketDataService {
       }
 
       await this.prisma.market.update({
-        where,
+        where: { id: market.id },
         data: {
           provider: quote.provider,
           status: quote.status,
