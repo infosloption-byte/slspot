@@ -14,6 +14,7 @@ export function useMarketStore(): MarketState {
 
 export function setMarketQuote(quote: MarketPrice): void {
   marketStore.setState((current) => ({
+    ...current,
     quotes: { ...current.quotes, [quote.assetId]: quote },
   }))
 }
