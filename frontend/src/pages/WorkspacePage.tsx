@@ -680,7 +680,7 @@ function HistoryPage() {
       const rows: Array<NonNullable<typeof trades.data>['items'][number]> = []
       let exportPage = 1
       for (;;) {
-        const result = await tradesApi.list({ page: exportPage, pageSize: 100, status: status || undefined, ...filters })
+        const result = await tradesApi.list({ page: exportPage, pageSize: 100, status: status || undefined, ...filters }, mode)
         rows.push(...result.items)
         if (exportPage >= result.pagination.totalPages) break
         exportPage += 1
