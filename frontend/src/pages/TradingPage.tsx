@@ -449,7 +449,31 @@ export function TradingPage() {
   if (positions.error) accountFailures.push({ label: 'open positions', retry: positions.reload })
 
   if (!selectedAsset || (loading && !market.assets.length)) {
-    return (
+    const cancelTrade = useCallback(async (tradeId: string) => {
+    try {
+      const result = await tradesApi.cancel(tradeId, mode)
+      await reloadTradingState()
+      addToast('info', 'Trade cancelled', result.direction ? result.direction + ' · stake returned' : 'Stake returned to available balance.')
+    } catch (error) {
+      addToast('error', 'Cancel failed', error instanceof Error ? error.message : 'Unable to cancel trade.')
+      throw error
+    }
+  }, [addToast, mode, reloadTradingState])
+
+  const settleTrade = useCallback(async (tradeId: string) => {
+    try {
+      const result = await tradesApi.close(tradeId, mode)
+      await reloadTradingState()
+      const label = result.direction ? result.direction + ' · ' : ''
+      const pnl = result.netPnl === null ? '' : ' · P&L ' + result.netPnl
+      addToast('success', 'Trade settled', label + result.status + pnl)
+    } catch (error) {
+      addToast('error', 'Settlement failed', error instanceof Error ? error.message : 'Unable to settle trade.')
+      throw error
+    }
+  }, [addToast, mode, reloadTradingState])
+
+  return (
       <main className="trading-room">
         <div className="trading-room__main panel">
           <ApiState
@@ -494,6 +518,8 @@ export function TradingPage() {
           openLoading={positions.loading}
           openError={positions.error?.message ?? null}
           onOpenRetry={() => void positions.reload()}
+          onCancelTrade={cancelTrade}
+          onSettleTrade={settleTrade}
           walletLoading={walletTransactions.loading}
           walletError={walletTransactions.error?.message ?? null}
           onWalletRetry={() => void walletTransactions.reload()}
