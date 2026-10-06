@@ -16,11 +16,12 @@ import {
 const WS_PATH = '/ws'
 const HEARTBEAT_MS = 30_000
 
-type AuthenticatedSocket = { userId: string }
+type AuthenticatedSocket = { userId: string; sessionId: string }
 type RealtimeRequest = FastifyRequest & { realtimePrincipal?: AuthenticatedSocket }
 
 export type RealtimeGatewayOptions = {
   authenticate?: (request: FastifyRequest) => Promise<AuthenticatedSocket | null>
+  validateSession?: (sessionId: string) => Promise<boolean>
 }
 
 export class RealtimeGateway {
@@ -68,7 +69,7 @@ export class RealtimeGateway {
                 }
                 ;(request as RealtimeRequest).realtimePrincipal = principal
               } else {
-                ;(request as RealtimeRequest).realtimePrincipal = { userId: 'anonymous' }
+                ;(request as RealtimeRequest).realtimePrincipal = { userId: 'anonymous', sessionId: 'anonymous' }
               }
             } catch (error) {
               const statusCode = typeof error === 'object' && error !== null && 'statusCode' in error
@@ -147,7 +148,17 @@ export class RealtimeGateway {
     )
 
     const timer = setInterval(() => {
-      if (socket.readyState === 1) socket.ping()
+      if (socket.readyState !== 1) return
+      if (principal.sessionId !== 'anonymous' && this.options.validateSession) {
+        void this.options.validateSession(principal.sessionId).then((active) => {
+          if (!active) socket.close(1008, 'Session expired or revoked')
+          else if (socket.readyState === 1) socket.ping()
+        }).catch(() => {
+          socket.close(1011, 'Session validation failed')
+        })
+        return
+      }
+      socket.ping()
     }, HEARTBEAT_MS)
 
     timer.unref()
