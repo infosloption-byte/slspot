@@ -57,9 +57,12 @@ function queryEnumList(value: string | undefined, allowed: readonly string[], na
   return values
 }
 
-function queryDate(value: string | undefined, name: string): Date | undefined {
+function queryDate(value: string | undefined, name: string, endOfDay = false): Date | undefined {
   if (value === undefined) return undefined
-  const date = new Date(value)
+  const normalized = value.trim()
+  const date = /^\\d{4}-\\d{2}-\\d{2}$/.test(normalized)
+    ? new Date(normalized + (endOfDay ? 'T23:59:59.999Z' : 'T00:00:00.000Z'))
+    : new Date(normalized)
   if (Number.isNaN(date.getTime())) {
     throw new AuthError(400, 'INVALID_QUERY', name + ' must be a valid date')
   }
@@ -127,7 +130,7 @@ export function registerPlatformApiRoutes(app: FastifyInstance, options: Platfor
   app.get<{ Querystring: Query }>(PREFIX + '/trades', async (request) => {
     const session = await requireSession(request, options.authService)
     const from = queryDate(request.query.from, 'From date')
-    const to = queryDate(request.query.to, 'To date')
+    const to = queryDate(request.query.to, 'To date', true)
     if (from && to && from.getTime() > to.getTime()) {
       throw new AuthError(400, 'INVALID_QUERY', 'From date must not be after to date')
     }
