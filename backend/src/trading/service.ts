@@ -191,7 +191,12 @@ export class TradingService {
   async start(): Promise<void> {
     if (this.running) return
     this.running = true
-    await this.settleExpiredTrades()
+    // Recover every already-expired trade in batches before normal scheduling. The browser is
+    // never authoritative for expiry, so a server restart or client outage cannot strand funds.
+    for (let batch = 0; batch < 100; batch += 1) {
+      const settled = await this.settleExpiredTrades()
+      if (settled === 0 || settled < 50) break
+    }
     this.schedule()
   }
 
@@ -594,8 +599,9 @@ export class TradingService {
     return result
   }
 
-  async settleExpiredTrades(): Promise<void> {
+  async settleExpiredTrades(): Promise<number> {
     const now = new Date()
+    let settledCount = 0
     const trades = await this.prisma.trade.findMany({
       where: {
         status: 'OPEN',
@@ -632,6 +638,7 @@ export class TradingService {
       try {
         const outcome = await this.settleTrade(trade.id, settlementPrice, 'EXPIRY')
         if (outcome) {
+          settledCount += 1
           const result = this.toTradingResult(outcome.trade, outcome.position, outcome.settlement)
           await this.publishTradeSettlement(trade.userId, result)
           await this.createTradeResultNotification(trade.userId, result, outcome.position.asset.symbol)
@@ -640,6 +647,170 @@ export class TradingService {
         this.logger.error({ err: error, tradeId: trade.id }, 'Expired trade settlement failed')
       }
     }
+
+    return settledCount
+  }
+
+  async cancelTrade(userId: string, tradeId: string, mode: WalletMode = 'DEMO'): Promise<ApiTradingResult> {
+    const details = await this.loadTrade(tradeId)
+    if (!details || details.trade.userId !== userId) {
+      throw new TradingError(404, 'TRADE_NOT_FOUND', 'Trade was not found')
+    }
+
+    const account = await this.prisma.account.findUnique({
+      where: { id: details.position.accountId },
+      select: { mode: true },
+    })
+    if (!account || account.mode !== mode) {
+      throw new TradingError(404, 'TRADE_NOT_FOUND', 'Trade was not found')
+    }
+
+    if (details.trade.status !== 'OPEN' || details.position.status !== 'OPEN') {
+      return this.toTradingResult(details.trade, details.position, details.settlement)
+    }
+
+    const outcome = await this.prisma.$transaction(async (tx) => {
+      const current = await tx.trade.findUnique({
+        where: { id: tradeId },
+        include: {
+          position: { include: { order: true, asset: true } },
+          settlement: true,
+        },
+      })
+      if (!current || current.userId !== userId || current.status !== 'OPEN' || current.position.status !== 'OPEN') return null
+      if (current.position.order.expiresAt && current.position.order.expiresAt.getTime() <= Date.now()) {
+        throw new TradingError(409, 'TRADE_EXPIRED', 'This trade has already expired and is being settled')
+      }
+
+      const now = new Date()
+      const amount = current.position.amount
+      const fee = current.position.order.fee
+      const netPnl = fee.neg()
+
+      const claimed = await tx.trade.updateMany({
+        where: { id: tradeId, userId, status: 'OPEN' },
+        data: { status: 'CANCELLED', grossPnl: new Prisma.Decimal(0), netPnl, closedAt: now },
+      })
+      if (claimed.count !== 1) return null
+
+      await tx.position.update({
+        where: { id: current.position.id },
+        data: { status: 'CLOSED', closedAt: now },
+      })
+      await tx.order.update({
+        where: { id: current.position.order.id },
+        data: { status: 'CANCELLED' },
+      })
+
+      const walletUpdated = await tx.wallet.updateMany({
+        where: {
+          accountId: current.position.accountId,
+          status: 'ACTIVE',
+          heldBalance: { gte: amount },
+        },
+        data: {
+          heldBalance: { decrement: amount },
+          availableBalance: { increment: amount },
+        },
+      })
+      if (walletUpdated.count !== 1) {
+        throw new TradingError(409, 'CANCEL_BALANCE_ERROR', 'The trade stake could not be released atomically')
+      }
+
+      const wallet = await tx.wallet.findUnique({ where: { accountId: current.position.accountId } })
+      if (!wallet) throw new TradingError(409, 'WALLET_NOT_FOUND', 'Trading wallet was not found during cancellation')
+
+      const walletLedger = await this.ledger.ensureWalletLedgerAccounts(tx, current.position.accountId, wallet.currency)
+      const releaseTx = await tx.walletTransaction.create({
+        data: {
+          walletId: wallet.id,
+          type: 'TRADE_RELEASE',
+          status: 'COMPLETED',
+          amount,
+          currency: wallet.currency,
+          idempotencyKey: 'trade-release:' + tradeId,
+          referenceType: 'TRADE_CANCEL',
+          referenceId: tradeId,
+          description: 'Released stake for cancelled trade ' + tradeId,
+          availableBalanceAfter: wallet.availableBalance,
+          heldBalanceAfter: wallet.heldBalance,
+        },
+      })
+
+      await this.ledger.postTransaction(tx, {
+        walletTransactionId: releaseTx.id,
+        currency: wallet.currency,
+        referenceType: 'TRADE_CANCEL',
+        referenceId: tradeId,
+        description: 'Released stake for cancelled trade ' + tradeId,
+        lines: [
+          {
+            accountCode: walletLedger.heldCode,
+            accountName: 'User held balance',
+            accountType: 'LIABILITY',
+            direction: 'DEBIT',
+            amount,
+          },
+          {
+            accountCode: walletLedger.availableCode,
+            accountName: 'User available balance',
+            accountType: 'LIABILITY',
+            direction: 'CREDIT',
+            amount,
+          },
+        ],
+      })
+
+      const settlement = await tx.settlement.upsert({
+        where: { tradeId },
+        create: {
+          tradeId,
+          status: 'COMPLETED',
+          settlementPrice: null,
+          grossPayout: amount,
+          fees: fee,
+          netPnl,
+          referenceId: 'cancel:' + tradeId,
+          settledAt: now,
+        },
+        update: {
+          status: 'COMPLETED',
+          settlementPrice: null,
+          grossPayout: amount,
+          fees: fee,
+          netPnl,
+          referenceId: 'cancel:' + tradeId,
+          settledAt: now,
+        },
+      })
+
+      await tx.auditLog.create({
+        data: {
+          actorUserId: userId,
+          action: 'TRADE_CANCELLED',
+          entityType: 'Trade',
+          entityId: tradeId,
+          metadata: { mode, amount: amount.toString(), fee: fee.toString() },
+        },
+      })
+
+      return {
+        trade: { ...current, status: 'CANCELLED' as const, grossPnl: new Prisma.Decimal(0), netPnl, closedAt: now },
+        position: { ...current.position, status: 'CLOSED' as const, exitPrice: null, closedAt: now },
+        settlement,
+      }
+    })
+
+    if (!outcome) {
+      const latest = await this.loadTrade(tradeId)
+      if (!latest || latest.trade.userId !== userId) throw new TradingError(404, 'TRADE_NOT_FOUND', 'Trade was not found')
+      return this.toTradingResult(latest.trade, latest.position, latest.settlement)
+    }
+
+    const result = this.toTradingResult(outcome.trade, outcome.position, outcome.settlement)
+    await this.publishTradeSettlement(userId, result)
+    await this.createTradeResultNotification(userId, result, outcome.position.asset.symbol)
+    return result
   }
 
   private async settleTrade(tradeId: string, settlementPrice: Prisma.Decimal | string, reason: 'MANUAL' | 'EXPIRY') {
@@ -1123,7 +1294,7 @@ export class TradingService {
     result: ApiTradingResult,
     symbol: string,
   ): Promise<void> {
-    const title = result.status === 'WON' ? 'Trade won' : result.status === 'DRAW' ? 'Trade draw: stake returned' : 'Trade settled'
+    const title = result.status === 'WON' ? 'Trade won' : result.status === 'DRAW' ? 'Trade draw: stake returned' : result.status === 'CANCELLED' ? 'Trade cancelled: stake returned' : 'Trade settled'
     const pnl = result.netPnl ?? '0'
     const message = symbol + ' · ' + result.direction + ' · P&L ' + (Number(pnl) >= 0 ? '+' : '') + pnl
 
