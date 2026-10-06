@@ -172,7 +172,7 @@ export function TradePanel({ asset, balance, walletMode, canTrade, tradeDisabled
           <div className="trade-field">
             <span className="trade-field__label">Duration</span>
             <div className="duration-stepper">
-              <button type="button" onClick={() => adjustDuration(-1)} aria-label="Decrease duration by 5 seconds" disabled={duration <= (asset.durationsSeconds[0] ?? DURATION_STEP_SECONDS)}><Minus size={16} /></button>
+              <button type="button" onClick={() => adjustDuration(-1)} aria-label="Select previous duration" disabled={duration <= (asset.durationsSeconds[0] ?? DURATION_STEP_SECONDS)}><Minus size={16} /></button>
               <Select
                 value={String(duration)}
                 options={asset.durationsSeconds.map((value) => ({ value: String(value), label: formatDuration(value) }))}
@@ -181,7 +181,7 @@ export function TradePanel({ asset, balance, walletMode, canTrade, tradeDisabled
                 leadingIcon={<Timer size={16} />}
                 mobilePlacement="up"
               />
-              <button type="button" onClick={() => adjustDuration(1)} aria-label="Increase duration by 5 seconds" disabled={duration >= (asset.durationsSeconds[asset.durationsSeconds.length - 1] ?? 300)}><Plus size={16} /></button>
+              <button type="button" onClick={() => adjustDuration(1)} aria-label="Select next duration" disabled={duration >= (asset.durationsSeconds[asset.durationsSeconds.length - 1] ?? 300)}><Plus size={16} /></button>
             </div>
           </div>
 
