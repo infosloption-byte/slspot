@@ -387,7 +387,6 @@ function ChartCanvas({
     const reconciled = reconcileLiveBar(keep, serverLast)
     liveBarRef.current = reconciled
     liveBarDatasetRef.current = datasetKey
-    targetPriceRef.current = asset.price
     if (reconciled) displayPriceRef.current = reconciled.close
   }, [candles, datasetKey])
 
