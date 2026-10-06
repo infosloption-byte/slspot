@@ -106,32 +106,12 @@ function parseDecimalString(
   return normalized
 }
 
-function parseMarketDataBaseUrl(value: string | undefined, nodeEnv: NodeEnv, provider: 'disabled' | 'twelve-data'): string {
-  const raw = (value ?? 'https://api.twelvedata.com').trim()
-  let parsed: URL
-  try {
-    parsed = new URL(raw)
-  } catch {
-    throw new Error('MARKET_DATA_BASE_URL must be a valid URL')
+function parseMarketProvider(value: string | undefined): 'disabled' | 'multi-exchange' {
+  const provider = (value ?? 'multi-exchange').trim().toLowerCase()
+  if (provider !== 'disabled' && provider !== 'multi-exchange') {
+    throw new Error('MARKET_DATA_PROVIDER must be disabled or multi-exchange')
   }
-  if (!['http:', 'https:'].includes(parsed.protocol) || parsed.username || parsed.password || parsed.search || parsed.hash) {
-    throw new Error('MARKET_DATA_BASE_URL must be a clean HTTP(S) URL without credentials or query parameters')
-  }
-  if (nodeEnv === 'production' && parsed.protocol !== 'https:') {
-    throw new Error('MARKET_DATA_BASE_URL must use HTTPS in production')
-  }
-  if (nodeEnv === 'production' && provider === 'twelve-data' && parsed.hostname !== 'api.twelvedata.com') {
-    throw new Error('Production Twelve Data configuration must use api.twelvedata.com')
-  }
-  return parsed.origin
-}
-
-function parseMarketProvider(value: string | undefined): 'disabled' | 'twelve-data' {
-  const provider = (value ?? 'twelve-data').trim().toLowerCase()
-  if (provider !== 'disabled' && provider !== 'twelve-data') {
-    throw new Error('MARKET_DATA_PROVIDER must be disabled or twelve-data')
-  }
-  return provider as 'disabled' | 'twelve-data'
+  return provider as 'disabled' | 'multi-exchange'
 }
 
 function parseDatabaseUrl(
@@ -263,17 +243,21 @@ const exposeDevTokens = parseBoolean(
   false,
 )
 const marketDataProvider = parseMarketProvider(process.env.MARKET_DATA_PROVIDER)
-const marketDataBaseUrl = parseMarketDataBaseUrl(process.env.MARKET_DATA_BASE_URL, nodeEnv, marketDataProvider)
 const marketDataEnabled = parseBoolean('MARKET_DATA_ENABLED', process.env.MARKET_DATA_ENABLED, marketDataProvider !== 'disabled')
-const marketDataApiKey = process.env.MARKET_DATA_API_KEY?.trim() || undefined
 const marketDataBootstrapAssets = parseBoolean('MARKET_DATA_BOOTSTRAP_ASSETS', process.env.MARKET_DATA_BOOTSTRAP_ASSETS, nodeEnv !== 'production')
 // Simulated prices keep the DEMO market usable when no live feed is configured or the feed is
 // failing (missing/rate-limited API key). Never allowed in production.
 const marketDataSimulate = parseBoolean('MARKET_DATA_SIMULATE', process.env.MARKET_DATA_SIMULATE, nodeEnv !== 'production')
-// Crypto is priced from Binance's public feed (tick-level WebSocket + REST); Twelve Data covers the rest.
+// Crypto is priced through an ordered exchange feed: Binance → Kraken → OKX.
 const binanceEnabled = parseBoolean('BINANCE_ENABLED', process.env.BINANCE_ENABLED, marketDataProvider !== 'disabled')
 const binanceRestUrl = (process.env.BINANCE_REST_URL?.trim() || 'https://api.binance.com').replace(/\/$/, '')
 const binanceWsUrl = (process.env.BINANCE_WS_URL?.trim() || 'wss://stream.binance.com:9443').replace(/\/$/, '')
+const krakenEnabled = parseBoolean('KRAKEN_ENABLED', process.env.KRAKEN_ENABLED, marketDataProvider !== 'disabled')
+const krakenBaseUrl = (process.env.KRAKEN_BASE_URL?.trim() || 'https://api.kraken.com').replace(/\/$/, '')
+const krakenWsUrl = (process.env.KRAKEN_WS_URL?.trim() || 'wss://ws.kraken.com/v2').replace(/\/$/, '')
+const okxEnabled = parseBoolean('OKX_ENABLED', process.env.OKX_ENABLED, marketDataProvider !== 'disabled')
+const okxBaseUrl = (process.env.OKX_BASE_URL?.trim() || 'https://www.okx.com').replace(/\/$/, '')
+const okxWsUrl = (process.env.OKX_WS_URL?.trim() || 'wss://ws.okx.com/ws/v5/public').replace(/\/$/, '')
 const adminBootstrapEmails = [...new Set((process.env.ADMIN_BOOTSTRAP_EMAILS ?? '').split(',').map((value) => value.trim().toLowerCase()).filter(Boolean))]
 const authCookieName = parseCookieName(process.env.AUTH_COOKIE_NAME, nodeEnv, nodeEnv === 'production' ? '__Host-slspot_session' : 'slspot_session')
 const csrfCookieName = parseCookieName(process.env.CSRF_COOKIE_NAME, nodeEnv, nodeEnv === 'production' ? '__Host-slspot_csrf' : 'slspot_csrf')
@@ -300,9 +284,6 @@ if (nodeEnv === 'production' && marketDataSimulate) {
   throw new Error('MARKET_DATA_SIMULATE must be false in production')
 }
 
-if (nodeEnv === 'production' && marketDataEnabled && marketDataProvider === 'twelve-data' && !marketDataApiKey) {
-  throw new Error('MARKET_DATA_API_KEY must be configured when Twelve Data market data is enabled in production')
-}
 
 export const env = {
   nodeEnv,
@@ -349,13 +330,13 @@ export const env = {
   marketData: {
     provider: marketDataProvider,
     enabled: marketDataEnabled,
-    apiKey: marketDataApiKey,
-    baseUrl: marketDataBaseUrl,
     pollIntervalMs: parsePositiveInteger('MARKET_DATA_POLL_INTERVAL_MS', process.env.MARKET_DATA_POLL_INTERVAL_MS, 15_000, 5_000, 300_000),
     requestTimeoutMs: parsePositiveInteger('MARKET_DATA_REQUEST_TIMEOUT_MS', process.env.MARKET_DATA_REQUEST_TIMEOUT_MS, 10_000, 1_000, 60_000),
     bootstrapAssets: marketDataBootstrapAssets,
     simulate: marketDataSimulate,
     binance: { enabled: binanceEnabled, restUrl: binanceRestUrl, wsUrl: binanceWsUrl },
+    kraken: { enabled: krakenEnabled, baseUrl: krakenBaseUrl, wsUrl: krakenWsUrl },
+    okx: { enabled: okxEnabled, baseUrl: okxBaseUrl, wsUrl: okxWsUrl },
   },
   trading: {
     feeRate: parseDecimalString('TRADING_FEE_RATE', process.env.TRADING_FEE_RATE, '0'),
