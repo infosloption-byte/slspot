@@ -1,116 +1,94 @@
 # SL Spot Market Data
 
-## Provider
+## Provider architecture
 
-The first market-data adapter is Twelve Data. The provider API key is backend-only and is never sent to the browser.
+SL Spot uses a backend-only multi-exchange crypto feed:
 
-Twelve Data documents HTTP-header authentication using `Authorization: apikey ...` and REST quote/time-series endpoints.
+    Binance WS (primary)
+          |
+    Kraken WS (fallback)
+          |
+      OKX WS (secondary fallback)
+          v
+    Normalized Tick -> Market Data Service -> Redis / MySQL -> SL Spot WebSocket -> Trading Room Chart
 
-Configure the backend with:
+Binance is the preferred source. Kraken becomes active only when Binance data is no longer fresh for an asset, and OKX is the next fallback. All three streams remain warm so recovery does not require a cold connection.
 
-```env
-MARKET_DATA_PROVIDER=twelve-data
-MARKET_DATA_ENABLED=true
-MARKET_DATA_API_KEY=your_twelve_data_key
-MARKET_DATA_BOOTSTRAP_ASSETS=true
-MARKET_DATA_POLL_INTERVAL_MS=15000
-MARKET_DATA_REQUEST_TIMEOUT_MS=10000
-```
+The browser never connects directly to an exchange. Exchange credentials are not required for public market-data feeds.
 
-Production requires an explicit API key when Twelve Data market data is enabled.
+## Current scope
 
-## Registry
+The exchange stack is crypto-only. Binance, Kraken and OKX are appropriate for crypto spot market data, but they are not a replacement for a general FX, equities, commodities or index feed.
 
-Development bootstrap provisions these application assets:
+The default registry enables BTC/USD, ETH/USD, BNB/USD, SOL/USD, XRP/USD, DOGE/USD, ADA/USD, AVAX/USD and LINK/USD.
 
-| SL Spot asset | Provider symbol |
-| --- | --- |
-| BTC/USD | BTC/USD |
-| ETH/USD | ETH/USD |
-| SOL/USD | SOL/USD |
-| XRP/USD | XRP/USD |
-| EUR/USD | EUR/USD |
-| GBP/USD | GBP/USD |
-| AAPL/USD | AAPL |
-| TSLA/USD | TSLA |
-| XAU/USD | XAU/USD |
-| NAS100/USD | NDX |
+Legacy non-crypto defaults (EUR/USD, GBP/USD, AAPL/USD, TSLA/USD, XAU/USD and NAS100/USD) are kept inactive until a dedicated multi-asset provider is selected.
 
-Provider availability can vary by instrument, exchange and subscription plan. A failed individual quote moves that market to maintenance rather than exposing provider errors to the browser.
+For exchange transport, the internal USD-labelled crypto pairs use the exchanges' liquid USD-stable spot markets where required. This mapping must be treated as part of the formal pricing policy before real-money launch.
 
-## Data flow
+## Configuration
 
-```text
-Twelve Data REST API
-        ↓
-TwelveDataProvider
-        ↓
-MarketDataService
-   ├── MySQL Market.lastPrice/status/lastPriceAt
-   └── Redis slspot:realtime:v1
-                 ↓
-          RealtimeGateway
-                 ↓
-       browser market:<assetId>
-```
+    MARKET_DATA_PROVIDER=multi-exchange
+    MARKET_DATA_ENABLED=true
+    MARKET_DATA_BOOTSTRAP_ASSETS=true
+    MARKET_DATA_POLL_INTERVAL_MS=15000
+    MARKET_DATA_REQUEST_TIMEOUT_MS=10000
 
-The application exposes normalized candles through:
+    BINANCE_ENABLED=true
+    BINANCE_REST_URL=https://api.binance.com
+    BINANCE_WS_URL=wss://stream.binance.com:9443
 
-```text
-GET /api/v1/market/assets/:assetId/candles?interval=5min&limit=200
-```
+    KRAKEN_ENABLED=true
+    KRAKEN_BASE_URL=https://api.kraken.com
+    KRAKEN_WS_URL=wss://ws.kraken.com/v2
 
-Supported intervals include 1min, 5min, 15min, 30min, 45min, 1h, 2h, 4h, 8h, 1day, 1week and 1month.
+    OKX_ENABLED=true
+    OKX_BASE_URL=https://www.okx.com
+    OKX_WS_URL=wss://ws.okx.com/ws/v5/public
 
-The Trading Room combines the REST candle snapshot with the application's `market.price` and `market.status` realtime events. Server-authoritative trading consumes the persisted market price and freshness timestamp rather than trusting browser quotes.
+OKX should use the port-443 websocket URL without :8443. OKX has announced that port 8443 will stop accepting WebSocket connections after October 31, 2026.
 
-## Failure handling
+## Realtime ticks
 
-A quote poll is isolated per market. Provider failures mark the affected market `MAINTENANCE`, publish a maintenance status event when Redis is available, increase the polling delay with exponential backoff, and retry automatically.
+The provider streams normalize into a common tick record containing provider, external symbol, price, exchange timestamp and provider sequence/trade identifier.
 
-## Local setup
+The service keeps a separate latest tick per provider and asset. Source selection follows this order:
 
-Create or update `backend/.env`:
+    Binance fresh -> use Binance
+    Binance stale -> Kraken fresh -> use Kraken
+    Binance + Kraken stale -> OKX fresh -> use OKX
+    none fresh -> market unavailable (or explicit development simulation)
 
-```env
-MARKET_DATA_PROVIDER=twelve-data
-MARKET_DATA_ENABLED=true
-MARKET_DATA_API_KEY=your_twelve_data_key
-MARKET_DATA_BOOTSTRAP_ASSETS=true
-MARKET_DATA_POLL_INTERVAL_MS=15000
-MARKET_DATA_REQUEST_TIMEOUT_MS=10000
-```
+Only the currently selected source is published as the authoritative market.price event. A source recovery automatically promotes Binance again when a fresh Binance tick arrives.
 
-Then run:
+## Candles and REST fallback
 
-```powershell
-cd backend
-npm run typecheck
-npm test
-npm run test:market
-npm run dev
-```
+Historical candles use the same ordered provider chain. If Binance REST fails or an interval is unsupported, Kraken is attempted, then OKX.
 
-Without a provider key, set `MARKET_DATA_ENABLED=false` to disable polling while keeping the API available.
+Exchange WebSocket ticks take precedence over REST snapshots while a fresh tick stream is available, so a slower REST response cannot overwrite a newer realtime price.
 
-## Provider transport boundary
+## Trading-price audit
 
-The first implementation intentionally uses REST polling instead of making Twelve Data's WebSocket service a hard dependency of SL Spot's browser realtime layer. Twelve Data documents WebSocket streaming with plan-dependent limits.
+Every new trade records entry provider, entry timestamp and entry price.
 
-```text
-external provider
-       ↓
-provider adapter
-       ↓
-normalized platform event
-       ↓
-Redis
-       ↓
-SL Spot WebSocket
-       ↓
-browser
-```
+Every completed settlement records entry price, entry provider, entry timestamp, settlement provider, settlement timestamp and settlement price.
 
-## Scope boundary
+The settlement service prefers the trade's entry provider while it remains fresh. If that source is unavailable at expiry, the active fallback source may be used according to the configured policy, and the fallback provider is recorded in the settlement.
 
-This document covers market-data ingestion. Server-authoritative order submission, position creation, settlement, payout calculation, wallet reservation and settlement ledger movements are now implemented in `backend/src/trading/` and documented in `docs/TRADING_ENGINE.md`. Deposits, withdrawals, payments, KYC/AML, reconciliation and production financial controls remain outside this milestone.
+This is intentionally auditable: the application never silently changes the pricing source.
+
+## Chart rendering
+
+The backend publishes realtime price events at roughly 10 Hz. The browser interpolates from the currently displayed price toward the newest authoritative tick using requestAnimationFrame, allowing the chart to render smoothly around 60fps without changing the settlement price.
+
+The interpolation is visual only. Server-side trading and settlement continue to use the raw authoritative price/timestamp.
+
+## Development simulation
+
+Simulation is development-only and should be explicitly enabled with MARKET_DATA_SIMULATE=true. It is never allowed in production.
+
+## Operational guidance
+
+Monitor provider connection state, per-provider tick freshness, active provider per asset, source-switch events, REST quote failures, candle fallback usage and settlement price source.
+
+For production fixed-duration trading, the provider failover policy should be documented as part of the product's official settlement rules before enabling real-money execution.
