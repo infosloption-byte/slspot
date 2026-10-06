@@ -419,9 +419,6 @@ export class TradingService {
           },
         })
 
-        const heldWallet = await tx.wallet.findUnique({ where: { id: wallet!.id } })
-        if (!heldWallet) throw new TradingError(409, 'WALLET_NOT_FOUND', 'Trading wallet disappeared while holding funds')
-
         await tx.auditLog.create({
           data: {
             actorUserId: userId,
@@ -445,6 +442,9 @@ export class TradingService {
             throw new TradingError(409, 'FEE_BALANCE_ERROR', 'Trading fee could not be reserved atomically')
           }
         }
+
+        const heldWallet = await tx.wallet.findUnique({ where: { id: wallet!.id } })
+        if (!heldWallet) throw new TradingError(409, 'WALLET_NOT_FOUND', 'Trading wallet disappeared after reserving trade funds')
 
         const ledgerAccounts = await this.ledger.ensureWalletLedgerAccounts(tx, account.id, wallet!.currency)
 
