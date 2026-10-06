@@ -686,6 +686,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
 .toggle { width: 42px; height: 24px; flex: none; padding: 2px; border-radius: 999px; background: var(--bg-3); border: 1px solid var(--line-strong); display: inline-flex; }
 .toggle > span { width: 18px; height: 18px; border-radius: 50%; background: var(--muted); transition: transform 0.15s; }
 .toggle--on { background: var(--accent); border-color: var(--accent); }
+button.toggle { cursor: pointer; appearance: none; }
 .toggle--on > span { background: var(--accent-ink); transform: translateX(18px); }
 
 .security-banner { display: flex; align-items: center; gap: 14px; padding: 14px 16px; margin-bottom: 12px; background: var(--bg-1); border-color: var(--accent-line); }
@@ -3572,3 +3573,10 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
     width: 32px;
   }
 }
+
+
+/* Workspace preference: keep the trading view compact without changing its structure. */
+.app-shell--compact .trading-room { gap: 4px; }
+.app-shell--compact .chart-workspace { padding: 0; }
+.app-shell--compact .trade-panel { gap: 8px; }
+.app-shell--compact .trade-field { gap: 6px; }
