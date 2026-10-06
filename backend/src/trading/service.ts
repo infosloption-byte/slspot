@@ -160,6 +160,11 @@ type TradingSettlementRecord = {
   id: string
   status: string
   settlementPrice: Prisma.Decimal | null
+  entryPrice: Prisma.Decimal | null
+  entryProvider: string | null
+  entryTimestamp: Date | null
+  settlementProvider: string | null
+  settlementTimestamp: Date | null
   referenceId: string | null
   netPnl: Prisma.Decimal | null
   settledAt: Date | null
