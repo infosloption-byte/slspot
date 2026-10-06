@@ -25,7 +25,7 @@ const PAYOUT_RATES: Record<string, string> = {
 export const TRADING_RULES = {
   minAmount: '1.00000000',
   maxAmount: '100000.00000000',
-  durationsSeconds: [15, 30, 60, 300] as const,
+  durationsSeconds: Array.from({ length: 60 }, (_, index) => (index + 1) * 5),
 }
 
 export function getTradingRules(symbol: string, marketOpen = true): TradingRules {
