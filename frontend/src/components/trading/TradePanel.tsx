@@ -201,11 +201,16 @@ export function TradePanel({ asset, balance, walletMode, canTrade, tradeDisabled
         <div className="trade-panel__mobile-content">
           <div className="trade-mobile-config-row">
             <button className="trade-mobile-config" type="button" onClick={() => setMobileConfigOpen((current) => !current)} aria-expanded={mobileConfigOpen}>
-              <span>Stake <strong>{formatCurrency(amount, asset.quoteCurrency)}</strong> · {formatDuration(duration)}</span>
+              <strong>{asset.symbol}</strong>
+              <span>Stake <strong>{formatCurrency(amount, asset.quoteCurrency)}</strong></span>
+              <span aria-hidden="true">|</span>
+              <span>{formatDuration(duration).toUpperCase()}</span>
             </button>
             <div className="trade-mobile-payout-summary" aria-label="Trade payout summary">
-              <span><small>Return</small><strong>{formatCurrency(estimatedPayout, asset.quoteCurrency)}</strong></span>
-              <span><small>Total</small><strong>{formatCurrency(totalReturn, asset.quoteCurrency)}</strong></span>
+              <span aria-hidden="true">|</span>
+              <span>Return <strong>{formatCurrency(estimatedPayout, asset.quoteCurrency)}</strong></span>
+              <span aria-hidden="true">|</span>
+              <span>Total <strong>{formatCurrency(totalReturn, asset.quoteCurrency)}</strong></span>
             </div>
             <button className="trade-mobile-rate" type="button" onClick={() => setMobileConfigOpen((current) => !current)} aria-label="Toggle trade details" aria-expanded={mobileConfigOpen}>
               <span>{asset.payout}%</span>
