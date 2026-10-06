@@ -220,6 +220,7 @@ export class TradingService {
     const existing = await this.prisma.order.findUnique({
       where: { clientRequestId: requestId },
       include: {
+        account: { select: { mode: true } },
         position: {
           include: {
             asset: true,
@@ -230,11 +231,25 @@ export class TradingService {
       },
     })
 
-    if (existing && existing.userId !== userId) {
-      throw new TradingError(409, 'IDEMPOTENCY_CONFLICT', 'The idempotency key is already associated with another user')
-    }
-    if (existing?.position?.trade) {
-      return this.toTradingResult(existing.position.trade, existing.position, existing.position.trade.settlement)
+    const requestedAmount = this.parseAmount(input.amount)
+    const requestedSide = input.direction === 'UP' ? 'BUY' : 'SELL'
+
+    if (existing) {
+      const replayMatches =
+        existing.userId === userId &&
+        existing.account.mode === mode &&
+        existing.assetId === input.assetId &&
+        existing.side === requestedSide &&
+        existing.amount.eq(requestedAmount) &&
+        existing.durationSeconds === input.durationSeconds
+
+      if (!replayMatches) {
+        throw new TradingError(409, 'IDEMPOTENCY_CONFLICT', 'The idempotency key was already used for a different trade request')
+      }
+      if (existing.position?.trade) {
+        return this.toTradingResult(existing.position.trade, existing.position, existing.position.trade.settlement)
+      }
+      throw new TradingError(409, 'ORDER_ALREADY_EXISTS', 'The order already exists')
     }
     if (existing) {
       throw new TradingError(409, 'ORDER_ALREADY_EXISTS', 'The order already exists')
@@ -279,7 +294,7 @@ export class TradingService {
           throw new TradingError(403, 'WALLET_NOT_ELIGIBLE', 'The trading wallet is not active')
         }
 
-        const amount = this.parseAmount(input.amount)
+        const amount = requestedAmount
         const payoutRate = new Prisma.Decimal(rules.payoutRate)
         const fee = amount.mul(new Prisma.Decimal(rules.feeRate))
         const holdAmount = amount
@@ -534,6 +549,7 @@ export class TradingService {
         const retry = await this.prisma.order.findUnique({
           where: { clientRequestId: requestId },
           include: {
+            account: { select: { mode: true } },
             position: {
               include: {
                 asset: true,
@@ -543,8 +559,20 @@ export class TradingService {
             },
           },
         })
-        if (retry?.position?.trade) {
-          return this.toTradingResult(retry.position.trade, retry.position, retry.position.trade.settlement)
+        if (retry) {
+          const replayMatches =
+            retry.userId === userId &&
+            retry.account.mode === mode &&
+            retry.assetId === input.assetId &&
+            retry.side === requestedSide &&
+            retry.amount.eq(requestedAmount) &&
+            retry.durationSeconds === input.durationSeconds
+          if (!replayMatches) {
+            throw new TradingError(409, 'IDEMPOTENCY_CONFLICT', 'The idempotency key was already used for a different trade request')
+          }
+          if (retry.position?.trade) {
+            return this.toTradingResult(retry.position.trade, retry.position, retry.position.trade.settlement)
+          }
         }
       }
 
