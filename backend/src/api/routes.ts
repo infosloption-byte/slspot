@@ -246,7 +246,7 @@ export function registerPlatformApiRoutes(app: FastifyInstance, options: Platfor
   app.get<{ Querystring: Query }>(PREFIX + '/wallet/transactions', async (request) => {
     const session = await requireSession(request, options.authService)
     const from = queryDate(request.query.from, 'From date')
-    const to = queryDate(request.query.to, 'To date')
+    const to = queryDate(request.query.to, 'To date', true)
     if (from && to && from.getTime() > to.getTime()) {
       throw new AuthError(400, 'INVALID_QUERY', 'From date must not be after to date')
     }
