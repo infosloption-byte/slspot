@@ -1239,6 +1239,39 @@ button.toggle { cursor: pointer; appearance: none; }
 
 .trade-panel__desktop-content { display:flex; flex-direction:column; gap:18px; min-height:0; }
 .trade-panel__mobile-content { display:none; }
+.duration-stepper {
+  display:grid;
+  grid-template-columns:42px minmax(0,1fr) 42px;
+  align-items:stretch;
+  gap:6px;
+}
+.duration-stepper > button {
+  min-width:0;
+  height:50px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border:1px solid var(--line-strong);
+  border-radius:var(--radius-md);
+  background:var(--bg-2);
+  color:var(--muted);
+  cursor:pointer;
+  transition:border-color .16s ease, background .16s ease, color .16s ease;
+}
+.duration-stepper > button:hover:not(:disabled) {
+  border-color:var(--accent-line);
+  background:var(--bg-3);
+  color:var(--accent);
+}
+.duration-stepper > button:focus-visible {
+  border-color:var(--accent-line);
+  box-shadow:0 0 0 2px var(--accent-soft);
+  outline:0;
+}
+.duration-stepper > button:disabled {
+  opacity:.35;
+  cursor:not-allowed;
+}
 .trade-duration-select .select-field__trigger {
   height:50px;
   padding:0 14px;
@@ -1260,6 +1293,14 @@ button.toggle { cursor: pointer; appearance: none; }
 }
 .trade-duration-select .select-field__trigger--open .select-field__trigger-icon { color:var(--accent); }
 .trade-duration-select .select-field__trigger > span:not(.select-field__trigger-icon) { flex:1; }
+.duration-stepper--mobile {
+  grid-template-columns:34px minmax(0,1fr) 34px;
+  gap:5px;
+}
+.duration-stepper--mobile > button {
+  height:42px;
+  border-radius:var(--radius-md);
+}
 .trade-duration-select--mobile .select-field__trigger {
   height:42px;
   padding:0 10px;
