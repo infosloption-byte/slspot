@@ -137,6 +137,9 @@ function ChartCanvas({
   /** The candle currently being extended by live ticks (accumulates high/low between ticks). */
   const liveBarRef = useRef<ChartCandle | null>(null)
   const liveBarDatasetRef = useRef<string | null>(null)
+  const targetPriceRef = useRef(asset.price)
+  const displayPriceRef = useRef(asset.price)
+  const animationFrameRef = useRef<number | null>(null)
   const entryLinesRef = useRef<Map<string, PriceLineHandle>>(new Map())
   const closes = useMemo(
     () => candles.map((candle) => ({ time: candle.time, value: candle.close })),
@@ -381,37 +384,71 @@ function ChartCanvas({
   useEffect(() => {
     const serverLast = candles[candles.length - 1] ?? null
     const keep = liveBarDatasetRef.current === datasetKey ? liveBarRef.current : null
-    liveBarRef.current = reconcileLiveBar(keep, serverLast)
+    const reconciled = reconcileLiveBar(keep, serverLast)
+    liveBarRef.current = reconciled
     liveBarDatasetRef.current = datasetKey
-  }, [candles, datasetKey])
+    targetPriceRef.current = asset.price
+    if (reconciled) displayPriceRef.current = reconciled.close
+  }, [asset.price, candles, datasetKey])
 
-  // Live ticks update the last candle in place with series.update(). The series is never rebuilt
-  // and the view is never refitted, so the user's zoom and pan survive every tick.
+  // Raw provider updates arrive in batches, but the chart renderer is independent from React's
+  // render cadence. It eases the displayed price toward the newest server tick at ~60fps, while
+  // every settlement continues to use the raw server-authoritative market price.
   useEffect(() => {
-    const price = asset.price
-    const last = liveBarRef.current
-    if (!Number.isFinite(price) || price <= 0 || !last) return
+    targetPriceRef.current = asset.price
+  }, [asset.price])
 
-    const next = applyLivePrice(last, price, intervalSeconds, Date.now() / 1000)
-    liveBarRef.current = next
+  useEffect(() => {
+    const primary = primarySeriesRef.current as { update: (data: unknown) => void } | null
+    if (!primary) return undefined
 
-    const primary = primarySeriesRef.current as {
-      update: (data: unknown) => void
-    } | null
-    if (!primary) return
+    let previousFrame = performance.now()
+    const animate = (frameTime: number) => {
+      const target = targetPriceRef.current
+      const last = liveBarRef.current
+      if (last && Number.isFinite(target) && target > 0) {
+        const elapsed = Math.min(100, Math.max(1, frameTime - previousFrame))
+        previousFrame = frameTime
 
-    if (chartType === 'candles') {
-      primary.update(next)
-    } else {
-      primary.update({ time: next.time, value: next.close })
+        const current = Number.isFinite(displayPriceRef.current) && displayPriceRef.current > 0
+          ? displayPriceRef.current
+          : last.close
+        const alpha = 1 - Math.exp(-elapsed / 80)
+        const nextPrice = current + (target - current) * alpha
+
+        if (Math.abs(nextPrice - current) > Math.max(1e-10, Math.abs(current) * 1e-9)) {
+          const next = applyLivePrice(last, nextPrice, intervalSeconds, frameTime / 1000)
+          liveBarRef.current = next
+          displayPriceRef.current = next.close
+
+          if (chartType === 'candles') {
+            primary.update(next)
+          } else {
+            primary.update({ time: next.time, value: next.close })
+          }
+
+          priceLineRef.current?.applyOptions({ price: next.close })
+
+          if (next.time !== last.time) {
+            const volumeSeries = volumeSeriesRef.current as { update: (data: unknown) => void } | null
+            volumeSeries?.update({
+              time: next.time,
+              value: next.volume ?? 0,
+              color: 'rgba(255,194,26,.28)',
+            })
+          }
+        }
+      }
+
+      animationFrameRef.current = requestAnimationFrame(animate)
     }
 
-    // A new candle has no volume bar yet; add an empty one so the histogram keeps pace with the candles.
-    if (next.time !== last.time) {
-      const volumeSeries = volumeSeriesRef.current as { update: (data: unknown) => void } | null
-      volumeSeries?.update({ time: next.time, value: next.volume ?? 0, color: 'rgba(255,194,26,.28)' })
+    animationFrameRef.current = requestAnimationFrame(animate)
+    return () => {
+      if (animationFrameRef.current !== null) cancelAnimationFrame(animationFrameRef.current)
+      animationFrameRef.current = null
     }
-  }, [asset.price, candles, chartType, intervalSeconds])
+  }, [asset.symbol, chartType, intervalSeconds])
 
   // Entry price lines for open trades. The chart owns the price scale, so the line sits at the real
   // price and follows zoom, pan and auto-scaling.
