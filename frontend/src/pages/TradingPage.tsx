@@ -484,8 +484,7 @@ export function TradingPage() {
   if (wallet.error) accountFailures.push({ label: 'wallet balance', retry: wallet.reload })
   if (positions.error) accountFailures.push({ label: 'open positions', retry: positions.reload })
 
-  if (!selectedAsset || (loading && !market.assets.length)) {
-    const cancelTrade = useCallback(async (tradeId: string) => {
+  const cancelTrade = useCallback(async (tradeId: string) => {
     try {
       const result = await tradesApi.cancel(tradeId, mode)
       await reloadTradingState()
@@ -509,7 +508,8 @@ export function TradingPage() {
     }
   }, [addToast, mode, reloadTradingState])
 
-  return (
+  if (!selectedAsset || (loading && !market.assets.length)) {
+    return (
       <main className="trading-room">
         <div className="trading-room__main panel">
           <ApiState
