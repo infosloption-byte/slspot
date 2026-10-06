@@ -164,7 +164,7 @@ export class RealtimeGateway {
     timer.unref()
     this.heartbeatTimers.set(socket, timer)
 
-    socket.on('message', (raw) => {
+    const handleMessage = (raw: Buffer | ArrayBuffer | Buffer[]) => {
       const message = raw.toString()
 
       if (message === 'ping') {
@@ -239,6 +239,23 @@ export class RealtimeGateway {
           }),
         ),
       )
+    }
+
+    socket.on('message', (raw) => {
+      if (principal.sessionId === 'anonymous' || !this.options.validateSession) {
+        handleMessage(raw)
+        return
+      }
+
+      void this.options.validateSession(principal.sessionId).then((active) => {
+        if (!active) {
+          socket.close(1008, 'Session expired or revoked')
+          return
+        }
+        handleMessage(raw)
+      }).catch(() => {
+        socket.close(1011, 'Session validation failed')
+      })
     })
 
     socket.on('close', () => this.remove(socket))
