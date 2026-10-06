@@ -157,6 +157,8 @@ export function BottomPanel({
   openLoading = false,
   openError = null,
   onOpenRetry,
+  onCancelTrade,
+  onSettleTrade,
   walletLoading = false,
   walletError = null,
   onWalletRetry,
@@ -573,6 +575,17 @@ export function BottomPanel({
         </div>
       ) : null}
     </section>
+
+    <ConfirmDialog
+      open={Boolean(confirmAction)}
+      title={confirmLabel}
+      message={confirmMessage}
+      confirmLabel={confirmLabel}
+      cancelLabel="Keep trade"
+      busy={actionBusy}
+      onConfirm={() => void handleConfirm()}
+      onClose={() => { if (!actionBusy) setConfirmAction(null) }}
+    />
     </Modal>
   )
 }
