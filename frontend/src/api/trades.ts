@@ -2,6 +2,7 @@
 import { apiClient } from './client'
 import type { PaginatedData } from './contracts'
 import type { WalletMode } from '../hooks/useWalletMode'
+import { normalizeDateFilter } from '../lib/dateFilters'
 
 type ApiEnvelope<T> = {
   success: true
@@ -174,8 +175,10 @@ function toQueryString(query: {
   if (query.search?.trim()) params.set('search', query.search.trim())
   if (query.assetId) params.set('assetId', query.assetId)
   if (query.direction) params.set('direction', query.direction)
-  if (query.from) params.set('from', query.from)
-  if (query.to) params.set('to', query.to)
+  const from = normalizeDateFilter(query.from)
+  const to = normalizeDateFilter(query.to, true)
+  if (from) params.set('from', from)
+  if (to) params.set('to', to)
   if (query.sortBy) params.set('sortBy', query.sortBy)
   if (query.sortOrder) params.set('sortOrder', query.sortOrder)
   if (query.settledOnly !== undefined) params.set('settledOnly', String(query.settledOnly))
