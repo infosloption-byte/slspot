@@ -344,7 +344,7 @@ function ChartCanvas({
     }
 
     priceLineRef.current.applyOptions({ price: asset.price })
-  }, [asset.price, chartType, priceLineEnabled])
+  }, [chartType, priceLineEnabled])
 
   useEffect(() => {
     const chart = chartRef.current
@@ -389,7 +389,7 @@ function ChartCanvas({
     liveBarDatasetRef.current = datasetKey
     targetPriceRef.current = asset.price
     if (reconciled) displayPriceRef.current = reconciled.close
-  }, [asset.price, candles, datasetKey])
+  }, [candles, datasetKey])
 
   // Raw provider updates arrive in batches, but the chart renderer is independent from React's
   // render cadence. It eases the displayed price toward the newest server tick at ~60fps, while
