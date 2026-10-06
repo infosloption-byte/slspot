@@ -90,6 +90,10 @@ export type TradeCreateResult = {
   settlementId: string | null
   settlementPrice: string | null
   settlementReference: string | null
+  entryProvider: string | null
+  entryTimestamp: string | null
+  settlementProvider: string | null
+  settlementTimestamp: string | null
 }
 
 export type TradeCloseResult = {
@@ -111,6 +115,10 @@ export type TradeCloseResult = {
   settlementId: string | null
   settlementPrice: string | null
   settlementReference?: string | null
+  entryProvider?: string | null
+  entryTimestamp?: string | null
+  settlementProvider?: string | null
+  settlementTimestamp?: string | null
 }
 
 function unwrap<T>(response: ApiEnvelope<T>): T {
