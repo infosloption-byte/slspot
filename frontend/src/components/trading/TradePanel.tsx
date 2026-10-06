@@ -1,4 +1,4 @@
-import { ChevronDown, Minus, Plus, RefreshCcw, ShieldAlert, Timer, TrendingDown, TrendingUp, X } from 'lucide-react'
+import { ChevronDown, Minus, Plus, RefreshCcw, ShieldAlert, Timer, TrendingDown, TrendingUp } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import type { MarketAsset } from '../../data/mockMarket'
 import type { TradeDirection } from '../../types/trading'
@@ -34,13 +34,10 @@ export function TradePanel({ asset, balance, walletMode, canTrade, tradeDisabled
     resetOrder()
   }
   const [duration, setDuration] = useState(asset.durationsSeconds[0] ?? 60)
-  const [durationOpen, setDurationOpen] = useState(false)
   const [stage, setStage] = useState<OrderStage>('draft')
   const [error, setError] = useState('')
   const [mobileConfigOpen, setMobileConfigOpen] = useState(true)
-  const [mobileDurationOpen, setMobileDurationOpen] = useState(false)
   const [failedRequest, setFailedRequest] = useState<FailedTradeRequest | null>(null)
-  const durationRef = useRef<HTMLDivElement>(null)
   const payoutRate = Number(asset.payoutRate)
   const estimatedPayout = amount * payoutRate
   const feeRate = Number(asset.feeRate)
@@ -65,25 +62,6 @@ export function TradePanel({ asset, balance, walletMode, canTrade, tradeDisabled
     }
     return ''
   }
-  useEffect(() => {
-    if (!durationOpen && stage !== 'submitting' && !error) return
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') return
-      if (durationOpen) setDurationOpen(false)
-      if (stage === 'submitting') return
-      if (error) setError('')
-    }
-    const handlePointerDown = (event: PointerEvent) => {
-      if (durationOpen && durationRef.current && !durationRef.current.contains(event.target as Node)) setDurationOpen(false)
-    }
-    document.addEventListener('keydown', handleKeyDown)
-    document.addEventListener('pointerdown', handlePointerDown)
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown)
-      document.removeEventListener('pointerdown', handlePointerDown)
-    }
-  }, [durationOpen, stage, error])
-
   const resetOrder = () => {
     setStage('draft')
     setError('')
@@ -131,7 +109,6 @@ export function TradePanel({ asset, balance, walletMode, canTrade, tradeDisabled
 
   const chooseDuration = (value: number) => {
     setDuration(value)
-    setDurationOpen(false)
     if (stage !== 'draft') resetOrder()
   }
 
@@ -179,18 +156,18 @@ export function TradePanel({ asset, balance, walletMode, canTrade, tradeDisabled
 
           <div className="trade-field">
             <span className="trade-field__label">Duration</span>
-            <div className="duration-control" ref={durationRef}>
-              <button className="duration-control__button" type="button" onClick={() => setDurationOpen((open) => !open)} aria-expanded={durationOpen} aria-haspopup="dialog">
-                <Timer size={16} />
-                <strong>{formatDuration(duration)}</strong>
-                <ChevronDown size={14} />
-              </button>
-              {durationOpen ? (
-                <div className="duration-popover duration-popover--panel" role="dialog" aria-label="Choose duration">
-                  <div className="duration-popover__header"><span>Expiry</span><button type="button" onClick={() => setDurationOpen(false)} aria-label="Close duration selector"><X size={14} /></button></div>
-                  <div className="duration-popover__grid">{asset.durationsSeconds.map((value) => <button key={value} type="button" className={duration === value ? 'duration-option duration-option--active' : 'duration-option'} onClick={() => chooseDuration(value)}>{formatDuration(value)}</button>)}</div>
-                </div>
-              ) : null}
+            <div className="duration-select">
+              <Timer size={16} aria-hidden="true" />
+              <select
+                value={duration}
+                onChange={(event) => chooseDuration(Number(event.target.value))}
+                aria-label="Trade duration"
+              >
+                {asset.durationsSeconds.map((value) => (
+                  <option key={value} value={value}>{formatDuration(value)}</option>
+                ))}
+              </select>
+              <ChevronDown className="duration-select__chevron" size={14} aria-hidden="true" />
             </div>
           </div>
 
@@ -227,8 +204,19 @@ export function TradePanel({ asset, balance, walletMode, canTrade, tradeDisabled
                 <label><span>Stake</span><div className="stepper"><button type="button" onClick={() => adjustAmount(-10)} aria-label="Decrease stake"><Minus size={15} /></button><div className="stepper__value"><span>{asset.quoteCurrency}</span><input value={amountText} onChange={(event) => handleAmountInput(event.target.value)} type="number" inputMode="decimal" /></div><button type="button" onClick={() => adjustAmount(10)} aria-label="Increase stake"><Plus size={15} /></button></div></label>
                 <label>
                   <span>Duration</span>
-                  <button className="mobile-duration-button" type="button" onClick={() => setMobileDurationOpen((open) => !open)} aria-expanded={mobileDurationOpen}>{formatDuration(duration)} <ChevronDown size={13} /></button>
-                  {mobileDurationOpen ? <div className="mobile-duration-options">{asset.durationsSeconds.map((value) => <button key={value} type="button" className={duration === value ? 'duration-option duration-option--active' : 'duration-option'} onClick={() => { chooseDuration(value); setMobileDurationOpen(false) }}>{formatDuration(value)}</button>)}</div> : null}
+                  <div className="duration-select duration-select--mobile">
+                    <Timer size={14} aria-hidden="true" />
+                    <select
+                      value={duration}
+                      onChange={(event) => chooseDuration(Number(event.target.value))}
+                      aria-label="Trade duration"
+                    >
+                      {asset.durationsSeconds.map((value) => (
+                        <option key={value} value={value}>{formatDuration(value)}</option>
+                      ))}
+                    </select>
+                    <ChevronDown className="duration-select__chevron" size={13} aria-hidden="true" />
+                  </div>
                 </label>
               </div>
             </div>
