@@ -173,7 +173,7 @@ export function TradePanel({ asset, balance, walletMode, canTrade, tradeDisabled
                 onChange={(value) => chooseDuration(Number(value))}
                 className="trade-duration-select"
                 leadingIcon={<Timer size={16} />}
-                mobilePlacement="auto"
+                mobilePlacement="up"
               />
               <button type="button" onClick={() => adjustDuration(DURATION_STEP_SECONDS)} aria-label="Increase duration by 5 seconds" disabled={duration >= (asset.durationsSeconds[asset.durationsSeconds.length - 1] ?? 300)}><Plus size={16} /></button>
             </div>
