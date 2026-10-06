@@ -4,12 +4,12 @@ import type { MarketAsset } from '../data/mockMarket'
 import { useRealtime } from '../realtime/useRealtime'
 import { marketChannel } from '../realtime/subscriptions'
 import { useMarketAssets } from './useServerState'
-import { setMarketQuote, useMarketStore } from '../state/marketStore'
+import { setMarketQuote, setMarketStatus, useMarketStore } from '../state/marketStore'
 
 export function useLiveMarketAssets() {
   const resource = useMarketAssets(100)
   const realtime = useRealtime()
-  const { quotes } = useMarketStore()
+  const { quotes, statuses } = useMarketStore()
 
   useEffect(() => {
     if (!resource.data) return
@@ -25,6 +25,17 @@ export function useLiveMarketAssets() {
 
   useEffect(() => {
     return realtime.onEvent((event) => {
+      if (event.type === 'market.status') {
+        const data = event.data as { assetId?: unknown; status?: unknown }
+        if (
+          typeof data.assetId === 'string' &&
+          (data.status === 'open' || data.status === 'closed' || data.status === 'halted' || data.status === 'maintenance')
+        ) {
+          setMarketStatus(data.assetId, data.status.toUpperCase() as 'OPEN' | 'CLOSED' | 'HALTED' | 'MAINTENANCE')
+        }
+        return
+      }
+
       if (event.type !== 'market.price') return
 
       const data = event.data as Partial<MarketPrice>
@@ -79,7 +90,7 @@ export function useLiveMarketAssets() {
         volume: volume > 0 ? compactVolume(volume) : '—',
         volumeValue: Number.isFinite(volume) && volume > 0 ? volume : null,
         lastUpdatedAt,
-        marketStatus: normalizeMarketStatus(asset.market?.status),
+        marketStatus: statuses[asset.assetId] ?? normalizeMarketStatus(asset.market?.status),
         accent: accentForSymbol(asset.symbol),
         payout: Number(asset.trading.payoutRate) * 100,
         payoutRate: asset.trading.payoutRate,
@@ -90,7 +101,7 @@ export function useLiveMarketAssets() {
         tradingEnabled: asset.trading.enabled,
       }
     })
-  ), [quotes, resource.data])
+  ), [quotes, resource.data, statuses])
 
   return { ...resource, assets }
 }
