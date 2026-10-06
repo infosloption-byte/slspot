@@ -217,7 +217,6 @@ export class LedgerService {
       where: { entries: { some: { ledgerAccountId: { in: ledgerAccounts.map((item) => item.id) } } } },
       include: { entries: true },
       orderBy: { createdAt: 'asc' },
-      take: 10000,
     })
     const unbalancedTransactions: string[] = []
     for (const transaction of ledgerTransactions) {
@@ -232,7 +231,6 @@ export class LedgerService {
       where: { walletId: wallet.id },
       select: { id: true, ledgerTransaction: { select: { id: true } } },
       orderBy: { createdAt: 'asc' },
-      take: 10000,
     })
     const missingWalletTransactions = walletTransactions
       .filter((transaction) => !transaction.ledgerTransaction)
