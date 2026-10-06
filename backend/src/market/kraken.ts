@@ -38,6 +38,7 @@ type KrakenTicker = {
   c?: string[]
   p?: string[]
   v?: string[]
+  o?: string[]
 }
 
 export class KrakenProvider implements MarketDataProvider {
@@ -63,9 +64,9 @@ export class KrakenProvider implements MarketDataProvider {
     const last = ticker?.c?.[0]
     if (!last) throw new Error('Kraken ticker did not contain a last price')
     const timestamp = new Date().toISOString()
-    const previous = ticker.p?.[1]
-    const changePct = previous && Number(previous) > 0
-      ? (((Number(last) - Number(previous)) / Number(previous)) * 100).toFixed(4)
+    const open24h = ticker.o?.[1] ?? ticker.o?.[0]
+    const changePct = open24h && Number(open24h) > 0
+      ? (((Number(last) - Number(open24h)) / Number(open24h)) * 100).toFixed(4)
       : '0'
     return {
       provider: this.name,
