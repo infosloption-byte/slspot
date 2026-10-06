@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { Prisma, type PrismaClient, type Wallet } from '../generated/prisma/client.js'
 import { env } from '../config/env.js'
-import { getLivePrice } from '../market/live-prices.js'
+import { getLivePrice, getPreferredLivePrice } from '../market/live-prices.js'
 import { createRealtimeEvent, serializeRealtimeEvent } from '../realtime/events.js'
 import { publishRealtime } from '../realtime/bus.js'
 import { getTradingRules, TRADING_RULES } from './config.js'
@@ -58,6 +58,10 @@ export type ApiTradingResult = {
   settlementId: string | null
   settlementPrice: string | null
   settlementReference: string | null
+  entryProvider: string | null
+  entryTimestamp: string | null
+  settlementProvider: string | null
+  settlementTimestamp: string | null
 }
 
 export class TradingError extends Error {
@@ -121,6 +125,8 @@ type TradingTradeRecord = {
   grossPnl: Prisma.Decimal | null
   fee: Prisma.Decimal
   netPnl: Prisma.Decimal | null
+  entryProvider: string | null
+  entryTimestamp: Date | null
   openedAt: Date
   closedAt: Date | null
 }
@@ -168,6 +174,7 @@ type TradingMarketSnapshot = {
   status: string
   lastPrice: Prisma.Decimal | null
   lastPriceAt: Date | null
+  lastPriceProvider?: string | null
 }
 
 export class TradingService {
@@ -286,6 +293,7 @@ export class TradingService {
                 status: 'OPEN',
                 lastPrice: this.getDemoPrice(asset.symbol, market?.lastPrice),
                 lastPriceAt: now,
+                lastPriceProvider: 'demo-simulation',
               }
             : market
         const rules = getTradingRules(asset.symbol, mode === 'DEMO' || marketIsFresh)
@@ -406,6 +414,8 @@ export class TradingService {
             userId,
             status: 'OPEN',
             fee,
+            entryProvider: marketForTrade?.lastPriceProvider ?? null,
+            entryTimestamp: marketForTrade?.lastPriceAt ?? null,
           },
         })
 
@@ -601,8 +611,8 @@ export class TradingService {
     const market = this.withLivePrice(details.position.assetId, await this.prisma.market.findFirst({
       where: { assetId: details.position.assetId },
       orderBy: { updatedAt: 'desc' },
-      select: { lastPrice: true, lastPriceAt: true, status: true },
-    }) ?? undefined)
+      select: { lastPrice: true, lastPriceAt: true, status: true, lastPriceProvider: true },
+    }) ?? undefined, details.trade.entryProvider ?? undefined)
 
     const marketIsFresh = Boolean(
       market?.lastPrice &&
@@ -618,7 +628,9 @@ export class TradingService {
     }
     if (mode !== 'DEMO' && market?.lastPriceAt) this.assertFreshMarketPrice(market.lastPriceAt)
 
-    const outcome = await this.settleTrade(tradeId, settlementPrice, 'MANUAL')
+    const settlementProvider = market?.lastPriceProvider ?? 'unknown'
+    const settlementTimestamp = market?.lastPriceAt ?? new Date()
+    const outcome = await this.settleTrade(tradeId, settlementPrice, 'MANUAL', settlementProvider, settlementTimestamp)
     if (!outcome || outcome.trade.userId !== userId) {
       throw new TradingError(404, 'TRADE_NOT_FOUND', 'Trade was not found')
     }
@@ -648,8 +660,8 @@ export class TradingService {
       const market = this.withLivePrice(trade.position.assetId, await this.prisma.market.findFirst({
         where: { assetId: trade.position.assetId },
         orderBy: { updatedAt: 'desc' },
-        select: { lastPrice: true, lastPriceAt: true },
-      }) ?? undefined)
+        select: { lastPrice: true, lastPriceAt: true, lastPriceProvider: true },
+      }) ?? undefined, trade.entryProvider ?? undefined)
       const account = await this.prisma.account.findUnique({
         where: { id: trade.position.accountId },
         select: { mode: true },
@@ -666,7 +678,9 @@ export class TradingService {
       if (account?.mode !== 'DEMO' && !marketIsFresh) continue
 
       try {
-        const outcome = await this.settleTrade(trade.id, settlementPrice, 'EXPIRY')
+        const settlementProvider = market?.lastPriceProvider ?? 'unknown'
+        const settlementTimestamp = market?.lastPriceAt ?? new Date()
+        const outcome = await this.settleTrade(trade.id, settlementPrice, 'EXPIRY', settlementProvider, settlementTimestamp)
         if (outcome) {
           settledCount += 1
           const result = this.toTradingResult(outcome.trade, outcome.position, outcome.settlement)
@@ -797,6 +811,11 @@ export class TradingService {
           tradeId,
           status: 'COMPLETED',
           settlementPrice: null,
+          entryPrice: current.position.entryPrice,
+          entryProvider: current.entryProvider,
+          entryTimestamp: current.entryTimestamp,
+          settlementProvider: null,
+          settlementTimestamp: null,
           grossPayout: amount,
           fees: fee,
           netPnl,
@@ -806,6 +825,11 @@ export class TradingService {
         update: {
           status: 'COMPLETED',
           settlementPrice: null,
+          entryPrice: current.position.entryPrice,
+          entryProvider: current.entryProvider,
+          entryTimestamp: current.entryTimestamp,
+          settlementProvider: null,
+          settlementTimestamp: null,
           grossPayout: amount,
           fees: fee,
           netPnl,
@@ -843,7 +867,7 @@ export class TradingService {
     return result
   }
 
-  private async settleTrade(tradeId: string, settlementPrice: Prisma.Decimal | string, reason: 'MANUAL' | 'EXPIRY') {
+  private async settleTrade(tradeId: string, settlementPrice: Prisma.Decimal | string, reason: 'MANUAL' | 'EXPIRY', settlementProvider = 'unknown', settlementTimestamp = new Date()) {
     const result = await this.prisma.$transaction(async (tx) => {
       const details = await tx.trade.findUnique({
         where: { id: tradeId },
@@ -1007,6 +1031,11 @@ export class TradingService {
           tradeId,
           status: 'COMPLETED',
           settlementPrice: exitPrice,
+          entryPrice: details.position.entryPrice,
+          entryProvider: details.entryProvider,
+          entryTimestamp: details.entryTimestamp,
+          settlementProvider,
+          settlementTimestamp,
           grossPayout: terms.grossPayout,
           fees: terms.fee,
           netPnl: terms.netPnl,
@@ -1016,6 +1045,11 @@ export class TradingService {
         update: {
           status: 'COMPLETED',
           settlementPrice: exitPrice,
+          entryPrice: details.position.entryPrice,
+          entryProvider: details.entryProvider,
+          entryTimestamp: details.entryTimestamp,
+          settlementProvider,
+          settlementTimestamp,
           grossPayout: terms.grossPayout,
           fees: terms.fee,
           netPnl: terms.netPnl,
@@ -1069,14 +1103,24 @@ export class TradingService {
   }
 
   /** Prefers the newest live tick (from the Binance stream) over the stored market snapshot. */
-  private withLivePrice<T extends { lastPrice: Prisma.Decimal | null; lastPriceAt: Date | null; status?: string }>(
+  private withLivePrice<T extends { lastPrice: Prisma.Decimal | null; lastPriceAt: Date | null; status?: string; lastPriceProvider?: string | null }>(
     assetId: string,
     market: T | undefined,
+    preferredProvider?: string,
   ): T | undefined {
-    const live = getLivePrice(assetId, env.trading.marketMaxAgeMs)
+    const live = preferredProvider
+      ? getLivePrice(assetId, env.trading.marketMaxAgeMs, Date.now(), preferredProvider)
+        ?? getPreferredLivePrice(assetId, env.trading.marketMaxAgeMs, ['binance', 'kraken', 'okx'])
+      : getPreferredLivePrice(assetId, env.trading.marketMaxAgeMs, ['binance', 'kraken', 'okx'])
     if (!live) return market
     if (market?.lastPriceAt && market.lastPriceAt.getTime() >= live.at) return market
-    return { ...(market ?? ({} as T)), lastPrice: new Prisma.Decimal(live.price), lastPriceAt: new Date(live.at), ...(market?.status !== undefined || !market ? { status: 'OPEN' } : {}) } as T
+    return {
+      ...(market ?? ({} as T)),
+      lastPrice: new Prisma.Decimal(live.price),
+      lastPriceAt: new Date(live.at),
+      lastPriceProvider: live.provider,
+      ...(market?.status !== undefined || !market ? { status: 'OPEN' } : {}),
+    } as T
   }
 
   private getDemoPrice(symbol: string, marketPrice: Prisma.Decimal | null | undefined): Prisma.Decimal {
@@ -1302,6 +1346,10 @@ export class TradingService {
       settlementId: settlement?.id ?? null,
       settlementPrice: settlement?.settlementPrice?.toString() ?? null,
       settlementReference: settlement?.referenceId ?? null,
+      entryProvider: trade.entryProvider ?? null,
+      entryTimestamp: trade.entryTimestamp?.toISOString() ?? null,
+      settlementProvider: settlement?.settlementProvider ?? null,
+      settlementTimestamp: settlement?.settlementTimestamp?.toISOString() ?? null,
     }
   }
 
