@@ -492,9 +492,9 @@ describe('platform API routes', () => {
     let requestedTradeId = ''
     const scopedTradingService = {
       ...tradingService,
-      cancelTrade: async (_userId: string, tradeId: string) => {
+      cancelTrade: async (_userId: string, tradeId: string, mode: 'DEMO' | 'REAL') => {
         requestedTradeId = tradeId
-        return tradingService.cancelTrade(_userId, tradeId)
+        return tradingService.cancelTrade(_userId, tradeId, mode)
       },
     }
     const app = buildApp({ logging: false, authService, apiService, tradingService: scopedTradingService })
