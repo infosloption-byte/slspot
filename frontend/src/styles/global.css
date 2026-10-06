@@ -174,7 +174,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
   display: inline-flex; align-items: center; justify-content: center; width: fit-content; padding: 4px 9px;
   border-radius: 6px; font-size: 11px; font-weight: 800; letter-spacing: 0.02em;
 }
-.status-pill--positive, .status-pill--danger, .side-pill--up { color: var(--green); background: var(--green-soft); }
+.status-pill--positive, .side-pill--up { color: var(--green); background: var(--green-soft); }
+.status-pill--danger { color: var(--red); background: var(--red-soft); }
 .status-pill--negative, .side-pill--down { color: var(--red); background: var(--red-soft); }
 .status-pill--draw { color: var(--text-muted, #8b93a7); background: rgba(139, 147, 167, 0.16); }
 .status-pill--pending { color: var(--accent); background: var(--accent-soft); }
