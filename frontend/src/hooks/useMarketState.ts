@@ -64,6 +64,8 @@ export function useLiveMarketAssets() {
         last,
         changePct,
         volume,
+        provider: typeof data.provider === 'string' ? data.provider : undefined,
+        sequence: typeof data.sequence === 'string' ? data.sequence : undefined,
         timestamp,
       }
 
@@ -91,6 +93,7 @@ export function useLiveMarketAssets() {
         volumeValue: Number.isFinite(volume) && volume > 0 ? volume : null,
         lastUpdatedAt,
         marketStatus: statuses[asset.assetId] ?? normalizeMarketStatus(asset.market?.status),
+        priceProvider: quote?.provider ?? asset.market?.lastPriceProvider ?? asset.market?.provider ?? null,
         accent: accentForSymbol(asset.symbol),
         payout: Number(asset.trading.payoutRate) * 100,
         payoutRate: asset.trading.payoutRate,
