@@ -15,7 +15,7 @@ const DEFAULT_CRYPTO_ASSETS = [
 const LEGACY_NON_CRYPTO_SYMBOLS = ['EUR/USD', 'GBP/USD', 'AAPL/USD', 'TSLA/USD', 'XAU/USD', 'NAS100/USD']
 
 
-export async function ensureDefaultMarketRegistry(prisma: PrismaClient, provider: string): Promise<void> {
+export async function ensureDefaultMarketRegistry(prisma: PrismaClient): Promise<void> {
   for (const definition of DEFAULT_CRYPTO_ASSETS) {
     const asset = await prisma.asset.upsert({
       where:{symbol:definition.symbol},
