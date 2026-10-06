@@ -1263,44 +1263,7 @@ button.toggle { cursor: pointer; appearance: none; }
 @media (max-width: 900px) {
   .wallet-grid { grid-template-columns:1fr; }
 }
-@media (max-width: 820px) {
-  .trading-room { display:flex; flex-direction:column; min-height:100%; }
-  .trading-room__main { display:flex; flex-direction:column; min-height:0; }
-  .chart-workspace { height:58dvh; min-height:360px; }
-  .trade-panel {
-    position:sticky;
-    bottom:0;
-    z-index:18;
-    min-height:0;
-    padding:8px;
-    gap:6px;
-    border-top:1px solid var(--line-strong);
-    box-shadow:0 -14px 34px rgba(0,0,0,.36);
-  }
-  .trade-panel__head { display:none; }
-  .trade-panel__desktop-content { display:none; }
-  .trade-panel__mobile-content { display:grid; gap:7px; }
-  .trade-mobile-config {
-    width:100%; height:34px; display:flex; align-items:center; justify-content:space-between; gap:10px;
-    padding:0 6px; border:0; background:transparent; color:var(--muted); font-size:12px;
-  }
-  .trade-mobile-config strong { color:var(--text); }
-  .trade-mobile-config > span:last-child { display:flex; align-items:center; gap:4px; color:var(--accent); font-weight:800; }
-  .trade-mobile-config__panel { display:grid; gap:8px; padding:8px; border:1px solid var(--line); border-radius:var(--radius-md); background:var(--bg-2); }
-  .trade-mobile-config__grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
-  .trade-mobile-config__grid label { display:grid; gap:5px; }
-  .trade-mobile-config__grid label > span { color:var(--muted); font-size:10px; font-weight:700; }
-  .trade-mobile-config__grid .stepper { height:42px; grid-template-columns:34px 1fr 34px; }
-  .trade-mobile-config__grid .stepper input { width:70px; font-size:16px; }
-  .mobile-duration-button { height:42px; display:flex; align-items:center; justify-content:center; gap:6px; border:1px solid var(--line-strong); border-radius:var(--radius-md); background:var(--bg-2); color:var(--text); font-weight:700; }
-  .trade-mobile-config__panel .payout-card { padding:10px; }
-  .trade-panel__sound-button { height:34px; display:inline-flex; align-items:center; justify-content:center; gap:6px; border:1px solid var(--line); border-radius:var(--radius-sm); background:transparent; color:var(--muted); }
-  .trade-actions--mobile { grid-template-columns:1fr 1fr; gap:7px; margin:0; }
-  .trade-actions--mobile .trade-btn { height:52px; font-size:17px; }
-  .trade-actions--mobile .trade-btn small { display:none; }
-  .bottom-panel { order:2; }
-  .trade-panel { order:3; }
-}
+
 @media (max-width: 600px) {
   .toast-viewport { top:10px; right:8px; width:calc(100vw - 16px); }
   .toast { grid-template-columns:30px 1fr auto; }
@@ -1324,11 +1287,7 @@ button.toggle { cursor: pointer; appearance: none; }
 .asset-icon--tsla { background:rgba(255,77,94,.1); color:#ff7784; border-color:rgba(255,77,94,.25); }
 .asset-icon--xau { background:rgba(247,185,85,.12); color:#f7c96d; border-color:rgba(247,185,85,.26); }
 
-@media (max-width: 820px) {
-  .market-filter-row { overflow-x:auto; scrollbar-width:none; }
-  .market-filter-row::-webkit-scrollbar { display:none; }
-  .filter-pill { flex:0 0 auto; }
-}
+
 
 .mobile-duration-options {
   display:grid; grid-template-columns:repeat(4,1fr); gap:5px; margin-top:5px;
@@ -1341,19 +1300,7 @@ button.toggle { cursor: pointer; appearance: none; }
   }
   .trade-history-toolbar > :nth-child(4) { grid-column: span 1; }
 }
-@media (max-width: 820px) {
-  .trade-history-toolbar {
-    grid-template-columns: repeat(2, minmax(130px, 1fr));
-    align-items: stretch;
-  }
-  .trade-history-search { grid-column: 1 / -1; }
-  .trade-history-reset,
-  .trade-history-export { justify-content: center; }
-  .trade-history-footer {
-    justify-content: space-between;
-    flex-wrap: wrap;
-  }
-}
+
 
 
 /* Market, chart connection, indicator and drawing states */
@@ -1934,23 +1881,7 @@ button.toggle { cursor: pointer; appearance: none; }
   }
 }
 
-@media (max-width: 820px) {
-  .trade-history-panel > .trade-history-toolbar {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    align-items: end;
-    gap: 7px;
-  }
 
-  .trade-history-panel > .trade-history-toolbar > .trade-history-search {
-    grid-column: 1 / -1;
-  }
-
-  .trade-history-panel > .trade-history-toolbar > .trade-history-reset,
-  .trade-history-panel > .trade-history-toolbar > .trade-history-export {
-    width: 100%;
-    justify-content: center;
-  }
-}
 
 @media (max-width: 480px) {
   .trade-history-panel > .trade-history-toolbar {
@@ -2445,79 +2376,7 @@ button.toggle { cursor: pointer; appearance: none; }
   }
 }
 
-@media (max-width: 820px) {
-  .workspace-page {
-    padding: 14px;
-  }
 
-  .workspace-page__header {
-    gap: 12px;
-    margin-bottom: 14px;
-  }
-
-  .workspace-page__header p {
-    font-size: 13px;
-  }
-
-  .workspace-page__action {
-    width: 100%;
-    justify-content: center;
-  }
-
-  .dashboard-card {
-    padding: 14px;
-  }
-
-  .dashboard-card__header {
-    align-items: flex-start;
-  }
-
-  .holding {
-    grid-template-columns: 34px minmax(0, 1fr) auto;
-    gap: 8px;
-  }
-
-  .holding__allocation {
-    grid-column: 2 / -1;
-  }
-
-  .position-row,
-  .activity-row {
-    min-width: 0;
-  }
-
-  .notification-item {
-    grid-template-columns: 36px minmax(0, 1fr);
-  }
-
-  .notification-item__icon {
-    grid-row: span 2;
-  }
-
-  .notification-item .notification-read-button,
-  .notification-item .notification-read-label {
-    grid-column: 2;
-    justify-self: start;
-    margin-top: 2px;
-  }
-
-  .session-item {
-    align-items: flex-start;
-  }
-
-  .session-item > .status-pill,
-  .session-item > .setting-button {
-    flex: none;
-  }
-
-  .wallet-grid,
-  .notification-layout,
-  .settings-grid,
-  .account-layout,
-  .support-layout {
-    gap: 10px;
-  }
-}
 
 @media (max-width: 600px) {
   .topbar {
@@ -2766,37 +2625,7 @@ button.toggle { cursor: pointer; appearance: none; }
   padding-inline: 12px;
 }
 
-@media (max-width: 820px) {
-  .trade-history-panel .trade-history-search { flex-basis: 100%; }
-  .trade-history-panel .trade-history-control { flex: 1 1 calc(50% - 8px); min-width: 0; }
-  .trade-history-panel .trade-history-reset,
-  .trade-history-panel .trade-history-export { flex: 1 1 calc(50% - 8px); min-width: 0; }
-  .trade-history-panel .trade-history-footer { flex-wrap: wrap; justify-content: space-between; }
 
-  /* Seven columns cannot fit a phone, and the 820px rule above removes the row min-width.
-     Lay each trade out as a small card instead of letting the columns overlap. */
-  .trade-history-panel .activity-row--header.activity-row--trade-history { display: none; }
-  .trade-history-panel .activity-row--trade-history {
-    min-width: 0;
-    grid-template-columns: minmax(0, 1fr) auto auto;
-    grid-template-areas:
-      'trade trade pnl'
-      'side amount result'
-      'open close close';
-    gap: 6px 12px;
-    padding: 10px;
-    border-bottom: 1px solid var(--line);
-  }
-  .trade-history-panel .activity-row--trade-history > :nth-child(1) { grid-area: trade; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
-  .trade-history-panel .activity-row--trade-history > :nth-child(2) { grid-area: side; justify-self: start; }
-  .trade-history-panel .activity-row--trade-history > :nth-child(3) { grid-area: amount; }
-  .trade-history-panel .activity-row--trade-history > :nth-child(4) { grid-area: open; }
-  .trade-history-panel .activity-row--trade-history > :nth-child(5) { grid-area: close; }
-  .trade-history-panel .activity-row--trade-history > :nth-child(6) { grid-area: result; justify-self: end; }
-  .trade-history-panel .activity-row--trade-history > :nth-child(7) { grid-area: pnl; text-align: right; }
-  .trade-history-panel .activity-row--trade-history > :nth-child(4)::before { content: 'Open '; color: var(--muted-2); font-size: 11px; }
-  .trade-history-panel .activity-row--trade-history > :nth-child(5)::before { content: 'Close '; color: var(--muted-2); font-size: 11px; }
-}
 
 
 /* Account data that failed to load (positions, wallet, permissions) */
@@ -2914,23 +2743,7 @@ button.toggle { cursor: pointer; appearance: none; }
 .chart-legend__icon { opacity: 0; }
 .chart-legend__item:hover .chart-legend__icon, .chart-legend__item:focus-within .chart-legend__icon { opacity: 1; }
 
-@media (max-width: 820px) {
-  .app-shell { flex-direction: row; }
-  .topbar__menu { display: inline-grid; flex: none; }
-  .topbar__brand { margin-left: 0; }
 
-
-  /* Chart: only what is needed on a phone */
-  .chart-workspace { height: 66dvh; min-height: 440px; }
-  .chart-tools__extra, .chart-attribution, .chart-help-text, .chart-bottom-status > span:nth-child(n+2):not(.chart-bottom-status__spacer) { display: none; }
-  .chart-bottom-status { min-height: 30px; padding: 0 10px; }
-  .chart-legend { display: none; }
-  .chart-legend-chip { display: inline-flex; align-items: center; gap: 7px; position: absolute; top: 8px; left: 8px; z-index: 8; height: 26px; padding: 0 9px; border: 1px solid var(--line); border-radius: 999px; background: rgba(13,13,16,.78); color: var(--text); font-size: 12px; font-weight: 600; backdrop-filter: blur(4px); }
-  .chart-indicator-stack { max-height: none; overflow: visible; }
-  .chart-indicator-panel__label { max-width: calc(100% - 64px); flex-wrap: wrap; }
-  .chart-indicator-panel__actions button { width: 28px; height: 28px; }
-  .chart-legend__icon { opacity: 1; }
-}
 
 .chart-timeframe-chip { display: none; }
 .chart-timeframe-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(54px, 1fr)); gap: 6px; }
@@ -2938,185 +2751,11 @@ button.toggle { cursor: pointer; appearance: none; }
 .chart-timeframe-grid .timeframe--active { border-color: var(--accent); }
 
 /* ---- Mobile polish: toolbar, wallet chip, compact trade panel ---- */
-@media (max-width: 820px) {
-  /* Top bar: wallet chip is two short lines and its menu is anchored to the screen edge */
-  .topbar__connection { display: none; }
-  .account-chip { min-width: 0; max-width: none; height: 40px; padding: 4px 8px; grid-template-columns: minmax(0, 1fr) auto; gap: 6px; }
-  .account-chip__icon, .account-chip__body small { display: none; }
-  .account-chip__body { display: grid; gap: 3px; }
-  .account-chip__body strong { font-size: 13px; line-height: 1; }
-  .account-chip__body em { display: block; margin: 0; font-size: 11px; line-height: 1; }
-  .wallet-selector { position: static; }
-  .wallet-selector__menu { position: fixed; top: calc(var(--topbar-h, 56px) + 6px); left: 10px; right: 10px; width: auto; max-width: 380px; margin-left: auto; }
 
-  /* Chart toolbar: one slim row (market, timeframe chip, positions, settings) */
-  .simple-chart-toolbar { flex-wrap: nowrap; min-height: 0; padding: 8px 10px; gap: 8px; }
-  .asset-tabs { flex: 0 1 auto; min-width: 0; }
-  .market-trigger { flex: 0 1 auto; height: 36px; padding: 0 8px 0 10px; gap: 8px; box-shadow: inset 0 -2px 0 var(--accent); }
-  .market-trigger .asset-icon, .market-trigger__copy small, .market-trigger > svg { display: none; }
-  .market-trigger__copy strong { font-size: 13px; }
-  .market-trigger__price { padding-left: 8px; }
-  .market-trigger__price strong { font-size: 13px; }
-  .market-trigger__price small { font-size: 10px; }
-  .chart-timeframes { display: none; }
-  .chart-tools { order: 0; margin-left: auto; gap: 4px; flex: none; }
-  .chart-timeframe-chip { display: inline-flex; align-items: center; justify-content: center; height: 34px; min-width: 40px; padding: 0 8px; border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--accent-soft); color: var(--accent); font-size: 13px; font-weight: 800; }
-  .chart-tools .icon-button, .chart-activity-button { width: 34px; height: 34px; }
-  .chart-activity-button { padding: 0; justify-content: center; position: relative; }
-  .chart-activity-button__count { position: absolute; top: -5px; right: -5px; }
-
-  /* Trade panel: compact, expanded by default, pinned to the bottom edge */
-  .trade-panel { padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px)); gap: 4px; }
-  .trade-panel__mobile-content { gap: 6px; }
-  .trade-mobile-config-row {
-    min-width: 0;
-    width: 100%;
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto auto;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .trade-mobile-config-row .trade-mobile-config {
-    min-width: 0;
-    width: 100%;
-    overflow: hidden;
-    padding-inline: 6px 0;
-    text-align: left;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-  }
-
-  .trade-mobile-payout-summary {
-    flex: none;
-    display: grid;
-    grid-template-columns: repeat(2, minmax(44px, auto));
-    align-items: center;
-    gap: 7px;
-    white-space: nowrap;
-  }
-
-  .trade-mobile-rate {
-    flex: none;
-    height: 28px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 3px;
-    padding: 0 2px;
-    border: 0;
-    background: transparent;
-    color: var(--accent);
-    font-size: 12px;
-    font-weight: 800;
-    white-space: nowrap;
-  }
-
-  .trade-mobile-payout-summary > span {
-    display: grid;
-    justify-items: end;
-    gap: 1px;
-  }
-
-  .trade-mobile-payout-summary small {
-    color: var(--muted-2);
-    font-size: 9px;
-    font-weight: 700;
-    line-height: 1;
-  }
-
-  .trade-mobile-payout-summary strong {
-    color: var(--text);
-    font-size: 12px;
-    line-height: 1.1;
-    font-variant-numeric: tabular-nums;
-  }
-
-  .trade-mobile-config { height: 28px; }
-  .trade-mobile-config__panel { gap: 6px; padding: 6px; }
-  .trade-mobile-config__grid .stepper { height: 38px; }
-  .trade-mobile-config__panel .payout-card { padding: 6px 10px; }
-  .trade-actions--mobile { margin-top: 0; }
-  .trade-actions--mobile .trade-btn { height: 46px; min-height: 46px; font-size: 16px; }
-}
 
 
 /* ---- Responsive mobile trading layout + trading activity dialog ---- */
-@media (max-width: 820px) {
-  /*
-   * Mobile trading keeps the original vertical layout:
-   * chart first, full-width trade panel at the bottom.
-   * The chart flexes into the remaining space as the trade panel
-   * expands or collapses, so no blank area is left below the buttons.
-   */
-  .app-content:has(.trading-room) {
-    overflow: hidden;
-  }
 
-  .trading-room {
-    height: 100%;
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
-
-  .trading-room__main {
-    min-height: 0;
-    flex: 1 1 auto;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-  }
-
-  .chart-workspace {
-    height: auto;
-    min-height: 0;
-    flex: 1 1 auto;
-  }
-
-  .trade-panel {
-    position: sticky;
-    bottom: 0;
-    inset: auto;
-    z-index: 18;
-    width: 100%;
-    min-width: 0;
-    min-height: 0;
-    flex: none;
-    overflow: visible;
-    margin-top: 0;
-    padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px));
-    gap: 4px;
-  }
-
-  .trade-mobile-config__panel,
-  .trade-actions--mobile {
-    min-width: 0;
-  }
-
-  /*
-   * Oscillator panels remain inside the chart stage. Their reserved height
-   * is calculated by ChartWorkspace and changes automatically when indicators
-   * are added/removed. The cap prevents them from covering the trade panel.
-   */
-  .chart-stage--oscillators .chart-canvas-shell {
-    inset: 0 0 min(var(--oscillator-height, 0px), 46%);
-  }
-
-  .chart-indicator-stack {
-    height: min(var(--oscillator-height, 0px), 46%);
-    max-height: min(var(--oscillator-height, 0px), 46%);
-    overflow-y: auto;
-    overflow-x: hidden;
-    overscroll-behavior: contain;
-  }
-
-  .chart-indicator-panel {
-    height: 68px;
-    min-height: 68px;
-  }
-}
 
 @media (max-width: 600px) {
   /*
@@ -3560,3 +3199,366 @@ button.toggle { cursor: pointer; appearance: none; }
 .app-shell--compact .chart-workspace { padding: 0; }
 .app-shell--compact .trade-panel { gap: 8px; }
 .app-shell--compact .trade-field { gap: 6px; }
+
+@media (max-width: 820px) {
+  .trading-room { display:flex; flex-direction:column; min-height:100%; }
+    .trading-room__main { display:flex; flex-direction:column; min-height:0; }
+    .chart-workspace { height:58dvh; min-height:360px; }
+    .trade-panel {
+      position:sticky;
+      bottom:0;
+      z-index:18;
+      min-height:0;
+      padding:8px;
+      gap:6px;
+      border-top:1px solid var(--line-strong);
+      box-shadow:0 -14px 34px rgba(0,0,0,.36);
+    }
+    .trade-panel__head { display:none; }
+    .trade-panel__desktop-content { display:none; }
+    .trade-panel__mobile-content { display:grid; gap:7px; }
+    .trade-mobile-config {
+      width:100%; height:34px; display:flex; align-items:center; justify-content:space-between; gap:10px;
+      padding:0 6px; border:0; background:transparent; color:var(--muted); font-size:12px;
+    }
+    .trade-mobile-config strong { color:var(--text); }
+    .trade-mobile-config > span:last-child { display:flex; align-items:center; gap:4px; color:var(--accent); font-weight:800; }
+    .trade-mobile-config__panel { display:grid; gap:8px; padding:8px; border:1px solid var(--line); border-radius:var(--radius-md); background:var(--bg-2); }
+    .trade-mobile-config__grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+    .trade-mobile-config__grid label { display:grid; gap:5px; }
+    .trade-mobile-config__grid label > span { color:var(--muted); font-size:10px; font-weight:700; }
+    .trade-mobile-config__grid .stepper { height:42px; grid-template-columns:34px 1fr 34px; }
+    .trade-mobile-config__grid .stepper input { width:70px; font-size:16px; }
+    .mobile-duration-button { height:42px; display:flex; align-items:center; justify-content:center; gap:6px; border:1px solid var(--line-strong); border-radius:var(--radius-md); background:var(--bg-2); color:var(--text); font-weight:700; }
+    .trade-mobile-config__panel .payout-card { padding:10px; }
+    .trade-panel__sound-button { height:34px; display:inline-flex; align-items:center; justify-content:center; gap:6px; border:1px solid var(--line); border-radius:var(--radius-sm); background:transparent; color:var(--muted); }
+    .trade-actions--mobile { grid-template-columns:1fr 1fr; gap:7px; margin:0; }
+    .trade-actions--mobile .trade-btn { height:52px; font-size:17px; }
+    .trade-actions--mobile .trade-btn small { display:none; }
+    .bottom-panel { order:2; }
+    .trade-panel { order:3; }
+
+  .market-filter-row { overflow-x:auto; scrollbar-width:none; }
+    .market-filter-row::-webkit-scrollbar { display:none; }
+    .filter-pill { flex:0 0 auto; }
+
+  .trade-history-toolbar {
+      grid-template-columns: repeat(2, minmax(130px, 1fr));
+      align-items: stretch;
+    }
+    .trade-history-search { grid-column: 1 / -1; }
+    .trade-history-reset,
+    .trade-history-export { justify-content: center; }
+    .trade-history-footer {
+      justify-content: space-between;
+      flex-wrap: wrap;
+    }
+
+  .trade-history-panel > .trade-history-toolbar {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      align-items: end;
+      gap: 7px;
+    }
+  
+    .trade-history-panel > .trade-history-toolbar > .trade-history-search {
+      grid-column: 1 / -1;
+    }
+  
+    .trade-history-panel > .trade-history-toolbar > .trade-history-reset,
+    .trade-history-panel > .trade-history-toolbar > .trade-history-export {
+      width: 100%;
+      justify-content: center;
+    }
+
+  .workspace-page {
+      padding: 14px;
+    }
+  
+    .workspace-page__header {
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+  
+    .workspace-page__header p {
+      font-size: 13px;
+    }
+  
+    .workspace-page__action {
+      width: 100%;
+      justify-content: center;
+    }
+  
+    .dashboard-card {
+      padding: 14px;
+    }
+  
+    .dashboard-card__header {
+      align-items: flex-start;
+    }
+  
+    .holding {
+      grid-template-columns: 34px minmax(0, 1fr) auto;
+      gap: 8px;
+    }
+  
+    .holding__allocation {
+      grid-column: 2 / -1;
+    }
+  
+    .position-row,
+    .activity-row {
+      min-width: 0;
+    }
+  
+    .notification-item {
+      grid-template-columns: 36px minmax(0, 1fr);
+    }
+  
+    .notification-item__icon {
+      grid-row: span 2;
+    }
+  
+    .notification-item .notification-read-button,
+    .notification-item .notification-read-label {
+      grid-column: 2;
+      justify-self: start;
+      margin-top: 2px;
+    }
+  
+    .session-item {
+      align-items: flex-start;
+    }
+  
+    .session-item > .status-pill,
+    .session-item > .setting-button {
+      flex: none;
+    }
+  
+    .wallet-grid,
+    .notification-layout,
+    .settings-grid,
+    .account-layout,
+    .support-layout {
+      gap: 10px;
+    }
+
+  .trade-history-panel .trade-history-search { flex-basis: 100%; }
+    .trade-history-panel .trade-history-control { flex: 1 1 calc(50% - 8px); min-width: 0; }
+    .trade-history-panel .trade-history-reset,
+    .trade-history-panel .trade-history-export { flex: 1 1 calc(50% - 8px); min-width: 0; }
+    .trade-history-panel .trade-history-footer { flex-wrap: wrap; justify-content: space-between; }
+  
+    /* Seven columns cannot fit a phone, and the 820px rule above removes the row min-width.
+       Lay each trade out as a small card instead of letting the columns overlap. */
+    .trade-history-panel .activity-row--header.activity-row--trade-history { display: none; }
+    .trade-history-panel .activity-row--trade-history {
+      min-width: 0;
+      grid-template-columns: minmax(0, 1fr) auto auto;
+      grid-template-areas:
+        'trade trade pnl'
+        'side amount result'
+        'open close close';
+      gap: 6px 12px;
+      padding: 10px;
+      border-bottom: 1px solid var(--line);
+    }
+    .trade-history-panel .activity-row--trade-history > :nth-child(1) { grid-area: trade; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+    .trade-history-panel .activity-row--trade-history > :nth-child(2) { grid-area: side; justify-self: start; }
+    .trade-history-panel .activity-row--trade-history > :nth-child(3) { grid-area: amount; }
+    .trade-history-panel .activity-row--trade-history > :nth-child(4) { grid-area: open; }
+    .trade-history-panel .activity-row--trade-history > :nth-child(5) { grid-area: close; }
+    .trade-history-panel .activity-row--trade-history > :nth-child(6) { grid-area: result; justify-self: end; }
+    .trade-history-panel .activity-row--trade-history > :nth-child(7) { grid-area: pnl; text-align: right; }
+    .trade-history-panel .activity-row--trade-history > :nth-child(4)::before { content: 'Open '; color: var(--muted-2); font-size: 11px; }
+    .trade-history-panel .activity-row--trade-history > :nth-child(5)::before { content: 'Close '; color: var(--muted-2); font-size: 11px; }
+
+  .app-shell { flex-direction: row; }
+    .topbar__menu { display: inline-grid; flex: none; }
+    .topbar__brand { margin-left: 0; }
+  
+  
+    /* Chart: only what is needed on a phone */
+    .chart-workspace { height: 66dvh; min-height: 440px; }
+    .chart-tools__extra, .chart-attribution, .chart-help-text, .chart-bottom-status > span:nth-child(n+2):not(.chart-bottom-status__spacer) { display: none; }
+    .chart-bottom-status { min-height: 30px; padding: 0 10px; }
+    .chart-legend { display: none; }
+    .chart-legend-chip { display: inline-flex; align-items: center; gap: 7px; position: absolute; top: 8px; left: 8px; z-index: 8; height: 26px; padding: 0 9px; border: 1px solid var(--line); border-radius: 999px; background: rgba(13,13,16,.78); color: var(--text); font-size: 12px; font-weight: 600; backdrop-filter: blur(4px); }
+    .chart-indicator-stack { max-height: none; overflow: visible; }
+    .chart-indicator-panel__label { max-width: calc(100% - 64px); flex-wrap: wrap; }
+    .chart-indicator-panel__actions button { width: 28px; height: 28px; }
+    .chart-legend__icon { opacity: 1; }
+
+  /* Top bar: wallet chip is two short lines and its menu is anchored to the screen edge */
+    .topbar__connection { display: none; }
+    .account-chip { min-width: 0; max-width: none; height: 40px; padding: 4px 8px; grid-template-columns: minmax(0, 1fr) auto; gap: 6px; }
+    .account-chip__icon, .account-chip__body small { display: none; }
+    .account-chip__body { display: grid; gap: 3px; }
+    .account-chip__body strong { font-size: 13px; line-height: 1; }
+    .account-chip__body em { display: block; margin: 0; font-size: 11px; line-height: 1; }
+    .wallet-selector { position: static; }
+    .wallet-selector__menu { position: fixed; top: calc(var(--topbar-h, 56px) + 6px); left: 10px; right: 10px; width: auto; max-width: 380px; margin-left: auto; }
+  
+    /* Chart toolbar: one slim row (market, timeframe chip, positions, settings) */
+    .simple-chart-toolbar { flex-wrap: nowrap; min-height: 0; padding: 8px 10px; gap: 8px; }
+    .asset-tabs { flex: 0 1 auto; min-width: 0; }
+    .market-trigger { flex: 0 1 auto; height: 36px; padding: 0 8px 0 10px; gap: 8px; box-shadow: inset 0 -2px 0 var(--accent); }
+    .market-trigger .asset-icon, .market-trigger__copy small, .market-trigger > svg { display: none; }
+    .market-trigger__copy strong { font-size: 13px; }
+    .market-trigger__price { padding-left: 8px; }
+    .market-trigger__price strong { font-size: 13px; }
+    .market-trigger__price small { font-size: 10px; }
+    .chart-timeframes { display: none; }
+    .chart-tools { order: 0; margin-left: auto; gap: 4px; flex: none; }
+    .chart-timeframe-chip { display: inline-flex; align-items: center; justify-content: center; height: 34px; min-width: 40px; padding: 0 8px; border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--accent-soft); color: var(--accent); font-size: 13px; font-weight: 800; }
+    .chart-tools .icon-button, .chart-activity-button { width: 34px; height: 34px; }
+    .chart-activity-button { padding: 0; justify-content: center; position: relative; }
+    .chart-activity-button__count { position: absolute; top: -5px; right: -5px; }
+  
+    /* Trade panel: compact, expanded by default, pinned to the bottom edge */
+    .trade-panel { padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px)); gap: 4px; }
+    .trade-panel__mobile-content { gap: 6px; }
+    .trade-mobile-config-row {
+      min-width: 0;
+      width: 100%;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto auto;
+      align-items: center;
+      gap: 8px;
+    }
+  
+    .trade-mobile-config-row .trade-mobile-config {
+      min-width: 0;
+      width: 100%;
+      overflow: hidden;
+      padding-inline: 6px 0;
+      text-align: left;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+  
+    .trade-mobile-payout-summary {
+      flex: none;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(44px, auto));
+      align-items: center;
+      gap: 7px;
+      white-space: nowrap;
+    }
+  
+    .trade-mobile-rate {
+      flex: none;
+      height: 28px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      padding: 0 2px;
+      border: 0;
+      background: transparent;
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+  
+    .trade-mobile-payout-summary > span {
+      display: grid;
+      justify-items: end;
+      gap: 1px;
+    }
+  
+    .trade-mobile-payout-summary small {
+      color: var(--muted-2);
+      font-size: 9px;
+      font-weight: 700;
+      line-height: 1;
+    }
+  
+    .trade-mobile-payout-summary strong {
+      color: var(--text);
+      font-size: 12px;
+      line-height: 1.1;
+      font-variant-numeric: tabular-nums;
+    }
+  
+    .trade-mobile-config { height: 28px; }
+    .trade-mobile-config__panel { gap: 6px; padding: 6px; }
+    .trade-mobile-config__grid .stepper { height: 38px; }
+    .trade-mobile-config__panel .payout-card { padding: 6px 10px; }
+    .trade-actions--mobile { margin-top: 0; }
+    .trade-actions--mobile .trade-btn { height: 46px; min-height: 46px; font-size: 16px; }
+
+  /*
+     * Mobile trading keeps the original vertical layout:
+     * chart first, full-width trade panel at the bottom.
+     * The chart flexes into the remaining space as the trade panel
+     * expands or collapses, so no blank area is left below the buttons.
+     */
+    .app-content:has(.trading-room) {
+      overflow: hidden;
+    }
+  
+    .trading-room {
+      height: 100%;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+  
+    .trading-room__main {
+      min-height: 0;
+      flex: 1 1 auto;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+  
+    .chart-workspace {
+      height: auto;
+      min-height: 0;
+      flex: 1 1 auto;
+    }
+  
+    .trade-panel {
+      position: sticky;
+      bottom: 0;
+      inset: auto;
+      z-index: 18;
+      width: 100%;
+      min-width: 0;
+      min-height: 0;
+      flex: none;
+      overflow: visible;
+      margin-top: 0;
+      padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px));
+      gap: 4px;
+    }
+  
+    .trade-mobile-config__panel,
+    .trade-actions--mobile {
+      min-width: 0;
+    }
+  
+    /*
+     * Oscillator panels remain inside the chart stage. Their reserved height
+     * is calculated by ChartWorkspace and changes automatically when indicators
+     * are added/removed. The cap prevents them from covering the trade panel.
+     */
+    .chart-stage--oscillators .chart-canvas-shell {
+      inset: 0 0 min(var(--oscillator-height, 0px), 46%);
+    }
+  
+    .chart-indicator-stack {
+      height: min(var(--oscillator-height, 0px), 46%);
+      max-height: min(var(--oscillator-height, 0px), 46%);
+      overflow-y: auto;
+      overflow-x: hidden;
+      overscroll-behavior: contain;
+    }
+  
+    .chart-indicator-panel {
+      height: 68px;
+      min-height: 68px;
+    }
+}
