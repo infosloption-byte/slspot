@@ -115,10 +115,16 @@ export function TradePanel({ asset, balance, walletMode, canTrade, tradeDisabled
     if (stage !== 'draft') resetOrder()
   }
 
-  const adjustDuration = (delta: number) => {
-    const minDuration = asset.durationsSeconds[0] ?? DURATION_STEP_SECONDS
-    const maxDuration = asset.durationsSeconds[asset.durationsSeconds.length - 1] ?? 300
-    chooseDuration(Math.max(minDuration, Math.min(maxDuration, duration + delta)))
+  const adjustDuration = (direction: -1 | 1) => {
+    const durations = asset.durationsSeconds
+    if (durations.length === 0) return
+    const currentIndex = durations.indexOf(duration)
+    const fallbackIndex = direction > 0 ? -1 : durations.length
+    const nextIndex = Math.max(0, Math.min(
+      durations.length - 1,
+      (currentIndex >= 0 ? currentIndex : fallbackIndex) + direction,
+    ))
+    chooseDuration(durations[nextIndex] ?? duration)
   }
 
   const renderActions = (mobile = false) => (
@@ -166,7 +172,7 @@ export function TradePanel({ asset, balance, walletMode, canTrade, tradeDisabled
           <div className="trade-field">
             <span className="trade-field__label">Duration</span>
             <div className="duration-stepper">
-              <button type="button" onClick={() => adjustDuration(-DURATION_STEP_SECONDS)} aria-label="Decrease duration by 5 seconds" disabled={duration <= (asset.durationsSeconds[0] ?? DURATION_STEP_SECONDS)}><Minus size={16} /></button>
+              <button type="button" onClick={() => adjustDuration(-1)} aria-label="Decrease duration by 5 seconds" disabled={duration <= (asset.durationsSeconds[0] ?? DURATION_STEP_SECONDS)}><Minus size={16} /></button>
               <Select
                 value={String(duration)}
                 options={asset.durationsSeconds.map((value) => ({ value: String(value), label: formatDuration(value) }))}
@@ -175,7 +181,7 @@ export function TradePanel({ asset, balance, walletMode, canTrade, tradeDisabled
                 leadingIcon={<Timer size={16} />}
                 mobilePlacement="up"
               />
-              <button type="button" onClick={() => adjustDuration(DURATION_STEP_SECONDS)} aria-label="Increase duration by 5 seconds" disabled={duration >= (asset.durationsSeconds[asset.durationsSeconds.length - 1] ?? 300)}><Plus size={16} /></button>
+              <button type="button" onClick={() => adjustDuration(1)} aria-label="Increase duration by 5 seconds" disabled={duration >= (asset.durationsSeconds[asset.durationsSeconds.length - 1] ?? 300)}><Plus size={16} /></button>
             </div>
           </div>
 
