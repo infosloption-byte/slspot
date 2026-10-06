@@ -489,7 +489,7 @@ export class AuthService {
 
   async authenticateWebSocket(request: FastifyRequest): Promise<{ userId: string; sessionId: string } | null> {
     const session = await this.authenticateSession(request.cookies?.[env.auth.cookieName])
-    return session ? { userId: session.user.id, sessionId: session.sessionId } : null
+    return session ? { userId: session.id, sessionId: session.sessionId } : null
   }
 
   async logout(sessionId: string): Promise<void> {
