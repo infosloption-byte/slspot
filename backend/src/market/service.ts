@@ -297,10 +297,8 @@ export class MarketDataService {
   }
 
   /**
-   * Development fallback: keeps every active market priced (and ticking over the WebSocket)
-   * when there is no live provider, or when the provider is failing, for example because the
-   * API key is missing or the free plan is rate limited. Without it `lastPrice` stays null and
-   * the UI shows no prices. Disabled in production by the env validation.
+   * Development fallback: explicit opt-in simulation for local testing. It is not a pricing source
+   * for production trading and must never be enabled there.
    */
   private startSimulation(): void {
     if (this.simulationTimer) return
@@ -346,6 +344,7 @@ export class MarketDataService {
           data: { status: 'OPEN', lastPrice: last, lastPriceAt: timestamp, lastChangePct: changePct },
         })
         this.simulatedAssets.add(market.assetId)
+        setLivePrice(market.assetId, 'demo-simulation', last, now, String(now), now)
 
         await this.publishEvent(createRealtimeEvent('market.price', {
           assetId: market.assetId,
