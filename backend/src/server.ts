@@ -31,6 +31,7 @@ const marketDataService = new MarketDataService(prisma, marketDataProvider)
 const tradingService = new TradingService(prisma)
 const realtimeGateway = new RealtimeGateway({
   authenticate: (request) => authService.authenticateWebSocket(request),
+  validateSession: (sessionId) => authService.isSessionActive(sessionId),
 })
 // Without Redis, realtime events are delivered straight to this process's gateway.
 setLocalRealtimeSink((message) => realtimeGateway.broadcastSerialized(message))
