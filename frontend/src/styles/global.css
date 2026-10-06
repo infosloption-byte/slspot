@@ -3196,11 +3196,21 @@ button.toggle { cursor: pointer; appearance: none; }
 
 @media (max-width: 420px) {
   .trade-mobile-config-row {
-    gap: 4px;
+    gap: 3px;
+  }
+
+  .trade-mobile-config-row .trade-mobile-config {
+    gap: 3px;
+    font-size: 10px;
+  }
+
+  .trade-mobile-config-row .trade-mobile-config > strong:first-child {
+    font-size: 11px;
   }
 
   .trade-mobile-payout-summary {
-    gap: 4px;
+    gap: 3px;
+    font-size: 9px;
   }
 
   .trade-mobile-payout-summary strong {
@@ -3212,7 +3222,13 @@ button.toggle { cursor: pointer; appearance: none; }
   }
 
   .trade-mobile-rate {
+    gap: 2px;
     font-size: 10px;
+  }
+
+  .trade-mobile-rate svg {
+    width: 12px;
+    height: 12px;
   }
 
   .trading-room {
