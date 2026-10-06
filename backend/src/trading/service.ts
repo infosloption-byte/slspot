@@ -707,7 +707,7 @@ export class TradingService {
           settlement: true,
         },
       })
-      if (!current || current.userId !== userId || current.status !== 'OPEN' || current.position.status !== 'OPEN') return null
+      if (!current || current.userId !== userId || current.status !== 'OPEN' || current.position.order.status !== 'ACCEPTED') return null
       if (current.position.order.expiresAt && current.position.order.expiresAt.getTime() <= Date.now()) {
         throw new TradingError(409, 'TRADE_EXPIRED', 'This trade has already expired and is being settled')
       }
