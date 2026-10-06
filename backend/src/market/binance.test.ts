@@ -7,7 +7,7 @@ import { syntheticCandles } from './synthetic.js'
 import { clearLivePrices, getLivePrice, setLivePrice } from './live-prices.js'
 import type { MarketDefinition } from './types.js'
 
-const btc: MarketDefinition = { assetId: 'a1', assetType: 'CRYPTO', symbol: 'BTC/USD', provider: 'twelve-data', externalSymbol: 'BTC/USD' }
+const btc: MarketDefinition = { assetId: 'a1', assetType: 'CRYPTO', symbol: 'BTC/USD', provider: 'binance', externalSymbol: 'BTC/USD' }
 
 test('maps USD pairs to Binance USDT symbols', () => {
   assert.equal(toBinanceSymbol('BTC/USD'), 'BTCUSDT')
@@ -40,13 +40,15 @@ test('quote and candles are parsed from Binance responses', async () => {
 test('composite routes crypto to Binance and the rest to the general provider', async () => {
   const make = (name: string) => ({
     name,
-    quote: async () => ({ externalSymbol: name, last: '1', bid: '1', ask: '1', changePct: '0', volume: null, timestamp: '', status: 'OPEN' as const }),
+    assetType: 'CRYPTO' as const,
+    supports: () => true,
+    quote: async () => ({ provider: name, externalSymbol: name, last: '1', bid: '1', ask: '1', changePct: '0', volume: null, timestamp: new Date().toISOString(), status: 'OPEN' as const }),
     candles: async () => [],
   })
-  const composite = new CompositeProvider(make('binance'), make('twelve'))
+  const composite = new CompositeProvider([make('binance'), make('twelve')])
   assert.equal((await composite.quote(btc)).externalSymbol, 'binance')
   assert.equal((await composite.quote({ ...btc, assetType: 'FOREX' })).externalSymbol, 'twelve')
-  await assert.rejects(new CompositeProvider(make('binance'), null).quote({ ...btc, assetType: 'STOCK' }))
+  await assert.rejects(new CompositeProvider([make('binance')]).quote({ ...btc, assetType: 'STOCK' }))
 })
 
 test('tick stream emits ticks, ignores junk and reconnects after a close', async () => {
@@ -95,15 +97,17 @@ test('binance provider answers from a fallback host when the primary is unreacha
 })
 
 test('composite falls back to the general provider when the crypto feed fails', async () => {
-  const failing = { name: 'binance', quote: async () => { throw new Error('down') }, candles: async () => { throw new Error('down') } }
+  const failing = { name: 'binance', assetType: 'CRYPTO' as const, supports: () => true, quote: async () => { throw new Error('down') }, candles: async () => { throw new Error('down') } }
   const general = {
     name: 'twelve',
-    quote: async () => ({ externalSymbol: 'twelve', last: '1', bid: '1', ask: '1', changePct: '0', volume: null, timestamp: '', status: 'OPEN' as const }),
+    assetType: 'CRYPTO' as const,
+    supports: () => true,
+    quote: async () => ({ provider: 'twelve', externalSymbol: 'twelve', last: '1', bid: '1', ask: '1', changePct: '0', volume: null, timestamp: new Date().toISOString(), status: 'OPEN' as const }),
     candles: async () => [],
   }
-  const composite = new CompositeProvider(failing, general)
+  const composite = new CompositeProvider([failing, general])
   assert.equal((await composite.quote(btc)).externalSymbol, 'twelve')
-  await assert.rejects(new CompositeProvider(failing, null).candles(btc, '1min', 5))
+  await assert.rejects(new CompositeProvider([failing]).candles(btc, '1min', 5))
 })
 
 test('tick stream rotates to the next host when one never opens', async () => {
