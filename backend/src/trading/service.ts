@@ -695,7 +695,7 @@ export class TradingService {
       throw new TradingError(404, 'TRADE_NOT_FOUND', 'Trade was not found')
     }
 
-    if (details.trade.status !== 'OPEN' || details.position.status !== 'OPEN') {
+    if (details.trade.status !== 'OPEN' || details.position.order.status !== 'ACCEPTED') {
       return this.toTradingResult(details.trade, details.position, details.settlement)
     }
 
