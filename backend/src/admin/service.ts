@@ -326,7 +326,9 @@ export class AdminService {
   }
 
   async reconciliation() {
-    const transactions = await this.prisma.ledgerTransaction.findMany({ orderBy: { createdAt: 'desc' }, take: 200, select: { id: true, currency: true, referenceType: true, referenceId: true, description: true, createdAt: true, entries: { select: { direction: true, amount: true } } } })
+    // Reconciliation is an integrity check, not a recent-activity view. Scan the full ledger so
+    // an old corruption cannot disappear merely because it fell outside a 200-row window.
+    const transactions = await this.prisma.ledgerTransaction.findMany({ orderBy: { createdAt: 'desc' }, select: { id: true, currency: true, referenceType: true, referenceId: true, description: true, createdAt: true, entries: { select: { direction: true, amount: true } } } })
     const checks = transactions.map((tx) => {
       const debit = tx.entries.filter((entry) => entry.direction === 'DEBIT').reduce((sum, entry) => sum.add(entry.amount), new Prisma.Decimal(0))
       const credit = tx.entries.filter((entry) => entry.direction === 'CREDIT').reduce((sum, entry) => sum.add(entry.amount), new Prisma.Decimal(0))
