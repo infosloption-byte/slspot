@@ -274,6 +274,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
 }
 .chart-bottom-status > span { display: inline-flex; align-items: center; gap: 6px; }
 .chart-bottom-status__spacer { flex: 1; }
+.chart-price-source { color: var(--accent); font-weight: 700; }
 .chart-help-text { color: var(--muted-2); }
 
 /* ---------- 5. Trade panel (right side) ---------- */
