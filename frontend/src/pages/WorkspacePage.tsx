@@ -628,6 +628,7 @@ function WalletPage() {
 }
 
 function HistoryPage() {
+  const { mode } = useWalletMode()
   const [page, setPage] = useState(1)
   const [status, setStatus] = useState<'' | 'OPEN' | 'WON' | 'LOST' | 'DRAW' | 'CANCELLED' | 'EXPIRED'>('')
   const [search, setSearch] = useState('')
