@@ -50,6 +50,10 @@ export type TradeRecord = {
   fee: string
   netPnl: string | null
   settlementReference: string | null
+  entryProvider: string | null
+  entryTimestamp: string | null
+  settlementProvider: string | null
+  settlementTimestamp: string | null
   openedAt: string
   closedAt: string | null
   position: {
