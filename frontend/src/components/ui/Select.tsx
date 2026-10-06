@@ -1,6 +1,6 @@
 import { Check, ChevronDown } from 'lucide-react'
 import { createPortal } from 'react-dom'
-import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 
 export type SelectOption = {
   value: string
@@ -13,6 +13,8 @@ type SelectProps = {
   onChange: (value: string) => void
   label?: string
   className?: string
+  leadingIcon?: ReactNode
+  mobilePlacement?: 'auto' | 'up' | 'down'
 }
 
 type MenuPosition = {
@@ -46,8 +48,17 @@ export function Select({ value, options, onChange, label, className = '' }: Sele
     const rect = trigger.getBoundingClientRect()
     const gap = 6
     const menuHeight = menu?.getBoundingClientRect().height ?? 280
-    const shouldFlip = rect.bottom + gap + menuHeight > window.innerHeight - 8 && rect.top - gap - menuHeight >= 8
-    const top = shouldFlip ? rect.top - gap - menuHeight : rect.bottom + gap
+    const isMobile = window.innerWidth <= 600
+    const canOpenUp = rect.top - gap - menuHeight >= 8
+    const canOpenDown = rect.bottom + gap + menuHeight <= window.innerHeight - 8
+    const shouldFlip = isMobile && mobilePlacement === 'up'
+      ? true
+      : isMobile && mobilePlacement === 'down'
+        ? false
+        : !canOpenDown && canOpenUp
+    const top = shouldFlip
+      ? Math.max(8, rect.top - gap - menuHeight)
+      : Math.min(rect.bottom + gap, Math.max(8, window.innerHeight - menuHeight - 8))
     const maxLeft = Math.max(8, window.innerWidth - rect.width - 8)
 
     setMenuPosition({
@@ -55,7 +66,7 @@ export function Select({ value, options, onChange, label, className = '' }: Sele
       top,
       width: rect.width,
     })
-  }, [])
+  }, [mobilePlacement])
 
   useLayoutEffect(() => {
     if (!open) return undefined
@@ -208,6 +219,7 @@ export function Select({ value, options, onChange, label, className = '' }: Sele
             }
           }}
         >
+          {leadingIcon ? <span className="select-field__trigger-icon" aria-hidden="true">{leadingIcon}</span> : null}
           <span>{selected?.label ?? 'Select'}</span>
           <ChevronDown size={14} aria-hidden="true" />
         </button>
