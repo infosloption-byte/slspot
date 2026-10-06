@@ -178,6 +178,26 @@ export function BottomPanel({
   onHistoryRetry,
   onHistoryExport,
 }: BottomPanelProps) {
+  const [confirmAction, setConfirmAction] = useState<{ type: 'cancel' | 'settle'; tradeId: string } | null>(null)
+  const [actionBusy, setActionBusy] = useState(false)
+
+  const confirmLabel = confirmAction?.type === 'cancel' ? 'Cancel trade' : 'Settle trade'
+  const confirmMessage = confirmAction?.type === 'cancel'
+    ? 'Cancel this trade before expiry? The held stake will be returned to your available balance. The opening fee remains charged.'
+    : 'Settle this expired trade now using the current server market price?'
+
+  const handleConfirm = async () => {
+    if (!confirmAction || actionBusy) return
+    setActionBusy(true)
+    try {
+      if (confirmAction.type === 'cancel') await onCancelTrade(confirmAction.tradeId)
+      else await onSettleTrade(confirmAction.tradeId)
+      setConfirmAction(null)
+    } finally {
+      setActionBusy(false)
+    }
+  }
+
   // Every open position is shown whichever market is selected on the chart.
   const visiblePositions = openTrades
 
