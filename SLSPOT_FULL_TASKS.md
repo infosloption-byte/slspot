@@ -837,9 +837,9 @@ AuditLog
 
 - [x] Redis development deployment.
 - [x] Connection handling.
-- [~] Market cache primitives (actual market-data population is deferred to Phase 15).
+- [x] Market cache primitives and active market-data population.
 - [x] Pub/sub.
-- [~] Session/temporary-state primitives (actual session usage is deferred to authentication).
+- [x] Session/temporary-state primitives are used by authenticated sessions.
 - [x] TTL policy.
 - [x] Cache invalidation.
 
@@ -847,9 +847,9 @@ AuditLog
 
 # PHASE 15 — Market Data Service
 
-- [x] Choose market provider.
-- [x] Provider adapter.
-- [x] Asset registry.
+- [x] Choose market provider (Binance primary; Kraken and OKX fallback).
+- [x] Provider adapters (Binance/Kraken/OKX).
+- [x] Asset registry with crypto-first scope.
 - [x] Symbol mapping.
 - [x] Price normalization.
 - [x] Timestamp normalization.
@@ -1408,7 +1408,7 @@ A production release is blocked until:
 
 ### `SLSPOT-007 — Market Data Service`
 
-- [x] Twelve Data provider adapter.
+- [x] Binance/Kraken/OKX provider adapters.
 - [x] Development asset registry and provider symbol mapping.
 - [x] Quote normalization and market-status normalization.
 - [x] OHLC/time-series normalization.
