@@ -169,7 +169,7 @@ export function TradePanel({ asset, balance, walletMode, canTrade, tradeDisabled
             <span className="trade-field__label">Stake · {asset.quoteCurrency}</span>
             <div className="stepper">
               <button type="button" onClick={() => adjustAmount(-10)} aria-label="Decrease stake"><Minus size={17} /></button>
-              <div className="stepper__value"><span>{asset.quoteCurrency}</span><input value={amount} onChange={(event) => handleAmountInput(event.target.value)} type="number" inputMode="decimal" min={asset.minAmount} max={asset.maxAmount} aria-label="Stake amount" /></div>
+              <div className="stepper__value"><span>{asset.quoteCurrency}</span><input value={amountText} onChange={(event) => handleAmountInput(event.target.value)} type="number" inputMode="decimal" min={asset.minAmount} max={asset.maxAmount} aria-label="Stake amount" /></div>
               <button type="button" onClick={() => adjustAmount(10)} aria-label="Increase stake"><Plus size={17} /></button>
             </div>
             <div className="chips">
@@ -224,7 +224,7 @@ export function TradePanel({ asset, balance, walletMode, canTrade, tradeDisabled
           {mobileConfigOpen ? (
             <div className="trade-mobile-config__panel">
               <div className="trade-mobile-config__grid">
-                <label><span>Stake</span><div className="stepper"><button type="button" onClick={() => adjustAmount(-10)} aria-label="Decrease stake"><Minus size={15} /></button><div className="stepper__value"><span>{asset.quoteCurrency}</span><input value={amount} onChange={(event) => handleAmountInput(event.target.value)} type="number" inputMode="decimal" /></div><button type="button" onClick={() => adjustAmount(10)} aria-label="Increase stake"><Plus size={15} /></button></div></label>
+                <label><span>Stake</span><div className="stepper"><button type="button" onClick={() => adjustAmount(-10)} aria-label="Decrease stake"><Minus size={15} /></button><div className="stepper__value"><span>{asset.quoteCurrency}</span><input value={amountText} onChange={(event) => handleAmountInput(event.target.value)} type="number" inputMode="decimal" /></div><button type="button" onClick={() => adjustAmount(10)} aria-label="Increase stake"><Plus size={15} /></button></div></label>
                 <label>
                   <span>Duration</span>
                   <button className="mobile-duration-button" type="button" onClick={() => setMobileDurationOpen((open) => !open)} aria-expanded={mobileDurationOpen}>{formatDuration(duration)} <ChevronDown size={13} /></button>
