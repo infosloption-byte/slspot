@@ -1,8 +1,8 @@
 import { toBinanceSymbol } from './binance.js'
 
-export type Tick = { externalSymbol: string; price: string; at: number }
+export type Tick = { provider: 'binance'; externalSymbol: string; price: string; at: number; sequence: string }
 
-type SocketLike = {
+export type SocketLike = {
   onopen: ((event: unknown) => void) | null
   onmessage: ((event: { data: unknown }) => void) | null
   onclose: ((event: unknown) => void) | null
@@ -101,7 +101,7 @@ export class BinanceTickStream {
       if (!data?.s || !data.p) return
       const externalSymbol = this.bySymbol.get(data.s)
       if (!externalSymbol || !(Number(data.p) > 0)) return
-      this.options.onTick({ externalSymbol, price: data.p, at: Date.now() })
+      this.options.onTick({ provider: 'binance', externalSymbol, price: data.p, at: Number.isFinite(data.T) ? data.T : Date.now(), sequence: String(data.a ?? data.T ?? Date.now()) })
     } catch {
       // ignore malformed frames
     }
