@@ -78,9 +78,9 @@ test('tick stream emits ticks, ignores junk and reconnects after a close', async
 
 test('live price cache honours freshness', () => {
   clearLivePrices()
-  setLivePrice('a1', '5', 1_000)
-  assert.equal(getLivePrice('a1', 500, 1_400)?.price, '5')
-  assert.equal(getLivePrice('a1', 500, 1_600), null)
+  setLivePrice('a1', 'binance', '5', 1_000, '1', 1_000)
+  assert.equal(getLivePrice('a1', 500, 1_400, 'binance')?.price, '5')
+  assert.equal(getLivePrice('a1', 500, 1_600, 'binance'), null)
 })
 
 test('binance provider answers from a fallback host when the primary is unreachable', async () => {
