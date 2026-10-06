@@ -14,6 +14,7 @@ import { useAuth } from '../auth/useAuth'
 import { useWalletMode } from '../hooks/useWalletMode'
 import { recordNotificationEvent, useNotificationStore, setUnreadCount, decrementUnreadCount } from '../state/notificationStore'
 import { usePortfolioStore } from '../state/portfolioStore'
+import { setCompactTradingLayout, setPriceMovementAlerts, usePreferences } from '../state/preferencesStore'
 import { useRealtime } from '../realtime/useRealtime'
 import { userChannel } from '../realtime/subscriptions'
 import { useAuthDevices, useAuthSessions, useLoginHistory, useMarketAssets, useNotifications, usePortfolioAnalytics, usePortfolioPositions, usePortfolioSummary, useSecurityEvents, useTrades, useTradingCapabilities, useTwoFactorStatus, useWallet, useWalletTransactions, useWallets } from '../hooks/useServerState'
@@ -1125,6 +1126,29 @@ function SecurityPage() {
 
 function AccountPage() {
   const { user } = useAuth()
+  const { compactTradingLayout, priceMovementAlerts } = usePreferences()
+  const { soundEnabled } = useTradingUiStore()
+
+  const preferenceRows = [
+    {
+      label: 'Compact trading layout',
+      description: 'Tightens the trading workspace spacing.',
+      enabled: compactTradingLayout,
+      onToggle: setCompactTradingLayout,
+    },
+    {
+      label: 'Price movement alerts',
+      description: 'Keeps your market-movement alert preference on this device.',
+      enabled: priceMovementAlerts,
+      onToggle: setPriceMovementAlerts,
+    },
+    {
+      label: 'Sound effects',
+      description: 'Play trade result sounds when enabled.',
+      enabled: soundEnabled,
+      onToggle: setSoundEnabled,
+    },
+  ]
 
   return (
     <div className="workspace-page">
@@ -1146,10 +1170,19 @@ function AccountPage() {
 
         <aside className="dashboard-card panel">
           <div className="dashboard-card__header"><div><span className="eyebrow">Preferences</span><h2>Workspace</h2></div></div>
-          {['Compact trading layout', 'Price movement alerts', 'Sound effects'].map((label, index) => (
-            <div className="setting-row" key={label}>
-              <div><strong>{label}</strong><small>{index === 2 ? 'Stored locally for now.' : 'UI preference.'}</small></div>
-              <span className={index < 2 ? 'toggle toggle--on' : 'toggle'}><span /></span>
+          {preferenceRows.map((row) => (
+            <div className="setting-row" key={row.label}>
+              <div><strong>{row.label}</strong><small>{row.description}</small></div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={row.enabled}
+                className={row.enabled ? 'toggle toggle--on' : 'toggle'}
+                onClick={() => row.onToggle(!row.enabled)}
+                title={row.enabled ? 'Disable ' + row.label : 'Enable ' + row.label}
+              >
+                <span />
+              </button>
             </div>
           ))}
         </aside>
