@@ -131,7 +131,7 @@ const tradingService = {
     settlementPrice: '101',
     settlementReference: 'manual:trade-1',
   }),
-  cancelTrade: async () => ({
+  cancelTrade: async (_userId: string, _tradeId: string, _mode: 'DEMO' | 'REAL') => ({
     orderId: 'order-1',
     orderStatus: 'CANCELLED',
     tradeId: 'trade-1',
