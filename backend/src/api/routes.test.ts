@@ -131,6 +131,27 @@ const tradingService = {
     settlementPrice: '101',
     settlementReference: 'manual:trade-1',
   }),
+  cancelTrade: async () => ({
+    orderId: 'order-1',
+    orderStatus: 'CANCELLED',
+    tradeId: 'trade-1',
+    positionId: 'position-1',
+    status: 'CANCELLED',
+    direction: 'UP' as const,
+    amount: '10',
+    entryPrice: '100',
+    exitPrice: null,
+    payoutRate: '0.8',
+    fee: '0',
+    grossPnl: '0',
+    netPnl: '0',
+    openedAt: new Date().toISOString(),
+    closedAt: new Date().toISOString(),
+    expiresAt: null,
+    settlementId: 'settlement-1',
+    settlementPrice: null,
+    settlementReference: 'cancel:trade-1',
+  }),
 };
 
 describe('platform API routes', () => {
@@ -347,6 +368,7 @@ describe('platform API routes', () => {
       { method: 'GET', url: '/api/v1/trades' },
       { method: 'POST', url: '/api/v1/trades' },
       { method: 'POST', url: '/api/v1/trades/:tradeId/close' },
+      { method: 'POST', url: '/api/v1/trades/:tradeId/cancel' },
       { method: 'GET', url: '/api/v1/wallets' },
       { method: 'GET', url: '/api/v1/wallet' },
       { method: 'GET', url: '/api/v1/wallet/transactions' },
@@ -463,6 +485,31 @@ describe('platform API routes', () => {
     assert.equal(response.statusCode, 200)
     assert.equal(request, 'test-trade-123')
     assert.equal(response.json<{ data: { tradeId: string } }>().data.tradeId, 'trade-1')
+    await app.close()
+  })
+
+  it('passes cancellation through the authenticated trading service', async () => {
+    let requestedTradeId = ''
+    const scopedTradingService = {
+      ...tradingService,
+      cancelTrade: async (_userId: string, tradeId: string) => {
+        requestedTradeId = tradeId
+        return tradingService.cancelTrade(_userId, tradeId)
+      },
+    }
+    const app = buildApp({ logging: false, authService, apiService, tradingService: scopedTradingService })
+    await app.ready()
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/v1/trades/550e8400-e29b-41d4-a716-446655440001/cancel',
+      headers: {
+        cookie: 'slspot_session=test-session',
+        'x-csrf-token': await csrfToken(app, 'slspot_session=test-session'),
+      },
+    })
+    assert.equal(response.statusCode, 200)
+    assert.equal(requestedTradeId, '550e8400-e29b-41d4-a716-446655440001')
+    assert.equal(response.json<{ data: { status: string } }>().data.status, 'CANCELLED')
     await app.close()
   })
 
