@@ -1,6 +1,7 @@
 import { apiClient } from './client'
 import type { ApiSuccess, PaginatedData } from './contracts'
 import type { WalletMode } from '../hooks/useWalletMode'
+import { normalizeDateFilter } from '../lib/dateFilters'
 
 export type WalletSnapshot = {
   id: string
@@ -94,8 +95,10 @@ function toQueryString(query: { page?: number; pageSize?: number } & WalletTrans
   if (query.type) params.set('type', query.type)
   if (query.status) params.set('status', query.status)
   if (query.search?.trim()) params.set('search', query.search.trim())
-  if (query.from) params.set('from', query.from)
-  if (query.to) params.set('to', query.to)
+  const from = normalizeDateFilter(query.from)
+  const to = normalizeDateFilter(query.to, true)
+  if (from) params.set('from', from)
+  if (to) params.set('to', to)
   const value = params.toString()
   return value ? '?' + value : ''
 }
