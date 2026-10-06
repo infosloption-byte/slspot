@@ -60,7 +60,7 @@ function queryEnumList(value: string | undefined, allowed: readonly string[], na
 function queryDate(value: string | undefined, name: string, endOfDay = false): Date | undefined {
   if (value === undefined) return undefined
   const normalized = value.trim()
-  const date = /^\\d{4}-\\d{2}-\\d{2}$/.test(normalized)
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(normalized)
     ? new Date(normalized + (endOfDay ? 'T23:59:59.999Z' : 'T00:00:00.000Z'))
     : new Date(normalized)
   if (Number.isNaN(date.getTime())) {
