@@ -37,17 +37,23 @@ test('quote and candles are parsed from Binance responses', async () => {
   assert.ok(klines?.includes('symbol=BTCUSDT') && klines.includes('interval=5m'))
 })
 
-test('composite routes crypto to Binance and the rest to the general provider', async () => {
-  const make = (name: string) => ({
+test('composite uses Binance first and Kraken as the next crypto fallback', async () => {
+  const make = (name: string, failing = false) => ({
     name,
     assetType: 'CRYPTO' as const,
-    supports: () => true,
-    quote: async () => ({ provider: name, externalSymbol: name, last: '1', bid: '1', ask: '1', changePct: '0', volume: null, timestamp: new Date().toISOString(), status: 'OPEN' as const }),
-    candles: async () => [],
+    supports: (market: MarketDefinition) => market.assetType === 'CRYPTO',
+    quote: async () => {
+      if (failing) throw new Error(name + ' down')
+      return { provider: name, externalSymbol: name, last: '1', bid: '1', ask: '1', changePct: '0', volume: null, timestamp: new Date().toISOString(), status: 'OPEN' as const }
+    },
+    candles: async () => {
+      if (failing) throw new Error(name + ' down')
+      return []
+    },
   })
-  const composite = new CompositeProvider([make('binance'), make('twelve')])
-  assert.equal((await composite.quote(btc)).externalSymbol, 'binance')
-  assert.equal((await composite.quote({ ...btc, assetType: 'FOREX' })).externalSymbol, 'twelve')
+  const composite = new CompositeProvider([make('binance'), make('kraken')])
+  assert.equal((await composite.quote(btc)).provider, 'binance')
+  assert.equal((await new CompositeProvider([make('binance', true), make('kraken')]).quote(btc)).provider, 'kraken')
   await assert.rejects(new CompositeProvider([make('binance')]).quote({ ...btc, assetType: 'STOCK' }))
 })
 
@@ -99,14 +105,14 @@ test('binance provider answers from a fallback host when the primary is unreacha
 test('composite falls back to the general provider when the crypto feed fails', async () => {
   const failing = { name: 'binance', assetType: 'CRYPTO' as const, supports: () => true, quote: async () => { throw new Error('down') }, candles: async () => { throw new Error('down') } }
   const general = {
-    name: 'twelve',
+    name: 'kraken',
     assetType: 'CRYPTO' as const,
     supports: () => true,
-    quote: async () => ({ provider: 'twelve', externalSymbol: 'twelve', last: '1', bid: '1', ask: '1', changePct: '0', volume: null, timestamp: new Date().toISOString(), status: 'OPEN' as const }),
+    quote: async () => ({ provider: 'kraken', externalSymbol: 'kraken', last: '1', bid: '1', ask: '1', changePct: '0', volume: null, timestamp: new Date().toISOString(), status: 'OPEN' as const }),
     candles: async () => [],
   }
   const composite = new CompositeProvider([failing, general])
-  assert.equal((await composite.quote(btc)).externalSymbol, 'twelve')
+  assert.equal((await composite.quote(btc)).provider, 'kraken')
   await assert.rejects(new CompositeProvider([failing]).candles(btc, '1min', 5))
 })
 
