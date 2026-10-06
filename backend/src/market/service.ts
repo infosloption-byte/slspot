@@ -318,7 +318,7 @@ export class MarketDataService {
       const now = Date.now()
       const staleAfterMs = Math.max(env.marketData.pollIntervalMs * 3, 30_000)
       const markets = await this.prisma.market.findMany({
-        where: { provider: env.marketData.provider, asset: { isActive: true } },
+        where: { asset: { isActive: true, type: 'CRYPTO' } },
         include: { asset: true },
       })
 
@@ -355,6 +355,7 @@ export class MarketDataService {
           last,
           changePct,
           volume: null,
+          provider: 'demo-simulation',
           timestamp: timestamp.toISOString(),
         }, ('market:' + market.assetId) as `market:${string}`))
       }
@@ -370,10 +371,7 @@ export class MarketDataService {
 
     try {
       const markets = await this.prisma.market.findMany({
-        where: {
-          provider: env.marketData.provider,
-          asset: { isActive: true },
-        },
+        where: { asset: { isActive: true, type: 'CRYPTO' } },
         include: { asset: true },
         orderBy: { updatedAt: 'asc' },
       })
@@ -410,6 +408,7 @@ export class MarketDataService {
   }
 
   private async updateMarket(market: {
+    id: string
     assetId: string
     provider: string
     externalSymbol: string
