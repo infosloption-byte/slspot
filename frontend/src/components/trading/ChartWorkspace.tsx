@@ -333,7 +333,7 @@ function ChartCanvas({
 
     if (!priceLineRef.current) {
       priceLineRef.current = series.createPriceLine({
-        price: asset.price,
+        price: targetPriceRef.current,
         color: '#ffc21a',
         lineWidth: 1,
         lineStyle: 2,
@@ -343,7 +343,7 @@ function ChartCanvas({
       return
     }
 
-    priceLineRef.current.applyOptions({ price: asset.price })
+    priceLineRef.current.applyOptions({ price: targetPriceRef.current })
   }, [chartType, priceLineEnabled])
 
   useEffect(() => {
