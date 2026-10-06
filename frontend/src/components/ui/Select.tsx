@@ -23,7 +23,7 @@ type MenuPosition = {
   width: number
 }
 
-export function Select({ value, options, onChange, label, className = '' }: SelectProps) {
+export function Select({ value, options, onChange, label, className = '', leadingIcon, mobilePlacement = 'auto' }: SelectProps) {
   const [open, setOpen] = useState(false)
   const [menuPosition, setMenuPosition] = useState<MenuPosition | null>(null)
   const [highlightedIndex, setHighlightedIndex] = useState(() => Math.max(0, options.findIndex((option) => option.value === value)))
