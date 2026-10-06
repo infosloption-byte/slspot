@@ -541,11 +541,23 @@ export class AuthService {
 
     const now = new Date()
     const user = await this.prisma.$transaction(async (tx) => {
+      const claimed = await tx.authToken.updateMany({
+        where: {
+          id: record.id,
+          type: 'EMAIL_VERIFICATION',
+          consumedAt: null,
+          expiresAt: { gt: now },
+        },
+        data: { consumedAt: now },
+      })
+      if (claimed.count !== 1) {
+        throw new AuthError(400, 'INVALID_VERIFICATION_TOKEN', 'Verification token is invalid or expired')
+      }
+
       const updated = await tx.user.update({
         where: { id: record.userId },
         data: { status: 'ACTIVE', emailVerifiedAt: now },
       })
-      await tx.authToken.update({ where: { id: record.id }, data: { consumedAt: now } })
       await tx.auditLog.create({
         data: { actorUserId: updated.id, action: 'EMAIL_VERIFIED', entityType: 'User', entityId: updated.id },
       })
@@ -579,8 +591,20 @@ export class AuthService {
     const passwordHash = await hashPassword(password)
 
     await this.prisma.$transaction(async (tx) => {
+      const claimed = await tx.authToken.updateMany({
+        where: {
+          id: record.id,
+          type: 'PASSWORD_RESET',
+          consumedAt: null,
+          expiresAt: { gt: now },
+        },
+        data: { consumedAt: now },
+      })
+      if (claimed.count !== 1) {
+        throw new AuthError(400, 'INVALID_RESET_TOKEN', 'Password reset token is invalid or expired')
+      }
+
       await tx.user.update({ where: { id: record.userId }, data: { passwordHash, loginFailedCount: 0, loginLockedUntil: null } })
-      await tx.authToken.update({ where: { id: record.id }, data: { consumedAt: now } })
       await tx.session.updateMany({
         where: { userId: record.userId, revokedAt: null },
         data: { revokedAt: now },
