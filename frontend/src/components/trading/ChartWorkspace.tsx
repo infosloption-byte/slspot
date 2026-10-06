@@ -549,6 +549,7 @@ export function ChartWorkspace({ asset, onOpenMarkets, onOpenActivity, soundEnab
   const workspaceRef = useRef<HTMLElement>(null)
   const stageRef = useRef<HTMLDivElement>(null)
   const price = formatPrice(asset.price, asset.price < 10 ? 5 : 2)
+  const priceProviderLabel = asset.priceProvider === 'binance' ? 'Binance' : asset.priceProvider === 'kraken' ? 'Kraken fallback' : asset.priceProvider === 'okx' ? 'OKX fallback' : asset.priceProvider === 'demo-simulation' ? 'Demo simulation' : asset.priceProvider ?? 'Unknown source'
   const marketInterval = timeframeToApiInterval(timeframe)
   const realtime = useRealtime()
   const candleResource = useMarketCandles(asset.assetId, marketInterval, 200)
@@ -895,6 +896,7 @@ export function ChartWorkspace({ asset, onOpenMarkets, onOpenActivity, soundEnab
         </span>
         <span>{timeframe}</span>
         <span>{chartType === 'candles' ? 'Candles' : chartType === 'line' ? 'Line' : 'Area'}</span>
+        <span className="chart-price-source">{priceProviderLabel}</span>
         <span className="chart-bottom-status__spacer" />
         <span className="chart-help-text">Scroll to zoom · drag to pan</span>
       </div>
