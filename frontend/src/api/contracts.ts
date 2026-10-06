@@ -35,6 +35,8 @@ export type MarketPrice = {
   last: string
   changePct: string
   volume: string | null
+  provider?: string
+  sequence?: string
   timestamp: string
 }
 
