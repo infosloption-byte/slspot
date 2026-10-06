@@ -19,7 +19,19 @@ export function setLivePrice(
 ): void {
   const byProvider = prices.get(assetId) ?? new Map<string, LivePrice>()
   const current = byProvider.get(provider)
-  if (current && sequence !== null && current.sequence !== null && Number(sequence) <= Number(current.sequence)) return
+  if (current && sequence !== null && current.sequence !== null) {
+    const previousNumeric = /^\d+$/.test(current.sequence)
+    const nextNumeric = /^\d+$/.test(sequence)
+    if (previousNumeric && nextNumeric) {
+      try {
+        if (BigInt(sequence) <= BigInt(current.sequence)) return
+      } catch {
+        // Fall through to timestamp ordering when a provider sends an unexpectedly large ID.
+      }
+    } else if (sequence <= current.sequence && at <= current.at) {
+      return
+    }
+  }
   byProvider.set(provider, { price, at, receivedAt, provider, sequence })
   prices.set(assetId, byProvider)
 }
@@ -35,13 +47,13 @@ export function getLivePrice(
 
   if (provider) {
     const entry = byProvider.get(provider)
-    return entry && now - entry.receivedAt <= maxAgeMs ? entry : null
+    return entry && now - entry.at <= maxAgeMs ? entry : null
   }
 
   let newest: LivePrice | null = null
   for (const entry of byProvider.values()) {
-    if (now - entry.receivedAt > maxAgeMs) continue
-    if (!newest || entry.receivedAt > newest.receivedAt) newest = entry
+    if (now - entry.at > maxAgeMs) continue
+    if (!newest || entry.at > newest.at) newest = entry
   }
   return newest
 }
