@@ -193,9 +193,11 @@ export class TradingService {
     this.running = true
     // Recover every already-expired trade in batches before normal scheduling. The browser is
     // never authoritative for expiry, so a server restart or client outage cannot strand funds.
-    for (let batch = 0; batch < 100; batch += 1) {
+    for (;;) {
       const settled = await this.settleExpiredTrades()
-      if (settled === 0 || settled < 50) break
+      // Stop only when this pass could not recover any expired trade. If market data for
+      // a REAL trade is temporarily unavailable, later scheduler passes will retry it.
+      if (settled === 0) break
     }
     this.schedule()
   }
