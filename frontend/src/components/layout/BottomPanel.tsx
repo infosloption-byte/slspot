@@ -19,6 +19,7 @@ import { formatPrice } from '../../lib/format'
 import { EmptyState } from '../ui/EmptyState'
 import { Modal } from '../ui/Modal'
 import { Pagination } from '../ui/Pagination'
+import { ConfirmDialog } from '../ui/ConfirmDialog'
 
 export type ActivityTab = 'open' | 'history' | 'wallet'
 
@@ -29,6 +30,8 @@ type BottomPanelProps = {
   openLoading?: boolean
   openError?: string | null
   onOpenRetry?: () => void
+  onCancelTrade: (tradeId: string) => Promise<void>
+  onSettleTrade: (tradeId: string) => Promise<void>
   walletLoading?: boolean
   walletError?: string | null
   onWalletRetry?: () => void
@@ -312,7 +315,13 @@ export function BottomPanel({
                       </span>
                     </span>
                     <span className="status-pill status-pill--pending">Unsettled</span>
-                    <span className="status-pill status-pill--pending">Auto settlement</span>
+                    <span className="position-row__action">
+                      {remaining > 0 ? (
+                        <button type="button" className="quiet-button position-cancel-button" onClick={() => setConfirmAction({ type: "cancel", tradeId: trade.id })} disabled={actionBusy}>Cancel</button>
+                      ) : (
+                        <button type="button" className="quiet-button position-settle-button" onClick={() => setConfirmAction({ type: "settle", tradeId: trade.id })} disabled={actionBusy}>Settle</button>
+                      )}
+                    </span>
                   </div>
                 )
               })}
