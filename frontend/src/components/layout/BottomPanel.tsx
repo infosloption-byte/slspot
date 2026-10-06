@@ -203,6 +203,13 @@ export function BottomPanel({
     }
   }
 
+  useEffect(() => {
+    if (!open) {
+      setConfirmAction(null)
+      setActionBusy(false)
+    }
+  }, [open])
+
   // Every open position is shown whichever market is selected on the chart.
   const visiblePositions = openTrades
 
