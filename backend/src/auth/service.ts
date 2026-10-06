@@ -20,6 +20,8 @@ export type AuthSession = AuthUser & {
   expiresAt: Date
 }
 
+const SESSION_TOUCH_INTERVAL_MS = 5 * 60 * 1000
+
 export type AuthLoginResult =
   | { requiresTwoFactor: false; session: AuthSession; sessionToken: string }
   | { requiresTwoFactor: true; user: AuthUser; challengeToken: string; challengeExpiresAt: Date }
@@ -467,15 +469,27 @@ export class AuthService {
     if (!session || session.user.status !== 'ACTIVE') return null
 
     const now = new Date()
-    void this.prisma.session.update({ where: { id: session.id }, data: { updatedAt: now } })
-    if (session.deviceId) void this.prisma.device.update({ where: { id: session.deviceId }, data: { lastSeenAt: now } })
+    if (now.getTime() - session.updatedAt.getTime() >= SESSION_TOUCH_INTERVAL_MS) {
+      void this.prisma.session.update({ where: { id: session.id, revokedAt: null }, data: { updatedAt: now } })
+    }
+    if (session.deviceId && now.getTime() - session.device.lastSeenAt.getTime() >= SESSION_TOUCH_INTERVAL_MS) {
+      void this.prisma.device.update({ where: { id: session.deviceId, revokedAt: null }, data: { lastSeenAt: now } })
+    }
 
     return { ...this.toUser(session.user), sessionId: session.id, expiresAt: session.expiresAt }
   }
 
-  async authenticateWebSocket(request: FastifyRequest): Promise<{ userId: string } | null> {
+  async isSessionActive(sessionId: string): Promise<boolean> {
+    const session = await this.prisma.session.findUnique({
+      where: { id: sessionId },
+      select: { revokedAt: true, expiresAt: true, user: { select: { status: true } } },
+    })
+    return Boolean(session && !session.revokedAt && session.expiresAt.getTime() > Date.now() && session.user.status === 'ACTIVE')
+  }
+
+  async authenticateWebSocket(request: FastifyRequest): Promise<{ userId: string; sessionId: string } | null> {
     const session = await this.authenticateSession(request.cookies?.[env.auth.cookieName])
-    return session ? { userId: session.id } : null
+    return session ? { userId: session.user.id, sessionId: session.sessionId } : null
   }
 
   async logout(sessionId: string): Promise<void> {
