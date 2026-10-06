@@ -109,6 +109,10 @@ const tradingService = {
     settlementId: null,
     settlementPrice: null,
     settlementReference: null,
+    entryProvider: null,
+    entryTimestamp: null,
+    settlementProvider: null,
+    settlementTimestamp: null,
   }),
   closeTrade: async () => ({
     orderId: 'order-1',
@@ -130,6 +134,10 @@ const tradingService = {
     settlementId: 'settlement-1',
     settlementPrice: '101',
     settlementReference: 'manual:trade-1',
+    entryProvider: null,
+    entryTimestamp: null,
+    settlementProvider: null,
+    settlementTimestamp: null,
   }),
   cancelTrade: async (_userId: string, _tradeId: string, _mode: 'DEMO' | 'REAL') => ({
     orderId: 'order-1',
@@ -151,6 +159,10 @@ const tradingService = {
     settlementId: 'settlement-1',
     settlementPrice: null,
     settlementReference: 'cancel:trade-1',
+    entryProvider: null,
+    entryTimestamp: null,
+    settlementProvider: null,
+    settlementTimestamp: null,
   }),
 };
 
