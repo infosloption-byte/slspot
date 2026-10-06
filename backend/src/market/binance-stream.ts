@@ -102,7 +102,9 @@ export class BinanceTickStream {
       if (!data?.s || !data.p) return
       const externalSymbol = this.bySymbol.get(data.s)
       if (!externalSymbol || !(Number(data.p) > 0)) return
-      this.options.onTick({ provider: 'binance', externalSymbol, price: data.p, at: Number.isFinite(data.T) ? data.T : Date.now(), sequence: String(data.a ?? data.T ?? Date.now()) })
+      const at = typeof data.T === 'number' && Number.isFinite(data.T) ? data.T : Date.now()
+      const sequence = typeof data.a === 'number' ? String(data.a) : typeof data.t === 'number' ? String(data.t) : String(at)
+      this.options.onTick({ provider: 'binance', externalSymbol, price: data.p, at, sequence })
     } catch {
       // ignore malformed frames
     }
