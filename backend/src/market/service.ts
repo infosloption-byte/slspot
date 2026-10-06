@@ -9,7 +9,7 @@ import { DEMO_PRICE_BASES, DemoPriceSimulator } from '../trading/demoPrice.js'
 import { BinanceTickStream, type Tick } from './binance-stream.js'
 import { KrakenTickStream, type KrakenTick } from './kraken-stream.js'
 import { OkxTickStream, type OkxTick } from './okx-stream.js'
-import { getLivePrice, getPreferredLivePrice, setLivePrice } from './live-prices.js'
+import { getPreferredLivePrice, setLivePrice } from './live-prices.js'
 import { syntheticCandles } from './synthetic.js'
 
 const SIMULATION_INTERVAL_MS = 1_000
@@ -235,7 +235,7 @@ export class MarketDataService {
     }
 
     const market = await this.prisma.market.findFirst({
-      where: { assetId, provider: env.marketData.provider },
+      where: { assetId },
       include: { asset: true },
     })
 
