@@ -20,6 +20,8 @@ type TradePanelProps = {
 type OrderStage = 'draft' | 'submitting' | 'pending' | 'accepted' | 'open' | 'rejected' | 'failed'
 type FailedTradeRequest = { direction: TradeDirection; clientRequestId: string }
 
+const DURATION_STEP_SECONDS = 5
+
 function formatDuration(value: number) {
   return value < 60 ? value + 's' : value / 60 + 'm'
 }
@@ -113,6 +115,12 @@ export function TradePanel({ asset, balance, walletMode, canTrade, tradeDisabled
     if (stage !== 'draft') resetOrder()
   }
 
+  const adjustDuration = (delta: number) => {
+    const minDuration = asset.durationsSeconds[0] ?? DURATION_STEP_SECONDS
+    const maxDuration = asset.durationsSeconds[asset.durationsSeconds.length - 1] ?? 300
+    chooseDuration(Math.max(minDuration, Math.min(maxDuration, duration + delta)))
+  }
+
   const renderActions = (mobile = false) => (
     <div className={mobile ? 'trade-actions trade-actions--mobile' : 'trade-actions'} aria-label="Trade direction">
       <button className="trade-btn trade-btn--up" type="button" onClick={() => void requestPreview('UP')} disabled={stage === 'submitting' || !canTrade || balance <= 0}>
@@ -157,14 +165,18 @@ export function TradePanel({ asset, balance, walletMode, canTrade, tradeDisabled
 
           <div className="trade-field">
             <span className="trade-field__label">Duration</span>
-            <Select
-              value={String(duration)}
-              options={asset.durationsSeconds.map((value) => ({ value: String(value), label: formatDuration(value) }))}
-              onChange={(value) => chooseDuration(Number(value))}
-              className="trade-duration-select"
-              leadingIcon={<Timer size={16} />}
-              mobilePlacement="up"
-            />
+            <div className="duration-stepper">
+              <button type="button" onClick={() => adjustDuration(-DURATION_STEP_SECONDS)} aria-label="Decrease duration by 5 seconds" disabled={duration <= (asset.durationsSeconds[0] ?? DURATION_STEP_SECONDS)}><Minus size={16} /></button>
+              <Select
+                value={String(duration)}
+                options={asset.durationsSeconds.map((value) => ({ value: String(value), label: formatDuration(value) }))}
+                onChange={(value) => chooseDuration(Number(value))}
+                className="trade-duration-select"
+                leadingIcon={<Timer size={16} />}
+                mobilePlacement="auto"
+              />
+              <button type="button" onClick={() => adjustDuration(DURATION_STEP_SECONDS)} aria-label="Increase duration by 5 seconds" disabled={duration >= (asset.durationsSeconds[asset.durationsSeconds.length - 1] ?? 300)}><Plus size={16} /></button>
+            </div>
           </div>
 
           <div className="payout-card">
@@ -200,15 +212,18 @@ export function TradePanel({ asset, balance, walletMode, canTrade, tradeDisabled
                 <label><span>Stake</span><div className="stepper"><button type="button" onClick={() => adjustAmount(-10)} aria-label="Decrease stake"><Minus size={15} /></button><div className="stepper__value"><span>{asset.quoteCurrency}</span><input value={amountText} onChange={(event) => handleAmountInput(event.target.value)} type="number" inputMode="decimal" /></div><button type="button" onClick={() => adjustAmount(10)} aria-label="Increase stake"><Plus size={15} /></button></div></label>
                 <label>
                   <span>Duration</span>
-                  <Select
-                    value={String(duration)}
-                    options={asset.durationsSeconds.map((value) => ({ value: String(value), label: formatDuration(value) }))}
-                    onChange={(value) => chooseDuration(Number(value))}
-                    className="trade-duration-select trade-duration-select--mobile"
-                    leadingIcon={<Timer size={14} />}
-                    mobilePlacement="up"
-                    aria-label="Trade duration"
-                  />
+                  <div className="duration-stepper duration-stepper--mobile">
+                    <button type="button" onClick={() => adjustDuration(-DURATION_STEP_SECONDS)} aria-label="Decrease duration by 5 seconds" disabled={duration <= (asset.durationsSeconds[0] ?? DURATION_STEP_SECONDS)}><Minus size={14} /></button>
+                    <Select
+                      value={String(duration)}
+                      options={asset.durationsSeconds.map((value) => ({ value: String(value), label: formatDuration(value) }))}
+                      onChange={(value) => chooseDuration(Number(value))}
+                      className="trade-duration-select trade-duration-select--mobile"
+                      leadingIcon={<Timer size={14} />}
+                      mobilePlacement="up"
+                    />
+                    <button type="button" onClick={() => adjustDuration(DURATION_STEP_SECONDS)} aria-label="Increase duration by 5 seconds" disabled={duration >= (asset.durationsSeconds[asset.durationsSeconds.length - 1] ?? 300)}><Plus size={14} /></button>
+                  </div>
                 </label>
               </div>
             </div>
