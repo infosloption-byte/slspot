@@ -7,6 +7,7 @@ export type SocketLike = {
   onmessage: ((event: { data: unknown }) => void) | null
   onclose: ((event: unknown) => void) | null
   onerror: ((event: unknown) => void) | null
+  send?: (data: string) => void
   close(): void
 }
 
