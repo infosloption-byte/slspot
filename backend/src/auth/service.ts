@@ -472,8 +472,8 @@ export class AuthService {
     if (now.getTime() - session.updatedAt.getTime() >= SESSION_TOUCH_INTERVAL_MS) {
       void this.prisma.session.update({ where: { id: session.id, revokedAt: null }, data: { updatedAt: now } })
     }
-    if (session.deviceId && now.getTime() - session.device.lastSeenAt.getTime() >= SESSION_TOUCH_INTERVAL_MS) {
-      void this.prisma.device.update({ where: { id: session.deviceId, revokedAt: null }, data: { lastSeenAt: now } })
+    if (session.device && now.getTime() - session.device.lastSeenAt.getTime() >= SESSION_TOUCH_INTERVAL_MS) {
+      void this.prisma.device.update({ where: { id: session.device.id, revokedAt: null }, data: { lastSeenAt: now } })
     }
 
     return { ...this.toUser(session.user), sessionId: session.id, expiresAt: session.expiresAt }
