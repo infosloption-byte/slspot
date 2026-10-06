@@ -203,12 +203,12 @@ export function BottomPanel({
     }
   }
 
-  useEffect(() => {
-    if (!open) {
-      setConfirmAction(null)
-      setActionBusy(false)
-    }
-  }, [open])
+  const handlePanelClose = () => {
+    if (actionBusy) return
+    setConfirmAction(null)
+    setActionBusy(false)
+    onClose()
+  }
 
   // Every open position is shown whichever market is selected on the chart.
   const visiblePositions = openTrades
@@ -224,7 +224,7 @@ export function BottomPanel({
   )
 
   return (
-    <Modal open={open} onClose={onClose} title="Trading activity" size="xl" flush closeLabel="Close trading activity">
+    <Modal open={open} onClose={handlePanelClose} title="Trading activity" size="xl" flush closeLabel="Close trading activity">
     <section className="bottom-panel">
       <div className="bottom-panel__tabs" role="tablist">
         {tabs.map(({ id, label, icon: Icon }) => {
