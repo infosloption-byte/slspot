@@ -1,5 +1,5 @@
 import { ChevronDown, Minus, Plus, RefreshCcw, ShieldAlert, Timer, TrendingDown, TrendingUp } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import type { MarketAsset } from '../../data/mockMarket'
 import type { TradeDirection } from '../../types/trading'
 import type { WalletMode } from '../../hooks/useWalletMode'
