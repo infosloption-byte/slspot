@@ -1,5 +1,7 @@
 import type { AssetType, MarketStatus } from '../generated/prisma/client.js'
 
+export type MarketProviderName = 'binance' | 'kraken' | 'okx' | 'demo-simulation' | string
+
 export type MarketDefinition = {
   assetId: string
   assetType: AssetType
@@ -9,6 +11,7 @@ export type MarketDefinition = {
 }
 
 export type ProviderQuote = {
+  provider: MarketProviderName
   externalSymbol: string
   last: string
   bid: string
