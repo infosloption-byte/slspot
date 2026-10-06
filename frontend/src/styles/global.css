@@ -174,7 +174,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
   display: inline-flex; align-items: center; justify-content: center; width: fit-content; padding: 4px 9px;
   border-radius: 6px; font-size: 11px; font-weight: 800; letter-spacing: 0.02em;
 }
-.status-pill--positive, .side-pill--up { color: var(--green); background: var(--green-soft); }
+.status-pill--positive, .status-pill--danger, .side-pill--up { color: var(--green); background: var(--green-soft); }
 .status-pill--negative, .side-pill--down { color: var(--red); background: var(--red-soft); }
 .status-pill--draw { color: var(--text-muted, #8b93a7); background: rgba(139, 147, 167, 0.16); }
 .status-pill--pending { color: var(--accent); background: var(--accent-soft); }
@@ -1020,25 +1020,6 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
 }
 
 /* Tablet / phone: rail becomes a bottom tab bar, trade panel drops under the chart */
-@media (max-width: 820px) {
-  .app-shell { flex-direction: column-reverse; }
-  .sidebar { width: 100%; height: 58px; flex-direction: row; padding: 0 6px; border-right: 0; border-top: 1px solid var(--line); }
-  .sidebar__brand { display: none; }
-  .sidebar__nav { flex-direction: row; align-items: center; justify-content: space-between; overflow-x: auto; }
-  .sidebar__group { flex-direction: row; justify-content: space-around; flex: 1; }
-  .sidebar__group--bottom { margin-top: 0; }
-  .rail-link { width: 40px; height: 44px; flex: none; }
-  .rail-link--active::before { left: 8px; right: 8px; top: 0; bottom: auto; width: auto; height: 3px; border-radius: 0 0 3px 3px; }
-
-  .topbar__live { display: none; }
-  .trading-room { display: block; height: auto; }
-  .chart-workspace { height: 58dvh; min-height: 380px; }
-  .bottom-panel { max-height: none; }
-  .trade-panel { border-left: 0; border-top: 1px solid var(--line); padding-bottom: 24px; }
-  .trade-actions { grid-template-columns: 1fr 1fr; margin-top: 0; }
-  .trade-btn { height: 56px; }
-}
-
 @media (max-width: 600px) {
   .topbar { padding: 0 10px; gap: 8px; }
   .account-chip { min-width:0; max-width:190px; padding:0 8px; }
@@ -1268,6 +1249,12 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
 .countdown-track { width:100%; height:4px; overflow:hidden; border-radius:999px; background:var(--bg-3); }
 .countdown-track i { display:block; height:100%; border-radius:inherit; background:var(--accent); }
 .position-row--live:hover { background:var(--bg-2); }
+.position-row__action { display:flex; align-items:center; justify-content:flex-end; min-width:0; }
+.position-row__action .quiet-button { height:30px; padding:0 10px; font-size:11px; font-weight:800; }
+.position-cancel-button { color:var(--red); border-color:rgba(255,77,94,.28); }
+.position-cancel-button:hover { color:var(--red); border-color:var(--red); }
+.position-settle-button { color:var(--accent); border-color:var(--accent-line); }
+.position-settle-button:hover { color:var(--accent); border-color:var(--accent); }
 
 .asset-row__payout { display:block; margin-top:3px; color:var(--accent); font-size:10px; font-style:normal; font-weight:700; }
 
