@@ -356,9 +356,16 @@ export class AuthService {
     const expiresAt = new Date(now.getTime() + sessionTtl * 1000)
 
     const session = await this.prisma.$transaction(async (tx) => {
-      const latest = await tx.authToken.findUnique({ where: { id: challenge.id } })
-      if (!latest || latest.consumedAt) throw new AuthError(401, 'TWO_FACTOR_CHALLENGE_EXPIRED', 'The two-factor challenge is invalid or expired')
-      await tx.authToken.update({ where: { id: challenge.id }, data: { consumedAt: now } })
+      const claimed = await tx.authToken.updateMany({
+        where: {
+          id: challenge.id,
+          type: 'TWO_FACTOR_CHALLENGE',
+          consumedAt: null,
+          expiresAt: { gt: now },
+        },
+        data: { consumedAt: now },
+      })
+      if (claimed.count !== 1) throw new AuthError(401, 'TWO_FACTOR_CHALLENGE_EXPIRED', 'The two-factor challenge is invalid or expired')
       if (recoveryRecordId) {
         const used = await tx.recoveryCode.updateMany({ where: { id: recoveryRecordId, userId: challenge.userId, usedAt: null }, data: { usedAt: now } })
         if (used.count !== 1) throw new AuthError(401, 'INVALID_TWO_FACTOR_CODE', 'The recovery code has already been used')
