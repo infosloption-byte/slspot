@@ -336,15 +336,28 @@ export class AuthService {
     const now = new Date()
     if (!valid) {
       const result = await this.prisma.$transaction(async (tx) => {
-        const latest = await tx.authToken.findUnique({ where: { id: challenge.id } })
-        if (!latest || latest.consumedAt) return null
+        const latest = await tx.authToken.findUnique({
+          where: { id: challenge.id },
+          select: { attempts: true, consumedAt: true, type: true, expiresAt: true },
+        })
+        if (!latest || latest.type !== 'TWO_FACTOR_CHALLENGE' || latest.consumedAt || latest.expiresAt <= now) return null
         const attempts = latest.attempts + 1
         const exhausted = attempts >= env.auth.twoFactorMaxAttempts
-        const updated = await tx.authToken.update({ where: { id: challenge.id }, data: { attempts, consumedAt: exhausted ? now : null } })
+        const updated = await tx.authToken.updateMany({
+          where: {
+            id: challenge.id,
+            type: 'TWO_FACTOR_CHALLENGE',
+            consumedAt: null,
+            expiresAt: { gt: now },
+            attempts: latest.attempts,
+          },
+          data: { attempts, consumedAt: exhausted ? now : null },
+        })
+        if (updated.count !== 1) return null
         await tx.auditLog.create({
           data: { actorUserId: challenge.userId, action: 'TWO_FACTOR_FAILED', entityType: 'AuthToken', entityId: challenge.id, ipAddress: input.ipAddress, userAgent: input.userAgent, metadata: { attempts } },
         })
-        return updated
+        return { attempts, consumedAt: exhausted ? now : null }
       })
       if (!result) throw new AuthError(401, 'TWO_FACTOR_CHALLENGE_EXPIRED', 'The two-factor challenge is invalid or expired')
       if (result.consumedAt) throw new AuthError(429, 'TWO_FACTOR_RATE_LIMITED', 'Too many two-factor attempts. Start a new sign-in.', env.auth.twoFactorChallengeTtlSeconds)
