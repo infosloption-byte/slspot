@@ -247,7 +247,7 @@ const marketDataEnabled = parseBoolean('MARKET_DATA_ENABLED', process.env.MARKET
 const marketDataBootstrapAssets = parseBoolean('MARKET_DATA_BOOTSTRAP_ASSETS', process.env.MARKET_DATA_BOOTSTRAP_ASSETS, nodeEnv !== 'production')
 // Simulated prices keep the DEMO market usable when no live feed is configured or the feed is
 // failing (missing/rate-limited API key). Never allowed in production.
-const marketDataSimulate = parseBoolean('MARKET_DATA_SIMULATE', process.env.MARKET_DATA_SIMULATE, nodeEnv !== 'production')
+const marketDataSimulate = parseBoolean('MARKET_DATA_SIMULATE', process.env.MARKET_DATA_SIMULATE, false)
 // Crypto is priced through an ordered exchange feed: Binance → Kraken → OKX.
 const binanceEnabled = parseBoolean('BINANCE_ENABLED', process.env.BINANCE_ENABLED, marketDataProvider !== 'disabled')
 const binanceRestUrl = (process.env.BINANCE_REST_URL?.trim() || 'https://api.binance.com').replace(/\/$/, '')
