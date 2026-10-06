@@ -203,6 +203,23 @@ export function registerPlatformApiRoutes(app: FastifyInstance, options: Platfor
     return ok(request, await options.tradingService.closeTrade(session.id, request.params.tradeId, walletModeFromRequest(request)))
   })
 
+  app.post<{ Params: { tradeId: string } }>(PREFIX + '/trades/:tradeId/cancel', {
+    schema: {
+      params: {
+        type: 'object',
+        required: ['tradeId'],
+        additionalProperties: false,
+        properties: { tradeId: { type: 'string', pattern: UUID_PATTERN } },
+      },
+    },
+  }, async (request) => {
+    const session = await requireSession(request, options.authService)
+    if (!options.tradingService) {
+      throw new AuthError(503, 'TRADING_UNAVAILABLE', 'Trading service is unavailable')
+    }
+    return ok(request, await options.tradingService.cancelTrade(session.id, request.params.tradeId, walletModeFromRequest(request)))
+  })
+
   app.get<{ Querystring: Query }>(PREFIX + '/ledger/reconcile', async (request) => {
     const session = await requireSession(request, options.authService)
     return ok(request, await options.apiService.reconcileWallet(session.id, walletModeFromRequest(request)))
@@ -352,7 +369,7 @@ function walletModeFromRequest(request: FastifyRequest): WalletMode {
   return value as WalletMode
 }
 
-export type TradingServiceLike = Pick<TradingService, 'createTrade' | 'closeTrade'>
+export type TradingServiceLike = Pick<TradingService, 'createTrade' | 'closeTrade' | 'cancelTrade'>
 
 export type PlatformApiOptions = {
   authService: AuthServiceLike
