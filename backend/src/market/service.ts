@@ -76,7 +76,7 @@ export class MarketDataService {
 
   async start(): Promise<void> {
     if ((env.marketData.provider !== 'disabled' || env.marketData.simulate) && env.marketData.bootstrapAssets) {
-      await ensureDefaultMarketRegistry(this.prisma, 'binance')
+      await ensureDefaultMarketRegistry(this.prisma)
     }
 
     if (env.marketData.simulate) this.startSimulation()
