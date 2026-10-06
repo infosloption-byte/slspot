@@ -6,6 +6,7 @@ import type { WalletMode } from '../../hooks/useWalletMode'
 import { ApiError } from '../../api/client'
 import type { TradeCreateResult } from '../../api/trades'
 import { Modal } from '../ui/Modal'
+import { Select } from '../ui/Select'
 
 type TradePanelProps = {
   asset: MarketAsset
@@ -156,19 +157,15 @@ export function TradePanel({ asset, balance, walletMode, canTrade, tradeDisabled
 
           <div className="trade-field">
             <span className="trade-field__label">Duration</span>
-            <div className="duration-select">
-              <Timer size={16} aria-hidden="true" />
-              <select
-                value={duration}
-                onChange={(event) => chooseDuration(Number(event.target.value))}
-                aria-label="Trade duration"
-              >
-                {asset.durationsSeconds.map((value) => (
-                  <option key={value} value={value}>{formatDuration(value)}</option>
-                ))}
-              </select>
-              <ChevronDown className="duration-select__chevron" size={14} aria-hidden="true" />
-            </div>
+            <Select
+              value={String(duration)}
+              options={asset.durationsSeconds.map((value) => ({ value: String(value), label: formatDuration(value) }))}
+              onChange={(value) => chooseDuration(Number(value))}
+              className="trade-duration-select"
+              leadingIcon={<Timer size={16} />}
+              mobilePlacement="up"
+              aria-label="Trade duration"
+            />
           </div>
 
           <div className="payout-card">
@@ -204,19 +201,15 @@ export function TradePanel({ asset, balance, walletMode, canTrade, tradeDisabled
                 <label><span>Stake</span><div className="stepper"><button type="button" onClick={() => adjustAmount(-10)} aria-label="Decrease stake"><Minus size={15} /></button><div className="stepper__value"><span>{asset.quoteCurrency}</span><input value={amountText} onChange={(event) => handleAmountInput(event.target.value)} type="number" inputMode="decimal" /></div><button type="button" onClick={() => adjustAmount(10)} aria-label="Increase stake"><Plus size={15} /></button></div></label>
                 <label>
                   <span>Duration</span>
-                  <div className="duration-select duration-select--mobile">
-                    <Timer size={14} aria-hidden="true" />
-                    <select
-                      value={duration}
-                      onChange={(event) => chooseDuration(Number(event.target.value))}
-                      aria-label="Trade duration"
-                    >
-                      {asset.durationsSeconds.map((value) => (
-                        <option key={value} value={value}>{formatDuration(value)}</option>
-                      ))}
-                    </select>
-                    <ChevronDown className="duration-select__chevron" size={13} aria-hidden="true" />
-                  </div>
+                  <Select
+                    value={String(duration)}
+                    options={asset.durationsSeconds.map((value) => ({ value: String(value), label: formatDuration(value) }))}
+                    onChange={(value) => chooseDuration(Number(value))}
+                    className="trade-duration-select trade-duration-select--mobile"
+                    leadingIcon={<Timer size={14} />}
+                    mobilePlacement="up"
+                    aria-label="Trade duration"
+                  />
                 </label>
               </div>
             </div>
