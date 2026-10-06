@@ -30,6 +30,11 @@ export const DEFAULT_FALLBACK_URLS = ['https://data-api.binance.vision', 'https:
 
 export class BinanceProvider implements MarketDataProvider {
   readonly name = 'binance'
+  readonly assetType = 'CRYPTO' as const
+
+  supports(market: MarketDefinition): boolean {
+    return market.assetType === 'CRYPTO'
+  }
   private readonly baseUrls: string[]
   private readonly requestTimeoutMs: number
   private readonly fetcher: FetchLike
@@ -52,6 +57,7 @@ export class BinanceProvider implements MarketDataProvider {
     )
     if (!data.lastPrice) throw new Error('Binance ticker did not contain a last price')
     return {
+      provider: this.name,
       externalSymbol: market.externalSymbol,
       last: data.lastPrice,
       bid: data.bidPrice ?? data.lastPrice,
