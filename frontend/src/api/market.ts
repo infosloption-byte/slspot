@@ -29,6 +29,7 @@ export type MarketAsset = {
     lastPriceAt: string | null
     lastChangePct: string | null
     lastVolume: string | null
+    lastPriceProvider: string | null
   } | null
 }
 
