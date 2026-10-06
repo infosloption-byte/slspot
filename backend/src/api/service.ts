@@ -92,6 +92,7 @@ export type ApiMarketAsset = {
     lastPriceAt: string | null
     lastChangePct: string | null
     lastVolume: string | null
+    lastPriceProvider: string | null
   } | null
 }
 
@@ -174,6 +175,10 @@ export type ApiTrade = {
   fee: string
   netPnl: string | null
   settlementReference: string | null
+  entryProvider: string | null
+  entryTimestamp: string | null
+  settlementProvider: string | null
+  settlementTimestamp: string | null
   openedAt: string
   closedAt: string | null
   position: {
