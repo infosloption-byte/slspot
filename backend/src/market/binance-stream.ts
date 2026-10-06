@@ -97,7 +97,7 @@ export class BinanceTickStream {
 
   private handleMessage(raw: unknown): void {
     try {
-      const parsed = JSON.parse(String(raw)) as { data?: { s?: string; p?: string; T?: number } }
+      const parsed = JSON.parse(String(raw)) as { data?: { s?: string; p?: string; T?: number; t?: number; a?: number } }
       const data = parsed.data
       if (!data?.s || !data.p) return
       const externalSymbol = this.bySymbol.get(data.s)
