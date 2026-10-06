@@ -164,7 +164,6 @@ export function TradePanel({ asset, balance, walletMode, canTrade, tradeDisabled
               className="trade-duration-select"
               leadingIcon={<Timer size={16} />}
               mobilePlacement="up"
-              aria-label="Trade duration"
             />
           </div>
 
