@@ -19,6 +19,7 @@ import { useRealtime, useRealtimeState } from '../realtime/useRealtime'
 import { useRealtimeRefresh } from '../realtime/useRealtimeRefresh'
 import { userChannel } from '../realtime/subscriptions'
 import { defaultHistoryFilters, setSoundEnabled, setTradingUiState, useTradingUiStore } from '../state/tradingUiStore'
+import { usePreferences } from '../state/preferencesStore'
 
 type ToastItem = {
   id: number
@@ -58,6 +59,7 @@ declare global {
 export function TradingPage() {
   const { user } = useAuth()
   const { mode } = useWalletMode()
+  const { priceMovementAlerts } = usePreferences()
   const realtime = useRealtime()
   const realtimeState = useRealtimeState()
   const market = useLiveMarketAssets()
@@ -254,10 +256,44 @@ export function TradingPage() {
   const settledPnlRef = useRef<Map<string, number>>(new Map())
   const notifiedTradesRef = useRef<Set<string>>(new Set())
   const soundEnabledRef = useRef(soundEnabled)
+  const priceAlertBaselineRef = useRef<Map<string, number>>(new Map())
 
   useEffect(() => {
     soundEnabledRef.current = soundEnabled
   }, [soundEnabled])
+
+  useEffect(() => {
+    if (!priceMovementAlerts || !selectedAsset?.assetId) return undefined
+
+    const unsubscribe = realtime.onEvent((event) => {
+      if (event.type !== 'market.price') return
+      const data = event.data as { assetId?: unknown; symbol?: unknown; last?: unknown }
+      if (data.assetId !== selectedAsset.assetId || typeof data.symbol !== 'string' || typeof data.last !== 'string') return
+
+      const price = Number(data.last)
+      if (!Number.isFinite(price) || price <= 0) return
+
+      const baseline = priceAlertBaselineRef.current.get(selectedAsset.assetId)
+      if (baseline === undefined) {
+        priceAlertBaselineRef.current.set(selectedAsset.assetId, price)
+        return
+      }
+
+      const movementPct = ((price - baseline) / baseline) * 100
+      if (Math.abs(movementPct) < 1) return
+
+      priceAlertBaselineRef.current.set(selectedAsset.assetId, price)
+      const direction = movementPct > 0 ? 'up' : 'down'
+      addToast('info', 'Price movement alert', data.symbol + ' moved ' + direction + ' ' + Math.abs(movementPct).toFixed(2) + '%')
+    })
+
+    return unsubscribe
+  }, [addToast, priceMovementAlerts, realtime, selectedAsset?.assetId])
+
+  useEffect(() => {
+    if (!selectedAsset?.assetId) return
+    priceAlertBaselineRef.current.delete(selectedAsset.assetId)
+  }, [selectedAsset?.assetId])
 
   useEffect(() => {
     for (const trade of openTrades) knownTradesRef.current.set(trade.id, trade)
