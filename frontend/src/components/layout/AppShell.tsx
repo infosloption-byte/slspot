@@ -4,10 +4,12 @@ import { useRealtimeState } from '../../realtime/useRealtime'
 import { Sidebar } from './Sidebar'
 import { TopBar } from './TopBar'
 import { NetworkStatus } from '../ui/NetworkStatus'
+import { usePreferences } from '../../state/preferencesStore'
 
 /** Shared frame for every /app/* page: left rail + top bar + page content. */
 export function AppShell() {
   const realtimeState = useRealtimeState()
+  const { compactTradingLayout } = usePreferences()
   const [networkBusyCount, setNetworkBusyCount] = useState(0)
   useEffect(() => {
     const start = () => setNetworkBusyCount((count) => count + 1)
@@ -30,7 +32,7 @@ export function AppShell() {
   const busy = realtimeState === 'connecting' || realtimeState === 'reconnecting' || networkBusyCount > 0
 
   return (
-    <div className={'app-shell' + (busy ? ' app-shell--busy' : '')}>
+    <div className={'app-shell' + (busy ? ' app-shell--busy' : '') + (compactTradingLayout ? ' app-shell--compact' : '')}>
       {busy ? <div className="app-shell__loading-bar" role="status" aria-label="Loading or connecting to live services" /> : null}
       <Sidebar open={menuOpen} onClose={closeMenu} />
       {menuOpen ? <div className="sidebar-backdrop" onClick={closeMenu} aria-hidden="true" /> : null}
