@@ -9,6 +9,61 @@ export type LivePrice = {
 
 const prices = new Map<string, Map<string, LivePrice>>()
 
+/**
+ * Short per-asset tick history so a trade can be settled at the price in force at its expiry
+ * instant rather than whatever tick happens to be current when the settlement worker runs.
+ * Must cover the longest trade duration plus worker lag and a restart-recovery margin.
+ */
+export const TICK_HISTORY_MS = 6 * 60_000
+const history = new Map<string, LivePrice[]>()
+const HISTORY_PRUNE_EVERY = 256
+const historyWrites = new Map<string, number>()
+
+function recordHistory(assetId: string, entry: LivePrice): void {
+  const list = history.get(assetId) ?? []
+  // Keep the list ordered by exchange time; late/out-of-order ticks are inserted in place.
+  let index = list.length
+  while (index > 0 && list[index - 1].at > entry.at) index -= 1
+  list.splice(index, 0, entry)
+  history.set(assetId, list)
+
+  const writes = (historyWrites.get(assetId) ?? 0) + 1
+  historyWrites.set(assetId, writes)
+  if (writes % HISTORY_PRUNE_EVERY === 0) {
+    const cutoff = Date.now() - TICK_HISTORY_MS
+    let drop = 0
+    while (drop < list.length - 1 && list[drop].at < cutoff) drop += 1
+    if (drop > 0) list.splice(0, drop)
+  }
+}
+
+/**
+ * Newest tick at or before `atMs` (the price in force at that instant) and no older than
+ * `maxAgeMs` relative to it. Returns null when there is no tick covering that instant.
+ */
+export function getLivePriceAt(
+  assetId: string,
+  atMs: number,
+  maxAgeMs: number,
+  provider?: string,
+): LivePrice | null {
+  const list = history.get(assetId)
+  if (!list || list.length === 0) return null
+  let lo = 0
+  let hi = list.length - 1
+  let found = -1
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1
+    if (list[mid].at <= atMs) { found = mid; lo = mid + 1 } else hi = mid - 1
+  }
+  for (let i = found; i >= 0; i -= 1) {
+    const entry = list[i]
+    if (atMs - entry.at > maxAgeMs) return null
+    if (!provider || entry.provider === provider) return entry
+  }
+  return null
+}
+
 export function setLivePrice(
   assetId: string,
   provider: string,
@@ -32,8 +87,10 @@ export function setLivePrice(
       return
     }
   }
-  byProvider.set(provider, { price, at, receivedAt, provider, sequence })
+  const entry = { price, at, receivedAt, provider, sequence }
+  byProvider.set(provider, entry)
   prices.set(assetId, byProvider)
+  recordHistory(assetId, entry)
 }
 
 export function getLivePrice(
@@ -73,4 +130,6 @@ export function getPreferredLivePrice(
 
 export function clearLivePrices(): void {
   prices.clear()
+  history.clear()
+  historyWrites.clear()
 }

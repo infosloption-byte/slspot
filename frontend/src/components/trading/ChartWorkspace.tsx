@@ -416,7 +416,7 @@ function ChartCanvas({
         const nextPrice = current + (target - current) * alpha
 
         if (Math.abs(nextPrice - current) > Math.max(1e-10, Math.abs(current) * 1e-9)) {
-          const next = applyLivePrice(last, nextPrice, intervalSeconds, frameTime / 1000)
+          const next = applyLivePrice(last, nextPrice, intervalSeconds, Date.now() / 1000)
           liveBarRef.current = next
           displayPriceRef.current = next.close
 
@@ -548,7 +548,7 @@ export function ChartWorkspace({ asset, onOpenMarkets, onOpenActivity, soundEnab
   const workspaceRef = useRef<HTMLElement>(null)
   const stageRef = useRef<HTMLDivElement>(null)
   const price = formatPrice(asset.price, asset.price < 10 ? 5 : 2)
-  const priceProviderLabel = asset.priceProvider === 'binance' ? 'Binance' : asset.priceProvider === 'kraken' ? 'Kraken fallback' : asset.priceProvider === 'okx' ? 'OKX fallback' : asset.priceProvider === 'demo-simulation' ? 'Demo simulation' : asset.priceProvider ?? 'Unknown source'
+  const priceProviderLabel = asset.priceProvider === 'binance' ? 'Binance' : asset.priceProvider === 'demo-simulation' ? 'Demo simulation' : asset.priceProvider ?? 'Unknown source'
   const marketInterval = timeframeToApiInterval(timeframe)
   const realtime = useRealtime()
   const candleResource = useMarketCandles(asset.assetId, marketInterval, 200)
@@ -652,7 +652,11 @@ export function ChartWorkspace({ asset, onOpenMarkets, onOpenActivity, soundEnab
   }, [indicators])
 
   useEffect(() => {
-    window.localStorage.setItem(drawingStorageKey, JSON.stringify(drawings))
+    try {
+      window.localStorage.setItem(drawingStorageKey, JSON.stringify(drawings))
+    } catch {
+      // Storage can be unavailable; drawings then last for the session only.
+    }
   }, [drawingStorageKey, drawings])
 
   const changeTimeframe = (value: string) => {
