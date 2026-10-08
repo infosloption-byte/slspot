@@ -1383,6 +1383,8 @@ function SupportPage() {
                 </form>
               )}
             </>
+          ) : selectedTicketId ? (
+            <div className="dashboard-note" role="status">Loading ticket conversation…</div>
           ) : (
             <form className="support-create-form" onSubmit={(event) => void createTicket(event)}>
               <div className="dashboard-card__header"><div><span className="eyebrow">New request</span><h2>Contact support</h2></div></div>
