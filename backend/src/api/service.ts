@@ -5,6 +5,7 @@ import { getTradingRules } from '../trading/config.js'
 import { LedgerService } from '../ledger/service.js'
 import { createRealtimeEvent, serializeRealtimeEvent } from '../realtime/events.js'
 import { publishRealtime } from '../realtime/bus.js'
+import { EmailService } from '../email/service.js'
 
 export type WalletMode = 'DEMO' | 'REAL'
 
@@ -230,6 +231,29 @@ export type ApiNotification = {
   body: string
   readAt: string | null
   createdAt: string
+}
+
+export type ApiSupportTicket = {
+  id: string
+  subject: string
+  category: 'ACCOUNT' | 'TRADING' | 'WALLET' | 'TECHNICAL' | 'OTHER'
+  status: 'OPEN' | 'IN_PROGRESS' | 'WAITING_USER' | 'RESOLVED' | 'CLOSED'
+  createdAt: string
+  updatedAt: string
+  resolvedAt: string | null
+  messageCount: number
+}
+
+export type ApiSupportMessage = {
+  id: string
+  body: string
+  createdAt: string
+  author: {
+    id: string
+    displayName: string | null
+    email: string
+    admin: boolean
+  }
 }
 
 export class PlatformApiService {
@@ -1128,6 +1152,7 @@ export class PlatformApiService {
     type: 'TRADE_RESULT' | 'DEPOSIT' | 'WITHDRAWAL' | 'SECURITY' | 'VERIFICATION' | 'SYSTEM',
     title: string,
     body: string,
+    options?: { announcementId?: string; email?: boolean },
   ): Promise<ApiNotification> {
     const notification = await this.prisma.notification.create({
       data: { userId, type, title, body },
@@ -1153,14 +1178,146 @@ export class PlatformApiService {
     } catch {
       // Durable notification storage remains the source of truth.
     }
+    if (options?.email !== false) {
+      try {
+        const [user, preferences] = await Promise.all([
+          this.prisma.user.findUnique({ where: { id: userId }, select: { email: true } }),
+          this.prisma.userPreference.findUnique({ where: { userId } }),
+        ])
+        const enabled =
+          type === 'TRADE_RESULT' ? preferences?.emailTradeResults !== false :
+          type === 'DEPOSIT' || type === 'WITHDRAWAL' ? preferences?.emailWalletUpdates !== false :
+          type === 'SECURITY' ? preferences?.emailSecurityAlerts !== false :
+          type === 'SYSTEM' ? preferences?.emailAnnouncements !== false :
+          false
+        if (user && enabled) {
+          await this.email.sendNotification(user.email, notification.id, title, body, type.toLowerCase())
+        }
+      } catch {
+        // Email delivery is best-effort; durable in-app notifications remain authoritative.
+      }
+    }
+
     return {
       id: notification.id,
       type: notification.type,
       title: notification.title,
-      body: notification.body,
+      body: body,
       readAt: notification.readAt?.toISOString() ?? null,
       createdAt: notification.createdAt.toISOString(),
     }
+  }
+
+  async listSupportTickets(userId: string, input: { page?: number; pageSize?: number }): Promise<ApiListResult<ApiSupportTicket>> {
+    const paging = normalizePage(input.page, input.pageSize)
+    const where = { userId }
+    const [total, tickets] = await this.prisma.$transaction([
+      this.prisma.supportTicket.count({ where }),
+      this.prisma.supportTicket.findMany({
+        where,
+        orderBy: { updatedAt: 'desc' },
+        skip: (paging.page - 1) * paging.pageSize,
+        take: paging.pageSize,
+        include: { _count: { select: { messages: true } } },
+      }),
+    ])
+    return {
+      items: tickets.map((ticket) => ({
+        id: ticket.id,
+        subject: ticket.subject,
+        category: ticket.category,
+        status: ticket.status,
+        createdAt: ticket.createdAt.toISOString(),
+        updatedAt: ticket.updatedAt.toISOString(),
+        resolvedAt: ticket.resolvedAt?.toISOString() ?? null,
+        messageCount: ticket._count.messages,
+      })),
+      pagination: paginate(total, paging.page, paging.pageSize),
+    }
+  }
+
+  async getSupportTicket(userId: string, ticketId: string): Promise<ApiSupportTicket & { messages: ApiSupportMessage[] }> {
+    const ticket = await this.prisma.supportTicket.findFirst({
+      where: { id: ticketId, userId },
+      include: {
+        _count: { select: { messages: true } },
+        messages: { orderBy: { createdAt: 'asc' }, include: { author: { select: { id: true, displayName: true, email: true, adminAccess: { select: { role: true } } } } } },
+      },
+    })
+    if (!ticket) throw new FinanceError(404, 'SUPPORT_TICKET_NOT_FOUND', 'Support ticket was not found')
+    return {
+      id: ticket.id,
+      subject: ticket.subject,
+      category: ticket.category,
+      status: ticket.status,
+      createdAt: ticket.createdAt.toISOString(),
+      updatedAt: ticket.updatedAt.toISOString(),
+      resolvedAt: ticket.resolvedAt?.toISOString() ?? null,
+      messageCount: ticket._count.messages,
+      messages: ticket.messages.map((message) => ({
+        id: message.id,
+        body: message.body,
+        createdAt: message.createdAt.toISOString(),
+        author: {
+          id: message.author.id,
+          displayName: message.author.displayName,
+          email: message.author.email,
+          admin: Boolean(message.author.adminAccess),
+        },
+      })),
+    }
+  }
+
+  async createSupportTicket(userId: string, input: { subject: string; category: 'ACCOUNT' | 'TRADING' | 'WALLET' | 'TECHNICAL' | 'OTHER'; body: string }, ipAddress?: string, userAgent?: string): Promise<ApiSupportTicket & { messages: ApiSupportMessage[] }> {
+    const subject = input.subject.trim()
+    const body = input.body.trim()
+    if (subject.length < 3 || subject.length > 160) throw new FinanceError(400, 'INVALID_SUPPORT_SUBJECT', 'Support subject must be between 3 and 160 characters')
+    if (body.length < 3 || body.length > 10_000) throw new FinanceError(400, 'INVALID_SUPPORT_MESSAGE', 'Support message must be between 3 and 10000 characters')
+
+    const ticket = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.supportTicket.create({
+        data: {
+          userId,
+          subject,
+          category: input.category,
+          status: 'OPEN',
+          messages: { create: { authorUserId: userId, body } },
+        },
+        include: { _count: { select: { messages: true } } },
+      })
+      await tx.auditLog.create({
+        data: { actorUserId: userId, action: 'SUPPORT_TICKET_CREATED', entityType: 'SupportTicket', entityId: created.id, ipAddress, userAgent },
+      })
+      return created
+    })
+    return this.getSupportTicket(userId, ticket.id)
+  }
+
+  async replySupportTicket(userId: string, ticketId: string, body: string, ipAddress?: string, userAgent?: string): Promise<ApiSupportTicket & { messages: ApiSupportMessage[] }> {
+    const messageBody = body.trim()
+    if (messageBody.length < 3 || messageBody.length > 10_000) throw new FinanceError(400, 'INVALID_SUPPORT_MESSAGE', 'Support message must be between 3 and 10000 characters')
+    const ticket = await this.prisma.supportTicket.findFirst({ where: { id: ticketId, userId }, select: { id: true, status: true } })
+    if (!ticket) throw new FinanceError(404, 'SUPPORT_TICKET_NOT_FOUND', 'Support ticket was not found')
+    if (ticket.status === 'CLOSED') throw new FinanceError(409, 'SUPPORT_TICKET_CLOSED', 'This support ticket is closed')
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.supportMessage.create({ data: { ticketId, authorUserId: userId, body: messageBody } })
+      await tx.supportTicket.update({ where: { id: ticketId }, data: { status: 'OPEN', resolvedAt: null } })
+      await tx.auditLog.create({
+        data: { actorUserId: userId, action: 'SUPPORT_TICKET_REPLIED', entityType: 'SupportTicket', entityId: ticketId, ipAddress, userAgent },
+      })
+    })
+    return this.getSupportTicket(userId, ticketId)
+  }
+
+  async closeSupportTicket(userId: string, ticketId: string): Promise<ApiSupportTicket & { messages: ApiSupportMessage[] }> {
+    const ticket = await this.prisma.supportTicket.findFirst({ where: { id: ticketId, userId }, select: { id: true } })
+    if (!ticket) throw new FinanceError(404, 'SUPPORT_TICKET_NOT_FOUND', 'Support ticket was not found')
+    await this.prisma.$transaction(async (tx) => {
+      await tx.supportTicket.update({ where: { id: ticketId }, data: { status: 'CLOSED', resolvedAt: new Date() } })
+      await tx.auditLog.create({ data: { actorUserId: userId, action: 'SUPPORT_TICKET_CLOSED', entityType: 'SupportTicket', entityId: ticketId } })
+    })
+    return this.getSupportTicket(userId, ticketId)
   }
 
   private parseFundingAmount(value: string): Prisma.Decimal {
