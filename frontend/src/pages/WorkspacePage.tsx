@@ -1383,7 +1383,20 @@ function SupportPage() {
               <div className="dashboard-card__header"><div><span className="eyebrow">New request</span><h2>Contact support</h2></div></div>
               <p>Tell us what happened. Include the relevant page, asset or trade ID when applicable.</p>
               <label><span>Subject</span><input value={subject} onChange={(event) => setSubject(event.target.value)} maxLength={160} required placeholder="What do you need help with?" /></label>
-              <label><span>Category</span><select value={category} onChange={(event) => setCategory(event.target.value as SupportCategory)}><option value="ACCOUNT">Account</option><option value="TRADING">Trading</option><option value="WALLET">Wallet</option><option value="TECHNICAL">Technical</option><option value="OTHER">Other</option></select></label>
+              <div className="support-category-field">
+                <Select
+                  label="Category"
+                  value={category}
+                  options={[
+                    { value: 'ACCOUNT', label: 'Account' },
+                    { value: 'TRADING', label: 'Trading' },
+                    { value: 'WALLET', label: 'Wallet' },
+                    { value: 'TECHNICAL', label: 'Technical' },
+                    { value: 'OTHER', label: 'Other' },
+                  ]}
+                  onChange={(value) => setCategory(value as SupportCategory)}
+                />
+              </div>
               <label><span>Message</span><textarea rows={8} maxLength={10000} value={message} onChange={(event) => setMessage(event.target.value)} required placeholder="Describe the issue…" /></label>
               <button type="submit" className="setting-button setting-button--primary" disabled={busy || !subject.trim() || !message.trim()}>{busy ? 'Submitting…' : 'Create support ticket'}</button>
             </form>
