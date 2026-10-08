@@ -5,7 +5,7 @@ import {
   Maximize2,
   Settings2,
 } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRealtime } from '../../realtime/useRealtime'
 import { useMediaQuery } from '../../hooks/useMediaQuery'
 import type { PointerEvent as ReactPointerEvent } from 'react'
@@ -641,10 +641,10 @@ export function ChartWorkspace({ asset, onOpenMarkets, onOpenActivity, soundEnab
   const workspaceRef = useRef<HTMLElement>(null)
   const stageRef = useRef<HTMLDivElement>(null)
   const price = formatPrice(asset.price, asset.price < 10 ? 5 : 2)
-  const priceProviderLabel = asset.priceProvider === 'binance' ? 'Binance' : asset.priceProvider === 'demo-simulation' ? 'Demo simulation' : asset.priceProvider ?? 'Unknown source'
+  const priceProviderLabel = asset.priceProvider === 'binance' ? 'Binance' : asset.priceProvider ?? 'Unknown source'
   const marketInterval = timeframeToApiInterval(timeframe)
   const realtime = useRealtime()
-  const candleResource = useMarketCandles(asset.assetId, marketInterval, 200)
+  const candleResource = useMarketCandles(asset.assetId, marketInterval, CHART_INITIAL_CANDLE_LIMIT)
   const datasetKey = asset.symbol + ':' + marketInterval
   const entryLines = useMemo<EntryLine[]>(
     () => openTrades
@@ -658,9 +658,59 @@ export function ChartWorkspace({ asset, onOpenMarkets, onOpenActivity, soundEnab
     [asset.symbol, now, openTrades],
   )
   const [liveCandleUpdates, setLiveCandleUpdates] = useState<Array<ChartCandle & { datasetKey: string }>>([])
+  const [loadedHistory, setLoadedHistory] = useState<MarketCandle[]>([])
+  const [historyLoading, setHistoryLoading] = useState(false)
+  const [hasMoreHistory, setHasMoreHistory] = useState(true)
+  const historyLoadingRef = useRef(false)
+
+  useEffect(() => {
+    historyLoadingRef.current = false
+    setHistoryLoading(false)
+    setHasMoreHistory(true)
+    setLoadedHistory([])
+  }, [datasetKey])
+
+  useEffect(() => {
+    const incoming = candleResource.data?.candles
+    if (!incoming?.length) return
+    setLoadedHistory((current) => current.length ? current : incoming)
+    setHasMoreHistory(incoming.length >= CHART_INITIAL_CANDLE_LIMIT)
+  }, [candleResource.data])
+
+  const loadEarlierCandles = useCallback(async () => {
+    if (historyLoadingRef.current || !hasMoreHistory || loadedHistory.length === 0) return
+    const oldest = loadedHistory[0]
+    if (!oldest) return
+    const oldestTime = Date.parse(oldest.openTime)
+    if (!Number.isFinite(oldestTime) || oldestTime <= 0) return
+
+    historyLoadingRef.current = true
+    setHistoryLoading(true)
+    try {
+      const response = await marketApi.candles(asset.assetId, {
+        interval: marketInterval,
+        limit: CHART_HISTORY_PAGE_SIZE,
+        endTime: oldestTime - 1,
+      })
+      const incoming = response.candles
+      if (!incoming.length) {
+        setHasMoreHistory(false)
+        return
+      }
+
+      setLoadedHistory((current) => mergeMarketCandles(incoming, current))
+      if (incoming.length < CHART_HISTORY_PAGE_SIZE) setHasMoreHistory(false)
+    } catch {
+      // Historical loading is opportunistic; the existing chart stays usable when a page fails.
+    } finally {
+      historyLoadingRef.current = false
+      setHistoryLoading(false)
+    }
+  }, [asset.assetId, hasMoreHistory, loadedHistory, marketInterval])
+
   const baseCandles = useMemo(
-    () => candleResource.data?.candles.length ? toChartCandles(candleResource.data.candles) : NO_CANDLES,
-    [candleResource.data],
+    () => loadedHistory.length ? toChartCandles(loadedHistory) : NO_CANDLES,
+    [loadedHistory],
   )
 
   useEffect(() => {
@@ -714,7 +764,7 @@ export function ChartWorkspace({ asset, onOpenMarkets, onOpenActivity, soundEnab
       }
       merged.set(Number(candle.time), candle)
     }
-    return [...merged.values()].sort((left, right) => Number(left.time) - Number(right.time)).slice(-200)
+    return [...merged.values()].sort((left, right) => Number(left.time) - Number(right.time))
   }, [baseCandles, datasetKey, liveCandleUpdates])
   useEffect(() => {
     try {
@@ -906,6 +956,8 @@ export function ChartWorkspace({ asset, onOpenMarkets, onOpenActivity, soundEnab
             volumeEnabled={volumeEnabled}
             candles={candles}
             entryLines={entryLines}
+            onReachHistoryStart={loadEarlierCandles}
+            historyLoading={historyLoading}
           />
         )}
 
