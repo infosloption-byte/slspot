@@ -1,6 +1,9 @@
 import { Prisma, type PrismaClient } from '../generated/prisma/client.js'
 import { env } from '../config/env.js'
 import { getTradingRules } from '../trading/config.js'
+import { EmailService } from '../email/service.js'
+import { createRealtimeEvent, serializeRealtimeEvent } from '../realtime/events.js'
+import { publishRealtime } from '../realtime/bus.js'
 
 const DEFAULT_PAGE = 1
 const DEFAULT_PAGE_SIZE = 25
