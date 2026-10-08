@@ -1,4 +1,4 @@
-import type { MarketDataProvider } from './provider.js'
+import type { MarketDataProvider, ProviderCandleOptions } from './provider.js'
 import type { CandleInterval, MarketDefinition, ProviderCandle, ProviderQuote } from './types.js'
 
 type FetchLike = typeof fetch
@@ -69,14 +69,19 @@ export class BinanceProvider implements MarketDataProvider {
     }
   }
 
-  async candles(market: MarketDefinition, interval: CandleInterval, limit: number): Promise<ProviderCandle[]> {
+  async candles(market: MarketDefinition, interval: CandleInterval, limit: number, options: ProviderCandleOptions = {}): Promise<ProviderCandle[]> {
     const spec = INTERVALS[interval]
     if (!spec) throw new Error('Binance does not support the ' + interval + ' interval')
-    const rows = await this.request<Array<Array<string | number>>>('/api/v3/klines', {
+    const params: Record<string, string> = {
       symbol: toBinanceSymbol(market.externalSymbol),
       interval: spec.binance,
       limit: String(Math.min(1000, Math.max(1, limit))),
-    })
+    }
+    if (options.endTimeMs !== undefined) {
+      if (!Number.isSafeInteger(options.endTimeMs) || options.endTimeMs < 0) throw new Error('Invalid candle end time')
+      params.endTime = String(options.endTimeMs)
+    }
+    const rows = await this.request<Array<Array<string | number>>>('/api/v3/klines', params)
     return rows.map((row) => ({
       interval,
       openTime: new Date(Number(row[0])).toISOString(),
