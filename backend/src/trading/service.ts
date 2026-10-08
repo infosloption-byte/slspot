@@ -8,6 +8,7 @@ import { createRealtimeEvent, serializeRealtimeEvent } from '../realtime/events.
 import { publishRealtime } from '../realtime/bus.js'
 import { getTradingRules, TRADING_RULES } from './config.js'
 import { LedgerService } from '../ledger/service.js'
+import { EmailService } from '../email/service.js'
 
 export type TradeDirection = 'UP' | 'DOWN'
 export type WalletMode = 'DEMO' | 'REAL'
@@ -188,6 +189,7 @@ export class TradingService {
   private timer: ReturnType<typeof setTimeout> | null = null
   private running = false
   private readonly ledger: LedgerService
+  private readonly email = new EmailService()
 
   constructor(
     private readonly prisma: PrismaClient,
@@ -1421,6 +1423,17 @@ export class TradingService {
         readAt: null,
         createdAt: notification.createdAt.toISOString(),
       }, channel))
+      const [user, preferences] = await Promise.all([
+        this.prisma.user.findUnique({ where: { id: userId }, select: { email: true } }),
+        this.prisma.userPreference.findUnique({ where: { userId }, select: { emailTradeResults: true } }),
+      ])
+      if (user && preferences?.emailTradeResults !== false && notification.type === 'TRADE_RESULT') {
+        try {
+          await this.email.sendNotification(user.email, notification.id, notification.title, notification.body, 'trade_result')
+        } catch (error) {
+          this.logger.warn({ err: error, tradeId: result.tradeId }, 'Failed to send trade result email')
+        }
+      }
     } catch (error) {
       this.logger.warn({ err: error, tradeId: result.tradeId }, 'Failed to create trade result notification')
     }
