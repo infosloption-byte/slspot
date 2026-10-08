@@ -60,3 +60,15 @@ export function setPriceMovementAlerts(enabled: boolean): void {
 export function setServerPreferences(next: Partial<PreferencesState>): void {
   preferencesStore.setState((current) => ({ ...current, ...next }))
 }
+
+export function resetServerPreferences(): void {
+  preferencesStore.setState((current) => ({
+    ...current,
+    soundEnabled: false,
+    emailTradeResults: true,
+    emailWalletUpdates: true,
+    emailSecurityAlerts: true,
+    emailAnnouncements: true,
+    emailSupportUpdates: true,
+  }))
+}
