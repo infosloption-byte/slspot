@@ -238,7 +238,7 @@ export class MarketDataService {
     }
   }
 
-  async getCandles(assetId: string, intervalValue: string, limit: number): Promise<MarketCandleResult> {
+  async getCandles(assetId: string, intervalValue: string, limit: number, options?: { endTimeMs?: number }): Promise<MarketCandleResult> {
     if (!isCandleInterval(intervalValue) || !this.provider) {
       throw new MarketDataUnavailableError()
     }
@@ -268,6 +268,7 @@ export class MarketDataService {
         definition,
         intervalValue as CandleInterval,
         Math.min(5000, Math.max(1, limit)),
+        options,
       )
     } catch (error) {
       this.logger.warn(
