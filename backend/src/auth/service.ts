@@ -27,6 +27,7 @@ export type UserPreferences = {
   emailWalletUpdates: boolean
   emailSecurityAlerts: boolean
   emailAnnouncements: boolean
+  emailSupportUpdates: boolean
 }
 
 export type AuthSession = AuthUser & {
@@ -172,6 +173,7 @@ export class AuthService {
       })
 
       await this.ensureTradingAccounts(tx, user.id, 'USD')
+      await tx.userPreference.create({ data: { userId: user.id } })
 
       const token = createOpaqueToken()
       const expiresAt = new Date(now.getTime() + env.auth.verificationTtlSeconds * 1000)
@@ -745,6 +747,7 @@ export class AuthService {
       emailWalletUpdates: preferences.emailWalletUpdates,
       emailSecurityAlerts: preferences.emailSecurityAlerts,
       emailAnnouncements: preferences.emailAnnouncements,
+      emailSupportUpdates: preferences.emailSupportUpdates,
     }
   }
 
