@@ -13,6 +13,7 @@ const MARKET_STATUSES = ['OPEN', 'CLOSED', 'HALTED', 'MAINTENANCE'] as const
 const ADMIN_ROLES = ['ADMIN', 'SUPER_ADMIN'] as const
 const UUID_PATTERN = '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}'
 type Query = { page?: string; pageSize?: string; search?: string; status?: string; action?: string; entityType?: string; mode?: string }
+const SUPPORT_STATUSES = ['OPEN', 'IN_PROGRESS', 'WAITING_USER', 'RESOLVED', 'CLOSED'] as const
 
 
 function positive(value: string | undefined, fallback: number) {
@@ -170,6 +171,78 @@ export function registerAdminRoutes(app: FastifyInstance, options: { authService
   app.get<{ Querystring: Query }>(PREFIX + '/ledger', async (request) => {
     await requireAdmin(request, options.authService, options.adminService)
     return ok(request, await options.adminService.listLedger({ page: positive(request.query.page, 1), pageSize: positive(request.query.pageSize, 25) }))
+  })
+
+  app.get<{ Querystring: Query }>(PREFIX + '/support/tickets', async (request) => {
+    await requireAdmin(request, options.authService, options.adminService)
+    return ok(request, await options.adminService.listSupportTickets({
+      page: positive(request.query.page, 1),
+      pageSize: positive(request.query.pageSize, 25),
+      status: enumValue(request.query.status, SUPPORT_STATUSES, 'Support status'),
+    }))
+  })
+
+  app.get<{ Params: { ticketId: string } }>(PREFIX + '/support/tickets/:ticketId', {
+    schema: { params: { type: 'object', required: ['ticketId'], additionalProperties: false, properties: { ticketId: { type: 'string', pattern: UUID_PATTERN } } } },
+  }, async (request) => {
+    await requireAdmin(request, options.authService, options.adminService)
+    return ok(request, await options.adminService.getSupportTicket(request.params.ticketId))
+  })
+
+  app.post<{ Params: { ticketId: string }; Body: { body: string } }>(PREFIX + '/support/tickets/:ticketId/messages', {
+    schema: {
+      params: { type: 'object', required: ['ticketId'], additionalProperties: false, properties: { ticketId: { type: 'string', pattern: UUID_PATTERN } } },
+      body: { type: 'object', required: ['body'], additionalProperties: false, properties: { body: { type: 'string', minLength: 3, maxLength: 10000 } } },
+    },
+  }, async (request) => {
+    const session = await requireAdmin(request, options.authService, options.adminService)
+    return ok(request, await options.adminService.replySupportTicket(session.id, request.params.ticketId, request.body.body))
+  })
+
+  app.post<{ Params: { ticketId: string } }>(PREFIX + '/support/tickets/:ticketId/close', {
+    schema: { params: { type: 'object', required: ['ticketId'], additionalProperties: false, properties: { ticketId: { type: 'string', pattern: UUID_PATTERN } } } },
+  }, async (request) => {
+    const session = await requireAdmin(request, options.authService, options.adminService)
+    return ok(request, await options.adminService.closeSupportTicket(session.id, request.params.ticketId))
+  })
+
+  app.get<{ Querystring: Query }>(PREFIX + '/announcements', async (request) => {
+    await requireAdmin(request, options.authService, options.adminService)
+    return ok(request, await options.adminService.listAnnouncements({
+      page: positive(request.query.page, 1),
+      pageSize: positive(request.query.pageSize, 25),
+    }))
+  })
+
+  app.post<{ Body: { title: string; body: string } }>(PREFIX + '/announcements', {
+    schema: {
+      body: {
+        type: 'object',
+        required: ['title', 'body'],
+        additionalProperties: false,
+        properties: {
+          title: { type: 'string', minLength: 3, maxLength: 160 },
+          body: { type: 'string', minLength: 3, maxLength: 10000 },
+        },
+      },
+    },
+  }, async (request) => {
+    const session = await requireAdmin(request, options.authService, options.adminService)
+    return ok(request, await options.adminService.createAnnouncement(session.id, request.body.title, request.body.body))
+  })
+
+  app.post<{ Params: { announcementId: string } }>(PREFIX + '/announcements/:announcementId/publish', {
+    schema: { params: { type: 'object', required: ['announcementId'], additionalProperties: false, properties: { announcementId: { type: 'string', pattern: UUID_PATTERN } } } },
+  }, async (request) => {
+    const session = await requireAdmin(request, options.authService, options.adminService)
+    return ok(request, await options.adminService.publishAnnouncement(session.id, request.params.announcementId))
+  })
+
+  app.post<{ Params: { announcementId: string } }>(PREFIX + '/announcements/:announcementId/archive', {
+    schema: { params: { type: 'object', required: ['announcementId'], additionalProperties: false, properties: { announcementId: { type: 'string', pattern: UUID_PATTERN } } } },
+  }, async (request) => {
+    const session = await requireAdmin(request, options.authService, options.adminService)
+    return ok(request, await options.adminService.archiveAnnouncement(session.id, request.params.announcementId))
   })
 
   app.get(PREFIX + '/risk', async (request) => {
