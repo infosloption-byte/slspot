@@ -1,13 +1,14 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import { env } from '../config/env.js'
-import { AuthError, type AuthSession, type AuthService } from './service.js'
+import { AuthError, type AuthSession, type AuthService, type UserPreferences } from './service.js'
 import { createCsrfToken } from '../security/csrf.js'
 
 export type AuthServiceLike = Pick<AuthService,
   'register' | 'login' | 'authenticateSession' | 'logout' | 'logoutAll' |
   'listSessions' | 'revokeSession' | 'verifyEmail' | 'requestEmailVerification' |
   'requestPasswordReset' | 'resetPassword' | 'verifyTwoFactorChallenge' | 'getTwoFactorStatus' |
-  'setupTwoFactor' | 'enableTwoFactor' | 'disableTwoFactor' | 'listDevices' | 'listLoginHistory' | 'listSecurityEvents'
+  'setupTwoFactor' | 'enableTwoFactor' | 'disableTwoFactor' | 'listDevices' | 'listLoginHistory' | 'listSecurityEvents' |
+  'updateProfile' | 'getPreferences' | 'updatePreferences' | 'changePassword'
 >
 
 const PREFIX='/api/v1/auth'
@@ -181,6 +182,49 @@ export function registerAuthRoutes(app: FastifyInstance, service: AuthServiceLik
   app.get(PREFIX+'/me',async(request)=>{
     const session=await requireSession(request,service)
     return ok(request,{user:session,sessionId:session.sessionId})
+  })
+
+  app.patch<{Body:{displayName?:string|null;countryCode?:string|null;timezone?:string|null;locale?:string|null}}>(PREFIX+'/profile',{
+    schema:{body:{type:'object',additionalProperties:false,properties:{
+      displayName:{anyOf:[{type:'string',maxLength:120},{type:'null'}]},
+      countryCode:{anyOf:[{type:'string',minLength:2,maxLength:2},{type:'null'}]},
+      timezone:{anyOf:[{type:'string',maxLength:64},{type:'null'}]},
+      locale:{anyOf:[{type:'string',maxLength:35},{type:'null'}]},
+    }}},
+  },async(request)=>{
+    const session=await requireSession(request,service)
+    return ok(request,{user:await service.updateProfile(session.id,request.body,request.ip,request.headers['user-agent'])})
+  })
+
+  app.get(PREFIX+'/preferences',async(request)=>{
+    const session=await requireSession(request,service)
+    return ok(request,await service.getPreferences(session.id))
+  })
+
+  app.patch<{Body:Partial<UserPreferences>}>(PREFIX+'/preferences',{
+    schema:{body:{type:'object',additionalProperties:false,properties:{
+      compactTradingLayout:{type:'boolean'},
+      priceMovementAlerts:{type:'boolean'},
+      soundEnabled:{type:'boolean'},
+      emailTradeResults:{type:'boolean'},
+      emailWalletUpdates:{type:'boolean'},
+      emailSecurityAlerts:{type:'boolean'},
+      emailAnnouncements:{type:'boolean'},
+    }}},
+  },async(request)=>{
+    const session=await requireSession(request,service)
+    return ok(request,await service.updatePreferences(session.id,request.body))
+  })
+
+  app.post<{Body:{currentPassword:string;newPassword:string}}>(PREFIX+'/password/change',{
+    schema:{body:{type:'object',required:['currentPassword','newPassword'],additionalProperties:false,properties:{
+      currentPassword:{type:'string',minLength:1,maxLength:128},
+      newPassword:{type:'string',minLength:10,maxLength:128},
+    }}},
+  },async(request)=>{
+    const session=await requireSession(request,service)
+    await service.changePassword(session.id,session.sessionId,request.body.currentPassword,request.body.newPassword,request.ip,request.headers['user-agent'])
+    return ok(request,{changed:true})
   })
 
   app.get(PREFIX+'/sessions',async(request)=>{
