@@ -1,3 +1,4 @@
+# SL Spot API & WebSocket Contracts
 
 ## Account, support and announcement additions — 2026-10-08
 
@@ -34,9 +35,6 @@ POST /api/v1/admin/announcements/:announcementId/archive
 ```
 
 Support resources are scoped to the authenticated user; administrator endpoints remain behind the existing admin RBAC boundary. Published announcements create durable `SYSTEM` notifications and are delivered through the existing `notification.created` realtime event.
-
-
-# SL Spot API & WebSocket Contracts
 
 **Version:** v1  
 **Base path:** \`/api/v1\`  
