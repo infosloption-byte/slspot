@@ -35,6 +35,8 @@ export class AdminError extends Error {
 export type AdminStatus = 'PENDING_VERIFICATION' | 'ACTIVE' | 'SUSPENDED' | 'DISABLED'
 
 export class AdminService {
+  private readonly email = new EmailService()
+
   constructor(private readonly prisma: PrismaClient) {}
 
   async bootstrapConfiguredAdmins(): Promise<number> {
@@ -345,6 +347,221 @@ export class AdminService {
       this.prisma.ledgerTransaction.findMany({ orderBy: { createdAt: 'desc' }, skip: p.skip, take: p.pageSize, select: { id: true, currency: true, referenceType: true, referenceId: true, description: true, createdAt: true, entries: { select: { direction: true, amount: true, ledgerAccount: { select: { code: true, name: true } } } } } }),
     ])
     return pageResult(rows.map((row) => ({ ...row, entries: row.entries.map((entry) => ({ ...entry, amount: entry.amount.toString() })) })), total, p.page, p.pageSize)
+  }
+
+  async listSupportTickets(input: { page?: number; pageSize?: number; status?: string }) {
+    const p = paging(input.page, input.pageSize)
+    const where: Prisma.SupportTicketWhereInput = input.status ? { status: input.status as never } : {}
+    const [total, tickets] = await this.prisma.$transaction([
+      this.prisma.supportTicket.count({ where }),
+      this.prisma.supportTicket.findMany({
+        where,
+        orderBy: { updatedAt: 'desc' },
+        skip: p.skip,
+        take: p.pageSize,
+        include: {
+          _count: { select: { messages: true } },
+          user: { select: { id: true, email: true } },
+          messages: { orderBy: { createdAt: 'desc' }, take: 1, select: { body: true, createdAt: true, author: { select: { email: true, adminAccess: { select: { role: true } } } } } },
+        },
+      }),
+    ])
+    return pageResult(tickets.map((ticket) => ({
+      id: ticket.id,
+      subject: ticket.subject,
+      category: ticket.category,
+      status: ticket.status,
+      createdAt: ticket.createdAt,
+      updatedAt: ticket.updatedAt,
+      resolvedAt: ticket.resolvedAt,
+      messageCount: ticket._count.messages,
+      user: ticket.user,
+      lastMessage: ticket.messages[0] ? {
+        body: ticket.messages[0].body,
+        createdAt: ticket.messages[0].createdAt,
+        authorEmail: ticket.messages[0].author.email,
+        authorIsAdmin: Boolean(ticket.messages[0].author.adminAccess),
+      } : null,
+    })), total, p.page, p.pageSize)
+  }
+
+  async getSupportTicket(ticketId: string) {
+    const ticket = await this.prisma.supportTicket.findUnique({
+      where: { id: ticketId },
+      include: {
+        user: { select: { id: true, email: true } },
+        messages: { orderBy: { createdAt: 'asc' }, include: { author: { select: { id: true, displayName: true, email: true, adminAccess: { select: { role: true } } } } } },
+      },
+    })
+    if (!ticket) throw new AdminError(404, 'SUPPORT_TICKET_NOT_FOUND', 'Support ticket was not found')
+    return {
+      id: ticket.id,
+      subject: ticket.subject,
+      category: ticket.category,
+      status: ticket.status,
+      createdAt: ticket.createdAt,
+      updatedAt: ticket.updatedAt,
+      resolvedAt: ticket.resolvedAt,
+      user: ticket.user,
+      messages: ticket.messages.map((message) => ({
+        id: message.id,
+        body: message.body,
+        createdAt: message.createdAt,
+        author: {
+          id: message.author.id,
+          displayName: message.author.displayName,
+          email: message.author.email,
+          admin: Boolean(message.author.adminAccess),
+        },
+      })),
+    }
+  }
+
+  async replySupportTicket(actorUserId: string, ticketId: string, body: string) {
+    await this.requireAdmin(actorUserId)
+    const messageBody = body.trim()
+    if (messageBody.length < 3 || messageBody.length > 10000) throw new AdminError(400, 'INVALID_SUPPORT_MESSAGE', 'Support message must be between 3 and 10000 characters')
+    const ticket = await this.prisma.supportTicket.findUnique({ where: { id: ticketId }, select: { id: true, userId: true, status: true } })
+    if (!ticket) throw new AdminError(404, 'SUPPORT_TICKET_NOT_FOUND', 'Support ticket was not found')
+    if (ticket.status === 'CLOSED') throw new AdminError(409, 'SUPPORT_TICKET_CLOSED', 'This support ticket is closed')
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.supportMessage.create({ data: { ticketId, authorUserId: actorUserId, body: messageBody } })
+      await tx.supportTicket.update({ where: { id: ticketId }, data: { status: 'WAITING_USER', resolvedAt: null } })
+      await tx.auditLog.create({ data: { actorUserId, action: 'ADMIN_SUPPORT_REPLIED', entityType: 'SupportTicket', entityId: ticketId } })
+    })
+    await this.createUserNotification(ticket.userId, 'Support update', 'Our support team replied to ticket ' + ticketId.slice(0, 8) + '.', true)
+    return this.getSupportTicket(ticketId)
+  }
+
+  async closeSupportTicket(actorUserId: string, ticketId: string) {
+    await this.requireAdmin(actorUserId)
+    const ticket = await this.prisma.supportTicket.findUnique({ where: { id: ticketId }, select: { id: true, userId: true } })
+    if (!ticket) throw new AdminError(404, 'SUPPORT_TICKET_NOT_FOUND', 'Support ticket was not found')
+    await this.prisma.$transaction(async (tx) => {
+      await tx.supportTicket.update({ where: { id: ticketId }, data: { status: 'CLOSED', resolvedAt: new Date() } })
+      await tx.auditLog.create({ data: { actorUserId, action: 'ADMIN_SUPPORT_CLOSED', entityType: 'SupportTicket', entityId: ticketId } })
+    })
+    await this.createUserNotification(ticket.userId, 'Support ticket closed', 'Your support ticket ' + ticketId.slice(0, 8) + ' has been closed.', true)
+    return this.getSupportTicket(ticketId)
+  }
+
+  async listAnnouncements(input: { page?: number; pageSize?: number }) {
+    const p = paging(input.page, input.pageSize)
+    const [total, announcements] = await this.prisma.$transaction([
+      this.prisma.systemAnnouncement.count(),
+      this.prisma.systemAnnouncement.findMany({
+        orderBy: { createdAt: 'desc' },
+        skip: p.skip,
+        take: p.pageSize,
+        include: { createdBy: { select: { email: true } }, _count: { select: { notifications: true } } },
+      }),
+    ])
+    return pageResult(announcements, total, p.page, p.pageSize)
+  }
+
+  async createAnnouncement(actorUserId: string, title: string, body: string) {
+    await this.requireAdmin(actorUserId)
+    const cleanTitle = title.trim()
+    const cleanBody = body.trim()
+    if (cleanTitle.length < 3 || cleanTitle.length > 160) throw new AdminError(400, 'INVALID_ANNOUNCEMENT_TITLE', 'Announcement title must be between 3 and 160 characters')
+    if (cleanBody.length < 3 || cleanBody.length > 10000) throw new AdminError(400, 'INVALID_ANNOUNCEMENT_BODY', 'Announcement body must be between 3 and 10000 characters')
+    const announcement = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.systemAnnouncement.create({ data: { title: cleanTitle, body: cleanBody, createdByUserId: actorUserId } })
+      await tx.auditLog.create({ data: { actorUserId, action: 'ANNOUNCEMENT_CREATED', entityType: 'SystemAnnouncement', entityId: created.id } })
+      return created
+    })
+    return announcement
+  }
+
+  async publishAnnouncement(actorUserId: string, announcementId: string) {
+    await this.requireAdmin(actorUserId)
+    const now = new Date()
+    const announcement = await this.prisma.$transaction(async (tx) => {
+      const claimed = await tx.systemAnnouncement.updateMany({
+        where: { id: announcementId, status: 'DRAFT' },
+        data: { status: 'PUBLISHED', publishedAt: now },
+      })
+      if (claimed.count !== 1) throw new AdminError(409, 'ANNOUNCEMENT_NOT_DRAFT', 'Only a draft announcement can be published')
+      return tx.systemAnnouncement.findUniqueOrThrow({ where: { id: announcementId }, select: { id: true, title: true, body: true } })
+    })
+
+    const users = await this.prisma.user.findMany({
+      where: { status: 'ACTIVE', emailVerifiedAt: { not: null } },
+      select: { id: true, email: true, preferences: true },
+    })
+    if (users.length) {
+      await this.prisma.notification.createMany({
+        data: users.map((user) => ({
+          userId: user.id,
+          type: 'SYSTEM' as const,
+          title: announcement.title,
+          body: announcement.body,
+          announcementId: announcement.id,
+        })),
+      })
+      const notifications = await this.prisma.notification.findMany({
+        where: { announcementId: announcement.id },
+        orderBy: { createdAt: 'desc' },
+        take: users.length,
+        select: { id: true, userId: true, type: true, title: true, body: true, createdAt: true },
+      })
+      for (const notification of notifications) {
+        const channel = ('user:' + notification.userId) as `user:${string}`
+        await publishRealtime(serializeRealtimeEvent(createRealtimeEvent('notification.created', {
+          id: notification.id,
+          type: notification.type,
+          title: notification.title,
+          body: notification.body,
+          readAt: null,
+          createdAt: notification.createdAt.toISOString(),
+        }, channel)))
+        const user = users.find((item) => item.id === notification.userId)
+        if (user?.preferences?.emailAnnouncements !== false) {
+          try {
+            await this.email.sendNotification(user.email, notification.id, announcement.title, announcement.body, 'system')
+          } catch {
+            // In-app announcement delivery remains authoritative if email delivery fails.
+          }
+        }
+      }
+    }
+
+    await this.prisma.auditLog.create({ data: { actorUserId, action: 'ANNOUNCEMENT_PUBLISHED', entityType: 'SystemAnnouncement', entityId: announcement.id, metadata: { recipientCount: users.length } } })
+    return { ...announcement, recipientCount: users.length }
+  }
+
+  async archiveAnnouncement(actorUserId: string, announcementId: string) {
+    await this.requireAdmin(actorUserId)
+    const updated = await this.prisma.systemAnnouncement.updateMany({ where: { id: announcementId, status: { in: ['DRAFT', 'PUBLISHED'] } }, data: { status: 'ARCHIVED' } })
+    if (updated.count !== 1) throw new AdminError(404, 'ANNOUNCEMENT_NOT_FOUND', 'Announcement was not found or already archived')
+    await this.prisma.auditLog.create({ data: { actorUserId, action: 'ANNOUNCEMENT_ARCHIVED', entityType: 'SystemAnnouncement', entityId: announcementId } })
+    return { archived: true }
+  }
+
+  private async createUserNotification(userId: string, title: string, body: string, emailSupport: boolean): Promise<void> {
+    const notification = await this.prisma.notification.create({
+      data: { userId, type: 'SYSTEM', title, body },
+    })
+    const channel = ('user:' + userId) as `user:${string}`
+    await publishRealtime(serializeRealtimeEvent(createRealtimeEvent('notification.created', {
+      id: notification.id,
+      type: notification.type,
+      title: notification.title,
+      body: notification.body,
+      readAt: null,
+      createdAt: notification.createdAt.toISOString(),
+    }, channel)))
+    if (emailSupport) {
+      try {
+        const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { email: true, preferences: { select: { emailSupportUpdates: true } } } })
+        if (user?.preferences?.emailSupportUpdates !== false) {
+          await this.email.sendNotification(user.email, notification.id, title, body, 'support')
+        }
+      } catch {
+        // In-app notification remains authoritative.
+      }
+    }
   }
 
   async risk() {
