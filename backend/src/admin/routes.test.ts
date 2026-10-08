@@ -10,6 +10,9 @@ const session: AuthSession = {
   email: 'admin@example.com',
   status: 'ACTIVE',
   countryCode: 'LK',
+  displayName: null,
+  timezone: 'Asia/Colombo',
+  locale: 'en-LK',
   emailVerifiedAt: new Date(),
   sessionId: 'session-1',
   expiresAt: new Date(Date.now() + 60_000),
@@ -35,6 +38,28 @@ const authService: AuthServiceLike = {
   listDevices: async () => [],
   listLoginHistory: async () => [],
   listSecurityEvents: async () => [],
+  updateProfile: async () => session,
+  getPreferences: async () => ({
+    compactTradingLayout: false,
+    priceMovementAlerts: false,
+    soundEnabled: false,
+    emailTradeResults: true,
+    emailWalletUpdates: true,
+    emailSecurityAlerts: true,
+    emailAnnouncements: true,
+    emailSupportUpdates: true,
+  }),
+  updatePreferences: async () => ({
+    compactTradingLayout: false,
+    priceMovementAlerts: false,
+    soundEnabled: false,
+    emailTradeResults: true,
+    emailWalletUpdates: true,
+    emailSecurityAlerts: true,
+    emailAnnouncements: true,
+    emailSupportUpdates: true,
+  }),
+  changePassword: async () => undefined,
 }
 
 async function csrfToken(app: ReturnType<typeof buildApp>, sessionCookie: string): Promise<string> {
