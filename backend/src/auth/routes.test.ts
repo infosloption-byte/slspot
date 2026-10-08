@@ -177,6 +177,49 @@ describe('authentication routes', () => {
     await app.close()
   })
 
+  it('registers account-management routes and binds profile operations to the session', async () => {
+    let profileUserId = ''
+    let passwordUserId = ''
+    const service = createMockAuthService()
+    service.updateProfile = async (userId: string) => {
+      profileUserId = userId
+      return user
+    }
+    service.changePassword = async (userId: string) => {
+      passwordUserId = userId
+    }
+
+    const app = buildApp({ logging: false, authService: service })
+    await app.ready()
+
+    const profile = await app.inject({
+      method: 'PATCH',
+      url: '/api/v1/auth/profile',
+      headers: { cookie: 'slspot_session=test-session-token', 'x-csrf-token': csrfToken() },
+      payload: { displayName: 'Trader', timezone: 'Asia/Colombo', locale: 'en-LK', countryCode: 'LK' },
+    })
+    assert.equal(profile.statusCode, 200)
+    assert.equal(profileUserId, 'user-1')
+
+    const preferences = await app.inject({
+      method: 'GET',
+      url: '/api/v1/auth/preferences',
+      headers: { cookie: 'slspot_session=test-session-token' },
+    })
+    assert.equal(preferences.statusCode, 200)
+
+    const password = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/password/change',
+      headers: { cookie: 'slspot_session=test-session-token', 'x-csrf-token': csrfToken() },
+      payload: { currentPassword: 'old-password-123', newPassword: 'new-password-123' },
+    })
+    assert.equal(password.statusCode, 200)
+    assert.equal(passwordUserId, 'user-1')
+
+    await app.close()
+  })
+
   it('requires registration consent', async () => {
     const app = buildApp({ logging: false, authService: createMockAuthService() })
     await app.ready()
