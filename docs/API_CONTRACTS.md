@@ -1,3 +1,41 @@
+
+## Account, support and announcement additions — 2026-10-08
+
+Authenticated account endpoints now include profile mutation, password change and persistent notification preferences:
+
+```text
+PATCH /api/v1/auth/profile
+GET   /api/v1/auth/preferences
+PATCH /api/v1/auth/preferences
+POST  /api/v1/auth/password/change
+```
+
+User support endpoints:
+
+```text
+GET  /api/v1/support/tickets
+GET  /api/v1/support/tickets/:ticketId
+POST /api/v1/support/tickets
+POST /api/v1/support/tickets/:ticketId/messages
+POST /api/v1/support/tickets/:ticketId/close
+```
+
+Admin support and announcement operations:
+
+```text
+GET  /api/v1/admin/support/tickets
+GET  /api/v1/admin/support/tickets/:ticketId
+POST /api/v1/admin/support/tickets/:ticketId/messages
+POST /api/v1/admin/support/tickets/:ticketId/close
+GET  /api/v1/admin/announcements
+POST /api/v1/admin/announcements
+POST /api/v1/admin/announcements/:announcementId/publish
+POST /api/v1/admin/announcements/:announcementId/archive
+```
+
+Support resources are scoped to the authenticated user; administrator endpoints remain behind the existing admin RBAC boundary. Published announcements create durable `SYSTEM` notifications and are delivered through the existing `notification.created` realtime event.
+
+
 # SL Spot API & WebSocket Contracts
 
 **Version:** v1  
