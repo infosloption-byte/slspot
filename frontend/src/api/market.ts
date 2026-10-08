@@ -63,7 +63,7 @@ export const marketApi = {
       .get<ApiSuccess<PaginatedData<MarketAsset>>>('/market/assets' + toQueryString(query))
       .then((response) => response.data),
 
-  candles: (assetId: string, query: { interval?: string; limit?: number } = {}) =>
+  candles: (assetId: string, query: { interval?: string; limit?: number; endTime?: number } = {}) =>
     apiClient
       .get<ApiSuccess<MarketCandleResponse>>('/market/assets/' + encodeURIComponent(assetId) + '/candles' + toQueryString(query))
       .then((response) => response.data),
@@ -76,6 +76,7 @@ function toQueryString(query: MarketAssetsQuery & { interval?: string; limit?: n
   if (query.type) params.set('type', query.type)
   if (query.interval) params.set('interval', query.interval)
   if (query.limit !== undefined) params.set('limit', String(query.limit))
+  if (query.endTime !== undefined) params.set('endTime', String(query.endTime))
   const value = params.toString()
   return value ? '?' + value : ''
 }
