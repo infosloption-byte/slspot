@@ -6,13 +6,27 @@ import { publishRealtime } from '../realtime/bus.js'
 import { createOpaqueToken, hashOpaqueToken, hashPassword, verifyPassword } from './crypto.js'
 import { createOtpAuthUri, createRecoveryCodes, decryptTotpSecret, encryptTotpSecret, generateTotpSecret, normalizeRecoveryCode, verifyTotpCode } from './totp.js'
 import { LedgerService } from '../ledger/service.js'
+import { EmailService } from '../email/service.js'
 
 export type AuthUser = {
   id: string
   email: string
   status: string
   countryCode: string | null
+  displayName: string | null
+  timezone: string | null
+  locale: string | null
   emailVerifiedAt: Date | null
+}
+
+export type UserPreferences = {
+  compactTradingLayout: boolean
+  priceMovementAlerts: boolean
+  soundEnabled: boolean
+  emailTradeResults: boolean
+  emailWalletUpdates: boolean
+  emailSecurityAlerts: boolean
+  emailAnnouncements: boolean
 }
 
 export type AuthSession = AuthUser & {
@@ -66,6 +80,39 @@ function validatePassword(password: string): void {
 
 const dummyPasswordHashPromise = hashPassword('slspot-dummy-password')
 
+function normalizeOptionalText(value: string | null, maxLength: number): string | null {
+  if (value === null) return null
+  const normalized = value.trim()
+  if (!normalized) return null
+  if (normalized.length > maxLength) throw new AuthError(400, 'INVALID_PROFILE_VALUE', 'Profile value is too long')
+  return normalized
+}
+
+function validateTimeZone(value: string): string | null {
+  const timezone = value.trim()
+  if (!timezone) return null
+  try {
+    new Intl.DateTimeFormat('en-US', { timeZone: timezone }).format()
+    return timezone
+  } catch {
+    throw new AuthError(400, 'INVALID_TIMEZONE', 'Timezone is invalid')
+  }
+}
+
+function validateLocale(value: string): string | null {
+  const locale = value.trim()
+  if (!locale) return null
+  if (locale.length > 35 || !/^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$/.test(locale)) {
+    throw new AuthError(400, 'INVALID_LOCALE', 'Locale is invalid')
+  }
+  try {
+    new Intl.Locale(locale)
+  } catch {
+    throw new AuthError(400, 'INVALID_LOCALE', 'Locale is invalid')
+  }
+  return locale
+}
+
 function validateCountryCode(value: string | undefined): string | null {
   if (value === undefined || value === '') return null
   const countryCode = value.trim().toUpperCase()
@@ -87,9 +134,11 @@ function describeUserAgent(userAgent?: string): string {
 
 export class AuthService {
   private readonly ledger: LedgerService
+  private readonly email: EmailService
 
   constructor(private readonly prisma: PrismaClient) {
     this.ledger = new LedgerService(prisma)
+    this.email = new EmailService()
   }
 
   async register(input: { email: string; password: string; countryCode?: string; acceptTerms: boolean; termsVersion?: string }) {
@@ -141,6 +190,14 @@ export class AuthService {
 
       return { user, verification: { token, expiresAt } }
     })
+
+    if (result.verification) {
+      try {
+        await this.email.sendVerification(result.user.email, result.verification.token)
+      } catch {
+        // Registration remains successful; delivery can be retried from the verification endpoint.
+      }
+    }
 
     return {
       created: true,
@@ -591,7 +648,13 @@ export class AuthService {
     validateEmail(email)
     const user = await this.prisma.user.findUnique({ where: { email } })
     if (!user || user.status !== 'PENDING_VERIFICATION') return null
-    return this.issueToken(user.id, 'EMAIL_VERIFICATION', env.auth.verificationTtlSeconds)
+    const result = await this.issueToken(user.id, 'EMAIL_VERIFICATION', env.auth.verificationTtlSeconds)
+    try {
+      await this.email.sendVerification(user.email, result.token)
+    } catch {
+      // Keep the response intentionally generic and allow the user to retry delivery.
+    }
+    return result
   }
 
   async requestPasswordReset(emailInput: string): Promise<AuthTokenResult | null> {
@@ -599,7 +662,107 @@ export class AuthService {
     validateEmail(email)
     const user = await this.prisma.user.findUnique({ where: { email } })
     if (!user || user.status === 'DISABLED') return null
-    return this.issueToken(user.id, 'PASSWORD_RESET', env.auth.passwordResetTtlSeconds)
+    const result = await this.issueToken(user.id, 'PASSWORD_RESET', env.auth.passwordResetTtlSeconds)
+    try {
+      await this.email.sendPasswordReset(user.email, result.token)
+    } catch {
+      // Keep password-recovery responses generic and do not leak provider errors.
+    }
+    return result
+  }
+
+  async getProfile(userId: string): Promise<AuthUser> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } })
+    if (!user) throw new AuthError(404, 'USER_NOT_FOUND', 'User was not found')
+    return this.toUser(user)
+  }
+
+  async updateProfile(userId: string, input: { displayName?: string | null; countryCode?: string | null; timezone?: string | null; locale?: string | null }, ipAddress?: string, userAgent?: string): Promise<AuthUser> {
+    const displayName = input.displayName === undefined ? undefined : normalizeOptionalText(input.displayName, 120)
+    const countryCode = input.countryCode === undefined ? undefined : validateCountryCode(input.countryCode ?? undefined)
+    const timezone = input.timezone === undefined ? undefined : validateTimeZone(input.timezone)
+    const locale = input.locale === undefined ? undefined : validateLocale(input.locale)
+
+    const user = await this.prisma.$transaction(async (tx) => {
+      const updated = await tx.user.update({
+        where: { id: userId },
+        data: { displayName, countryCode, timezone, locale },
+      })
+      await tx.auditLog.create({
+        data: {
+          actorUserId: userId,
+          action: 'PROFILE_UPDATED',
+          entityType: 'User',
+          entityId: userId,
+          ipAddress,
+          userAgent,
+          metadata: { displayNameChanged: displayName !== undefined, countryChanged: countryCode !== undefined, timezoneChanged: timezone !== undefined, localeChanged: locale !== undefined },
+        },
+      })
+      return updated
+    })
+    return this.toUser(user)
+  }
+
+  async changePassword(userId: string, sessionId: string, currentPassword: string, newPassword: string, ipAddress?: string, userAgent?: string): Promise<void> {
+    validatePassword(newPassword)
+    if (currentPassword === newPassword) throw new AuthError(400, 'PASSWORD_REUSE', 'New password must differ from the current password')
+    const user = await this.prisma.user.findUnique({ where: { id: userId } })
+    if (!user) throw new AuthError(404, 'USER_NOT_FOUND', 'User was not found')
+    if (!(await verifyPassword(currentPassword, user.passwordHash))) {
+      throw new AuthError(401, 'CURRENT_PASSWORD_INVALID', 'Current password is incorrect')
+    }
+
+    const passwordHash = await hashPassword(newPassword)
+    const now = new Date()
+    await this.prisma.$transaction(async (tx) => {
+      await tx.user.update({ where: { id: userId }, data: { passwordHash, loginFailedCount: 0, loginLockedUntil: null } })
+      await tx.session.updateMany({
+        where: { userId, revokedAt: null, id: { not: sessionId } },
+        data: { revokedAt: now },
+      })
+      await tx.device.updateMany({
+        where: { userId, revokedAt: null, sessions: { none: { revokedAt: null } } },
+        data: { revokedAt: now },
+      })
+      await tx.auditLog.create({
+        data: { actorUserId: userId, action: 'PASSWORD_CHANGED', entityType: 'User', entityId: userId, ipAddress, userAgent },
+      })
+    })
+  }
+
+  async getPreferences(userId: string): Promise<UserPreferences> {
+    const preferences = await this.prisma.userPreference.upsert({
+      where: { userId },
+      create: { userId },
+      update: {},
+    })
+    return {
+      compactTradingLayout: preferences.compactTradingLayout,
+      priceMovementAlerts: preferences.priceMovementAlerts,
+      soundEnabled: preferences.soundEnabled,
+      emailTradeResults: preferences.emailTradeResults,
+      emailWalletUpdates: preferences.emailWalletUpdates,
+      emailSecurityAlerts: preferences.emailSecurityAlerts,
+      emailAnnouncements: preferences.emailAnnouncements,
+    }
+  }
+
+  async updatePreferences(userId: string, input: Partial<UserPreferences>): Promise<UserPreferences> {
+    const preferences = await this.prisma.userPreference.upsert({
+      where: { userId },
+      create: { userId, ...input },
+      update: input,
+    })
+    return {
+      compactTradingLayout: preferences.compactTradingLayout,
+      priceMovementAlerts: preferences.priceMovementAlerts,
+      soundEnabled: preferences.soundEnabled,
+      emailTradeResults: preferences.emailTradeResults,
+      emailWalletUpdates: preferences.emailWalletUpdates,
+      emailSecurityAlerts: preferences.emailSecurityAlerts,
+      emailAnnouncements: preferences.emailAnnouncements,
+    }
   }
 
   async resetPassword(token: string, password: string): Promise<void> {
@@ -852,12 +1015,15 @@ export class AuthService {
     }
   }
 
-  private toUser(user: { id: string; email: string; status: string; countryCode: string | null; emailVerifiedAt: Date | null }): AuthUser {
+  private toUser(user: { id: string; email: string; status: string; countryCode: string | null; displayName: string | null; timezone: string | null; locale: string | null; emailVerifiedAt: Date | null }): AuthUser {
     return {
       id: user.id,
       email: user.email,
       status: user.status,
       countryCode: user.countryCode,
+      displayName: user.displayName,
+      timezone: user.timezone,
+      locale: user.locale,
       emailVerifiedAt: user.emailVerifiedAt,
     }
   }
