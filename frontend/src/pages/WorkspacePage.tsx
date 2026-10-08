@@ -1,5 +1,6 @@
 import { ArrowDownCircle, ArrowUpCircle, ArrowUpRight, BarChart3, Bell, CalendarDays, Check, Clock3, Download, DollarSign, PieChart, Search, Star, ShieldCheck, Smartphone, TrendingUp, WalletCards } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
+import type { FormEvent } from 'react'
 import { Link } from 'react-router'
 import { Pagination } from '../components/ui/Pagination'
 import { Select } from '../components/ui/Select'
@@ -1172,7 +1173,7 @@ function AccountPage() {
     }
   }
 
-  const saveProfile = async (event: React.FormEvent) => {
+  const saveProfile = async (event: FormEvent) => {
     event.preventDefault()
     setProfileBusy(true)
     setProfileError(null)
@@ -1193,7 +1194,7 @@ function AccountPage() {
     }
   }
 
-  const changePassword = async (event: React.FormEvent) => {
+  const changePassword = async (event: FormEvent) => {
     event.preventDefault()
     setPasswordBusy(true)
     setPasswordError(null)
@@ -1287,7 +1288,7 @@ function SupportPage() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const createTicket = async (event: React.FormEvent) => {
+  const createTicket = async (event: FormEvent) => {
     event.preventDefault()
     setBusy(true)
     setError(null)
@@ -1304,7 +1305,7 @@ function SupportPage() {
     }
   }
 
-  const sendReply = async (event: React.FormEvent) => {
+  const sendReply = async (event: FormEvent) => {
     event.preventDefault()
     if (!selectedTicketId || !reply.trim()) return
     setBusy(true)
