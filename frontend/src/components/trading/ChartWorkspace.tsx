@@ -689,8 +689,9 @@ export function ChartWorkspace({ asset, onOpenMarkets, onOpenActivity, soundEnab
   }, [datasetKey])
 
   const loadedHistory = useMemo(() => {
-    if (historyState?.datasetKey === datasetKey) return historyState.candles
-    return candleResource.data?.candles ?? []
+    const incoming = candleResource.data?.candles ?? []
+    if (historyState?.datasetKey !== datasetKey) return incoming
+    return mergeMarketCandles(incoming, historyState.candles)
   }, [candleResource.data, datasetKey, historyState])
 
   const hasMoreHistory = historyState?.datasetKey === datasetKey
