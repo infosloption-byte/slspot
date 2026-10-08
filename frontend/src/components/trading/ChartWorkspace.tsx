@@ -216,14 +216,14 @@ function ChartCanvas({
       },
       localization: {
         locale: navigator.language,
-        timeFormatter: (time) => formatLocalChartTime(time),
+        timeFormatter: (time: Time) => formatLocalChartTime(time),
       },
       timeScale: {
         borderColor: 'rgba(255,255,255,.08)',
         timeVisible: true,
         secondsVisible: false,
         rightOffset: 5,
-        tickMarkFormatter: (time, tickMarkType, locale) => formatLocalChartTick(time, tickMarkType, locale),
+        tickMarkFormatter: (time: Time, tickMarkType: TickMarkType, locale: string) => formatLocalChartTick(time, tickMarkType, locale),
       },
       handleScale: { axisPressedMouseMove: true, mouseWheel: true, pinch: true },
       handleScroll: {
