@@ -106,6 +106,30 @@ function parseDecimalString(
   return normalized
 }
 
+function parseEmailProvider(value: string | undefined): 'disabled' | 'resend' {
+  const provider = (value ?? 'disabled').trim().toLowerCase()
+  if (provider !== 'disabled' && provider !== 'resend') {
+    throw new Error('EMAIL_PROVIDER must be disabled or resend')
+  }
+  return provider
+}
+
+function parseUrl(name: string, value: string, requireHttps: boolean): string {
+  let parsed: URL
+  try {
+    parsed = new URL(value)
+  } catch {
+    throw new Error(name + ' must be a valid URL')
+  }
+  if (!['http:', 'https:'].includes(parsed.protocol) || parsed.username || parsed.password || parsed.search || parsed.hash) {
+    throw new Error(name + ' must contain only a scheme, host and optional path')
+  }
+  if (requireHttps && parsed.protocol !== 'https:') {
+    throw new Error(name + ' must use HTTPS in production')
+  }
+  return parsed.toString().replace(/\/$/, '')
+}
+
 function parseMarketProvider(value: string | undefined): 'disabled' | 'binance' {
   const provider = (value ?? 'binance').trim().toLowerCase()
   // 'multi-exchange' was the short-lived Binance/Kraken/OKX mode; it now means Binance only.
@@ -244,6 +268,21 @@ const exposeDevTokens = parseBoolean(
   process.env.AUTH_EXPOSE_DEV_TOKENS,
   false,
 )
+const emailProvider = parseEmailProvider(process.env.EMAIL_PROVIDER)
+const emailApiUrl = parseUrl('EMAIL_API_URL', process.env.EMAIL_API_URL?.trim() || 'https://api.resend.com', nodeEnv === 'production' && emailProvider !== 'disabled')
+const emailApiKey = process.env.RESEND_API_KEY?.trim() || ''
+const emailFrom = process.env.EMAIL_FROM?.trim() || ''
+const emailAppBaseUrl = parseUrl('APP_BASE_URL', process.env.APP_BASE_URL?.trim() || 'http://localhost:5173', nodeEnv === 'production' && emailProvider !== 'disabled')
+
+if (emailProvider !== 'disabled') {
+  if (!emailApiKey) throw new Error('RESEND_API_KEY must be configured when EMAIL_PROVIDER=resend')
+  if (!emailFrom || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailFrom.replace(/^.*<([^>]+)>.*$/, '$1'))) {
+    throw new Error('EMAIL_FROM must be a valid sender address or display-name sender')
+  }
+  if (nodeEnv === 'production' && emailAppBaseUrl.startsWith('http://')) {
+    throw new Error('APP_BASE_URL must use HTTPS in production when email is enabled')
+  }
+}
 const marketDataProvider = parseMarketProvider(process.env.MARKET_DATA_PROVIDER)
 const marketDataEnabled = parseBoolean('MARKET_DATA_ENABLED', process.env.MARKET_DATA_ENABLED, marketDataProvider !== 'disabled')
 const marketDataBootstrapAssets = parseBoolean('MARKET_DATA_BOOTSTRAP_ASSETS', process.env.MARKET_DATA_BOOTSTRAP_ASSETS, nodeEnv !== 'production')
@@ -320,6 +359,14 @@ export const env = {
   ),
   redisChannel: process.env.REDIS_CHANNEL?.trim() || 'slspot:realtime:v1',
   redisKeyPrefix: process.env.REDIS_KEY_PREFIX?.trim() || 'slspot:',
+  email: {
+    provider: emailProvider,
+    apiUrl: emailApiUrl,
+    apiKey: emailApiKey,
+    from: emailFrom,
+    appBaseUrl: emailAppBaseUrl,
+    requestTimeoutMs: parsePositiveInteger('EMAIL_REQUEST_TIMEOUT_MS', process.env.EMAIL_REQUEST_TIMEOUT_MS, 10_000, 1_000, 60_000),
+  },
   marketData: {
     provider: marketDataProvider,
     enabled: marketDataEnabled,
