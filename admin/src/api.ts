@@ -121,8 +121,58 @@ export const adminApi = {
   ledger: () => request<List<LedgerRecord>>('/admin/ledger'),
   risk: () => request<RiskSummary>('/admin/risk'),
   audit: () => request<List<AuditRecord>>('/admin/audit'),
+  supportTickets: (params = '') => request<List<SupportTicketRecord>>('/admin/support/tickets' + params),
+  supportTicket: (id: string) => request<SupportTicketDetail>('/admin/support/tickets/' + encodeURIComponent(id)),
+  replySupport: (id: string, body: string) => request<SupportTicketDetail>('/admin/support/tickets/' + encodeURIComponent(id) + '/messages', { method: 'POST', body: JSON.stringify({ body }) }),
+  closeSupport: (id: string) => request<SupportTicketDetail>('/admin/support/tickets/' + encodeURIComponent(id) + '/close', { method: 'POST' }),
+  announcements: (params = '') => request<List<AnnouncementRecord>>('/admin/announcements' + params),
+  createAnnouncement: (title: string, body: string) => request<AnnouncementRecord>('/admin/announcements', { method: 'POST', body: JSON.stringify({ title, body }) }),
+  publishAnnouncement: (id: string) => request<{ id: string; title: string; body: string; recipientCount: number }>('/admin/announcements/' + encodeURIComponent(id) + '/publish', { method: 'POST' }),
+  archiveAnnouncement: (id: string) => request<{ archived: boolean }>('/admin/announcements/' + encodeURIComponent(id) + '/archive', { method: 'POST' }),
   security: () => request<List<AuditRecord>>('/admin/security-events'),
   exportAudit: () => request<AuditRecord[]>('/admin/export/audit'),
+}
+
+export type SupportTicketRecord = {
+  id: string
+  subject: string
+  category: 'ACCOUNT' | 'TRADING' | 'WALLET' | 'TECHNICAL' | 'OTHER'
+  status: 'OPEN' | 'IN_PROGRESS' | 'WAITING_USER' | 'RESOLVED' | 'CLOSED'
+  createdAt: string
+  updatedAt: string
+  resolvedAt: string | null
+  messageCount: number
+  user: { id: string; email: string }
+  lastMessage: { body: string; createdAt: string; authorEmail: string; authorIsAdmin: boolean } | null
+}
+export type SupportMessageRecord = {
+  id: string
+  body: string
+  createdAt: string
+  author: { id: string; displayName: string | null; email: string; admin: boolean }
+}
+export type SupportTicketDetail = {
+  id: string
+  subject: string
+  category: SupportTicketRecord['category']
+  status: SupportTicketRecord['status']
+  createdAt: string
+  updatedAt: string
+  resolvedAt: string | null
+  user: { id: string; email: string }
+  messages: SupportMessageRecord[]
+}
+export type AnnouncementRecord = {
+  id: string
+  title: string
+  body: string
+  status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED'
+  createdByUserId: string
+  publishedAt: string | null
+  createdAt: string
+  updatedAt: string
+  createdBy: { email: string }
+  _count: { notifications: number }
 }
 
 export type List<T> = { items: T[]; pagination: { page: number; pageSize: number; total: number; totalPages: number } }
