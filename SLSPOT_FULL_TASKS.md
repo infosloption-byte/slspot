@@ -1,5 +1,22 @@
 ## Current Architecture Milestone — 2026-10-03
 
+## P2 user-facing completion update — 2026-10-08
+
+Completed on `main`:
+
+- [x] Account profile editing: display name, country, timezone and locale are server-backed.
+- [x] Account password change with current-password verification and other-session revocation.
+- [x] Server-backed workspace and email notification preferences.
+- [x] Support ticket creation, conversation, replies and user-side closing.
+- [x] Admin support inbox with replies and ticket closing.
+- [x] System announcements with draft, publish and archive workflows.
+- [x] Published announcements create durable in-app notifications and realtime delivery.
+- [x] Transactional email integration with verification, password reset, security, trade-result, wallet, support and announcement delivery when enabled.
+- [x] Email preference controls for trade results, wallet activity, security alerts, announcements and support updates.
+
+Production email delivery still requires an actual provider/domain configuration. Payments, KYC/AML, production infrastructure and release QA remain separate launch gates.
+
+
 The repository is now structured as a monorepo with explicit frontend and backend application boundaries.
 
 - [x] Move the React/Vite application into `frontend/`.
@@ -986,12 +1003,12 @@ COMMIT
 - [x] Mark all read.
 - [x] Notification center.
 - [x] Toast.
-- [ ] Email integration.
+- [x] Email integration.
 - [x] Security alerts.
 - [x] Trade results.
 - [x] Deposit status.
 - [x] Withdrawal status.
-- [ ] System announcements.
+- [x] System announcements.
 
 ---
 
@@ -1044,6 +1061,22 @@ Admin should be a separate application boundary.
 - [x] Exposure.
 - [x] Risk rules.
 - [x] Monitoring.
+
+## Support
+
+- [x] Customer ticket inbox.
+- [x] Ticket detail and conversation.
+- [x] Agent reply.
+- [x] Close ticket.
+- [x] User notifications for support replies.
+
+## Announcements
+
+- [x] Draft announcement.
+- [x] Publish announcement.
+- [x] Archive announcement.
+- [x] In-app notification fan-out.
+- [x] Email fan-out when enabled.
 
 ## Audit
 
