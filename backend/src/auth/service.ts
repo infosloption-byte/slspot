@@ -765,6 +765,7 @@ export class AuthService {
       emailWalletUpdates: preferences.emailWalletUpdates,
       emailSecurityAlerts: preferences.emailSecurityAlerts,
       emailAnnouncements: preferences.emailAnnouncements,
+      emailSupportUpdates: preferences.emailSupportUpdates,
     }
   }
 
@@ -1003,6 +1004,17 @@ export class AuthService {
           }, ('user:' + userId) as `user:${string}`),
         ),
       )
+      const [target, preferences] = await Promise.all([
+        this.prisma.user.findUnique({ where: { id: userId }, select: { email: true } }),
+        this.prisma.userPreference.findUnique({ where: { userId }, select: { emailSecurityAlerts: true } }),
+      ])
+      if (target && preferences?.emailSecurityAlerts !== false) {
+        try {
+          await this.email.sendNotification(target.email, notification.id, notification.title, notification.body, 'security')
+        } catch {
+          // In-app security notification remains authoritative.
+        }
+      }
     } catch {
       // Security notification delivery is best-effort; login must remain available.
     }
