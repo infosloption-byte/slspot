@@ -14,12 +14,13 @@ import {
 } from '../api/trades'
 import type { OpenTrade } from '../types/trading'
 import { useAuth } from '../auth/useAuth'
+import { authApi } from '../api/auth'
 import { useWalletMode } from '../hooks/useWalletMode'
 import { useRealtime, useRealtimeState } from '../realtime/useRealtime'
 import { useRealtimeRefresh } from '../realtime/useRealtimeRefresh'
 import { userChannel } from '../realtime/subscriptions'
 import { defaultHistoryFilters, setSoundEnabled, setTradingUiState, useTradingUiStore } from '../state/tradingUiStore'
-import { usePreferences } from '../state/preferencesStore'
+import { setServerPreferences, usePreferences } from '../state/preferencesStore'
 
 type ToastItem = {
   id: number
@@ -458,7 +459,16 @@ export function TradingPage() {
     return result
   }, [addToast, mode, reloadTradingState, selectedAsset, soundEnabled])
 
-  const toggleSound = () => setSoundEnabled(!soundEnabled)
+  const toggleSound = () => {
+    const next = !soundEnabled
+    setSoundEnabled(next)
+    void authApi.updatePreferences({ soundEnabled: next }).then((preferences) => {
+      setServerPreferences(preferences)
+      setSoundEnabled(preferences.soundEnabled)
+    }).catch(() => {
+      setSoundEnabled(!next)
+    })
+  }
 
   const loading = market.loading || positions.loading || trades.loading || wallet.loading || capabilities.loading
   const error = market.error || positions.error || trades.error || wallet.error || capabilities.error
