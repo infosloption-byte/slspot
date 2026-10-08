@@ -2,16 +2,16 @@ import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
 import {
   Activity, AlertTriangle, BarChart3, CheckCircle2, ChevronRight, Database, Download,
-  KeyRound, LayoutDashboard, LogOut, Radio, RefreshCw, Search, ShieldAlert, UserRound,
+  KeyRound, LayoutDashboard, LifeBuoy, LogOut, Megaphone, Radio, RefreshCw, Search, ShieldAlert, UserRound,
   Users, WalletCards, XCircle,
 } from 'lucide-react'
 import {
   AdminApiError, adminApi, type AssetRecord, type AuditRecord, type Dashboard, type FundingRecord,
-  type LedgerRecord, type List, type PositionRecord, type Reconciliation, type RiskSummary,
-  type SettlementRecord, type TradeRecord, type UserDetail, type UserRecord, type WalletRecord,
+  type AnnouncementRecord, type LedgerRecord, type List, type PositionRecord, type Reconciliation, type RiskSummary,
+  type SettlementRecord, type SupportTicketDetail, type SupportTicketRecord, type TradeRecord, type UserDetail, type UserRecord, type WalletRecord,
 } from './api'
 
-type Page = 'dashboard' | 'users' | 'trading' | 'finance' | 'risk' | 'audit'
+type Page = 'dashboard' | 'users' | 'trading' | 'finance' | 'risk' | 'audit' | 'support' | 'announcements'
 type TradingView = 'trades' | 'positions' | 'settlements' | 'assets'
 type FinanceView = 'wallets' | 'deposits' | 'withdrawals' | 'reconciliation' | 'ledger'
 
@@ -22,6 +22,8 @@ const pages: Array<{ id: Page; label: string; icon: typeof LayoutDashboard }> = 
   { id: 'finance', label: 'Finance', icon: WalletCards },
   { id: 'risk', label: 'Risk', icon: ShieldAlert },
   { id: 'audit', label: 'Audit', icon: Activity },
+  { id: 'support', label: 'Support', icon: LifeBuoy },
+  { id: 'announcements', label: 'Announcements', icon: Megaphone },
 ]
 
 function amount(value: string | null | undefined) {
@@ -127,6 +129,8 @@ function AdminShell({ admin, onLogout }: { admin: { id: string; email: string; r
         {page === 'finance' ? <FinancePage refreshKey={refreshKey} /> : null}
         {page === 'risk' ? <RiskPage refreshKey={refreshKey} /> : null}
         {page === 'audit' ? <AuditPage refreshKey={refreshKey} /> : null}
+        {page === 'support' ? <SupportPage refreshKey={refreshKey} /> : null}
+        {page === 'announcements' ? <AnnouncementsPage refreshKey={refreshKey} /> : null}
       </main>
     </section>
   </div>
@@ -240,6 +244,186 @@ function FundingTable({ rows, withdrawal = false }: { rows: FundingRecord[]; wit
 
 function ReconciliationView({ data }: { data: Reconciliation }) {
   return <div className="recon-card"><div className={data.unbalanced.length === 0 ? 'recon-status recon-status--good' : 'recon-status recon-status--bad'}>{data.unbalanced.length === 0 ? <CheckCircle2 size={26} /> : <AlertTriangle size={26} />}<div><strong>{data.unbalanced.length === 0 ? 'Ledger balanced' : 'Unbalanced transactions found'}</strong><span>{data.balanced} of {data.scanned} scanned transactions balanced</span></div></div>{data.unbalanced.length ? <Table><thead><tr><th>Transaction</th><th>Reference</th><th>Debit</th><th>Credit</th><th>Created</th></tr></thead><tbody>{data.unbalanced.map((row) => <tr key={row.id}><td>{row.id.slice(0, 8)}</td><td>{row.referenceType ?? '—'} {row.referenceId ?? ''}</td><td>{amount(row.debit)}</td><td>{amount(row.credit)}</td><td>{date(row.createdAt)}</td></tr>)}</tbody></Table> : null}</div>
+}
+
+function SupportPage({ refreshKey }: { refreshKey: number }) {
+  const [data, setData] = useState<List<SupportTicketRecord> | null>(null)
+  const [detail, setDetail] = useState<SupportTicketDetail | null>(null)
+  const [status, setStatus] = useState('')
+  const [reply, setReply] = useState('')
+  const [error, setError] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  async function load() {
+    setError('')
+    try {
+      const q = new URLSearchParams({ page: '1', pageSize: '50' })
+      if (status) q.set('status', status)
+      setData(await adminApi.supportTickets('?' + q.toString()))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not load support tickets')
+    }
+  }
+
+  useEffect(() => { void load() }, [refreshKey, status])
+
+  async function openTicket(id: string) {
+    setError('')
+    try {
+      setDetail(await adminApi.supportTicket(id))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not load support ticket')
+    }
+  }
+
+  async function sendReply(event: FormEvent) {
+    event.preventDefault()
+    if (!detail || !reply.trim()) return
+    setBusy(true)
+    setError('')
+    try {
+      setDetail(await adminApi.replySupport(detail.id, reply))
+      setReply('')
+      await load()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not send support reply')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function closeTicket() {
+    if (!detail) return
+    setBusy(true)
+    setError('')
+    try {
+      setDetail(await adminApi.closeSupport(detail.id))
+      await load()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not close support ticket')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return <div className="page">
+    <section className="toolbar-panel">
+      <div className="filter-row">
+        <label className="field"><span>Status</span><select value={status} onChange={(event) => setStatus(event.target.value)}><option value="">All tickets</option><option value="OPEN">Open</option><option value="IN_PROGRESS">In progress</option><option value="WAITING_USER">Waiting user</option><option value="RESOLVED">Resolved</option><option value="CLOSED">Closed</option></select></label>
+        <button type="button" className="button button--primary" onClick={() => void load()}>Refresh</button>
+      </div>
+    </section>
+    {error ? <ErrorNotice message={error} onRetry={() => void load()} /> : null}
+    <section className="panel-grid">
+      <article className="panel">
+        <div className="panel-heading"><div><span className="eyebrow">Customer support</span><h2>{data?.pagination.total.toLocaleString() ?? '—'} tickets</h2></div></div>
+        {data ? <Table><thead><tr><th>Ticket</th><th>User</th><th>Category</th><th>Status</th><th>Messages</th><th>Updated</th></tr></thead><tbody>
+          {data.items.map((ticket) => <tr key={ticket.id} className="click-row" tabIndex={0} role="button" onClick={() => void openTicket(ticket.id)} onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); void openTicket(ticket.id) } }}>
+            <td><strong>{ticket.subject}</strong><small>{ticket.id.slice(0, 8)}</small></td><td>{ticket.user.email}</td><td>{ticket.category}</td><td><span className={tagClass(ticket.status)}>{ticket.status}</span></td><td>{ticket.messageCount}</td><td>{date(ticket.updatedAt)}</td>
+          </tr>)}
+        </tbody></Table> : <div className="loading-card"><Activity className="spin" size={20} /> Loading support tickets…</div>}
+        {data?.items.length === 0 ? <div className="empty-state">No tickets match this filter.</div> : null}
+      </article>
+
+      {detail ? <aside className="panel detail-panel">
+        <div className="panel-heading"><div><span className="eyebrow">{detail.category} · {detail.user.email}</span><h2>{detail.subject}</h2></div><button type="button" className="icon-button" onClick={() => setDetail(null)} aria-label="Close ticket details">×</button></div>
+        <div className="support-thread">
+          {detail.messages.map((message) => <article className="support-message" key={message.id}><div><strong>{message.author.displayName || (message.author.admin ? 'SL Spot Support' : message.author.email)}</strong><small>{date(message.createdAt)}</small></div><p>{message.body}</p></article>)}
+        </div>
+        {detail.status === 'CLOSED' ? <div className="notice">This ticket is closed.</div> : <form onSubmit={(event) => void sendReply(event)}>
+          <label className="field"><span>Reply to customer</span><textarea rows={7} maxLength={10000} value={reply} onChange={(event) => setReply(event.target.value)} placeholder="Write a support response…" /></label>
+          <div className="action-row"><button className="button button--primary" disabled={busy || !reply.trim()}>{busy ? 'Sending…' : 'Send reply'}</button><button type="button" className="button button--ghost" disabled={busy} onClick={() => void closeTicket()}>Close ticket</button></div>
+        </form>}
+      </aside> : null}
+    </section>
+  </div>
+}
+
+function AnnouncementsPage({ refreshKey }: { refreshKey: number }) {
+  const [data, setData] = useState<List<AnnouncementRecord> | null>(null)
+  const [title, setTitle] = useState('')
+  const [body, setBody] = useState('')
+  const [error, setError] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  async function load() {
+    setError('')
+    try {
+      setData(await adminApi.announcements('?page=1&pageSize=50'))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not load announcements')
+    }
+  }
+
+  useEffect(() => { void load() }, [refreshKey])
+
+  async function create(event: FormEvent) {
+    event.preventDefault()
+    setBusy(true)
+    setError('')
+    try {
+      await adminApi.createAnnouncement(title, body)
+      setTitle('')
+      setBody('')
+      await load()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not create announcement')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function publish(id: string) {
+    setBusy(true)
+    setError('')
+    try {
+      await adminApi.publishAnnouncement(id)
+      await load()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not publish announcement')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function archive(id: string) {
+    setBusy(true)
+    setError('')
+    try {
+      await adminApi.archiveAnnouncement(id)
+      await load()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not archive announcement')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return <div className="page">
+    {error ? <ErrorNotice message={error} onRetry={() => void load()} /> : null}
+    <section className="panel">
+      <div className="panel-heading"><div><span className="eyebrow">System messaging</span><h2>Create announcement</h2></div></div>
+      <form className="filter-row" onSubmit={(event) => void create(event)}>
+        <label className="field"><span>Title</span><input value={title} onChange={(event) => setTitle(event.target.value)} maxLength={160} required placeholder="Scheduled maintenance" /></label>
+        <label className="field"><span>Message</span><textarea rows={3} value={body} onChange={(event) => setBody(event.target.value)} maxLength={10000} required placeholder="Tell users what they need to know." /></label>
+        <button className="button button--primary" disabled={busy || !title.trim() || !body.trim()}>{busy ? 'Saving…' : 'Save draft'}</button>
+      </form>
+    </section>
+    <section className="panel">
+      <div className="panel-heading"><div><span className="eyebrow">Announcements</span><h2>Publication history</h2></div></div>
+      {data ? <Table><thead><tr><th>Announcement</th><th>Status</th><th>Recipients</th><th>Created</th><th>Published</th><th /></tr></thead><tbody>
+        {data.items.map((item) => <tr key={item.id}>
+          <td><strong>{item.title}</strong><small>{item.body}</small></td>
+          <td><span className={tagClass(item.status)}>{item.status}</span></td>
+          <td>{item._count.notifications}</td>
+          <td>{date(item.createdAt)}</td>
+          <td>{date(item.publishedAt)}</td>
+          <td><div className="action-row">{item.status === 'DRAFT' ? <button type="button" className="button button--primary button--small" disabled={busy} onClick={() => void publish(item.id)}>Publish</button> : null}{item.status !== 'ARCHIVED' ? <button type="button" className="button button--ghost button--small" disabled={busy} onClick={() => void archive(item.id)}>Archive</button> : null}</div></td>
+        </tr>)}
+      </tbody></Table> : <div className="loading-card"><Activity className="spin" size={20} /> Loading announcements…</div>}
+      {data?.items.length === 0 ? <div className="empty-state">No announcements yet.</div> : null}
+    </section>
+  </div>
 }
 
 function RiskPage({ refreshKey }: { refreshKey: number }) {
