@@ -13,6 +13,17 @@ function data<T>(response: ApiSuccess<T>): T {
   return response.data
 }
 
+export type UserPreferences = {
+  compactTradingLayout: boolean
+  priceMovementAlerts: boolean
+  soundEnabled: boolean
+  emailTradeResults: boolean
+  emailWalletUpdates: boolean
+  emailSecurityAlerts: boolean
+  emailAnnouncements: boolean
+  emailSupportUpdates: boolean
+}
+
 export type AuthSessionRecord = {
   id: string
   deviceId: string | null
@@ -98,6 +109,21 @@ export const authApi = {
 
   me: () =>
     apiClient.get<ApiSuccess<{ user: AuthSession; sessionId: string }>>('/auth/me').then(data),
+
+  profile: () =>
+    apiClient.get<ApiSuccess<{ user: AuthUser }>>('/auth/me').then(data),
+
+  updateProfile: (input: { displayName?: string | null; countryCode?: string | null; timezone?: string | null; locale?: string | null }) =>
+    apiClient.patch<ApiSuccess<{ user: AuthUser }>>('/auth/profile', input).then(data),
+
+  preferences: () =>
+    apiClient.get<ApiSuccess<UserPreferences>>('/auth/preferences').then(data),
+
+  updatePreferences: (input: Partial<UserPreferences>) =>
+    apiClient.patch<ApiSuccess<UserPreferences>>('/auth/preferences', input).then(data),
+
+  changePassword: (currentPassword: string, newPassword: string) =>
+    apiClient.post<ApiSuccess<{ changed: boolean }>>('/auth/password/change', { currentPassword, newPassword }).then(data),
 
   capabilities: () =>
     apiClient.get<ApiSuccess<AccountCapabilities>>('/auth/capabilities').then(data),
