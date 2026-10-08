@@ -10,15 +10,16 @@ import { notificationsApi } from '../api/notifications'
 import { authApi } from '../api/auth'
 import { tradesApi } from '../api/trades'
 import { walletApi, type WalletTransactionFilters } from '../api/wallet'
+import { supportApi, type SupportCategory } from '../api/support'
 import { useAuth } from '../auth/useAuth'
 import { useWalletMode } from '../hooks/useWalletMode'
 import { recordNotificationEvent, useNotificationStore, setUnreadCount, decrementUnreadCount } from '../state/notificationStore'
 import { usePortfolioStore } from '../state/portfolioStore'
-import { setCompactTradingLayout, setPriceMovementAlerts, usePreferences } from '../state/preferencesStore'
+import { setCompactTradingLayout, setPriceMovementAlerts, setServerPreferences, usePreferences } from '../state/preferencesStore'
 import { setSoundEnabled, useTradingUiStore } from '../state/tradingUiStore'
 import { useRealtime } from '../realtime/useRealtime'
 import { userChannel } from '../realtime/subscriptions'
-import { useAuthDevices, useAuthSessions, useLoginHistory, useMarketAssets, useNotifications, usePortfolioAnalytics, usePortfolioPositions, usePortfolioSummary, useSecurityEvents, useTrades, useTradingCapabilities, useTwoFactorStatus, useWallet, useWalletTransactions, useWallets } from '../hooks/useServerState'
+import { useAuthDevices, useAuthPreferences, useAuthSessions, useLoginHistory, useMarketAssets, useNotifications, usePortfolioAnalytics, usePortfolioPositions, usePortfolioSummary, useSecurityEvents, useSupportTicket, useSupportTickets, useTrades, useTradingCapabilities, useTwoFactorStatus, useWallet, useWalletTransactions, useWallets } from '../hooks/useServerState'
 
 type WorkspacePageProps = {
   eyebrow: string
@@ -1126,67 +1127,148 @@ function SecurityPage() {
   )
 }
 
+type _PreferencesStateKeys = {
+  compactTradingLayout: boolean
+  priceMovementAlerts: boolean
+  soundEnabled: boolean
+  emailTradeResults: boolean
+  emailWalletUpdates: boolean
+  emailSecurityAlerts: boolean
+  emailAnnouncements: boolean
+  emailSupportUpdates: boolean
+}
 function AccountPage() {
-  const { user } = useAuth()
-  const { compactTradingLayout, priceMovementAlerts } = usePreferences()
-  const { soundEnabled } = useTradingUiStore()
+  const { user, refresh } = useAuth()
+  const { compactTradingLayout, priceMovementAlerts, soundEnabled, emailTradeResults, emailWalletUpdates, emailSecurityAlerts, emailAnnouncements, emailSupportUpdates } = usePreferences()
+  const preferences = useAuthPreferences()
+  const [displayName, setDisplayName] = useState(user?.displayName ?? '')
+  const [countryCode, setCountryCode] = useState(user?.countryCode ?? '')
+  const [timezone, setTimezone] = useState(user?.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone)
+  const [locale, setLocale] = useState(user?.locale ?? navigator.language)
+  const [profileBusy, setProfileBusy] = useState(false)
+  const [passwordBusy, setPasswordBusy] = useState(false)
+  const [profileMessage, setProfileMessage] = useState<string | null>(null)
+  const [passwordMessage, setPasswordMessage] = useState<string | null>(null)
+  const [profileError, setProfileError] = useState<string | null>(null)
+  const [passwordError, setPasswordError] = useState<string | null>(null)
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+
+  const togglePreference = async (key: keyof _PreferencesStateKeys, enabled: boolean) => {
+    if (key === 'compactTradingLayout') setCompactTradingLayout(enabled)
+    if (key === 'priceMovementAlerts') setPriceMovementAlerts(enabled)
+    if (key === 'soundEnabled') setSoundEnabled(enabled)
+    setServerPreferences({ [key]: enabled })
+    try {
+      const next = await authApi.updatePreferences({ [key]: enabled })
+      setServerPreferences(next)
+      if (key === 'soundEnabled') setSoundEnabled(next.soundEnabled)
+    } catch {
+      setServerPreferences({ [key]: !enabled })
+      if (key === 'compactTradingLayout') setCompactTradingLayout(!enabled)
+      if (key === 'priceMovementAlerts') setPriceMovementAlerts(!enabled)
+      if (key === 'soundEnabled') setSoundEnabled(!enabled)
+    }
+  }
+
+  const saveProfile = async (event: React.FormEvent) => {
+    event.preventDefault()
+    setProfileBusy(true)
+    setProfileError(null)
+    setProfileMessage(null)
+    try {
+      await authApi.updateProfile({
+        displayName: displayName.trim() || null,
+        countryCode: countryCode.trim().toUpperCase() || null,
+        timezone: timezone.trim() || null,
+        locale: locale.trim() || null,
+      })
+      await refresh()
+      setProfileMessage('Profile saved.')
+    } catch (error) {
+      setProfileError(error instanceof Error ? error.message : 'Unable to save profile.')
+    } finally {
+      setProfileBusy(false)
+    }
+  }
+
+  const changePassword = async (event: React.FormEvent) => {
+    event.preventDefault()
+    setPasswordBusy(true)
+    setPasswordError(null)
+    setPasswordMessage(null)
+    if (newPassword !== confirmPassword) {
+      setPasswordBusy(false)
+      setPasswordError('New passwords do not match.')
+      return
+    }
+    try {
+      await authApi.changePassword(currentPassword, newPassword)
+      setCurrentPassword('')
+      setNewPassword('')
+      setConfirmPassword('')
+      setPasswordMessage('Password changed. Other active sessions were signed out.')
+    } catch (error) {
+      setPasswordError(error instanceof Error ? error.message : 'Unable to change password.')
+    } finally {
+      setPasswordBusy(false)
+    }
+  }
 
   const preferenceRows = [
-    {
-      label: 'Compact trading layout',
-      description: 'Tightens the trading workspace spacing.',
-      enabled: compactTradingLayout,
-      onToggle: setCompactTradingLayout,
-    },
-    {
-      label: 'Price movement alerts',
-      description: 'Keeps your market-movement alert preference on this device.',
-      enabled: priceMovementAlerts,
-      onToggle: setPriceMovementAlerts,
-    },
-    {
-      label: 'Sound effects',
-      description: 'Play trade result sounds when enabled.',
-      enabled: soundEnabled,
-      onToggle: setSoundEnabled,
-    },
+    { key: 'compactTradingLayout' as const, label: 'Compact trading layout', description: 'Tightens the trading workspace spacing.', enabled: compactTradingLayout },
+    { key: 'priceMovementAlerts' as const, label: 'Price movement alerts', description: 'Keep market-movement alerts enabled for this account.', enabled: priceMovementAlerts },
+    { key: 'soundEnabled' as const, label: 'Sound effects', description: 'Play trade result sounds when enabled.', enabled: soundEnabled },
+    { key: 'emailTradeResults' as const, label: 'Trade result emails', description: 'Receive email when a trade is settled.', enabled: emailTradeResults },
+    { key: 'emailWalletUpdates' as const, label: 'Wallet emails', description: 'Receive deposit and withdrawal notifications by email.', enabled: emailWalletUpdates },
+    { key: 'emailSecurityAlerts' as const, label: 'Security emails', description: 'Receive security and account-protection alerts.', enabled: emailSecurityAlerts },
+    { key: 'emailAnnouncements' as const, label: 'System announcements', description: 'Receive important platform announcements by email.', enabled: emailAnnouncements },
+    { key: 'emailSupportUpdates' as const, label: 'Support emails', description: 'Receive email when support replies to your tickets.', enabled: emailSupportUpdates },
   ]
 
   return (
     <div className="workspace-page">
-      <PageHeader eyebrow="Preferences" title="Account" description="Review your authenticated profile and workspace preferences." action="Back to trading" />
-      <div className="account-layout">
+      <PageHeader eyebrow="Account" title="Account settings" description="Manage your profile, password, workspace behavior and notification delivery." action="Back to trading" />
+      <div className="account-layout account-layout--wide">
         <section className="dashboard-card panel">
-          <div className="dashboard-card__header"><div><span className="eyebrow">Profile</span><h2>Personal details</h2></div></div>
-          <div className="profile-card">
-            <span className="profile-avatar">{avatarFor(user?.email)}</span>
-            <div><strong>{user?.email ?? 'Account'}</strong><small>{user?.id ?? 'Authenticated user'}</small></div>
-            <span className="status-pill status-pill--positive">{user?.emailVerifiedAt ? 'VERIFIED' : 'UNVERIFIED'}</span>
-          </div>
-          <div className="form-grid">
-            <label><span>Email</span><input value={user?.email ?? ''} readOnly type="email" /></label>
-            <label><span>Country</span><input value={user?.countryCode ?? '—'} readOnly /></label>
-          </div>
-          <div className="dashboard-note">Profile mutation endpoints are intentionally deferred to the account-management phase.</div>
+          <div className="dashboard-card__header"><div><span className="eyebrow">Profile</span><h2>Personal details</h2></div><span className="status-pill status-pill--positive">{user?.emailVerifiedAt ? 'VERIFIED' : 'UNVERIFIED'}</span></div>
+          <div className="profile-card"><span className="profile-avatar">{avatarFor(user?.email)}</span><div><strong>{user?.displayName || user?.email || 'Account'}</strong><small>{user?.email}</small></div></div>
+          <form className="account-form" onSubmit={(event) => void saveProfile(event)}>
+            <div className="form-grid">
+              <label><span>Display name</span><input value={displayName} onChange={(event) => setDisplayName(event.target.value)} maxLength={120} placeholder="Your name" /></label>
+              <label><span>Email</span><input value={user?.email ?? ''} readOnly type="email" /></label>
+              <label><span>Country</span><input value={countryCode} onChange={(event) => setCountryCode(event.target.value.toUpperCase())} maxLength={2} placeholder="LK" /></label>
+              <label><span>Timezone</span><input value={timezone} onChange={(event) => setTimezone(event.target.value)} maxLength={64} placeholder="Asia/Colombo" /></label>
+              <label><span>Language / locale</span><input value={locale} onChange={(event) => setLocale(event.target.value)} maxLength={35} placeholder="en-US" /></label>
+            </div>
+            {profileError ? <div className="form-message form-message--error" role="alert">{profileError}</div> : null}
+            {profileMessage ? <div className="form-message form-message--success" role="status">{profileMessage}</div> : null}
+            <button type="submit" className="setting-button setting-button--primary" disabled={profileBusy}>{profileBusy ? 'Saving…' : 'Save profile'}</button>
+          </form>
+        </section>
+
+        <section className="dashboard-card panel">
+          <div className="dashboard-card__header"><div><span className="eyebrow">Security</span><h2>Change password</h2></div></div>
+          <form className="account-form" onSubmit={(event) => void changePassword(event)}>
+            <label><span>Current password</span><input type="password" autoComplete="current-password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} required /></label>
+            <label><span>New password</span><input type="password" autoComplete="new-password" minLength={12} maxLength={128} value={newPassword} onChange={(event) => setNewPassword(event.target.value)} required /><small>Use at least 12 characters.</small></label>
+            <label><span>Confirm new password</span><input type="password" autoComplete="new-password" minLength={12} maxLength={128} value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} required /></label>
+            {passwordError ? <div className="form-message form-message--error" role="alert">{passwordError}</div> : null}
+            {passwordMessage ? <div className="form-message form-message--success" role="status">{passwordMessage}</div> : null}
+            <button type="submit" className="setting-button setting-button--primary" disabled={passwordBusy}>{passwordBusy ? 'Updating…' : 'Change password'}</button>
+          </form>
         </section>
 
         <aside className="dashboard-card panel">
-          <div className="dashboard-card__header"><div><span className="eyebrow">Preferences</span><h2>Workspace</h2></div></div>
+          <div className="dashboard-card__header"><div><span className="eyebrow">Preferences</span><h2>Workspace &amp; email</h2></div><span className="status-pill status-pill--pending">{preferences.loading ? 'SYNCING' : 'SYNCED'}</span></div>
           {preferenceRows.map((row) => (
-            <div className="setting-row" key={row.label}>
+            <div className="setting-row" key={row.key}>
               <div><strong>{row.label}</strong><small>{row.description}</small></div>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={row.enabled}
-                className={row.enabled ? 'toggle toggle--on' : 'toggle'}
-                onClick={() => row.onToggle(!row.enabled)}
-                title={row.enabled ? 'Disable ' + row.label : 'Enable ' + row.label}
-              >
-                <span />
-              </button>
+              <button type="button" role="switch" aria-checked={row.enabled} className={row.enabled ? 'toggle toggle--on' : 'toggle'} onClick={() => void togglePreference(row.key, !row.enabled)} title={row.enabled ? 'Disable ' + row.label : 'Enable ' + row.label}><span /></button>
             </div>
           ))}
+          <div className="dashboard-note">Email delivery is active only when the platform has a configured email provider. In-app notifications remain available regardless.</div>
         </aside>
       </div>
     </div>
@@ -1194,29 +1276,118 @@ function AccountPage() {
 }
 
 function SupportPage() {
-  const faqs = [
-    ['How do I place a trade?', 'The Trading Room now uses server-authoritative demo execution and settlement.'],
-    ['Where can I see open positions?', 'Open positions are read from the authenticated portfolio API.'],
-    ['Are the displayed balances real?', 'Dashboard and Wallet balances come from server state. Demo funds are simulated.'],
-    ['When will real deposits be available?', 'Real-money funding remains gated until a payment provider, KYC controls and reconciliation flow are selected and connected.'],
-  ]
+  const tickets = useSupportTickets(1, 20)
+  const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null)
+  const selectedTicket = useSupportTicket(selectedTicketId)
+  const [subject, setSubject] = useState('')
+  const [category, setCategory] = useState<SupportCategory>('TECHNICAL')
+  const [message, setMessage] = useState('')
+  const [reply, setReply] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const createTicket = async (event: React.FormEvent) => {
+    event.preventDefault()
+    setBusy(true)
+    setError(null)
+    try {
+      const ticket = await supportApi.create({ subject, category, body: message })
+      setSubject('')
+      setMessage('')
+      setSelectedTicketId(ticket.id)
+      await tickets.reload()
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Unable to create support ticket.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const sendReply = async (event: React.FormEvent) => {
+    event.preventDefault()
+    if (!selectedTicketId || !reply.trim()) return
+    setBusy(true)
+    setError(null)
+    try {
+      await supportApi.reply(selectedTicketId, reply)
+      setReply('')
+      await Promise.all([selectedTicket.reload(), tickets.reload()])
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Unable to send reply.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const closeTicket = async () => {
+    if (!selectedTicketId) return
+    setBusy(true)
+    setError(null)
+    try {
+      await supportApi.close(selectedTicketId)
+      await Promise.all([selectedTicket.reload(), tickets.reload()])
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Unable to close ticket.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const statusClass = (status: string) => status === 'CLOSED' || status === 'RESOLVED'
+    ? 'status-pill status-pill--positive'
+    : status === 'WAITING_USER'
+      ? 'status-pill status-pill--pending'
+      : 'status-pill status-pill--draw'
 
   return (
     <div className="workspace-page">
-      <PageHeader eyebrow="Help center" title="Support" description="Find answers about the current SL Spot workspace." />
-      <div className="support-layout">
+      <PageHeader eyebrow="Help center" title="Support" description="Create a ticket and continue the conversation with the SL Spot support team." />
+      <div className="support-layout support-layout--tickets">
         <section className="dashboard-card panel">
-          <div className="dashboard-card__header"><div><span className="eyebrow">Common questions</span><h2>Getting started</h2></div></div>
-          <div className="faq-list">
-            {faqs.map(([question, answer]) => <details key={question}><summary>{question}<ArrowUpRight size={13} /></summary><p>{answer}</p></details>)}
+          <div className="dashboard-card__header"><div><span className="eyebrow">Your tickets</span><h2>Support inbox</h2></div><span className="status-pill status-pill--pending">{tickets.data?.pagination.total ?? 0}</span></div>
+          {error ? <div className="form-message form-message--error" role="alert">{error}</div> : null}
+          <div className="support-ticket-list">
+            {(tickets.data?.items ?? []).map((ticket) => (
+              <button type="button" key={ticket.id} className={ticket.id === selectedTicketId ? 'support-ticket-row support-ticket-row--active' : 'support-ticket-row'} onClick={() => setSelectedTicketId(ticket.id)}>
+                <span><strong>{ticket.subject}</strong><small>{ticket.category} · {ticket.messageCount} message{ticket.messageCount === 1 ? '' : 's'}</small></span>
+                <span><span className={statusClass(ticket.status)}>{ticket.status.replaceAll('_', ' ')}</span><small>{formatDateTime(ticket.updatedAt)}</small></span>
+              </button>
+            ))}
+            {tickets.data?.items.length === 0 ? <div className="dashboard-note">No support tickets yet.</div> : null}
           </div>
+          {tickets.data ? <Pagination page={1} totalPages={tickets.data.pagination.totalPages} onChange={() => undefined} /> : null}
         </section>
-        <aside className="dashboard-card panel support-contact">
-          <div className="dashboard-card__header"><div><span className="eyebrow">Need help?</span><h2>Contact support</h2></div></div>
-          <p>Support messaging will be connected after the account and realtime services are available.</p>
-          <button type="button" className="setting-button setting-button--primary" disabled>Coming soon</button>
-          <div className="dashboard-note"><Clock3 size={14} /> Typical response target: under 1 business day.</div>
-        </aside>
+
+        <section className="dashboard-card panel">
+          {selectedTicket.data ? (
+            <>
+              <div className="dashboard-card__header"><div><span className="eyebrow">{selectedTicket.data.category}</span><h2>{selectedTicket.data.subject}</h2></div><span className={statusClass(selectedTicket.data.status)}>{selectedTicket.data.status.replaceAll('_', ' ')}</span></div>
+              <div className="support-thread">
+                {selectedTicket.data.messages.map((item) => (
+                  <article className={item.author.admin ? 'support-message support-message--agent' : 'support-message'} key={item.id}>
+                    <div><strong>{item.author.displayName || (item.author.admin ? 'SL Spot Support' : 'You')}</strong><small>{formatDateTime(item.createdAt)}</small></div>
+                    <p>{item.body}</p>
+                  </article>
+                ))}
+              </div>
+              {selectedTicket.data.status === 'CLOSED' ? <div className="dashboard-note">This ticket is closed. Create a new ticket for another issue.</div> : (
+                <form className="support-reply-form" onSubmit={(event) => void sendReply(event)}>
+                  <label><span>Reply</span><textarea rows={4} maxLength={10000} value={reply} onChange={(event) => setReply(event.target.value)} placeholder="Add more details or reply to support…" /></label>
+                  <div className="action-row"><button type="submit" className="setting-button setting-button--primary" disabled={busy || !reply.trim()}>{busy ? 'Sending…' : 'Send reply'}</button><button type="button" className="setting-button" disabled={busy} onClick={() => void closeTicket()}>Close ticket</button></div>
+                </form>
+              )}
+            </>
+          ) : (
+            <form className="support-create-form" onSubmit={(event) => void createTicket(event)}>
+              <div className="dashboard-card__header"><div><span className="eyebrow">New request</span><h2>Contact support</h2></div></div>
+              <p>Tell us what happened. Include the relevant page, asset or trade ID when applicable.</p>
+              <label><span>Subject</span><input value={subject} onChange={(event) => setSubject(event.target.value)} maxLength={160} required placeholder="What do you need help with?" /></label>
+              <label><span>Category</span><select value={category} onChange={(event) => setCategory(event.target.value as SupportCategory)}><option value="ACCOUNT">Account</option><option value="TRADING">Trading</option><option value="WALLET">Wallet</option><option value="TECHNICAL">Technical</option><option value="OTHER">Other</option></select></label>
+              <label><span>Message</span><textarea rows={8} maxLength={10000} value={message} onChange={(event) => setMessage(event.target.value)} required placeholder="Describe the issue…" /></label>
+              <button type="submit" className="setting-button setting-button--primary" disabled={busy || !subject.trim() || !message.trim()}>{busy ? 'Submitting…' : 'Create support ticket'}</button>
+            </form>
+          )}
+        </section>
       </div>
     </div>
   )
