@@ -1276,7 +1276,8 @@ function AccountPage() {
 }
 
 function SupportPage() {
-  const tickets = useSupportTickets(1, 20)
+  const [ticketPage, setTicketPage] = useState(1)
+  const tickets = useSupportTickets(ticketPage, 20)
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null)
   const selectedTicket = useSupportTicket(selectedTicketId)
   const [subject, setSubject] = useState('')
@@ -1355,7 +1356,7 @@ function SupportPage() {
             ))}
             {tickets.data?.items.length === 0 ? <div className="dashboard-note">No support tickets yet.</div> : null}
           </div>
-          {tickets.data ? <Pagination page={1} totalPages={tickets.data.pagination.totalPages} onChange={() => undefined} /> : null}
+          {tickets.data ? <Pagination page={ticketPage} totalPages={tickets.data.pagination.totalPages} onChange={setTicketPage} /> : null}
         </section>
 
         <section className="dashboard-card panel">
