@@ -1348,19 +1348,23 @@ function SupportPage() {
         <section className="dashboard-card panel">
           <div className="dashboard-card__header"><div><span className="eyebrow">Your tickets</span><h2>Support inbox</h2></div><span className="status-pill status-pill--pending">{tickets.data?.pagination.total ?? 0}</span></div>
           {error ? <div className="form-message form-message--error" role="alert">{error}</div> : null}
-          <div className="support-ticket-list">
-            {(tickets.data?.items ?? []).map((ticket) => (
-              <button type="button" key={ticket.id} className={ticket.id === selectedTicketId ? 'support-ticket-row support-ticket-row--active' : 'support-ticket-row'} onClick={() => setSelectedTicketId(ticket.id)}>
-                <span><strong>{ticket.subject}</strong><small>{ticket.category} · {ticket.messageCount} message{ticket.messageCount === 1 ? '' : 's'}</small></span>
-                <span><span className={statusClass(ticket.status)}>{ticket.status.replaceAll('_', ' ')}</span><small>{formatDateTime(ticket.updatedAt)}</small></span>
-              </button>
-            ))}
-            {tickets.data?.items.length === 0 ? <div className="dashboard-note">No support tickets yet.</div> : null}
-          </div>
-          {tickets.data ? <Pagination page={ticketPage} totalPages={tickets.data.pagination.totalPages} onChange={setTicketPage} /> : null}
+          <ApiState loading={tickets.loading} error={tickets.error} onRetry={() => void tickets.reload()}>
+            <div className="support-ticket-list">
+              {(tickets.data?.items ?? []).map((ticket) => (
+                <button type="button" key={ticket.id} className={ticket.id === selectedTicketId ? 'support-ticket-row support-ticket-row--active' : 'support-ticket-row'} onClick={() => setSelectedTicketId(ticket.id)}>
+                  <span><strong>{ticket.subject}</strong><small>{ticket.category} · {ticket.messageCount} message{ticket.messageCount === 1 ? '' : 's'}</small></span>
+                  <span><span className={statusClass(ticket.status)}>{ticket.status.replaceAll('_', ' ')}</span><small>{formatDateTime(ticket.updatedAt)}</small></span>
+                </button>
+              ))}
+              {tickets.data?.items.length === 0 ? <div className="dashboard-note">No support tickets yet.</div> : null}
+            </div>
+            {tickets.data ? <Pagination page={ticketPage} totalPages={tickets.data.pagination.totalPages} onChange={setTicketPage} /> : null}
+          </ApiState>
         </section>
 
         <section className="dashboard-card panel">
+          {selectedTicketId && selectedTicket.loading ? <div className="dashboard-note" role="status">Loading ticket…</div> : null}
+          {selectedTicketId && selectedTicket.error ? <ApiState loading={false} error={selectedTicket.error} onRetry={() => void selectedTicket.reload()}>{null}</ApiState> : null}
           {selectedTicket.data ? (
             <>
               <div className="dashboard-card__header"><div><span className="eyebrow">{selectedTicket.data.category}</span><h2>{selectedTicket.data.subject}</h2></div><span className={statusClass(selectedTicket.data.status)}>{selectedTicket.data.status.replaceAll('_', ' ')}</span></div>
