@@ -7,11 +7,9 @@ export type SettlementPriceInput = {
   assetId: string
   symbol: string
   expiresAt: Date | null
-  demo: boolean
   market: { lastPrice: Prisma.Decimal | null; lastPriceAt: Date | null; lastPriceProvider?: string | null } | undefined
   maxAgeMs: number
   now?: number
-  demoPrice: (symbol: string, marketPrice: Prisma.Decimal | null | undefined) => Prisma.Decimal
   onLateFallback?: (details: { assetId: string; symbol: string; lateMs: number | null }) => void
 }
 
@@ -19,8 +17,9 @@ export type SettlementPriceInput = {
  * The price a trade settles at: the tick in force at the expiry instant (from the in-memory tick
  * history), so the settlement worker's own lag does not move the result. When no tick covers the
  * expiry instant (for example after a restart) the current fresh price is used and the lateness is
- * reported; the result still carries the real tick timestamp. DEMO accounts may fall back to the
- * simulated price; REAL accounts never do and get null (the trade stays open and is retried).
+ * reported; the result still carries the real tick timestamp. Prices are never simulated, for demo
+ * and real accounts alike: with no reliable price the result is null (the trade is retried and,
+ * after the grace period, voided and refunded).
  */
 export function resolveSettlementPrice(input: SettlementPriceInput): SettlementPrice | null {
   const now = input.now ?? Date.now()
@@ -42,8 +41,5 @@ export function resolveSettlementPrice(input: SettlementPriceInput): SettlementP
     return { price: market.lastPrice, provider: market.lastPriceProvider ?? 'unknown', timestamp: market.lastPriceAt }
   }
 
-  if (input.demo) {
-    return { price: input.demoPrice(input.symbol, market?.lastPrice), provider: 'demo-simulation', timestamp: new Date(now) }
-  }
   return null
 }
