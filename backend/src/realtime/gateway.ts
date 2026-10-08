@@ -15,6 +15,14 @@ import {
 
 const WS_PATH = '/ws'
 const HEARTBEAT_MS = 30_000
+/** A session lookup result is reused this long, so inbound messages do not each hit the database. */
+const SESSION_CACHE_MS = 15_000
+/** Heartbeats re-check sooner, while still sharing one lookup between sockets of the same session. */
+const HEARTBEAT_SESSION_CACHE_MS = 5_000
+const SESSION_CACHE_MAX = 1_000
+/** Inbound client messages allowed per socket per window; protects the server from message floods. */
+const CLIENT_MESSAGE_WINDOW_MS = 10_000
+const CLIENT_MESSAGE_LIMIT = 100
 
 type AuthenticatedSocket = { userId: string; sessionId: string }
 type RealtimeRequest = FastifyRequest & { realtimePrincipal?: AuthenticatedSocket }
@@ -28,8 +36,47 @@ export class RealtimeGateway {
   private readonly sockets = new Map<WebSocket, AuthenticatedSocket>()
   private readonly heartbeatTimers = new Map<WebSocket, ReturnType<typeof setInterval>>()
   private readonly subscriptions = new Map<WebSocket, Set<RealtimeChannel>>()
+  private readonly sessionChecks = new Map<string, { at: number; active: boolean; pending: Promise<boolean> | null }>()
 
   constructor(private readonly options: RealtimeGatewayOptions = {}) {}
+
+  /**
+   * Cached, de-duplicated session validity check. Concurrent callers share one lookup and a recent
+   * result is reused for `maxAgeMs`. Lookup errors are not cached (the caller closes the socket).
+   */
+  private checkSession(sessionId: string, maxAgeMs: number): Promise<boolean> {
+    const validate = this.options.validateSession
+    if (!validate) return Promise.resolve(true)
+
+    const now = Date.now()
+    const cached = this.sessionChecks.get(sessionId)
+    if (cached?.pending) return cached.pending
+    if (cached && now - cached.at <= maxAgeMs) return Promise.resolve(cached.active)
+
+    if (this.sessionChecks.size >= SESSION_CACHE_MAX) {
+      for (const [id, entry] of this.sessionChecks) {
+        if (!entry.pending && now - entry.at > SESSION_CACHE_MS) this.sessionChecks.delete(id)
+      }
+    }
+
+    const entry = { at: cached?.at ?? 0, active: cached?.active ?? false, pending: null as Promise<boolean> | null }
+    const pending: Promise<boolean> = validate(sessionId).then(
+      (active) => {
+        entry.active = active
+        entry.at = Date.now()
+        entry.pending = null
+        return active
+      },
+      (error: unknown) => {
+        entry.pending = null
+        if (!cached) this.sessionChecks.delete(sessionId)
+        throw error
+      },
+    )
+    entry.pending = pending
+    this.sessionChecks.set(sessionId, entry)
+    return pending
+  }
 
   register(app: FastifyInstance): void {
     app.register(websocket, {
@@ -131,6 +178,7 @@ export class RealtimeGateway {
     this.sockets.clear()
     this.heartbeatTimers.clear()
     this.subscriptions.clear()
+    this.sessionChecks.clear()
   }
 
   private attach(socket: WebSocket, principal: AuthenticatedSocket): void {
@@ -150,7 +198,7 @@ export class RealtimeGateway {
     const timer = setInterval(() => {
       if (socket.readyState !== 1) return
       if (principal.sessionId !== 'anonymous' && this.options.validateSession) {
-        void this.options.validateSession(principal.sessionId).then((active) => {
+        void this.checkSession(principal.sessionId, HEARTBEAT_SESSION_CACHE_MS).then((active) => {
           if (!active) socket.close(1008, 'Session expired or revoked')
           else if (socket.readyState === 1) socket.ping()
         }).catch(() => {
@@ -241,13 +289,27 @@ export class RealtimeGateway {
       )
     }
 
+    let windowStart = Date.now()
+    let windowCount = 0
+
     socket.on('message', (raw) => {
+      const now = Date.now()
+      if (now - windowStart > CLIENT_MESSAGE_WINDOW_MS) {
+        windowStart = now
+        windowCount = 0
+      }
+      windowCount += 1
+      if (windowCount > CLIENT_MESSAGE_LIMIT) {
+        socket.close(1008, 'Too many messages')
+        return
+      }
+
       if (principal.sessionId === 'anonymous' || !this.options.validateSession) {
         handleMessage(raw)
         return
       }
 
-      void this.options.validateSession(principal.sessionId).then((active) => {
+      void this.checkSession(principal.sessionId, SESSION_CACHE_MS).then((active) => {
         if (!active) {
           socket.close(1008, 'Session expired or revoked')
           return
@@ -263,7 +325,11 @@ export class RealtimeGateway {
   }
 
   private remove(socket: WebSocket): void {
+    const principal = this.sockets.get(socket)
     this.sockets.delete(socket)
+    if (principal && ![...this.sockets.values()].some((other) => other.sessionId === principal.sessionId)) {
+      this.sessionChecks.delete(principal.sessionId)
+    }
     this.subscriptions.delete(socket)
     const timer = this.heartbeatTimers.get(socket)
     if (timer) clearInterval(timer)

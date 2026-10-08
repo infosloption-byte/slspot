@@ -73,3 +73,33 @@ describe('realtime gateway', () => {
     socket.close()
   })
 })
+
+describe('realtime gateway session cache', () => {
+  it('shares one session lookup between concurrent and repeated checks', async () => {
+    let lookups = 0
+    const gateway = new RealtimeGateway({
+      validateSession: async () => { lookups += 1; return true },
+    })
+    const check = (gateway as unknown as { checkSession: (id: string, maxAgeMs: number) => Promise<boolean> }).checkSession.bind(gateway)
+    const results = await Promise.all([check('s1', 15_000), check('s1', 15_000), check('s1', 15_000)])
+    assert.deepEqual(results, [true, true, true])
+    await check('s1', 15_000)
+    assert.equal(lookups, 1)
+    await check('s2', 15_000)
+    assert.equal(lookups, 2)
+    await new Promise((resolve) => setTimeout(resolve, 5))
+    await check('s1', 0)
+    assert.equal(lookups, 3, 'a zero max age forces a fresh lookup')
+  })
+
+  it('does not cache lookup failures', async () => {
+    let calls = 0
+    const gateway = new RealtimeGateway({
+      validateSession: async () => { calls += 1; if (calls === 1) throw new Error('db down'); return false },
+    })
+    const check = (gateway as unknown as { checkSession: (id: string, maxAgeMs: number) => Promise<boolean> }).checkSession.bind(gateway)
+    await assert.rejects(check('s1', 15_000), /db down/)
+    assert.equal(await check('s1', 15_000), false)
+    assert.equal(calls, 2)
+  })
+})

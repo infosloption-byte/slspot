@@ -9,12 +9,15 @@ import { DEMO_PRICE_BASES, DemoPriceSimulator } from '../trading/demoPrice.js'
 import { BinanceTickStream, type Tick } from './binance-stream.js'
 import { getPreferredLivePrice, setLivePrice } from './live-prices.js'
 import { syntheticCandles } from './synthetic.js'
+import { CandleCloseTracker } from './candle-close.js'
 
 const SIMULATION_INTERVAL_MS = 1_000
 const TICK_PUBLISH_INTERVAL_MS = 100
 const TICK_PERSIST_INTERVAL_MS = 2_000
 /** A live tick younger than this means the stream owns the price. */
 const TICK_FRESH_MS = 10_000
+/** Wait before reading a just-closed kline so the exchange has finalized it. */
+const CANDLE_CLOSE_DELAY_MS = 1_500
 
 export type MarketCandleResult = {
   assetId: string
@@ -60,6 +63,8 @@ export class MarketDataService {
   private readonly tickMarkets = new Map<string, { id: string; assetId: string; symbol: string }>()
   private readonly tickState = new Map<string, { published: number; persisted: number; first: boolean }>()
   private readonly changePct = new Map<string, string>()
+  private readonly candleCloses = new CandleCloseTracker()
+  private readonly candleTimers = new Set<ReturnType<typeof setTimeout>>()
 
   constructor(
     private readonly prisma: PrismaClient,
@@ -131,6 +136,10 @@ export class MarketDataService {
     setLivePrice(market.assetId, tick.provider, tick.price, tick.at, tick.sequence, Date.now())
     this.simulatedAssets.delete(market.assetId)
 
+    for (const closed of this.candleCloses.observe(market.assetId, tick.at)) {
+      this.scheduleClosedCandle(market, closed.interval, closed.openTimeMs)
+    }
+
     const preferred = getPreferredLivePrice(
       market.assetId,
       TICK_FRESH_MS,
@@ -172,8 +181,68 @@ export class MarketDataService {
       }).catch((error: unknown) => this.logger.warn({ err: error, assetId: market.assetId, provider: tick.provider }, 'Failed to persist live tick'))
     }
   }
+
+  /** Publish the exchange's final candle once a bar closes, so every client sees identical history. */
+  private scheduleClosedCandle(
+    market: { id: string; assetId: string; symbol: string },
+    interval: CandleInterval,
+    openTimeMs: number,
+  ): void {
+    const provider = this.provider
+    if (!provider) return
+    const timer = setTimeout(() => {
+      this.candleTimers.delete(timer)
+      void this.publishClosedCandle(market, interval, openTimeMs)
+    }, CANDLE_CLOSE_DELAY_MS)
+    timer.unref?.()
+    this.candleTimers.add(timer)
+  }
+
+  private async publishClosedCandle(
+    market: { id: string; assetId: string; symbol: string },
+    interval: CandleInterval,
+    openTimeMs: number,
+  ): Promise<void> {
+    if (!this.running || !this.provider) return
+    try {
+      const row = await this.prisma.market.findUnique({
+        where: { id: market.id },
+        select: { provider: true, externalSymbol: true, asset: { select: { type: true } } },
+      })
+      if (!row) return
+      const candles = await this.provider.candles({
+        assetId: market.assetId,
+        assetType: row.asset.type,
+        symbol: market.symbol,
+        provider: row.provider,
+        externalSymbol: row.externalSymbol,
+      }, interval, 3)
+      const candle = candles.find((item) => Date.parse(item.openTime) === openTimeMs)
+      if (!candle) return
+
+      await this.publishEvent(createRealtimeEvent('market.candle', {
+        assetId: market.assetId,
+        symbol: market.symbol,
+        interval,
+        openTime: candle.openTime,
+        closeTime: candle.closeTime,
+        open: candle.open,
+        high: candle.high,
+        low: candle.low,
+        close: candle.close,
+        volume: candle.volume,
+      }, ('market:' + market.assetId) as `market:${string}`))
+    } catch (error) {
+      // Clients keep the locally built bar; the next history load corrects it.
+      this.logger.warn({ err: error, assetId: market.assetId, interval }, 'Closed candle could not be published')
+    }
+  }
+
   async stop(): Promise<void> {
     this.running = false
+    this.candleTimers.forEach((timer) => clearTimeout(timer))
+    this.candleTimers.clear()
+    this.candleCloses.clear()
     this.tickStreams.splice(0).forEach((stream) => stream.stop())
     if (this.simulationTimer) {
       clearInterval(this.simulationTimer)
