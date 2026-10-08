@@ -8,7 +8,6 @@ import { createRealtimeEvent, serializeRealtimeEvent } from '../realtime/events.
 import { publishRealtime } from '../realtime/bus.js'
 import { getTradingRules, TRADING_RULES } from './config.js'
 import { LedgerService } from '../ledger/service.js'
-import { DEMO_PRICE_BASES, DemoPriceSimulator } from './demoPrice.js'
 
 export type TradeDirection = 'UP' | 'DOWN'
 export type WalletMode = 'DEMO' | 'REAL'
@@ -189,8 +188,6 @@ export class TradingService {
   private timer: ReturnType<typeof setTimeout> | null = null
   private running = false
   private readonly ledger: LedgerService
-  /** Unpredictable fallback prices for DEMO trading while the live feed is stale. */
-  private readonly demoPrices = new DemoPriceSimulator()
 
   constructor(
     private readonly prisma: PrismaClient,
@@ -295,16 +292,9 @@ export class TradingService {
           market.lastPriceAt &&
           now.getTime() - market.lastPriceAt.getTime() <= env.trading.marketMaxAgeMs,
         )
-        const marketForTrade: TradingMarketSnapshot | undefined =
-          mode === 'DEMO' && !marketIsFresh
-            ? {
-                status: 'OPEN',
-                lastPrice: this.getDemoPrice(asset.symbol, market?.lastPrice),
-                lastPriceAt: now,
-                lastPriceProvider: 'demo-simulation',
-              }
-            : market
-        const rules = getTradingRules(asset.symbol, mode === 'DEMO' || marketIsFresh)
+        // Trades are priced only from the live exchange feed, in demo and real mode alike.
+        const marketForTrade: TradingMarketSnapshot | undefined = market
+        const rules = getTradingRules(asset.symbol, marketIsFresh)
         const account = await this.ensureAccount(tx, userId, asset.quoteCurrency ?? 'USD', mode)
         let wallet = await this.ensureWallet(tx, account.id, account.currency, mode === 'DEMO')
         if (mode === 'DEMO') wallet = await this.ensureDemoBalance(tx, account.id, wallet)
@@ -626,10 +616,8 @@ export class TradingService {
       assetId: details.position.assetId,
       symbol: details.position.asset.symbol,
       expiresAt: details.position.order.expiresAt,
-      demo: mode === 'DEMO',
       market,
       maxAgeMs: env.trading.marketMaxAgeMs,
-      demoPrice: (symbol, price) => this.getDemoPrice(symbol, price),
       onLateFallback: (late) => this.logger.warn(late, 'Settling at the current price: no tick history covers the expiry instant'),
     })
     if (!resolved) {
@@ -679,18 +667,16 @@ export class TradingService {
         assetId: trade.position.assetId,
         symbol: trade.position.asset.symbol,
         expiresAt: trade.position.order.expiresAt,
-        demo: account?.mode === 'DEMO',
         market,
         maxAgeMs: env.trading.marketMaxAgeMs,
-        demoPrice: (symbol, price) => this.getDemoPrice(symbol, price),
         onLateFallback: (late) => this.logger.warn(late, 'Settling at the current price: no tick history covers the expiry instant'),
       })
       if (!resolved) {
-        // Real-money trade with no reliable price. After the grace period it is voided and refunded
-        // instead of staying open forever.
+        // No reliable live price (demo and real alike; prices are never guessed). After the grace
+        // period the trade is voided and refunded instead of staying open forever.
         if (shouldVoidUnpricedTrade({ expiresAt: trade.position.order.expiresAt, now: Date.now(), voidAfterMs: env.trading.voidAfterMs })) {
           try {
-            await this.voidUnpricedTrade(trade.id, trade.position.asset.symbol)
+            await this.voidUnpricedTrade(trade.id, trade.position.asset.symbol, account?.mode === 'DEMO' ? 'DEMO' : 'REAL')
           } catch (error) {
             this.logger.error({ err: error, tradeId: trade.id }, 'Voiding an unpriced expired trade failed')
           }
@@ -747,11 +733,11 @@ export class TradingService {
   }
 
   /**
-   * Voids an expired real-money trade that could not be priced: the full stake is returned and the
+   * Voids an expired trade that could not be priced: the full stake is returned and the
    * user is told why through a notification (and a realtime event for the open app).
    */
-  private async voidUnpricedTrade(tradeId: string, symbol: string): Promise<boolean> {
-    const outcome = await this.cancelOpenTrade(tradeId, { userId: null, mode: 'REAL', kind: 'NO_PRICE' })
+  private async voidUnpricedTrade(tradeId: string, symbol: string, mode: WalletMode): Promise<boolean> {
+    const outcome = await this.cancelOpenTrade(tradeId, { userId: null, mode, kind: 'NO_PRICE' })
     if (!outcome) return false
 
     this.logger.error(
@@ -1174,13 +1160,6 @@ export class TradingService {
       lastPriceProvider: live.provider,
       ...(market?.status !== undefined || !market ? { status: 'OPEN' } : {}),
     } as T
-  }
-
-  private getDemoPrice(symbol: string, marketPrice: Prisma.Decimal | null | undefined): Prisma.Decimal {
-    const base = marketPrice?.gt(0)
-      ? marketPrice
-      : new Prisma.Decimal(DEMO_PRICE_BASES[symbol] ?? '100')
-    return new Prisma.Decimal(this.demoPrices.quote(symbol, base.toNumber())).toDecimalPlaces(8)
   }
 
   private parseAmount(value: string): Prisma.Decimal {

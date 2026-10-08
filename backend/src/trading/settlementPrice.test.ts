@@ -5,18 +5,15 @@ import { clearLivePrices, setLivePrice } from '../market/live-prices.js'
 import { resolveSettlementPrice, type SettlementPriceInput } from './settlementPrice.js'
 
 const T0 = Date.parse('2026-10-08T00:00:00.000Z')
-const demoPrice = () => new Prisma.Decimal('999')
 
 function input(overrides: Partial<SettlementPriceInput> = {}): SettlementPriceInput {
   return {
     assetId: 'a1',
     symbol: 'BTC/USD',
     expiresAt: new Date(T0 + 5_000),
-    demo: false,
     market: undefined,
     maxAgeMs: 10_000,
     now: T0 + 6_000,
-    demoPrice,
     ...overrides,
   }
 }
@@ -51,7 +48,7 @@ test('falls back to the current fresh price when no history covers expiry and re
   assert.deepEqual(late, [{ assetId: 'a1', symbol: 'BTC/USD', lateMs: 3_000 }])
 })
 
-test('REAL accounts never settle on a stale or missing price', () => {
+test('never settles on a stale or missing price', () => {
   assert.equal(resolveSettlementPrice(input()), null)
   assert.equal(resolveSettlementPrice(input({
     now: T0 + 60_000,
@@ -59,10 +56,8 @@ test('REAL accounts never settle on a stale or missing price', () => {
   })), null)
 })
 
-test('DEMO accounts may fall back to the simulated price and say so', () => {
-  const result = resolveSettlementPrice(input({ demo: true }))
-  assert.equal(result?.price.toString(), '999')
-  assert.equal(result?.provider, 'demo-simulation')
+test('a price is never simulated: with no reliable price the result is null', () => {
+  assert.equal(resolveSettlementPrice(input()), null)
 })
 
 test('a tick older than the max age before expiry does not count', () => {

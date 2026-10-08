@@ -247,9 +247,10 @@ const exposeDevTokens = parseBoolean(
 const marketDataProvider = parseMarketProvider(process.env.MARKET_DATA_PROVIDER)
 const marketDataEnabled = parseBoolean('MARKET_DATA_ENABLED', process.env.MARKET_DATA_ENABLED, marketDataProvider !== 'disabled')
 const marketDataBootstrapAssets = parseBoolean('MARKET_DATA_BOOTSTRAP_ASSETS', process.env.MARKET_DATA_BOOTSTRAP_ASSETS, nodeEnv !== 'production')
-// Simulated prices keep the DEMO market usable when no live feed is configured or the feed is
-// failing (missing/rate-limited API key). Never allowed in production.
-const marketDataSimulate = parseBoolean('MARKET_DATA_SIMULATE', process.env.MARKET_DATA_SIMULATE, false)
+// Prices are never simulated (demo and real alike); fail loudly if an old config still asks for it.
+if (parseBoolean('MARKET_DATA_SIMULATE', process.env.MARKET_DATA_SIMULATE, false)) {
+  throw new Error('MARKET_DATA_SIMULATE is no longer supported: all prices come from the live exchange feed')
+}
 // Crypto is priced from Binance only (no cross-exchange failover, so a trade never mixes price sources).
 const binanceEnabled = parseBoolean('BINANCE_ENABLED', process.env.BINANCE_ENABLED, marketDataProvider !== 'disabled')
 const binanceRestUrl = (process.env.BINANCE_REST_URL?.trim() || 'https://api.binance.com').replace(/\/$/, '')
@@ -274,10 +275,6 @@ if (nodeEnv === 'production' && process.env.AUTH_COOKIE_DOMAIN?.trim()) {
 
 if (process.env.AUTH_COOKIE_SAMESITE?.trim().toLowerCase() === 'none' && !authCookieSecure) {
   throw new Error('AUTH_COOKIE_SAMESITE=none requires AUTH_COOKIE_SECURE=true')
-}
-
-if (nodeEnv === 'production' && marketDataSimulate) {
-  throw new Error('MARKET_DATA_SIMULATE must be false in production')
 }
 
 
@@ -329,7 +326,6 @@ export const env = {
     pollIntervalMs: parsePositiveInteger('MARKET_DATA_POLL_INTERVAL_MS', process.env.MARKET_DATA_POLL_INTERVAL_MS, 15_000, 5_000, 300_000),
     requestTimeoutMs: parsePositiveInteger('MARKET_DATA_REQUEST_TIMEOUT_MS', process.env.MARKET_DATA_REQUEST_TIMEOUT_MS, 10_000, 1_000, 60_000),
     bootstrapAssets: marketDataBootstrapAssets,
-    simulate: marketDataSimulate,
     binance: { enabled: binanceEnabled, restUrl: binanceRestUrl, wsUrl: binanceWsUrl },
   },
   trading: {

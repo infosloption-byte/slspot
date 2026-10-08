@@ -56,9 +56,9 @@ The backend publishes realtime price events at roughly 10 Hz. The browser interp
 
 The interpolation is visual only. Server-side trading and settlement continue to use the raw authoritative price/timestamp.
 
-## Development simulation
+## No simulated prices
 
-Simulation is development-only and should be explicitly enabled with MARKET_DATA_SIMULATE=true. It is never allowed in production.
+Prices are never simulated or guessed, in demo or real mode, in development or production. New trades need a fresh Binance tick; settlement uses the tick in force at expiry. If no reliable price is available the trade is refused (new trade) or, after `TRADING_VOID_AFTER_MS`, voided with a full refund and a notification (expired trade). If candle history cannot be loaded, the chart shows the feed as unavailable instead of drawing made-up history. `MARKET_DATA_SIMULATE` is no longer supported and aborts startup if set.
 
 ## Operational guidance
 

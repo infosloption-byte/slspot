@@ -2,7 +2,6 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { BinanceProvider, toBinanceSymbol } from './binance.js'
 import { BinanceTickStream } from './binance-stream.js'
-import { syntheticCandles } from './synthetic.js'
 import { clearLivePrices, getLivePrice, getLivePriceAt, setLivePrice } from './live-prices.js'
 import type { MarketDefinition } from './types.js'
 
@@ -101,15 +100,6 @@ test('tick stream rotates to the next host when one never opens', async () => {
   await new Promise((resolve) => setTimeout(resolve, 30))
   stream.stop()
   assert.ok(urls[0]?.startsWith('wss://a.example') && urls[1]?.startsWith('wss://b.example'))
-})
-
-test('synthetic candles end exactly at the live price with aligned buckets', () => {
-  const now = Date.parse('2026-10-05T04:00:30.000Z')
-  const candles = syntheticCandles('1min', 50, 68000.5, now, 'BTC/USD')
-  assert.equal(candles.length, 50)
-  assert.equal(candles.at(-1)?.close, '68000.50')
-  assert.equal(candles.at(-1)?.openTime, '2026-10-05T04:00:00.000Z')
-  for (const candle of candles) assert.ok(Number(candle.high) >= Number(candle.low))
 })
 
 test('getLivePriceAt returns the tick in force at the requested instant', () => {

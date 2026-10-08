@@ -21,7 +21,6 @@ import {
   type UTCTimestamp,
 } from 'lightweight-charts'
 import type { MarketAsset } from '../../data/mockMarket'
-import { generateMockCandles } from '../../data/mockCandles'
 import type { MarketCandle } from '../../api/contracts'
 import { useMarketCandles } from '../../hooks/useServerState'
 import type { OpenTrade } from '../../types/trading'
@@ -109,7 +108,6 @@ function ChartCanvas({
   indicators,
   volumeEnabled,
   candles,
-  usingMockCandles,
   entryLines,
 }: {
   asset: MarketAsset
@@ -123,7 +121,6 @@ function ChartCanvas({
   indicators: IndicatorSettings
   volumeEnabled: boolean
   candles: ChartCandle[]
-  usingMockCandles: boolean
   /** One price line per open trade, drawn at its real entry price on the chart's own price scale. */
   entryLines: EntryLine[]
 }) {
@@ -489,7 +486,7 @@ function ChartCanvas({
         role="img"
         aria-label={asset.symbol + ' ' + chartType + ' market chart'}
       />
-      <div className="chart-attribution">{usingMockCandles ? 'Demo fallback' : 'Server OHLC'} · Volume {volumeEnabled ? 'on' : 'off'}</div>
+      <div className="chart-attribution">Server OHLC · Volume {volumeEnabled ? 'on' : 'off'}</div>
     </div>
   )
 }
@@ -552,26 +549,6 @@ export function ChartWorkspace({ asset, onOpenMarkets, onOpenActivity, soundEnab
   const marketInterval = timeframeToApiInterval(timeframe)
   const realtime = useRealtime()
   const candleResource = useMarketCandles(asset.assetId, marketInterval, 200)
-  const usingMockCandles = import.meta.env.DEV && (
-    Boolean(candleResource.error) ||
-    (candleResource.data !== null && candleResource.data.candles.length === 0)
-  )
-  // Dev-only demo series. Generated once per symbol/timeframe: depending on the whole `asset`
-  // object regenerated it (and rebuilt every chart series) on every live price tick.
-  const mockCandles = useMemo(
-    () => (usingMockCandles
-      ? generateMockCandles(asset, timeframe).map((candle) => ({
-        time: candle.time,
-        open: candle.open,
-        high: candle.high,
-        low: candle.low,
-        close: candle.close,
-        volume: 0,
-      }))
-      : NO_CANDLES),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [asset.symbol, timeframe, usingMockCandles],
-  )
   const datasetKey = asset.symbol + ':' + marketInterval
   const entryLines = useMemo<EntryLine[]>(
     () => openTrades
@@ -586,8 +563,8 @@ export function ChartWorkspace({ asset, onOpenMarkets, onOpenActivity, soundEnab
   )
   const [liveCandleUpdates, setLiveCandleUpdates] = useState<Array<ChartCandle & { datasetKey: string }>>([])
   const baseCandles = useMemo(
-    () => candleResource.data?.candles.length ? toChartCandles(candleResource.data.candles) : usingMockCandles ? mockCandles : NO_CANDLES,
-    [candleResource.data, mockCandles, usingMockCandles],
+    () => candleResource.data?.candles.length ? toChartCandles(candleResource.data.candles) : NO_CANDLES,
+    [candleResource.data],
   )
 
   useEffect(() => {
@@ -761,7 +738,7 @@ export function ChartWorkspace({ asset, onOpenMarkets, onOpenActivity, soundEnab
 
   const feedAgeMs = asset.lastUpdatedAt ? Math.max(0, now - Date.parse(asset.lastUpdatedAt)) : Number.POSITIVE_INFINITY
   const feedAgeSeconds = Number.isFinite(feedAgeMs) ? Math.floor(feedAgeMs / 1000) : null
-  const feedStale = !usingMockCandles && (!Number.isFinite(feedAgeMs) || feedAgeMs > 45_000)
+  const feedStale = !Number.isFinite(feedAgeMs) || feedAgeMs > 45_000
   const oscillatorCount = indicators.enabled.filter((id) => getIndicator(id).group === 'oscillator').length
   const hasOscillators = oscillatorCount > 0
 
@@ -804,7 +781,7 @@ export function ChartWorkspace({ asset, onOpenMarkets, onOpenActivity, soundEnab
             <span className="loading-spinner" aria-hidden="true" />
             <span>Loading market candles…</span>
           </div>
-        ) : candleResource.error && !usingMockCandles ? (
+        ) : candleResource.error ? (
           <div className="chart-data-state">
             <ErrorState
               title="Market data unavailable"
@@ -832,7 +809,6 @@ export function ChartWorkspace({ asset, onOpenMarkets, onOpenActivity, soundEnab
             indicators={indicators}
             volumeEnabled={volumeEnabled}
             candles={candles}
-            usingMockCandles={usingMockCandles}
             entryLines={entryLines}
           />
         )}
@@ -890,7 +866,7 @@ export function ChartWorkspace({ asset, onOpenMarkets, onOpenActivity, soundEnab
           {realtimeState === 'connected'
             ? feedStale
               ? 'Stale feed' + (feedAgeSeconds !== null ? ' · ' + feedAgeSeconds + 's' : '')
-              : candleResource.data?.candles.length ? 'Live market data' : usingMockCandles ? 'Demo market data' : 'Waiting for market data'
+              : candleResource.data?.candles.length ? 'Live market data' : 'Waiting for market data'
             : realtimeState === 'reconnecting'
               ? 'Reconnecting to live feed'
               : realtimeState === 'connecting'

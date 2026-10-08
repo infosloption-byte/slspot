@@ -175,6 +175,6 @@ The next test hardening step is database-backed integration coverage for concurr
 
 ## Void and refund when no price is available
 
-A real-money trade that has expired but cannot be priced (no fresh Binance tick for the expiry instant and no fresh current price) is retried every settlement pass. Once `TRADING_VOID_AFTER_MS` (default 60s) has passed since expiry it is voided: the trade becomes `CANCELLED`, the full stake is released back to the available balance through a `TRADE_VOID` ledger transaction, and the settlement record carries the reference `void:<tradeId>`. The audit log records `TRADE_VOIDED_NO_PRICE`.
+A trade (demo or real) that has expired but cannot be priced (no fresh Binance tick for the expiry instant and no fresh current price) is retried every settlement pass. Once `TRADING_VOID_AFTER_MS` (default 60s) has passed since expiry it is voided: the trade becomes `CANCELLED`, the full stake is released back to the available balance through a `TRADE_VOID` ledger transaction, and the settlement record carries the reference `void:<tradeId>`. The audit log records `TRADE_VOIDED_NO_PRICE`.
 
 The user receives a `SYSTEM` notification ("Trade voided: price unavailable") stating that no reliable price was available and that the stake was refunded in full, plus the normal realtime trade/wallet updates. The trading fee is not refunded by this path (it is 0 by default).
