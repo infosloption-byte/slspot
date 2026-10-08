@@ -27,6 +27,15 @@ type Query = {
   settledOnly?: string
 }
 
+function queryTimestampMs(value: string | undefined, name: string): number | undefined {
+  if (value === undefined) return undefined
+  const number = Number(value)
+  if (!Number.isSafeInteger(number) || number < 0) {
+    throw new AuthError(400, 'INVALID_QUERY', name + ' must be a valid timestamp in milliseconds')
+  }
+  return number
+}
+
 function queryNumber(value: string | undefined): number | undefined {
   if (value === undefined) return undefined
   const number = Number(value)
@@ -97,7 +106,7 @@ export function registerPlatformApiRoutes(app: FastifyInstance, options: Platfor
     }))
   })
 
-  app.get<{ Params: { assetId: string }; Querystring: Query & { interval?: string; limit?: string } }>(
+  app.get<{ Params: { assetId: string }; Querystring: Query & { interval?: string; limit?: string; endTime?: string } }>(
     PREFIX + '/market/assets/:assetId/candles',
     async (request) => {
       if (!options.marketDataService) throw new AuthError(503, 'MARKET_DATA_UNAVAILABLE', 'Market data service is unavailable')
@@ -105,7 +114,13 @@ export function registerPlatformApiRoutes(app: FastifyInstance, options: Platfor
       if (!isCandleInterval(interval)) throw new AuthError(400, 'INVALID_QUERY', 'Chart interval is invalid')
       const limit = queryNumber(request.query.limit)
       if (limit !== undefined && limit > 5000) throw new AuthError(400, 'INVALID_QUERY', 'Candle limit must not exceed 5000')
-      return ok(request, await options.marketDataService.getCandles(request.params.assetId, interval, limit ?? 200))
+      const endTimeMs = queryTimestampMs(request.query.endTime, 'endTime')
+      return ok(request, await options.marketDataService.getCandles(
+        request.params.assetId,
+        interval,
+        limit ?? 200,
+        endTimeMs === undefined ? undefined : { endTimeMs },
+      ))
     },
   )
 
