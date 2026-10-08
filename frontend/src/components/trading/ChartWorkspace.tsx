@@ -600,6 +600,15 @@ function timeframeToApiInterval(timeframe: string): string {
   }
 }
 
+function mergeMarketCandles(older: MarketCandle[], current: MarketCandle[]): MarketCandle[] {
+  const byOpenTime = new Map<string, MarketCandle>()
+  for (const candle of current) byOpenTime.set(candle.openTime, candle)
+  for (const candle of older) byOpenTime.set(candle.openTime, candle)
+  return [...byOpenTime.values()].sort(
+    (left, right) => Date.parse(left.openTime) - Date.parse(right.openTime),
+  )
+}
+
 function toChartCandles(candles: MarketCandle[]) {
   return candles.map((candle) => ({
     time: Math.floor(new Date(candle.openTime).getTime() / 1000) as import('lightweight-charts').UTCTimestamp,
