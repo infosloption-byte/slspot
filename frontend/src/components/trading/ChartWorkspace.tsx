@@ -212,11 +212,16 @@ function ChartCanvas({
         borderColor: 'rgba(255,255,255,.08)',
         scaleMargins: { top: 0.08, bottom: 0.1 },
       },
+      localization: {
+        locale: navigator.language,
+        timeFormatter: (time) => formatLocalChartTime(time),
+      },
       timeScale: {
         borderColor: 'rgba(255,255,255,.08)',
         timeVisible: true,
         secondsVisible: false,
         rightOffset: 5,
+        tickMarkFormatter: (time, tickMarkType, locale) => formatLocalChartTick(time, tickMarkType, locale),
       },
       handleScale: { axisPressedMouseMove: true, mouseWheel: true, pinch: true },
       handleScroll: {
