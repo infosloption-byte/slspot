@@ -5,8 +5,20 @@ import { authApi } from '../api/auth'
 import type { AuthSession, LoginResponse, RegistrationResponse } from './types'
 import { AuthContext, AUTH_EXPIRED_EVENT, type AuthContextValue } from './context'
 import { clearSession, sessionStore, setSession, useSessionStore } from '../state/sessionStore'
+import { setServerPreferences } from '../state/preferencesStore'
+import { setSoundEnabled } from '../state/tradingUiStore'
 
 let bootstrapPromise: Promise<AuthSession | null> | null = null
+
+async function hydratePreferences(): Promise<void> {
+  try {
+    const preferences = await authApi.preferences()
+    setServerPreferences(preferences)
+    setSoundEnabled(preferences.soundEnabled)
+  } catch {
+    // Preferences are non-critical; local defaults remain available when the API is unavailable.
+  }
+}
 
 async function bootstrap(): Promise<AuthSession | null> {
   const current = sessionStore.getState()
@@ -17,6 +29,7 @@ async function bootstrap(): Promise<AuthSession | null> {
     try {
       const result = await authApi.me()
       setSession(result.user)
+      void hydratePreferences()
       return result.user
     } catch {
       clearSession()
@@ -42,7 +55,10 @@ async function refreshSession(): Promise<AuthSession | null> {
 
 async function login(email: string, password: string, rememberDevice = false): Promise<LoginResponse> {
   const result = await authApi.login({ email, password, rememberDevice })
-  if (!result.requiresTwoFactor) setSession(result.user)
+  if (!result.requiresTwoFactor) {
+    setSession(result.user)
+    void hydratePreferences()
+  }
   return result
 }
 
@@ -53,7 +69,10 @@ async function verifyTwoFactor(
   rememberDevice = false,
 ): Promise<LoginResponse> {
   const result = await authApi.verifyTwoFactor({ challengeToken, code, recoveryCode, rememberDevice })
-  if (!result.requiresTwoFactor) setSession(result.user)
+  if (!result.requiresTwoFactor) {
+    setSession(result.user)
+    void hydratePreferences()
+  }
   return result
 }
 
