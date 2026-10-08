@@ -9,6 +9,9 @@ const user = {
   email: 'trader@example.com',
   status: 'ACTIVE',
   countryCode: 'LK',
+  displayName: null,
+  timezone: 'Asia/Colombo',
+  locale: 'en-LK',
   emailVerifiedAt: new Date('2026-10-01T00:00:00.000Z'),
 }
 
@@ -28,6 +31,28 @@ function createMockAuthService(): AuthServiceLike {
     listDevices: async () => [],
     listLoginHistory: async () => [],
     listSecurityEvents: async () => [],
+    updateProfile: async () => user,
+    getPreferences: async () => ({
+      compactTradingLayout: false,
+      priceMovementAlerts: false,
+      soundEnabled: false,
+      emailTradeResults: true,
+      emailWalletUpdates: true,
+      emailSecurityAlerts: true,
+      emailAnnouncements: true,
+      emailSupportUpdates: true,
+    }),
+    updatePreferences: async () => ({
+      compactTradingLayout: false,
+      priceMovementAlerts: false,
+      soundEnabled: false,
+      emailTradeResults: true,
+      emailWalletUpdates: true,
+      emailSecurityAlerts: true,
+      emailAnnouncements: true,
+      emailSupportUpdates: true,
+    }),
+    changePassword: async () => undefined,
     authenticateSession: async (sessionToken) =>
       sessionToken === token ? { ...user, sessionId, expiresAt } : null,
     logout: async () => undefined,
