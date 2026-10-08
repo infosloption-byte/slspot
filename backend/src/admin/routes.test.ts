@@ -166,6 +166,14 @@ describe('admin API routes', () => {
       { method: 'GET', url: '/api/v1/admin/risk' },
       { method: 'GET', url: '/api/v1/admin/audit' },
       { method: 'GET', url: '/api/v1/admin/security-events' },
+      { method: 'GET', url: '/api/v1/admin/support/tickets' },
+      { method: 'GET', url: '/api/v1/admin/support/tickets/:ticketId' },
+      { method: 'POST', url: '/api/v1/admin/support/tickets/:ticketId/messages' },
+      { method: 'POST', url: '/api/v1/admin/support/tickets/:ticketId/close' },
+      { method: 'GET', url: '/api/v1/admin/announcements' },
+      { method: 'POST', url: '/api/v1/admin/announcements' },
+      { method: 'POST', url: '/api/v1/admin/announcements/:announcementId/publish' },
+      { method: 'POST', url: '/api/v1/admin/announcements/:announcementId/archive' },
       { method: 'GET', url: '/api/v1/admin/export/audit' },
     ]
     for (const route of routes) {
