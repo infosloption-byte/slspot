@@ -18,7 +18,7 @@ export class EmailService {
       headers: {
         'content-type': 'application/json',
         authorization: 'Bearer ' + env.email.apiKey,
-        'x-idempotency-key': message.idempotencyKey,
+        'Idempotency-Key': message.idempotencyKey,
       },
       body: JSON.stringify({
         from: env.email.from,
