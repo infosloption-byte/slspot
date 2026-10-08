@@ -5,6 +5,9 @@ export type AuthUser = {
   email: string
   status: string
   countryCode: string | null
+  displayName: string | null
+  timezone: string | null
+  locale: string | null
   emailVerifiedAt: string | null
 }
 
