@@ -18,6 +18,8 @@ import {
   LineSeries,
   createChart,
   type IChartApi,
+  type TickMarkType,
+  type Time,
   type UTCTimestamp,
 } from 'lightweight-charts'
 import type { MarketAsset } from '../../data/mockMarket'
@@ -98,7 +100,7 @@ function formatLocalChartTime(time: import('lightweight-charts').Time): string {
   }).format(date)
 }
 
-function formatLocalChartTick(time: import('lightweight-charts').Time, tickMarkType: unknown, locale: string): string | null {
+function formatLocalChartTick(time: Time, tickMarkType: TickMarkType, locale: string): string | null {
   const date = chartTimeToDate(time)
   if (!date) return null
   const type = String(tickMarkType)
