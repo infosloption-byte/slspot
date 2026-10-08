@@ -5,7 +5,7 @@ import { authApi } from '../api/auth'
 import type { AuthSession, LoginResponse, RegistrationResponse } from './types'
 import { AuthContext, AUTH_EXPIRED_EVENT, type AuthContextValue } from './context'
 import { clearSession, sessionStore, setSession, useSessionStore } from '../state/sessionStore'
-import { setServerPreferences } from '../state/preferencesStore'
+import { resetServerPreferences, setServerPreferences } from '../state/preferencesStore'
 import { setSoundEnabled } from '../state/tradingUiStore'
 
 let bootstrapPromise: Promise<AuthSession | null> | null = null
@@ -46,6 +46,7 @@ async function refreshSession(): Promise<AuthSession | null> {
   try {
     const result = await authApi.me()
     setSession(result.user)
+    void hydratePreferences()
     return result.user
   } catch (error) {
     if (error instanceof ApiError && error.status === 401) clearSession()
@@ -87,11 +88,13 @@ async function register(
 
 async function logout(): Promise<void> {
   await authApi.logout()
+  resetServerPreferences()
   clearSession()
 }
 
 async function logoutAll(): Promise<void> {
   await authApi.logoutAll()
+  resetServerPreferences()
   clearSession()
 }
 
@@ -102,7 +105,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
     void bootstrap()
   }, [])
 
-  const clear = useCallback(() => clearSession(), [])
+  const clear = useCallback(() => {
+    resetServerPreferences()
+    clearSession()
+  }, [])
 
   useEffect(() => {
     const handleExpired = () => clear()
