@@ -678,7 +678,8 @@ export function ChartWorkspace({ asset, onOpenMarkets, onOpenActivity, soundEnab
     candles: MarketCandle[]
     hasMore: boolean
   } | null>(null)
-  const [historyLoading, setHistoryLoading] = useState(false)
+  const [historyLoadingDatasetKey, setHistoryLoadingDatasetKey] = useState<string | null>(null)
+  const historyLoading = historyLoadingDatasetKey === datasetKey
   const historyLoadingRef = useRef(false)
   const historyDatasetKeyRef = useRef(datasetKey)
 
@@ -705,7 +706,7 @@ export function ChartWorkspace({ asset, onOpenMarkets, onOpenActivity, soundEnab
     if (!Number.isFinite(oldestTime) || oldestTime <= 0) return
 
     historyLoadingRef.current = true
-    setHistoryLoading(true)
+    setHistoryLoadingDatasetKey(requestDatasetKey)
     try {
       const response = await marketApi.candles(asset.assetId, {
         interval: marketInterval,
@@ -734,7 +735,7 @@ export function ChartWorkspace({ asset, onOpenMarkets, onOpenActivity, soundEnab
     } finally {
       if (historyDatasetKeyRef.current === requestDatasetKey) {
         historyLoadingRef.current = false
-        setHistoryLoading(false)
+        setHistoryLoadingDatasetKey(null)
       }
     }
   }, [asset.assetId, datasetKey, hasMoreHistory, loadedHistory, marketInterval])
