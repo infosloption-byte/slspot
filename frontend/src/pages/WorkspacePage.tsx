@@ -941,7 +941,7 @@ function NotificationsPage() {
                 <article className={unreadItem ? 'notification-item notification-item--unread' : 'notification-item'} key={item.id}>
                   <span className="notification-item__icon"><Icon size={14} /></span>
                   <div><strong>{item.title}</strong><p>{item.body}</p><small>{formatDateTime(item.createdAt)}</small></div>
-                  {unreadItem ? <button type="button" className="notification-read-button" onClick={() => void markRead(item.id)}>Mark read</button> : <span className="notification-read-label">Read</span>}
+                  {unreadItem ? <button type="button" className="notification-read-button" aria-label={'Mark "' + item.title + '" as read'} onClick={() => void markRead(item.id)}>Mark read</button> : <span className="notification-read-label">Read</span>}
                 </article>
               )
             })}

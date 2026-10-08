@@ -553,7 +553,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
 .dashboard-grid { display: grid; grid-template-columns: 1.35fr 1fr; gap: 12px; margin-bottom: 12px; }
 .dashboard-grid--bottom { grid-template-columns: 1fr 1fr; }
 .dashboard-card { padding: 18px; min-width: 0; background: var(--bg-1); }
-.dashboard-card__header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+.dashboard-card__header { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
 .dashboard-card__header h2 { font-size: 16px; }
 .dashboard-card__value { font-size: 18px; color: var(--green); font-weight: 800; }
 .dashboard-link { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); font-size: 13px; text-decoration: none; }
@@ -605,9 +605,9 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
 .wallet-search input { padding-left: 32px !important; }
 
 .notification-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
-.notification-read-button { align-self: center; height: 32px; padding: 0 10px; border: 1px solid var(--line-strong); border-radius: var(--radius-sm); background: transparent; color: var(--muted); font-size: 11px; font-weight: 700; }
+.notification-read-button { align-self: center; height: 32px; padding: 0 12px; white-space: nowrap; flex: none; border: 1px solid var(--line-strong); border-radius: var(--radius-sm); background: transparent; color: var(--muted); font-size: 11px; font-weight: 700; }
 .notification-read-button:hover { color: var(--accent); border-color: var(--accent-line); }
-.notification-read-label { align-self: center; color: var(--muted-2); font-size: 10px; text-transform: uppercase; letter-spacing: .06em; }
+.notification-read-label { align-self: center; white-space: nowrap; color: var(--muted-2); font-size: 10px; text-transform: uppercase; letter-spacing: .06em; }
 
 .performance-chart { height: 220px; position: relative; display: flex; }
 .performance-chart__grid { position: absolute; inset: 8px 0 28px; display: flex; flex-direction: column; justify-content: space-between; }
@@ -666,7 +666,9 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
 .notification-layout, .settings-grid, .account-layout, .support-layout { display: grid; grid-template-columns: 1.4fr 1fr; gap: 12px; }
 .settings-grid { grid-template-columns: 1fr 1fr; }
 .notification-list { display: grid; gap: 4px; }
-.notification-item { display: grid; grid-template-columns: 36px 1fr 8px; gap: 12px; align-items: start; padding: 12px; border-radius: var(--radius-md); }
+.notification-item { display: grid; grid-template-columns: 36px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 12px 14px; border-radius: var(--radius-md); }
+.notification-item > div { min-width: 0; }
+.notification-item strong, .notification-item p { overflow-wrap: anywhere; }
 .notification-item--unread { background: var(--accent-soft); }
 .notification-item__icon { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 10px; background: var(--bg-3); color: var(--accent); }
 .notification-item strong { font-size: 14px; }
@@ -2553,11 +2555,16 @@ button.toggle { cursor: pointer; appearance: none; }
 
   .notification-actions {
     gap: 6px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .notification-actions .filter-chip,
   .notification-actions .setting-button {
     min-height: 42px;
+    width: 100%;
+    justify-content: center;
+    white-space: nowrap;
   }
 
   .setting-row {
@@ -3377,6 +3384,8 @@ button.toggle { cursor: pointer; appearance: none; }
   
     .notification-item {
       grid-template-columns: 36px minmax(0, 1fr);
+      align-items: start;
+      padding: 12px;
     }
   
     .notification-item__icon {
@@ -3388,6 +3397,11 @@ button.toggle { cursor: pointer; appearance: none; }
       grid-column: 2;
       justify-self: start;
       margin-top: 2px;
+    }
+
+    .notification-item .notification-read-button {
+      height: 40px;
+      min-width: 112px;
     }
   
     .session-item {
