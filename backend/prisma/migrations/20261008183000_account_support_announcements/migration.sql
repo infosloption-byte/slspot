@@ -12,6 +12,7 @@ CREATE TABLE `UserPreference` (
   `emailWalletUpdates` BOOLEAN NOT NULL DEFAULT true,
   `emailSecurityAlerts` BOOLEAN NOT NULL DEFAULT true,
   `emailAnnouncements` BOOLEAN NOT NULL DEFAULT true,
+  `emailSupportUpdates` BOOLEAN NOT NULL DEFAULT true,
   `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   `updatedAt` DATETIME(3) NOT NULL,
 
