@@ -864,8 +864,9 @@ AuditLog
 
 # PHASE 15 — Market Data Service
 
-- [x] Choose market provider (Binance primary; Kraken and OKX fallback).
-- [x] Provider adapters (Binance/Kraken/OKX).
+- [x] Choose market provider (Binance-only crypto provider).
+- [x] Binance provider adapter.
+- [ ] Multi-provider failover policy for real-money production.
 - [x] Asset registry with crypto-first scope.
 - [x] Symbol mapping.
 - [x] Price normalization.
