@@ -27,7 +27,7 @@ export function useMarketCandles(assetId: string | undefined, interval: string, 
       : Promise.reject(new Error('No market asset selected')),
     [assetId, interval, limit],
   )
-  return useAsyncResource(load, Boolean(assetId))
+  return useAsyncResource(load, Boolean(assetId), assetId + ':' + interval)
 }
 
 export function usePortfolioSummary() {
