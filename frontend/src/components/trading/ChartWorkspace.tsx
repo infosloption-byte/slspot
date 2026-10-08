@@ -671,8 +671,10 @@ export function ChartWorkspace({ asset, onOpenMarkets, onOpenActivity, soundEnab
   const [historyLoading, setHistoryLoading] = useState(false)
   const [hasMoreHistory, setHasMoreHistory] = useState(true)
   const historyLoadingRef = useRef(false)
+  const historyDatasetKeyRef = useRef(datasetKey)
 
   useEffect(() => {
+    historyDatasetKeyRef.current = datasetKey
     historyLoadingRef.current = false
     setHistoryLoading(false)
     setHasMoreHistory(true)
@@ -688,6 +690,7 @@ export function ChartWorkspace({ asset, onOpenMarkets, onOpenActivity, soundEnab
 
   const loadEarlierCandles = useCallback(async () => {
     if (historyLoadingRef.current || !hasMoreHistory || loadedHistory.length === 0) return
+    const requestDatasetKey = datasetKey
     const oldest = loadedHistory[0]
     if (!oldest) return
     const oldestTime = Date.parse(oldest.openTime)
@@ -701,6 +704,7 @@ export function ChartWorkspace({ asset, onOpenMarkets, onOpenActivity, soundEnab
         limit: CHART_HISTORY_PAGE_SIZE,
         endTime: oldestTime - 1,
       })
+      if (historyDatasetKeyRef.current !== requestDatasetKey) return
       const incoming = response.candles
       if (!incoming.length) {
         setHasMoreHistory(false)
@@ -715,7 +719,7 @@ export function ChartWorkspace({ asset, onOpenMarkets, onOpenActivity, soundEnab
       historyLoadingRef.current = false
       setHistoryLoading(false)
     }
-  }, [asset.assetId, hasMoreHistory, loadedHistory, marketInterval])
+  }, [asset.assetId, datasetKey, hasMoreHistory, loadedHistory, marketInterval])
 
   const baseCandles = useMemo(
     () => loadedHistory.length ? toChartCandles(loadedHistory) : NO_CANDLES,
