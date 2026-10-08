@@ -74,6 +74,3 @@ ALTER TABLE `Notification`
   ADD CONSTRAINT `Notification_announcementId_fkey`
     FOREIGN KEY (`announcementId`) REFERENCES `SystemAnnouncement`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
 
-ALTER TABLE `SystemAnnouncement`
-  ADD CONSTRAINT `SystemAnnouncement_id_notification`
-    FOREIGN KEY (`id`) REFERENCES `SystemAnnouncement`(`id`) ON DELETE CASCADE ON UPDATE CASCADE;
