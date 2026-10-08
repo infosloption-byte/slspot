@@ -160,12 +160,37 @@ enum AuthTokenType {
   TWO_FACTOR_CHALLENGE
 }
 
+enum SupportTicketStatus {
+  OPEN
+  IN_PROGRESS
+  WAITING_USER
+  RESOLVED
+  CLOSED
+}
+
+enum SupportCategory {
+  ACCOUNT
+  TRADING
+  WALLET
+  TECHNICAL
+  OTHER
+}
+
+enum AnnouncementStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
 model User {
   id            String       @id @default(uuid()) @db.Char(36)
   email         String       @unique @db.VarChar(191)
   passwordHash  String       @db.VarChar(255)
   status        UserStatus   @default(PENDING_VERIFICATION)
   countryCode   String?      @db.Char(2)
+  displayName   String?      @db.VarChar(120)
+  timezone      String?      @db.VarChar(64)
+  locale        String?      @db.VarChar(35)
   createdAt     DateTime     @default(now()) @db.DateTime(3)
   updatedAt     DateTime     @updatedAt @db.DateTime(3)
   lastLoginAt       DateTime?    @db.DateTime(3)
@@ -189,6 +214,10 @@ model User {
   notifications Notification[]
   recoveryCodes RecoveryCode[]
   auditLogs     AuditLog[]   @relation("AuditActor")
+  preferences   UserPreference?
+  supportTickets SupportTicket[]
+  supportMessages SupportMessage[]
+  announcements SystemAnnouncement[] @relation("AnnouncementAuthor")
   adminAccess   AdminAccess?
 }
 
@@ -611,18 +640,82 @@ model KycCase {
   @@index([provider, status])
 }
 
-model Notification {
-  id         String           @id @default(uuid()) @db.Char(36)
-  userId     String           @db.Char(36)
-  type       NotificationType
-  title      String           @db.VarChar(160)
-  body       String           @db.Text
-  readAt     DateTime?        @db.DateTime(3)
-  createdAt  DateTime         @default(now()) @db.DateTime(3)
+model UserPreference {
+  userId                   String   @id @db.Char(36)
+  compactTradingLayout    Boolean  @default(false)
+  priceMovementAlerts     Boolean  @default(false)
+  soundEnabled             Boolean  @default(false)
+  emailTradeResults       Boolean  @default(true)
+  emailWalletUpdates      Boolean  @default(true)
+  emailSecurityAlerts     Boolean  @default(true)
+  emailAnnouncements      Boolean  @default(true)
+  createdAt               DateTime @default(now()) @db.DateTime(3)
+  updatedAt               DateTime @updatedAt @db.DateTime(3)
 
-  user       User             @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  user                     User     @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+}
+
+model SupportTicket {
+  id           String             @id @default(uuid()) @db.Char(36)
+  userId       String             @db.Char(36)
+  subject      String             @db.VarChar(160)
+  category     SupportCategory
+  status       SupportTicketStatus @default(OPEN)
+  createdAt    DateTime           @default(now()) @db.DateTime(3)
+  updatedAt    DateTime           @updatedAt @db.DateTime(3)
+  resolvedAt   DateTime?
+
+  user         User               @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  messages     SupportMessage[]
+
+  @@index([userId, status, updatedAt])
+}
+
+model SupportMessage {
+  id           String   @id @default(uuid()) @db.Char(36)
+  ticketId     String   @db.Char(36)
+  authorUserId String   @db.Char(36)
+  body         String   @db.Text
+  createdAt    DateTime @default(now()) @db.DateTime(3)
+
+  ticket       SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  author       User        @relation(fields: [authorUserId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([ticketId, createdAt])
+  @@index([authorUserId, createdAt])
+}
+
+model SystemAnnouncement {
+  id            String             @id @default(uuid()) @db.Char(36)
+  title         String             @db.VarChar(160)
+  body          String             @db.Text
+  status        AnnouncementStatus @default(DRAFT)
+  createdByUserId String            @db.Char(36)
+  publishedAt   DateTime?
+  createdAt     DateTime            @default(now()) @db.DateTime(3)
+  updatedAt     DateTime            @updatedAt @db.DateTime(3)
+
+  createdBy      User               @relation("AnnouncementAuthor", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  notifications Notification[]
+
+  @@index([status, publishedAt])
+}
+
+model Notification {
+  id             String              @id @default(uuid()) @db.Char(36)
+  userId         String              @db.Char(36)
+  type           NotificationType
+  title          String              @db.VarChar(160)
+  body           String              @db.Text
+  announcementId String?
+  readAt         DateTime?           @db.DateTime(3)
+  createdAt      DateTime            @default(now()) @db.DateTime(3)
+
+  user           User                @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  announcement   SystemAnnouncement? @relation(fields: [announcementId], references: [id], onDelete: SetNull, onUpdate: Cascade)
 
   @@index([userId, readAt, createdAt])
+  @@index([announcementId])
 }
 
 model AuditLog {
