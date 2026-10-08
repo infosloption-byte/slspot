@@ -4,6 +4,7 @@ import { authApi, type AccountCapabilities } from '../api/auth'
 import { marketApi } from '../api/market'
 import { notificationsApi } from '../api/notifications'
 import { portfolioApi } from '../api/portfolio'
+import { supportApi } from '../api/support'
 import type { WalletTransactionFilters } from '../api/wallet'
 import { tradesApi, type TradeHistorySortBy, type TradeHistorySortOrder, type TradeRecord } from '../api/trades'
 import { walletApi } from '../api/wallet'
@@ -99,6 +100,24 @@ export function useWalletTransactions(
     [page, pageSize, search, type, status, from, to, mode],
   )
   return useAsyncResource(load, true, mode)
+}
+
+export function useAuthPreferences() {
+  const load = useCallback(() => authApi.preferences(), [])
+  return useAsyncResource(load)
+}
+
+export function useSupportTickets(page: number, pageSize = 25) {
+  const load = useCallback(() => supportApi.list({ page, pageSize }), [page, pageSize])
+  return useAsyncResource(load)
+}
+
+export function useSupportTicket(ticketId: string | null) {
+  const load = useCallback(
+    () => ticketId ? supportApi.get(ticketId) : Promise.reject(new Error('No support ticket selected')),
+    [ticketId],
+  )
+  return useAsyncResource(load, Boolean(ticketId), ticketId ?? '')
 }
 
 export function useNotifications(page: number, pageSize = 25, unreadOnly = false) {
