@@ -22,6 +22,7 @@ import {
 } from 'lightweight-charts'
 import type { MarketAsset } from '../../data/mockMarket'
 import type { MarketCandle } from '../../api/contracts'
+import { marketApi } from '../../api/market'
 import { useMarketCandles } from '../../hooks/useServerState'
 import type { OpenTrade } from '../../types/trading'
 import { tradeRemainingSeconds } from '../../types/trading'
@@ -44,6 +45,9 @@ type Drawing = { id: string; type: DrawingShape; x1: number; y1: number; x2: num
 
 // One shared empty array, so "no data" has a stable identity and does not look like new data to effects.
 const NO_CANDLES: ChartCandle[] = []
+const CHART_INITIAL_CANDLE_LIMIT = 500
+const CHART_HISTORY_PAGE_SIZE = 500
+const CHART_HISTORY_THRESHOLD = 30
 const indicatorStorageKey = 'slspot.chart.indicator-settings.v2'
 const legacyIndicatorStorageKey = 'slspot.chart.indicators'
 const drawingStoragePrefix = 'slspot.chart.drawings:'
@@ -70,6 +74,45 @@ type ChartCandle = {
   low: number
   close: number
   volume: number
+}
+
+function chartTimeToDate(time: import('lightweight-charts').Time): Date | null {
+  if (typeof time === 'number') return new Date(time * 1000)
+  if (typeof time === 'string') {
+    const date = new Date(time)
+    return Number.isNaN(date.getTime()) ? null : date
+  }
+  const date = new Date(Date.UTC(time.year, time.month - 1, time.day))
+  return Number.isNaN(date.getTime()) ? null : date
+}
+
+function formatLocalChartTime(time: import('lightweight-charts').Time): string {
+  const date = chartTimeToDate(time)
+  if (!date) return ''
+  return new Intl.DateTimeFormat(undefined, {
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(date)
+}
+
+function formatLocalChartTick(time: import('lightweight-charts').Time, tickMarkType: unknown, locale: string): string | null {
+  const date = chartTimeToDate(time)
+  if (!date) return null
+  const type = String(tickMarkType)
+  const options: Intl.DateTimeFormatOptions =
+    type === 'Year'
+      ? { year: 'numeric' }
+      : type === 'Month'
+        ? { month: 'short' }
+        : type === 'DayOfMonth'
+          ? { month: '2-digit', day: '2-digit' }
+          : type === 'TimeWithSeconds'
+            ? { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }
+            : { hour: '2-digit', minute: '2-digit', hour12: false }
+  return new Intl.DateTimeFormat(locale, options).format(date)
 }
 
 type ChartWorkspaceProps = {
@@ -109,6 +152,8 @@ function ChartCanvas({
   volumeEnabled,
   candles,
   entryLines,
+  onReachHistoryStart,
+  historyLoading,
 }: {
   asset: MarketAsset
   datasetKey: string
@@ -123,6 +168,8 @@ function ChartCanvas({
   candles: ChartCandle[]
   /** One price line per open trade, drawn at its real entry price on the chart's own price scale. */
   entryLines: EntryLine[]
+  onReachHistoryStart: () => void
+  historyLoading: boolean
 }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const chartRef = useRef<IChartApi | null>(null)
@@ -138,6 +185,10 @@ function ChartCanvas({
   const displayPriceRef = useRef(asset.price)
   const animationFrameRef = useRef<number | null>(null)
   const entryLinesRef = useRef<Map<string, PriceLineHandle>>(new Map())
+  const onReachHistoryStartRef = useRef(onReachHistoryStart)
+  const historyLoadArmedRef = useRef(false)
+  const previousDataRef = useRef<{ datasetKey: string; length: number; firstTime: number | null } | null>(null)
+  onReachHistoryStartRef.current = onReachHistoryStart
   const closes = useMemo(
     () => candles.map((candle) => ({ time: candle.time, value: candle.close })),
     [candles],
@@ -201,6 +252,15 @@ function ChartCanvas({
     chartRef.current = chart
     fittedDatasetRef.current = null
 
+    const handleVisibleRangeChange = () => {
+      if (!historyLoadArmedRef.current) return
+      const range = chart.timeScale().getVisibleLogicalRange()
+      if (range && range.from <= CHART_HISTORY_THRESHOLD) {
+        onReachHistoryStartRef.current()
+      }
+    }
+    chart.timeScale().subscribeVisibleLogicalRangeChange(handleVisibleRangeChange)
+
     const resizeObserver = new ResizeObserver((entries) => {
       const rect = entries[0]?.contentRect
       if (!rect) return
@@ -215,6 +275,7 @@ function ChartCanvas({
       resizeObserver.disconnect()
       if (chartRef.current === chart) chartRef.current = null
       primarySeriesRef.current = null
+      chart.timeScale().unsubscribeVisibleLogicalRangeChange(handleVisibleRangeChange)
       indicatorSeries.clear()
       volumeSeriesRef.current = null
       priceLineRef.current = null
@@ -252,8 +313,18 @@ function ChartCanvas({
     const series = primarySeriesRef.current as {
       setData: (data: unknown[]) => void
     } | null
+    const chart = chartRef.current
+    if (!series || !chart) return
 
-    if (!series) return
+    const previous = previousDataRef.current
+    const isNewDataset = previous?.datasetKey !== datasetKey
+    const prependedCount = !isNewDataset &&
+      previous?.firstTime !== null &&
+      candles[0] &&
+      Number(candles[0].time) < (previous?.firstTime ?? Number.POSITIVE_INFINITY)
+      ? Math.max(0, candles.length - (previous?.length ?? 0))
+      : 0
+    const visibleRangeBeforeUpdate = prependedCount > 0 ? chart.timeScale().getVisibleLogicalRange() : null
 
     if (chartType === 'candles') {
       if (candles.length) series.setData(candles)
@@ -261,9 +332,28 @@ function ChartCanvas({
       if (closes.length) series.setData(closes)
     }
 
-    if (candles.length && fittedDatasetRef.current !== datasetKey) {
-      chartRef.current?.timeScale().fitContent()
+    if (candles.length && isNewDataset) {
+      historyLoadArmedRef.current = false
+      chart.timeScale().fitContent()
       fittedDatasetRef.current = datasetKey
+      window.requestAnimationFrame(() => {
+        historyLoadArmedRef.current = true
+      })
+    } else if (prependedCount > 0 && visibleRangeBeforeUpdate) {
+      window.requestAnimationFrame(() => {
+        const currentRange = chart.timeScale().getVisibleLogicalRange()
+        if (!currentRange) return
+        chart.timeScale().setVisibleLogicalRange({
+          from: visibleRangeBeforeUpdate.from + prependedCount,
+          to: visibleRangeBeforeUpdate.to + prependedCount,
+        })
+      })
+    }
+
+    previousDataRef.current = {
+      datasetKey,
+      length: candles.length,
+      firstTime: candles[0] ? Number(candles[0].time) : null,
     }
   }, [candles, chartType, closes, datasetKey])
 
@@ -486,6 +576,7 @@ function ChartCanvas({
         role="img"
         aria-label={asset.symbol + ' ' + chartType + ' market chart'}
       />
+      {historyLoading ? <div className="chart-history-loading">Loading earlier candles…</div> : null}
       <div className="chart-attribution">Server OHLC · Volume {volumeEnabled ? 'on' : 'off'}</div>
     </div>
   )
