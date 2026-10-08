@@ -23,7 +23,7 @@ function recordHistory(assetId: string, entry: LivePrice): void {
   const list = history.get(assetId) ?? []
   // Keep the list ordered by exchange time; late/out-of-order ticks are inserted in place.
   let index = list.length
-  while (index > 0 && list[index - 1].at > entry.at) index -= 1
+  while (index > 0 && (list[index - 1]?.at ?? 0) > entry.at) index -= 1
   list.splice(index, 0, entry)
   history.set(assetId, list)
 
@@ -32,7 +32,7 @@ function recordHistory(assetId: string, entry: LivePrice): void {
   if (writes % HISTORY_PRUNE_EVERY === 0) {
     const cutoff = Date.now() - TICK_HISTORY_MS
     let drop = 0
-    while (drop < list.length - 1 && list[drop].at < cutoff) drop += 1
+    while (drop < list.length - 1 && (list[drop]?.at ?? Infinity) < cutoff) drop += 1
     if (drop > 0) list.splice(0, drop)
   }
 }
@@ -54,10 +54,11 @@ export function getLivePriceAt(
   let found = -1
   while (lo <= hi) {
     const mid = (lo + hi) >> 1
-    if (list[mid].at <= atMs) { found = mid; lo = mid + 1 } else hi = mid - 1
+    if ((list[mid]?.at ?? Infinity) <= atMs) { found = mid; lo = mid + 1 } else hi = mid - 1
   }
   for (let i = found; i >= 0; i -= 1) {
     const entry = list[i]
+    if (!entry) continue
     if (atMs - entry.at > maxAgeMs) return null
     if (!provider || entry.provider === provider) return entry
   }
