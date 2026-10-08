@@ -69,7 +69,7 @@ export const marketApi = {
       .then((response) => response.data),
 }
 
-function toQueryString(query: MarketAssetsQuery & { interval?: string; limit?: number }): string {
+function toQueryString(query: MarketAssetsQuery & { interval?: string; limit?: number; endTime?: number }): string {
   const params = new URLSearchParams()
   if (query.page !== undefined) params.set('page', String(query.page))
   if (query.pageSize !== undefined) params.set('pageSize', String(query.pageSize))
