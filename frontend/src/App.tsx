@@ -28,8 +28,8 @@ export default function App() {
           <Route path="history" element={<WorkspacePage title="Trade history" eyebrow="Records" description="Completed trades and settlement details will be loaded through the trading API." />} />
           <Route path="alerts" element={<WorkspacePage title="Notifications" eyebrow="Activity" description="Trade, security, and system notifications will be delivered through the realtime layer." />} />
           <Route path="security" element={<WorkspacePage title="Security" eyebrow="Account protection" description="Sessions, devices, two-factor authentication, and security events will live here." />} />
-          <Route path="account" element={<WorkspacePage title="Account" eyebrow="Preferences" description="Account preferences and profile settings will be connected in a later frontend milestone." />} />
-          <Route path="support" element={<WorkspacePage title="Support" eyebrow="Help center" description="Support conversations and service notices will be added after the core account flows." />} />
+          <Route path="account" element={<WorkspacePage title="Account" eyebrow="Preferences" description="Manage your profile, password, workspace behavior and notification delivery." />} />
+          <Route path="support" element={<WorkspacePage title="Support" eyebrow="Help center" description="Create a support ticket, follow replies and manage your support conversations." />} />
         </Route>
       </Route>
 
