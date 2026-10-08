@@ -328,6 +328,56 @@ export function registerPlatformApiRoutes(app: FastifyInstance, options: Platfor
     }))
   })
 
+  app.get<{ Querystring: Query }>(PREFIX + '/support/tickets', async (request) => {
+    const session = await requireSession(request, options.authService)
+    return ok(request, await options.apiService.listSupportTickets(session.id, {
+      page: queryNumber(request.query.page),
+      pageSize: queryNumber(request.query.pageSize),
+    }))
+  })
+
+  app.get<{ Params: { ticketId: string } }>(PREFIX + '/support/tickets/:ticketId', {
+    schema: { params: { type: 'object', required: ['ticketId'], additionalProperties: false, properties: { ticketId: { type: 'string', pattern: UUID_PATTERN } } } },
+  }, async (request) => {
+    const session = await requireSession(request, options.authService)
+    return ok(request, await options.apiService.getSupportTicket(session.id, request.params.ticketId))
+  })
+
+  app.post<{ Body: { subject: string; category: 'ACCOUNT' | 'TRADING' | 'WALLET' | 'TECHNICAL' | 'OTHER'; body: string } }>(PREFIX + '/support/tickets', {
+    schema: {
+      body: {
+        type: 'object',
+        required: ['subject', 'category', 'body'],
+        additionalProperties: false,
+        properties: {
+          subject: { type: 'string', minLength: 3, maxLength: 160 },
+          category: { type: 'string', enum: ['ACCOUNT', 'TRADING', 'WALLET', 'TECHNICAL', 'OTHER'] },
+          body: { type: 'string', minLength: 3, maxLength: 10000 },
+        },
+      },
+    },
+  }, async (request) => {
+    const session = await requireSession(request, options.authService)
+    return ok(request, await options.apiService.createSupportTicket(session.id, request.body, request.ip, request.headers['user-agent']))
+  })
+
+  app.post<{ Params: { ticketId: string }; Body: { body: string } }>(PREFIX + '/support/tickets/:ticketId/messages', {
+    schema: {
+      params: { type: 'object', required: ['ticketId'], additionalProperties: false, properties: { ticketId: { type: 'string', pattern: UUID_PATTERN } } },
+      body: { type: 'object', required: ['body'], additionalProperties: false, properties: { body: { type: 'string', minLength: 3, maxLength: 10000 } } },
+    },
+  }, async (request) => {
+    const session = await requireSession(request, options.authService)
+    return ok(request, await options.apiService.replySupportTicket(session.id, request.params.ticketId, request.body.body, request.ip, request.headers['user-agent']))
+  })
+
+  app.post<{ Params: { ticketId: string } }>(PREFIX + '/support/tickets/:ticketId/close', {
+    schema: { params: { type: 'object', required: ['ticketId'], additionalProperties: false, properties: { ticketId: { type: 'string', pattern: UUID_PATTERN } } } },
+  }, async (request) => {
+    const session = await requireSession(request, options.authService)
+    return ok(request, await options.apiService.closeSupportTicket(session.id, request.params.ticketId))
+  })
+
   app.get<{ Querystring: Query }>(PREFIX + '/notifications', async (request) => {
     const session = await requireSession(request, options.authService)
     return ok(request, await options.apiService.listNotifications(session.id, {
