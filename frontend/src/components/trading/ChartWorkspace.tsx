@@ -190,7 +190,11 @@ function ChartCanvas({
   const onReachHistoryStartRef = useRef(onReachHistoryStart)
   const historyLoadArmedRef = useRef(false)
   const previousDataRef = useRef<{ datasetKey: string; length: number; firstTime: number | null } | null>(null)
-  onReachHistoryStartRef.current = onReachHistoryStart
+
+  useEffect(() => {
+    onReachHistoryStartRef.current = onReachHistoryStart
+  }, [onReachHistoryStart])
+
   const closes = useMemo(
     () => candles.map((candle) => ({ time: candle.time, value: candle.close })),
     [candles],
@@ -669,26 +673,28 @@ export function ChartWorkspace({ asset, onOpenMarkets, onOpenActivity, soundEnab
     [asset.symbol, now, openTrades],
   )
   const [liveCandleUpdates, setLiveCandleUpdates] = useState<Array<ChartCandle & { datasetKey: string }>>([])
-  const [loadedHistory, setLoadedHistory] = useState<MarketCandle[]>([])
+  const [historyState, setHistoryState] = useState<{
+    datasetKey: string
+    candles: MarketCandle[]
+    hasMore: boolean
+  } | null>(null)
   const [historyLoading, setHistoryLoading] = useState(false)
-  const [hasMoreHistory, setHasMoreHistory] = useState(true)
   const historyLoadingRef = useRef(false)
   const historyDatasetKeyRef = useRef(datasetKey)
 
   useEffect(() => {
     historyDatasetKeyRef.current = datasetKey
     historyLoadingRef.current = false
-    setHistoryLoading(false)
-    setHasMoreHistory(true)
-    setLoadedHistory([])
   }, [datasetKey])
 
-  useEffect(() => {
-    const incoming = candleResource.data?.candles
-    if (!incoming?.length) return
-    setLoadedHistory((current) => current.length ? current : incoming)
-    setHasMoreHistory(incoming.length >= CHART_INITIAL_CANDLE_LIMIT)
-  }, [candleResource.data])
+  const loadedHistory = useMemo(() => {
+    if (historyState?.datasetKey === datasetKey) return historyState.candles
+    return candleResource.data?.candles ?? []
+  }, [candleResource.data, datasetKey, historyState])
+
+  const hasMoreHistory = historyState?.datasetKey === datasetKey
+    ? historyState.hasMore
+    : (candleResource.data?.candles.length ?? 0) >= CHART_INITIAL_CANDLE_LIMIT
 
   const loadEarlierCandles = useCallback(async () => {
     if (historyLoadingRef.current || !hasMoreHistory || loadedHistory.length === 0) return
@@ -709,17 +715,27 @@ export function ChartWorkspace({ asset, onOpenMarkets, onOpenActivity, soundEnab
       if (historyDatasetKeyRef.current !== requestDatasetKey) return
       const incoming = response.candles
       if (!incoming.length) {
-        setHasMoreHistory(false)
+        setHistoryState((current) => current?.datasetKey === requestDatasetKey
+          ? { ...current, hasMore: false }
+          : current)
         return
       }
 
-      setLoadedHistory((current) => mergeMarketCandles(incoming, current))
-      if (incoming.length < CHART_HISTORY_PAGE_SIZE) setHasMoreHistory(false)
+      setHistoryState((current) => {
+        const existing = current?.datasetKey === requestDatasetKey ? current.candles : loadedHistory
+        return {
+          datasetKey: requestDatasetKey,
+          candles: mergeMarketCandles(incoming, existing),
+          hasMore: incoming.length >= CHART_HISTORY_PAGE_SIZE,
+        }
+      })
     } catch {
       // Historical loading is opportunistic; the existing chart stays usable when a page fails.
     } finally {
-      historyLoadingRef.current = false
-      setHistoryLoading(false)
+      if (historyDatasetKeyRef.current === requestDatasetKey) {
+        historyLoadingRef.current = false
+        setHistoryLoading(false)
+      }
     }
   }, [asset.assetId, datasetKey, hasMoreHistory, loadedHistory, marketInterval])
 
