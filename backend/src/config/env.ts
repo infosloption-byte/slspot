@@ -106,12 +106,14 @@ function parseDecimalString(
   return normalized
 }
 
-function parseMarketProvider(value: string | undefined): 'disabled' | 'multi-exchange' {
-  const provider = (value ?? 'multi-exchange').trim().toLowerCase()
-  if (provider !== 'disabled' && provider !== 'multi-exchange') {
-    throw new Error('MARKET_DATA_PROVIDER must be disabled or multi-exchange')
+function parseMarketProvider(value: string | undefined): 'disabled' | 'binance' {
+  const provider = (value ?? 'binance').trim().toLowerCase()
+  // 'multi-exchange' was the short-lived Binance/Kraken/OKX mode; it now means Binance only.
+  if (provider === 'multi-exchange') return 'binance'
+  if (provider !== 'disabled' && provider !== 'binance') {
+    throw new Error('MARKET_DATA_PROVIDER must be binance or disabled (twelve-data, kraken and okx are no longer supported)')
   }
-  return provider as 'disabled' | 'multi-exchange'
+  return provider
 }
 
 function parseDatabaseUrl(
@@ -248,16 +250,10 @@ const marketDataBootstrapAssets = parseBoolean('MARKET_DATA_BOOTSTRAP_ASSETS', p
 // Simulated prices keep the DEMO market usable when no live feed is configured or the feed is
 // failing (missing/rate-limited API key). Never allowed in production.
 const marketDataSimulate = parseBoolean('MARKET_DATA_SIMULATE', process.env.MARKET_DATA_SIMULATE, false)
-// Crypto is priced through an ordered exchange feed: Binance → Kraken → OKX.
+// Crypto is priced from Binance only (no cross-exchange failover, so a trade never mixes price sources).
 const binanceEnabled = parseBoolean('BINANCE_ENABLED', process.env.BINANCE_ENABLED, marketDataProvider !== 'disabled')
 const binanceRestUrl = (process.env.BINANCE_REST_URL?.trim() || 'https://api.binance.com').replace(/\/$/, '')
 const binanceWsUrl = (process.env.BINANCE_WS_URL?.trim() || 'wss://stream.binance.com:9443').replace(/\/$/, '')
-const krakenEnabled = parseBoolean('KRAKEN_ENABLED', process.env.KRAKEN_ENABLED, marketDataProvider !== 'disabled')
-const krakenBaseUrl = (process.env.KRAKEN_BASE_URL?.trim() || 'https://api.kraken.com').replace(/\/$/, '')
-const krakenWsUrl = (process.env.KRAKEN_WS_URL?.trim() || 'wss://ws.kraken.com/v2').replace(/\/$/, '')
-const okxEnabled = parseBoolean('OKX_ENABLED', process.env.OKX_ENABLED, marketDataProvider !== 'disabled')
-const okxBaseUrl = (process.env.OKX_BASE_URL?.trim() || 'https://www.okx.com').replace(/\/$/, '')
-const okxWsUrl = (process.env.OKX_WS_URL?.trim() || 'wss://ws.okx.com/ws/v5/public').replace(/\/$/, '')
 const adminBootstrapEmails = [...new Set((process.env.ADMIN_BOOTSTRAP_EMAILS ?? '').split(',').map((value) => value.trim().toLowerCase()).filter(Boolean))]
 const authCookieName = parseCookieName(process.env.AUTH_COOKIE_NAME, nodeEnv, nodeEnv === 'production' ? '__Host-slspot_session' : 'slspot_session')
 const csrfCookieName = parseCookieName(process.env.CSRF_COOKIE_NAME, nodeEnv, nodeEnv === 'production' ? '__Host-slspot_csrf' : 'slspot_csrf')
@@ -335,8 +331,6 @@ export const env = {
     bootstrapAssets: marketDataBootstrapAssets,
     simulate: marketDataSimulate,
     binance: { enabled: binanceEnabled, restUrl: binanceRestUrl, wsUrl: binanceWsUrl },
-    kraken: { enabled: krakenEnabled, baseUrl: krakenBaseUrl, wsUrl: krakenWsUrl },
-    okx: { enabled: okxEnabled, baseUrl: okxBaseUrl, wsUrl: okxWsUrl },
   },
   trading: {
     feeRate: parseDecimalString('TRADING_FEE_RATE', process.env.TRADING_FEE_RATE, '0'),
@@ -347,8 +341,10 @@ export const env = {
     ),
     maxOpenPositions: parsePositiveInteger('TRADING_MAX_OPEN_POSITIONS', process.env.TRADING_MAX_OPEN_POSITIONS, 20, 1, 1_000),
     maxOpenExposure: parseDecimalString('TRADING_MAX_OPEN_EXPOSURE', process.env.TRADING_MAX_OPEN_EXPOSURE, '100000'),
-    marketMaxAgeMs: parsePositiveInteger('TRADING_MARKET_MAX_AGE_MS', process.env.TRADING_MARKET_MAX_AGE_MS, 120_000, 5_000, 3_600_000),
+    marketMaxAgeMs: parsePositiveInteger('TRADING_MARKET_MAX_AGE_MS', process.env.TRADING_MARKET_MAX_AGE_MS, 10_000, 1_000, 3_600_000),
     settlementIntervalMs: parsePositiveInteger('TRADING_SETTLEMENT_INTERVAL_MS', process.env.TRADING_SETTLEMENT_INTERVAL_MS, 1_000, 250, 60_000),
+    // 0 disables the scheduled wallet/ledger reconciliation.
+    reconcileIntervalMs: parsePositiveInteger('LEDGER_RECONCILE_INTERVAL_MS', process.env.LEDGER_RECONCILE_INTERVAL_MS, 900_000, 0, 86_400_000),
   },
   security: {
     csrfSecret,

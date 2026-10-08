@@ -2,9 +2,8 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { BinanceProvider, toBinanceSymbol } from './binance.js'
 import { BinanceTickStream } from './binance-stream.js'
-import { CompositeProvider } from './composite.js'
 import { syntheticCandles } from './synthetic.js'
-import { clearLivePrices, getLivePrice, setLivePrice } from './live-prices.js'
+import { clearLivePrices, getLivePrice, getLivePriceAt, setLivePrice } from './live-prices.js'
 import type { MarketDefinition } from './types.js'
 
 const btc: MarketDefinition = { assetId: 'a1', assetType: 'CRYPTO', symbol: 'BTC/USD', provider: 'binance', externalSymbol: 'BTC/USD' }
@@ -35,26 +34,6 @@ test('quote and candles are parsed from Binance responses', async () => {
   assert.equal(candles[0]?.closeTime, new Date(1_700_000_300_000).toISOString())
   const klines = urls.find((url) => url.includes('klines'))
   assert.ok(klines?.includes('symbol=BTCUSDT') && klines.includes('interval=5m'))
-})
-
-test('composite uses Binance first and Kraken as the next crypto fallback', async () => {
-  const make = (name: string, failing = false) => ({
-    name,
-    assetType: 'CRYPTO' as const,
-    supports: (market: MarketDefinition) => market.assetType === 'CRYPTO',
-    quote: async () => {
-      if (failing) throw new Error(name + ' down')
-      return { provider: name, externalSymbol: name, last: '1', bid: '1', ask: '1', changePct: '0', volume: null, timestamp: new Date().toISOString(), status: 'OPEN' as const }
-    },
-    candles: async () => {
-      if (failing) throw new Error(name + ' down')
-      return []
-    },
-  })
-  const composite = new CompositeProvider([make('binance'), make('kraken')])
-  assert.equal((await composite.quote(btc)).provider, 'binance')
-  assert.equal((await new CompositeProvider([make('binance', true), make('kraken')]).quote(btc)).provider, 'kraken')
-  await assert.rejects(new CompositeProvider([make('binance')]).quote({ ...btc, assetType: 'STOCK' }))
 })
 
 test('tick stream emits ticks, ignores junk and reconnects after a close', async () => {
@@ -102,20 +81,6 @@ test('binance provider answers from a fallback host when the primary is unreacha
   assert.ok(hosts.includes('api.binance.com') && hosts.includes('data-api.binance.vision'))
 })
 
-test('composite falls back to the general provider when the crypto feed fails', async () => {
-  const failing = { name: 'binance', assetType: 'CRYPTO' as const, supports: () => true, quote: async () => { throw new Error('down') }, candles: async () => { throw new Error('down') } }
-  const general = {
-    name: 'kraken',
-    assetType: 'CRYPTO' as const,
-    supports: () => true,
-    quote: async () => ({ provider: 'kraken', externalSymbol: 'kraken', last: '1', bid: '1', ask: '1', changePct: '0', volume: null, timestamp: new Date().toISOString(), status: 'OPEN' as const }),
-    candles: async () => [],
-  }
-  const composite = new CompositeProvider([failing, general])
-  assert.equal((await composite.quote(btc)).provider, 'kraken')
-  await assert.rejects(new CompositeProvider([failing]).candles(btc, '1min', 5))
-})
-
 test('tick stream rotates to the next host when one never opens', async () => {
   const urls: string[] = []
   const sockets: Array<{ onclose: any }> = []
@@ -145,4 +110,18 @@ test('synthetic candles end exactly at the live price with aligned buckets', () 
   assert.equal(candles.at(-1)?.close, '68000.50')
   assert.equal(candles.at(-1)?.openTime, '2026-10-05T04:00:00.000Z')
   for (const candle of candles) assert.ok(Number(candle.high) >= Number(candle.low))
+})
+
+test('getLivePriceAt returns the tick in force at the requested instant', () => {
+  clearLivePrices()
+  const base = Date.now() - 5_000
+  setLivePrice('a1', 'binance', '100', base, '1', base)
+  setLivePrice('a1', 'binance', '101', base + 1_000, '2', base + 1_000)
+  setLivePrice('a1', 'binance', '103', base + 3_000, '3', base + 3_000)
+  assert.equal(getLivePriceAt('a1', base + 500, 10_000)?.price, '100')
+  assert.equal(getLivePriceAt('a1', base + 2_999, 10_000)?.price, '101')
+  assert.equal(getLivePriceAt('a1', base + 3_000, 10_000)?.price, '103')
+  assert.equal(getLivePriceAt('a1', base - 1, 10_000), null)
+  assert.equal(getLivePriceAt('a1', base + 20_000, 5_000), null)
+  clearLivePrices()
 })

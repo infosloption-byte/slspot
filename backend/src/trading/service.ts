@@ -1,7 +1,8 @@
 import { randomUUID } from 'node:crypto'
 import { Prisma, type PrismaClient, type Wallet } from '../generated/prisma/client.js'
 import { env } from '../config/env.js'
-import { getLivePrice, getPreferredLivePrice } from '../market/live-prices.js'
+import { getPreferredLivePrice } from '../market/live-prices.js'
+import { resolveSettlementPrice } from './settlementPrice.js'
 import { createRealtimeEvent, serializeRealtimeEvent } from '../realtime/events.js'
 import { publishRealtime } from '../realtime/bus.js'
 import { getTradingRules, TRADING_RULES } from './config.js'
@@ -618,24 +619,25 @@ export class TradingService {
       where: { assetId: details.position.assetId },
       orderBy: { updatedAt: 'desc' },
       select: { lastPrice: true, lastPriceAt: true, status: true, lastPriceProvider: true },
-    }) ?? undefined, details.trade.entryProvider ?? undefined)
+    }) ?? undefined)
 
-    const marketIsFresh = Boolean(
-      market?.lastPrice &&
-      market.lastPriceAt &&
-      Date.now() - market.lastPriceAt.getTime() <= env.trading.marketMaxAgeMs,
-    )
-    const settlementPrice = mode === 'DEMO' && !marketIsFresh
-      ? this.getDemoPrice(details.position.asset.symbol, market?.lastPrice)
-      : market?.lastPrice ?? null
-
-    if (!settlementPrice) {
+    const resolved = resolveSettlementPrice({
+      assetId: details.position.assetId,
+      symbol: details.position.asset.symbol,
+      expiresAt: details.position.order.expiresAt,
+      demo: mode === 'DEMO',
+      market,
+      maxAgeMs: env.trading.marketMaxAgeMs,
+      demoPrice: (symbol, price) => this.getDemoPrice(symbol, price),
+      onLateFallback: (late) => this.logger.warn(late, 'Settling at the current price: no tick history covers the expiry instant'),
+    })
+    if (!resolved) {
       throw new TradingError(503, 'MARKET_PRICE_UNAVAILABLE', 'A current market price is required to close the trade')
     }
-    if (mode !== 'DEMO' && market?.lastPriceAt) this.assertFreshMarketPrice(market.lastPriceAt)
 
-    const settlementProvider = market?.lastPriceProvider ?? 'unknown'
-    const settlementTimestamp = market?.lastPriceAt ?? new Date()
+    const settlementPrice = resolved.price
+    const settlementProvider = resolved.provider
+    const settlementTimestamp = resolved.timestamp
     const outcome = await this.settleTrade(tradeId, settlementPrice, 'MANUAL', settlementProvider, settlementTimestamp)
     if (!outcome || outcome.trade.userId !== userId) {
       throw new TradingError(404, 'TRADE_NOT_FOUND', 'Trade was not found')
@@ -667,26 +669,25 @@ export class TradingService {
         where: { assetId: trade.position.assetId },
         orderBy: { updatedAt: 'desc' },
         select: { lastPrice: true, lastPriceAt: true, lastPriceProvider: true },
-      }) ?? undefined, trade.entryProvider ?? undefined)
+      }) ?? undefined)
       const account = await this.prisma.account.findUnique({
         where: { id: trade.position.accountId },
         select: { mode: true },
       })
-      const marketIsFresh = Boolean(
-        market?.lastPrice &&
-        market.lastPriceAt &&
-        Date.now() - market.lastPriceAt.getTime() <= env.trading.marketMaxAgeMs,
-      )
-      const settlementPrice = account?.mode === 'DEMO' && !marketIsFresh
-        ? this.getDemoPrice(trade.position.asset.symbol, market?.lastPrice)
-        : market?.lastPrice ?? null
-      if (!settlementPrice) continue
-      if (account?.mode !== 'DEMO' && !marketIsFresh) continue
+      const resolved = resolveSettlementPrice({
+        assetId: trade.position.assetId,
+        symbol: trade.position.asset.symbol,
+        expiresAt: trade.position.order.expiresAt,
+        demo: account?.mode === 'DEMO',
+        market,
+        maxAgeMs: env.trading.marketMaxAgeMs,
+        demoPrice: (symbol, price) => this.getDemoPrice(symbol, price),
+        onLateFallback: (late) => this.logger.warn(late, 'Settling at the current price: no tick history covers the expiry instant'),
+      })
+      if (!resolved) continue
 
       try {
-        const settlementProvider = market?.lastPriceProvider ?? 'unknown'
-        const settlementTimestamp = market?.lastPriceAt ?? new Date()
-        const outcome = await this.settleTrade(trade.id, settlementPrice, 'EXPIRY', settlementProvider, settlementTimestamp)
+        const outcome = await this.settleTrade(trade.id, resolved.price, 'EXPIRY', resolved.provider, resolved.timestamp)
         if (outcome) {
           settledCount += 1
           const result = this.toTradingResult(outcome.trade, outcome.position, outcome.settlement)
@@ -1108,16 +1109,12 @@ export class TradingService {
     })
   }
 
-  /** Prefers the newest live tick (from the Binance stream) over the stored market snapshot. */
+  /** Prefers the newest live Binance tick over the stored market snapshot. */
   private withLivePrice<T extends { lastPrice: Prisma.Decimal | null; lastPriceAt: Date | null; status?: string; lastPriceProvider?: string | null }>(
     assetId: string,
     market: T | undefined,
-    preferredProvider?: string,
   ): T | undefined {
-    const live = preferredProvider
-      ? getLivePrice(assetId, env.trading.marketMaxAgeMs, Date.now(), preferredProvider)
-        ?? getPreferredLivePrice(assetId, env.trading.marketMaxAgeMs, ['binance', 'kraken', 'okx'])
-      : getPreferredLivePrice(assetId, env.trading.marketMaxAgeMs, ['binance', 'kraken', 'okx'])
+    const live = getPreferredLivePrice(assetId, env.trading.marketMaxAgeMs, ['binance'])
     if (!live) return market
     if (market?.lastPriceAt && market.lastPriceAt.getTime() >= live.at) return market
     return {
@@ -1168,12 +1165,6 @@ export class TradingService {
     const fee = input.amount.mul(new Prisma.Decimal(input.rules.feeRate))
     if (input.walletBalance.lt(input.amount.plus(fee))) return 'Insufficient available balance'
     return null
-  }
-
-  private assertFreshMarketPrice(lastPriceAt: Date): void {
-    if (Date.now() - lastPriceAt.getTime() > env.trading.marketMaxAgeMs) {
-      throw new TradingError(409, 'STALE_MARKET_PRICE', 'The current market price is stale')
-    }
   }
 
   private async loadTrade(tradeId: string): Promise<TradeDetails | null> {

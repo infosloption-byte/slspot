@@ -5,6 +5,8 @@ import { MarketDataService } from './market/service.js'
 import { TradingService } from './trading/service.js'
 import { AuthService } from './auth/service.js'
 import { AdminService } from './admin/service.js'
+import { LedgerService } from './ledger/service.js'
+import { LedgerReconciliationWorker } from './ledger/reconciliation-worker.js'
 import { env } from './config/env.js'
 import { prisma } from './db/prisma.js'
 import {
@@ -46,6 +48,13 @@ const app = buildApp({
   tradingService,
   adminService,
 })
+const ledgerService = new LedgerService(prisma)
+const reconciliationWorker = new LedgerReconciliationWorker(
+  prisma,
+  (userId, accountId) => ledgerService.reconcileWallet(userId, accountId),
+  app.log,
+  env.trading.reconcileIntervalMs,
+)
 let shuttingDown = false
 
 async function shutdown(signal: string) {
@@ -66,6 +75,7 @@ async function shutdown(signal: string) {
     realtimeGateway.closeAll()
     await app.close()
     await disconnectRedis()
+    reconciliationWorker.stop()
     await tradingService.stop()
     await marketDataService.stop()
     await disconnectDatabase()
@@ -123,6 +133,9 @@ try {
   app.log.info('Starting trading service')
   await tradingService.start()
   app.log.info('Trading service started')
+
+  reconciliationWorker.start()
+  if (env.trading.reconcileIntervalMs > 0) app.log.info({ intervalMs: env.trading.reconcileIntervalMs }, 'Scheduled wallet/ledger reconciliation started')
 } catch (error) {
   app.log.error({ err: error }, 'API startup failed')
   process.exit(1)

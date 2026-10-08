@@ -7,16 +7,17 @@ import { CANDLE_INTERVALS, isCandleInterval, type CandleInterval, type MarketDef
 import { ensureDefaultMarketRegistry } from './registry.js'
 import { DEMO_PRICE_BASES, DemoPriceSimulator } from '../trading/demoPrice.js'
 import { BinanceTickStream, type Tick } from './binance-stream.js'
-import { KrakenTickStream, type KrakenTick } from './kraken-stream.js'
-import { OkxTickStream, type OkxTick } from './okx-stream.js'
 import { getPreferredLivePrice, setLivePrice } from './live-prices.js'
 import { syntheticCandles } from './synthetic.js'
+import { CandleCloseTracker } from './candle-close.js'
 
 const SIMULATION_INTERVAL_MS = 1_000
 const TICK_PUBLISH_INTERVAL_MS = 100
 const TICK_PERSIST_INTERVAL_MS = 2_000
 /** A live tick younger than this means the stream owns the price. */
 const TICK_FRESH_MS = 10_000
+/** Wait before reading a just-closed kline so the exchange has finalized it. */
+const CANDLE_CLOSE_DELAY_MS = 1_500
 
 export type MarketCandleResult = {
   assetId: string
@@ -59,10 +60,11 @@ export class MarketDataService {
   /** Assets currently priced by the simulation rather than the live provider. */
   private readonly simulatedAssets = new Set<string>()
   private readonly tickStreams: Array<{ stop: () => void }> = []
-  private readonly activeProviders = new Map<string, string>()
   private readonly tickMarkets = new Map<string, { id: string; assetId: string; symbol: string }>()
   private readonly tickState = new Map<string, { published: number; persisted: number; first: boolean }>()
   private readonly changePct = new Map<string, string>()
+  private readonly candleCloses = new CandleCloseTracker()
+  private readonly candleTimers = new Set<ReturnType<typeof setTimeout>>()
 
   constructor(
     private readonly prisma: PrismaClient,
@@ -96,7 +98,7 @@ export class MarketDataService {
     await this.poll()
   }
 
-  /** Keep all crypto exchange streams warm; the freshest preferred source wins per asset. */
+  /** Start the Binance tick stream for all active crypto markets. */
   private async startTickStreams(): Promise<void> {
     if (typeof WebSocket === 'undefined') return
     try {
@@ -120,65 +122,30 @@ export class MarketDataService {
         stream.start(symbols)
         this.tickStreams.push(stream)
       }
-      if (env.marketData.kraken.enabled) {
-        const stream = new KrakenTickStream({
-          url: env.marketData.kraken.wsUrl,
-          logger: this.logger,
-          onTick: (tick) => void this.handleTick(tick),
-        })
-        stream.start(symbols)
-        this.tickStreams.push(stream)
-      }
-      if (env.marketData.okx.enabled) {
-        const stream = new OkxTickStream({
-          url: env.marketData.okx.wsUrl,
-          logger: this.logger,
-          onTick: (tick) => void this.handleTick(tick),
-        })
-        stream.start(symbols)
-        this.tickStreams.push(stream)
-      }
 
-      this.logger.info({ symbols: symbols.length, providers: ['binance', 'kraken', 'okx'].filter((provider) => {
-        if (provider === 'binance') return env.marketData.binance.enabled
-        if (provider === 'kraken') return env.marketData.kraken.enabled
-        return env.marketData.okx.enabled
-      }) }, 'Crypto market tick streams started')
+      this.logger.info({ symbols: symbols.length, provider: 'binance' }, 'Crypto market tick stream started')
     } catch (error) {
       this.logger.warn({ err: error }, 'Crypto market tick streams could not be started')
     }
   }
 
-  async handleTick(tick: Tick | KrakenTick | OkxTick): Promise<void> {
+  async handleTick(tick: Tick): Promise<void> {
     const market = this.tickMarkets.get(tick.externalSymbol)
     if (!market) return
 
     setLivePrice(market.assetId, tick.provider, tick.price, tick.at, tick.sequence, Date.now())
     this.simulatedAssets.delete(market.assetId)
 
+    for (const closed of this.candleCloses.observe(market.assetId, tick.at)) {
+      this.scheduleClosedCandle(market, closed.interval, closed.openTimeMs)
+    }
+
     const preferred = getPreferredLivePrice(
       market.assetId,
       TICK_FRESH_MS,
-      ['binance', 'kraken', 'okx'],
+      ['binance'],
     )
     if (!preferred) return
-
-    const previousProvider = this.activeProviders.get(market.assetId)
-    if (previousProvider !== preferred.provider) {
-      this.activeProviders.set(market.assetId, preferred.provider)
-      await this.prisma.market.update({
-        where: { id: market.id },
-        data: {
-          provider: preferred.provider,
-          status: 'OPEN',
-          lastPrice: preferred.price,
-          lastPriceAt: new Date(preferred.at),
-          lastPriceProvider: preferred.provider,
-        },
-      }).catch((error: unknown) => this.logger.warn({ err: error, assetId: market.assetId, provider: preferred.provider }, 'Failed to persist active market source'))
-    }
-
-    if (tick.provider !== preferred.provider) return
 
     const state = this.tickState.get(market.assetId) ?? { published: 0, persisted: 0, first: true }
     this.tickState.set(market.assetId, state)
@@ -206,7 +173,6 @@ export class MarketDataService {
       await this.prisma.market.update({
         where: { id: market.id },
         data: {
-          provider: tick.provider,
           status: 'OPEN',
           lastPrice: tick.price,
           lastPriceAt: new Date(tick.at),
@@ -215,10 +181,69 @@ export class MarketDataService {
       }).catch((error: unknown) => this.logger.warn({ err: error, assetId: market.assetId, provider: tick.provider }, 'Failed to persist live tick'))
     }
   }
+
+  /** Publish the exchange's final candle once a bar closes, so every client sees identical history. */
+  private scheduleClosedCandle(
+    market: { id: string; assetId: string; symbol: string },
+    interval: CandleInterval,
+    openTimeMs: number,
+  ): void {
+    const provider = this.provider
+    if (!provider) return
+    const timer = setTimeout(() => {
+      this.candleTimers.delete(timer)
+      void this.publishClosedCandle(market, interval, openTimeMs)
+    }, CANDLE_CLOSE_DELAY_MS)
+    timer.unref?.()
+    this.candleTimers.add(timer)
+  }
+
+  private async publishClosedCandle(
+    market: { id: string; assetId: string; symbol: string },
+    interval: CandleInterval,
+    openTimeMs: number,
+  ): Promise<void> {
+    if (!this.running || !this.provider) return
+    try {
+      const row = await this.prisma.market.findUnique({
+        where: { id: market.id },
+        select: { provider: true, externalSymbol: true, asset: { select: { type: true } } },
+      })
+      if (!row) return
+      const candles = await this.provider.candles({
+        assetId: market.assetId,
+        assetType: row.asset.type,
+        symbol: market.symbol,
+        provider: row.provider,
+        externalSymbol: row.externalSymbol,
+      }, interval, 3)
+      const candle = candles.find((item) => Date.parse(item.openTime) === openTimeMs)
+      if (!candle) return
+
+      await this.publishEvent(createRealtimeEvent('market.candle', {
+        assetId: market.assetId,
+        symbol: market.symbol,
+        interval,
+        openTime: candle.openTime,
+        closeTime: candle.closeTime,
+        open: candle.open,
+        high: candle.high,
+        low: candle.low,
+        close: candle.close,
+        volume: candle.volume,
+      }, ('market:' + market.assetId) as `market:${string}`))
+    } catch (error) {
+      // Clients keep the locally built bar; the next history load corrects it.
+      this.logger.warn({ err: error, assetId: market.assetId, interval }, 'Closed candle could not be published')
+    }
+  }
+
   async stop(): Promise<void> {
     this.running = false
+    this.candleTimers.forEach((timer) => clearTimeout(timer))
+    this.candleTimers.clear()
+    this.candleCloses.clear()
     this.tickStreams.splice(0).forEach((stream) => stream.stop())
-    this.activeProviders.clear()
     if (this.simulationTimer) {
       clearInterval(this.simulationTimer)
       this.simulationTimer = null
@@ -268,7 +293,7 @@ export class MarketDataService {
 
       if (env.nodeEnv !== 'production') {
         // Keep the chart usable in development: history that ends at the current price.
-        const live = getPreferredLivePrice(market.assetId, 60_000, ['binance', 'kraken', 'okx'])
+        const live = getPreferredLivePrice(market.assetId, 60_000, ['binance'])
         const stored = market.lastPrice ? Number(market.lastPrice.toString()) : 0
         const anchor = live ? Number(live.price) : this.simulationAnchors.get(market.asset.symbol) ?? (stored > 0 ? stored : Number(DEMO_PRICE_BASES[market.asset.symbol] ?? '100'))
         candles = syntheticCandles(intervalValue as CandleInterval, Math.min(500, Math.max(1, limit)), anchor, Date.now(), market.asset.symbol)
@@ -429,7 +454,7 @@ export class MarketDataService {
       const channel = ('market:' + market.assetId) as `market:${string}`
       // While the tick stream is delivering, the REST quote (older by definition) must not
       // overwrite the price; it only refreshes the 24h change and volume.
-      const streaming = getPreferredLivePrice(market.assetId, TICK_FRESH_MS, ['binance', 'kraken', 'okx']) !== null
+      const streaming = getPreferredLivePrice(market.assetId, TICK_FRESH_MS, ['binance']) !== null
 
       if (streaming) {
         await this.prisma.market.update({ where: { id: market.id }, data: { lastChangePct: quote.changePct, lastVolume: quote.volume } })
@@ -439,7 +464,6 @@ export class MarketDataService {
       await this.prisma.market.update({
         where: { id: market.id },
         data: {
-          provider: quote.provider,
           status: quote.status,
           lastPrice: quote.last,
           lastPriceAt: new Date(quote.timestamp),
@@ -471,7 +495,7 @@ export class MarketDataService {
     } catch (error) {
       // A failing poll must not flag the market as down while ticks or the dev simulation are
       // still keeping it priced.
-      const covered = env.marketData.simulate || getPreferredLivePrice(market.assetId, TICK_FRESH_MS, ['binance', 'kraken', 'okx']) !== null
+      const covered = env.marketData.simulate || getPreferredLivePrice(market.assetId, TICK_FRESH_MS, ['binance']) !== null
       if (!covered) {
         await this.prisma.market.update({
           where: { id: market.id },
