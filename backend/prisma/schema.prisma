@@ -708,7 +708,7 @@ model Notification {
   type           NotificationType
   title          String              @db.VarChar(160)
   body           String              @db.Text
-  announcementId String?
+  announcementId String? @db.Char(36)
   readAt         DateTime?           @db.DateTime(3)
   createdAt      DateTime            @default(now()) @db.DateTime(3)
 
