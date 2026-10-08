@@ -1,3 +1,5 @@
+# UI / theme update — Black Gold
+
 ## 2026-10-08 — account, support and notification completion
 
 - Added server-backed account profile editing for display name, country, timezone and locale.
@@ -6,9 +8,6 @@
 - Added support tickets with user replies, closing, admin replies and admin close operations.
 - Added system announcements with draft/publish/archive lifecycle, durable user notifications, realtime delivery and optional email fan-out.
 - Added transactional email service configuration for verification, password reset, security, trade-result, wallet, support and announcement notifications.
-
-
-# UI / theme update — Black Gold
 
 ## 2026-10-04 — trading page and security fixes
 
