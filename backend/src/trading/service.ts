@@ -3,6 +3,7 @@ import { Prisma, type PrismaClient, type Wallet } from '../generated/prisma/clie
 import { env } from '../config/env.js'
 import { getPreferredLivePrice } from '../market/live-prices.js'
 import { resolveSettlementPrice } from './settlementPrice.js'
+import { shouldVoidUnpricedTrade, voidNotification } from './voidPolicy.js'
 import { createRealtimeEvent, serializeRealtimeEvent } from '../realtime/events.js'
 import { publishRealtime } from '../realtime/bus.js'
 import { getTradingRules, TRADING_RULES } from './config.js'
@@ -684,7 +685,18 @@ export class TradingService {
         demoPrice: (symbol, price) => this.getDemoPrice(symbol, price),
         onLateFallback: (late) => this.logger.warn(late, 'Settling at the current price: no tick history covers the expiry instant'),
       })
-      if (!resolved) continue
+      if (!resolved) {
+        // Real-money trade with no reliable price. After the grace period it is voided and refunded
+        // instead of staying open forever.
+        if (shouldVoidUnpricedTrade({ expiresAt: trade.position.order.expiresAt, now: Date.now(), voidAfterMs: env.trading.voidAfterMs })) {
+          try {
+            await this.voidUnpricedTrade(trade.id, trade.position.asset.symbol)
+          } catch (error) {
+            this.logger.error({ err: error, tradeId: trade.id }, 'Voiding an unpriced expired trade failed')
+          }
+        }
+        continue
+      }
 
       try {
         const outcome = await this.settleTrade(trade.id, resolved.price, 'EXPIRY', resolved.provider, resolved.timestamp)
@@ -720,7 +732,52 @@ export class TradingService {
       return this.toTradingResult(details.trade, details.position, details.settlement)
     }
 
-    const outcome = await this.prisma.$transaction(async (tx) => {
+    const outcome = await this.cancelOpenTrade(tradeId, { userId, mode, kind: 'USER' })
+
+    if (!outcome) {
+      const latest = await this.loadTrade(tradeId)
+      if (!latest || latest.trade.userId !== userId) throw new TradingError(404, 'TRADE_NOT_FOUND', 'Trade was not found')
+      return this.toTradingResult(latest.trade, latest.position, latest.settlement)
+    }
+
+    const result = this.toTradingResult(outcome.trade, outcome.position, outcome.settlement)
+    await this.publishTradeSettlement(userId, result)
+    await this.createTradeResultNotification(userId, result, outcome.position.asset.symbol)
+    return result
+  }
+
+  /**
+   * Voids an expired real-money trade that could not be priced: the full stake is returned and the
+   * user is told why through a notification (and a realtime event for the open app).
+   */
+  private async voidUnpricedTrade(tradeId: string, symbol: string): Promise<boolean> {
+    const outcome = await this.cancelOpenTrade(tradeId, { userId: null, mode: 'REAL', kind: 'NO_PRICE' })
+    if (!outcome) return false
+
+    this.logger.error(
+      { tradeId, symbol, stake: outcome.position.amount.toString() },
+      'Trade voided and refunded: no reliable market price was available after expiry',
+    )
+    const result = this.toTradingResult(outcome.trade, outcome.position, outcome.settlement)
+    await this.publishTradeSettlement(outcome.trade.userId, result)
+    await this.createTradeResultNotification(outcome.trade.userId, result, symbol, voidNotification({
+      symbol,
+      direction: result.direction,
+      amount: outcome.position.amount.toString(),
+      currency: outcome.currency,
+    }))
+    return true
+  }
+
+  /**
+   * Cancels an open trade and returns the stake. Used both for a user cancelling before expiry and for
+   * the system voiding an expired trade it could not price (the stake is refunded in full either way).
+   */
+  private async cancelOpenTrade(
+    tradeId: string,
+    opts: { userId: string | null; mode: WalletMode | null; kind: 'USER' | 'NO_PRICE' },
+  ) {
+    return this.prisma.$transaction(async (tx) => {
       const current = await tx.trade.findUnique({
         where: { id: tradeId },
         include: {
@@ -728,10 +785,13 @@ export class TradingService {
           settlement: true,
         },
       })
-      if (!current || current.userId !== userId || current.status !== 'OPEN' || current.position.status !== 'OPEN' || current.position.order.status !== 'ACCEPTED') return null
-      if (current.position.order.expiresAt && current.position.order.expiresAt.getTime() <= Date.now()) {
+      if (!current || (opts.userId !== null && current.userId !== opts.userId) || current.status !== 'OPEN' || current.position.status !== 'OPEN' || current.position.order.status !== 'ACCEPTED') return null
+      const expired = Boolean(current.position.order.expiresAt && current.position.order.expiresAt.getTime() <= Date.now())
+      if (opts.kind === 'USER' && expired) {
         throw new TradingError(409, 'TRADE_EXPIRED', 'This trade has already expired and is being settled')
       }
+      // A system void only applies to trades that really are past expiry.
+      if (opts.kind === 'NO_PRICE' && !expired) return null
 
       const now = new Date()
       const amount = current.position.amount
@@ -739,7 +799,7 @@ export class TradingService {
       const netPnl = fee.neg()
 
       const claimed = await tx.trade.updateMany({
-        where: { id: tradeId, userId, status: 'OPEN' },
+        where: { id: tradeId, status: 'OPEN' },
         data: { status: 'CANCELLED', grossPnl: new Prisma.Decimal(0), netPnl, closedAt: now },
       })
       if (claimed.count !== 1) return null
@@ -780,9 +840,9 @@ export class TradingService {
           amount,
           currency: wallet.currency,
           idempotencyKey: 'trade-release:' + tradeId,
-          referenceType: 'TRADE_CANCEL',
+          referenceType: opts.kind === 'USER' ? 'TRADE_CANCEL' : 'TRADE_VOID',
           referenceId: tradeId,
-          description: 'Released stake for cancelled trade ' + tradeId,
+          description: (opts.kind === 'USER' ? 'Released stake for cancelled trade ' : 'Refunded stake for voided trade (no reliable price at expiry) ') + tradeId,
           availableBalanceAfter: wallet.availableBalance,
           heldBalanceAfter: wallet.heldBalance,
         },
@@ -791,9 +851,9 @@ export class TradingService {
       await this.ledger.postTransaction(tx, {
         walletTransactionId: releaseTx.id,
         currency: wallet.currency,
-        referenceType: 'TRADE_CANCEL',
+        referenceType: opts.kind === 'USER' ? 'TRADE_CANCEL' : 'TRADE_VOID',
         referenceId: tradeId,
-        description: 'Released stake for cancelled trade ' + tradeId,
+        description: (opts.kind === 'USER' ? 'Released stake for cancelled trade ' : 'Refunded stake for voided trade (no reliable price at expiry) ') + tradeId,
         lines: [
           {
             accountCode: walletLedger.heldCode,
@@ -826,7 +886,7 @@ export class TradingService {
           grossPayout: amount,
           fees: fee,
           netPnl,
-          referenceId: 'cancel:' + tradeId,
+          referenceId: (opts.kind === 'USER' ? 'cancel:' : 'void:') + tradeId,
           settledAt: now,
         },
         update: {
@@ -840,18 +900,18 @@ export class TradingService {
           grossPayout: amount,
           fees: fee,
           netPnl,
-          referenceId: 'cancel:' + tradeId,
+          referenceId: (opts.kind === 'USER' ? 'cancel:' : 'void:') + tradeId,
           settledAt: now,
         },
       })
 
       await tx.auditLog.create({
         data: {
-          actorUserId: userId,
-          action: 'TRADE_CANCELLED',
+          actorUserId: current.userId,
+          action: opts.kind === 'USER' ? 'TRADE_CANCELLED' : 'TRADE_VOIDED_NO_PRICE',
           entityType: 'Trade',
           entityId: tradeId,
-          metadata: { mode, amount: amount.toString(), fee: fee.toString() },
+          metadata: { mode: opts.mode, amount: amount.toString(), fee: fee.toString(), ...(opts.kind === 'NO_PRICE' ? { reason: 'No reliable market price at expiry' } : {}) },
         },
       })
 
@@ -859,19 +919,9 @@ export class TradingService {
         trade: { ...current, status: 'CANCELLED' as const, grossPnl: new Prisma.Decimal(0), netPnl, closedAt: now },
         position: { ...current.position, status: 'CLOSED' as const, exitPrice: null, closedAt: now },
         settlement,
+        currency: wallet.currency,
       }
     })
-
-    if (!outcome) {
-      const latest = await this.loadTrade(tradeId)
-      if (!latest || latest.trade.userId !== userId) throw new TradingError(404, 'TRADE_NOT_FOUND', 'Trade was not found')
-      return this.toTradingResult(latest.trade, latest.position, latest.settlement)
-    }
-
-    const result = this.toTradingResult(outcome.trade, outcome.position, outcome.settlement)
-    await this.publishTradeSettlement(userId, result)
-    await this.createTradeResultNotification(userId, result, outcome.position.asset.symbol)
-    return result
   }
 
   private async settleTrade(tradeId: string, settlementPrice: Prisma.Decimal | string, reason: 'MANUAL' | 'EXPIRY', settlementProvider = 'unknown', settlementTimestamp = new Date()) {
@@ -1368,16 +1418,17 @@ export class TradingService {
     userId: string,
     result: ApiTradingResult,
     symbol: string,
+    override?: { title: string; body: string; type?: 'SYSTEM' | 'TRADE_RESULT' },
   ): Promise<void> {
-    const title = result.status === 'WON' ? 'Trade won' : result.status === 'DRAW' ? 'Trade draw: stake returned' : result.status === 'CANCELLED' ? 'Trade cancelled: stake returned' : 'Trade settled'
+    const title = override?.title ?? (result.status === 'WON' ? 'Trade won' : result.status === 'DRAW' ? 'Trade draw: stake returned' : result.status === 'CANCELLED' ? 'Trade cancelled: stake returned' : 'Trade settled')
     const pnl = result.netPnl ?? '0'
-    const message = symbol + ' · ' + result.direction + ' · P&L ' + (Number(pnl) >= 0 ? '+' : '') + pnl
+    const message = override?.body ?? (symbol + ' · ' + result.direction + ' · P&L ' + (Number(pnl) >= 0 ? '+' : '') + pnl)
 
     try {
       const notification = await this.prisma.notification.create({
         data: {
           userId,
-          type: 'TRADE_RESULT',
+          type: override?.type ?? 'TRADE_RESULT',
           title,
           body: message,
         },
