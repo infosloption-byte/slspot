@@ -343,6 +343,8 @@ export const env = {
     maxOpenExposure: parseDecimalString('TRADING_MAX_OPEN_EXPOSURE', process.env.TRADING_MAX_OPEN_EXPOSURE, '100000'),
     marketMaxAgeMs: parsePositiveInteger('TRADING_MARKET_MAX_AGE_MS', process.env.TRADING_MARKET_MAX_AGE_MS, 10_000, 1_000, 3_600_000),
     settlementIntervalMs: parsePositiveInteger('TRADING_SETTLEMENT_INTERVAL_MS', process.env.TRADING_SETTLEMENT_INTERVAL_MS, 1_000, 250, 60_000),
+    // 0 disables the scheduled wallet/ledger reconciliation.
+    reconcileIntervalMs: parsePositiveInteger('LEDGER_RECONCILE_INTERVAL_MS', process.env.LEDGER_RECONCILE_INTERVAL_MS, 900_000, 0, 86_400_000),
   },
   security: {
     csrfSecret,

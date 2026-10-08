@@ -1,7 +1,8 @@
 import { randomUUID } from 'node:crypto'
 import { Prisma, type PrismaClient, type Wallet } from '../generated/prisma/client.js'
 import { env } from '../config/env.js'
-import { getLivePriceAt, getPreferredLivePrice } from '../market/live-prices.js'
+import { getPreferredLivePrice } from '../market/live-prices.js'
+import { resolveSettlementPrice } from './settlementPrice.js'
 import { createRealtimeEvent, serializeRealtimeEvent } from '../realtime/events.js'
 import { publishRealtime } from '../realtime/bus.js'
 import { getTradingRules, TRADING_RULES } from './config.js'
@@ -620,12 +621,15 @@ export class TradingService {
       select: { lastPrice: true, lastPriceAt: true, status: true, lastPriceProvider: true },
     }) ?? undefined)
 
-    const resolved = this.resolveSettlementPrice({
+    const resolved = resolveSettlementPrice({
       assetId: details.position.assetId,
       symbol: details.position.asset.symbol,
       expiresAt: details.position.order.expiresAt,
       demo: mode === 'DEMO',
       market,
+      maxAgeMs: env.trading.marketMaxAgeMs,
+      demoPrice: (symbol, price) => this.getDemoPrice(symbol, price),
+      onLateFallback: (late) => this.logger.warn(late, 'Settling at the current price: no tick history covers the expiry instant'),
     })
     if (!resolved) {
       throw new TradingError(503, 'MARKET_PRICE_UNAVAILABLE', 'A current market price is required to close the trade')
@@ -670,12 +674,15 @@ export class TradingService {
         where: { id: trade.position.accountId },
         select: { mode: true },
       })
-      const resolved = this.resolveSettlementPrice({
+      const resolved = resolveSettlementPrice({
         assetId: trade.position.assetId,
         symbol: trade.position.asset.symbol,
         expiresAt: trade.position.order.expiresAt,
         demo: account?.mode === 'DEMO',
         market,
+        maxAgeMs: env.trading.marketMaxAgeMs,
+        demoPrice: (symbol, price) => this.getDemoPrice(symbol, price),
+        onLateFallback: (late) => this.logger.warn(late, 'Settling at the current price: no tick history covers the expiry instant'),
       })
       if (!resolved) continue
 
@@ -1117,46 +1124,6 @@ export class TradingService {
       lastPriceProvider: live.provider,
       ...(market?.status !== undefined || !market ? { status: 'OPEN' } : {}),
     } as T
-  }
-
-  /**
-   * The price a trade settles at: the tick in force at the expiry instant (taken from the in-memory
-   * tick history), so the settlement worker's own lag does not move the result. If no tick covers
-   * the expiry instant (for example after a restart) the current fresh price is used instead and the
-   * lateness is logged; the settlement record still carries the real tick timestamp.
-   * DEMO accounts may fall back to the simulated price; REAL accounts never do.
-   */
-  private resolveSettlementPrice(input: {
-    assetId: string
-    symbol: string
-    expiresAt: Date | null
-    demo: boolean
-    market: { lastPrice: Prisma.Decimal | null; lastPriceAt: Date | null; lastPriceProvider?: string | null } | undefined
-  }): { price: Prisma.Decimal; provider: string; timestamp: Date } | null {
-    if (input.expiresAt) {
-      const exact = getLivePriceAt(input.assetId, input.expiresAt.getTime(), env.trading.marketMaxAgeMs)
-      if (exact) {
-        return { price: new Prisma.Decimal(exact.price), provider: exact.provider, timestamp: new Date(exact.at) }
-      }
-    }
-
-    const { market } = input
-    const fresh = Boolean(
-      market?.lastPrice &&
-      market.lastPriceAt &&
-      Date.now() - market.lastPriceAt.getTime() <= env.trading.marketMaxAgeMs,
-    )
-    if (fresh && market?.lastPrice && market.lastPriceAt) {
-      this.logger.warn(
-        { assetId: input.assetId, symbol: input.symbol, lateMs: input.expiresAt ? Date.now() - input.expiresAt.getTime() : null },
-        'Settling at the current price: no tick history covers the expiry instant',
-      )
-      return { price: market.lastPrice, provider: market.lastPriceProvider ?? 'unknown', timestamp: market.lastPriceAt }
-    }
-    if (input.demo) {
-      return { price: this.getDemoPrice(input.symbol, market?.lastPrice), provider: 'demo-simulation', timestamp: new Date() }
-    }
-    return null
   }
 
   private getDemoPrice(symbol: string, marketPrice: Prisma.Decimal | null | undefined): Prisma.Decimal {
