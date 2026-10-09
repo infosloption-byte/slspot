@@ -5,6 +5,27 @@
  */
 export type KycTier = 0 | 1 | 2
 
+export type PaymentGateDirection = 'deposit' | 'withdrawal'
+export type PaymentProviderGateInput = {
+  direction: PaymentGateDirection
+  providerIsSandbox: boolean
+  sandboxModeEnabled: boolean
+  launchApproved: boolean
+  depositsEnabled: boolean
+  withdrawalsEnabled: boolean
+}
+
+/**
+ * Sandbox adapters are allowed only when sandbox mode is enabled (and the environment validator
+ * prevents that mode in production). Every non-sandbox provider additionally requires both master
+ * launch approval and the relevant operation-specific flag.
+ */
+export function isPaymentProviderOperationAllowed(input: PaymentProviderGateInput): boolean {
+  if (input.providerIsSandbox) return input.sandboxModeEnabled
+  if (!input.launchApproved) return false
+  return input.direction === 'deposit' ? input.depositsEnabled : input.withdrawalsEnabled
+}
+
 export type RuleBlocker = { code: string; message: string }
 
 const SCALE = 8
