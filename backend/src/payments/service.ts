@@ -929,21 +929,46 @@ export class PaymentService {
   }
 
   private async finalizeWithdrawal(withdrawalId: string): Promise<void> {
-    const done = await this.prisma.withdrawal.updateMany({
-      where: { id: withdrawalId, status: 'PROCESSING' },
-      data: { status: 'COMPLETED', completedAt: this.now() },
+    const result = await this.prisma.$transaction(async (tx) => {
+      const done = await tx.withdrawal.updateMany({
+        where: { id: withdrawalId, status: 'PROCESSING' },
+        data: { status: 'COMPLETED', completedAt: this.now() },
+      })
+      const withdrawal = await tx.withdrawal.findUnique({
+        where: { id: withdrawalId },
+        include: { wallet: { include: { account: { select: { userId: true } } } } },
+      })
+      if (!withdrawal || withdrawal.status !== 'COMPLETED') return null
+
+      // The payout state and wallet transaction status must commit together. Also repair a legacy
+      // partial finalization safely if the withdrawal was already completed by older code.
+      if (withdrawal.walletTransactionId) {
+        await tx.walletTransaction.update({
+          where: { id: withdrawal.walletTransactionId },
+          data: { status: 'COMPLETED' },
+        })
+      }
+
+      return {
+        transitioned: done.count === 1,
+        userId: withdrawal.wallet.account.userId,
+        amount: withdrawal.amount.toString(),
+        currency: withdrawal.currency,
+        destination: withdrawal.destination,
+      }
     })
-    if (done.count !== 1) return
-    const withdrawal = await this.prisma.withdrawal.findUniqueOrThrow({
-      where: { id: withdrawalId },
-      include: { wallet: { include: { account: { select: { userId: true } } } } },
+
+    if (!result || !result.transitioned) return
+    await this.audit(result.userId, 'WITHDRAWAL_COMPLETED', 'Withdrawal', withdrawalId, {
+      provider: (await this.prisma.withdrawal.findUnique({ where: { id: withdrawalId }, select: { provider: true } }))?.provider ?? 'unknown',
+      amount: result.amount,
     })
-    if (withdrawal.walletTransactionId) {
-      await this.prisma.walletTransaction.update({ where: { id: withdrawal.walletTransactionId }, data: { status: 'COMPLETED' } })
-    }
-    const userId = withdrawal.wallet.account.userId
-    await this.audit(userId, 'WITHDRAWAL_COMPLETED', 'Withdrawal', withdrawalId, { provider: withdrawal.provider, amount: withdrawal.amount.toString() })
-    await this.safeNotify(userId, 'WITHDRAWAL', 'Withdrawal completed', 'Your withdrawal of ' + withdrawal.amount.toString() + ' ' + withdrawal.currency + ' to ' + (withdrawal.destination ?? withdrawal.provider) + ' was sent.')
+    await this.safeNotify(
+      result.userId,
+      'WITHDRAWAL',
+      'Withdrawal completed',
+      'Your withdrawal of ' + result.amount + ' ' + result.currency + ' to ' + (result.destination ?? 'your saved payment method') + ' was sent.',
+    )
   }
 
   /** Give the held funds back to the user. Returns false when the withdrawal was not in an allowed state. */
