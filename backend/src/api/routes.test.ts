@@ -490,6 +490,55 @@ describe('platform API routes', () => {
     await app.close()
   })
 
+  it('blocks direct REAL deposit and withdrawal requests before demo funding services run', async () => {
+    let demoDepositCalled = false
+    let demoWithdrawalCalled = false
+    const scoped = {
+      ...apiService,
+      createDemoDeposit: async () => {
+        demoDepositCalled = true
+        throw new Error('REAL deposit must not reach demo funding')
+      },
+      createDemoWithdrawal: async () => {
+        demoWithdrawalCalled = true
+        throw new Error('REAL withdrawal must not reach demo funding')
+      },
+    } as unknown as PlatformApiService
+
+    const app = buildApp({ logging: false, authService, apiService: scoped })
+    await app.ready()
+    const cookie = 'slspot_session=test-session'
+    const csrf = await csrfToken(app, cookie)
+
+    const deposit = await app.inject({
+      method: 'POST',
+      url: '/api/v1/wallet/deposit',
+      headers: {
+        cookie,
+        'x-csrf-token': csrf,
+        'x-wallet-mode': 'REAL',
+      },
+      payload: { amount: '10', clientRequestId: 'real-deposit-must-be-blocked' },
+    })
+
+    const withdrawal = await app.inject({
+      method: 'POST',
+      url: '/api/v1/wallet/withdraw',
+      headers: {
+        cookie,
+        'x-csrf-token': csrf,
+        'x-wallet-mode': 'REAL',
+      },
+      payload: { amount: '10', destination: 'test-destination', clientRequestId: 'real-withdrawal-must-be-blocked' },
+    })
+
+    assert.equal(deposit.statusCode, 503)
+    assert.equal(withdrawal.statusCode, 503)
+    assert.equal(demoDepositCalled, false)
+    assert.equal(demoWithdrawalCalled, false)
+    await app.close()
+  })
+
   it('requires an idempotency key for trade creation', async () => {
     const app = buildApp({ logging: false, authService, apiService, tradingService })
     await app.ready()
