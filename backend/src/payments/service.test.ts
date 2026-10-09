@@ -71,6 +71,7 @@ function fixture(input: {
   adapter: PaymentProviderAdapter
   payments?: Partial<PaymentsConfig>
   adminGate?: { depositsEnabled: boolean; withdrawalsEnabled: boolean } | null
+  dateOfBirth?: Date
 }) {
   const row = configRow(input.adapter.capabilities.id)
   const prismaMock = {
@@ -81,7 +82,7 @@ function fixture(input: {
         status: 'ACTIVE',
         countryCode: 'LK',
         legalName: 'Test Trader',
-        dateOfBirth: new Date('1990-01-01T00:00:00.000Z'),
+        dateOfBirth: input.dateOfBirth ?? new Date('1990-01-01T00:00:00.000Z'),
         emailVerifiedAt: new Date('2026-01-01T00:00:00.000Z'),
         twoFactorEnabled: true,
       }),
@@ -132,6 +133,21 @@ test('live payment methods appear only when both gates allow that operation', as
 
   assert.deepEqual((await service.listMethods('user-1', 'deposit')).map((method) => method.id), ['live_card'])
   assert.deepEqual(await service.listMethods('user-1', 'withdrawal'), [])
+})
+
+test('service rejects deposit creation for an underage profile before wallet transaction', async () => {
+  const [sandboxCard] = createSandboxProviders('sandbox-age-test-secret')
+  const service = fixture({
+    adapter: sandboxCard!,
+    payments: { sandbox: true },
+    adminGate: null,
+    dateOfBirth: new Date('2012-05-01T00:00:00.000Z'),
+  })
+
+  await assert.rejects(
+    service.createDeposit('user-1', { provider: 'card', amount: '10', clientRequestId: 'age-gate-test' }),
+    (error: unknown) => error instanceof PaymentError && error.code === 'AGE_RESTRICTED',
+  )
 })
 
 test('provider methods cannot be enabled for an operation the adapter does not support', async () => {
