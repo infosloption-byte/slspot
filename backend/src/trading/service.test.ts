@@ -108,3 +108,39 @@ test('real-money launch gate rejects new REAL trades before transaction side eff
   )
   assert.equal(transactionStarted, false)
 })
+
+test('administrative REAL-trading switch blocks creation inside the transaction', async () => {
+  let userLookupStarted = false
+  const prisma = {
+    order: { findUnique: async () => null },
+    $transaction: async (callback: (tx: unknown) => unknown) => {
+      return callback({
+        realMoneyGate: { findUnique: async () => ({ tradingEnabled: false }) },
+        user: { findUnique: async () => {
+          userLookupStarted = true
+          return { status: 'ACTIVE' }
+        } },
+      })
+    },
+  } as unknown as PrismaClient
+  const service = new TradingService(prisma, undefined, {
+    launchApproved: true,
+    tradingEnabled: true,
+    depositsEnabled: false,
+    withdrawalsEnabled: false,
+  })
+
+  await assert.rejects(
+    service.createTrade('user-1', {
+      clientRequestId: 'admin-real-gate-regression',
+      assetId: 'asset-1',
+      direction: 'UP',
+      amount: '10',
+      durationSeconds: 60,
+    }, 'REAL'),
+    (error: unknown) => error instanceof TradingError
+      && error.code === 'REAL_TRADING_DISABLED'
+      && error.statusCode === 503,
+  )
+  assert.equal(userLookupStarted, false)
+})
