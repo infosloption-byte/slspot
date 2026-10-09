@@ -3,6 +3,7 @@ import { Prisma, type PrismaClient } from '../generated/prisma/client.js'
 import { env } from '../config/env.js'
 import { createRealtimeEvent, serializeRealtimeEvent } from '../realtime/events.js'
 import { publishRealtime } from '../realtime/bus.js'
+import { publishSessionsRevoked, publishUserSessionsRevoked } from '../realtime/session-revocation.js'
 import { createOpaqueToken, hashOpaqueToken, hashPassword, verifyPassword } from './crypto.js'
 import { createOtpAuthUri, createRecoveryCodes, decryptTotpSecret, encryptTotpSecret, generateTotpSecret, normalizeRecoveryCode, verifyTotpCode } from './totp.js'
 import { LedgerService } from '../ledger/service.js'
@@ -584,8 +585,9 @@ export class AuthService {
   async logout(sessionId: string): Promise<void> {
     const now = new Date()
     const session = await this.prisma.session.findUnique({ where: { id: sessionId }, select: { userId: true, deviceId: true } })
-    await this.prisma.session.updateMany({ where: { id: sessionId, revokedAt: null }, data: { revokedAt: now } })
+    const result = await this.prisma.session.updateMany({ where: { id: sessionId, revokedAt: null }, data: { revokedAt: now } })
     if (session?.deviceId) await this.prisma.device.update({ where: { id: session.deviceId }, data: { revokedAt: now } })
+    if (result.count > 0) await publishSessionsRevoked([sessionId])
   }
 
   async logoutAll(userId: string): Promise<void> {
@@ -594,6 +596,7 @@ export class AuthService {
       await tx.session.updateMany({ where: { userId, revokedAt: null }, data: { revokedAt: now } })
       await tx.device.updateMany({ where: { userId, revokedAt: null }, data: { revokedAt: now } })
     })
+    await publishUserSessionsRevoked(userId)
   }
 
   async listSessions(userId: string, currentSessionId: string) {
@@ -622,6 +625,7 @@ export class AuthService {
     if (result.count === 0) throw new AuthError(404, 'SESSION_NOT_FOUND', 'Session was not found')
     if (session?.deviceId) await this.prisma.device.update({ where: { id: session.deviceId }, data: { revokedAt: now } })
     await this.writeAudit('SESSION_REVOKED', sessionId, userId)
+    await publishSessionsRevoked([sessionId])
   }
 
   async verifyEmail(token: string): Promise<AuthUser> {
@@ -741,6 +745,7 @@ export class AuthService {
         data: { actorUserId: userId, action: 'PASSWORD_CHANGED', entityType: 'User', entityId: userId, ipAddress, userAgent },
       })
     })
+    await publishUserSessionsRevoked(userId, sessionId)
   }
 
   async getPreferences(userId: string): Promise<UserPreferences> {
@@ -810,6 +815,7 @@ export class AuthService {
         data: { actorUserId: record.userId, action: 'PASSWORD_RESET', entityType: 'User', entityId: record.userId },
       })
     })
+    await publishUserSessionsRevoked(record.userId)
   }
 
   private async issueToken(userId: string, type: 'EMAIL_VERIFICATION' | 'PASSWORD_RESET', ttlSeconds: number) {
