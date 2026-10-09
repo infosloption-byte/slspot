@@ -2,12 +2,14 @@ import { Prisma, type PrismaClient } from '../generated/prisma/client.js'
 import type { LedgerService } from '../ledger/service.js'
 import { PaymentProviderRegistry } from './registry.js'
 import {
+  ageOn,
   computeKycTier,
   evaluateDeposit,
   evaluateWithdrawal,
   isPaymentProviderOperationAllowed,
   maskDestination,
   missingProfileFields,
+  MINIMUM_AGE_YEARS,
   toUnits,
   validateDetails,
   withdrawalNeedsReview,
@@ -123,6 +125,7 @@ type UserFacts = {
   kycApproved: boolean
   kycStatus: string
   tier: KycTier
+  age: number | null
   missingProfile: string[]
 }
 
@@ -191,6 +194,7 @@ export class PaymentService {
     const completedDeposits = await this.sumDeposits(userId)
     const depositBlockers = evaluateDeposit({
       tier: facts.tier,
+      age: facts.age,
       emailVerified: facts.emailVerified,
       missingProfile: facts.missingProfile,
       countryCode: facts.user.countryCode,
@@ -289,6 +293,7 @@ export class PaymentService {
 
     const blockers = evaluateDeposit({
       tier: facts.tier,
+      age: facts.age,
       emailVerified: facts.emailVerified,
       missingProfile: facts.missingProfile,
       countryCode: facts.user.countryCode,
@@ -899,6 +904,7 @@ export class PaymentService {
       kycApproved,
       kycStatus: kycCase?.status ?? 'NOT_STARTED',
       tier: computeKycTier({ ...profile, kycApproved }),
+      age: user.dateOfBirth ? ageOn(user.dateOfBirth, this.now()) : null,
       missingProfile: missingProfileFields(profile),
     }
   }
@@ -915,6 +921,7 @@ export class PaymentService {
     ])
     return {
       tier: facts.tier,
+      age: facts.age,
       twoFactorEnabled: facts.twoFactorEnabled,
       countryCode: facts.user.countryCode,
       blockedCountries: this.config.blockedCountries,
