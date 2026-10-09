@@ -61,6 +61,13 @@ export function registerAdminRoutes(app: FastifyInstance, options: { authService
       const session = await requireAdmin(request, options.authService, options.adminService)
       return ok(request, await payments.rejectWithdrawal(session.id, request.params.id, request.body.reason.trim()))
     })
+
+    app.post<{ Params: { id: string } }>(PREFIX + '/payments/withdrawals/:id/reconcile', {
+      schema: { params: { type: 'object', required: ['id'], properties: { id: { type: 'string', pattern: UUID_PATTERN } } } },
+    }, async (request) => {
+      const session = await requireAdmin(request, options.authService, options.adminService)
+      return ok(request, await payments.reconcileWithdrawal(session.id, request.params.id))
+    })
   }
 
   app.get(PREFIX + '/me', async (request) => {
