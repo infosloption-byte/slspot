@@ -2,7 +2,7 @@ import type { FastifyInstance, FastifyRequest } from 'fastify'
 import { AuthError, type AuthSession } from '../auth/service.js'
 import type { AuthServiceLike } from '../auth/routes.js'
 import { env } from '../config/env.js'
-import { AdminError, AdminService, type AdminStatus } from './service.js'
+import { AdminError, AdminService, type AdminRealMoneyGateInput, type AdminStatus } from './service.js'
 
 const PREFIX = '/api/v1/admin'
 const STATUSES = ['PENDING_VERIFICATION', 'ACTIVE', 'SUSPENDED', 'DISABLED'] as const
@@ -243,6 +243,29 @@ export function registerAdminRoutes(app: FastifyInstance, options: { authService
   }, async (request) => {
     const session = await requireAdmin(request, options.authService, options.adminService)
     return ok(request, await options.adminService.archiveAnnouncement(session.id, request.params.announcementId))
+  })
+
+  app.get(PREFIX + '/real-money-gate', async (request) => {
+    await requireAdmin(request, options.authService, options.adminService)
+    return ok(request, await options.adminService.getRealMoneyGate())
+  })
+
+  app.put<{ Body: AdminRealMoneyGateInput }>(PREFIX + '/real-money-gate', {
+    schema: {
+      body: {
+        type: 'object',
+        required: ['tradingEnabled', 'depositsEnabled', 'withdrawalsEnabled'],
+        additionalProperties: false,
+        properties: {
+          tradingEnabled: { type: 'boolean' },
+          depositsEnabled: { type: 'boolean' },
+          withdrawalsEnabled: { type: 'boolean' },
+        },
+      },
+    },
+  }, async (request) => {
+    const session = await requireAdmin(request, options.authService, options.adminService)
+    return ok(request, await options.adminService.updateRealMoneyGate(session.id, request.body))
   })
 
   app.get(PREFIX + '/risk', async (request) => {
