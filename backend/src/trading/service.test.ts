@@ -6,6 +6,7 @@ import {
   calculateSettlementTerms,
   evaluateTrade,
   TradingError,
+  TradingService,
 } from './service.js'
 
 test('UP wins only when the settlement price is above entry', () => {
