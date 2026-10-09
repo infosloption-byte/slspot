@@ -28,6 +28,10 @@ export function toBinanceSymbol(externalSymbol: string): string {
 
 export const DEFAULT_FALLBACK_URLS = ['https://data-api.binance.vision', 'https://api1.binance.com', 'https://api2.binance.com']
 
+// Bound logical requests so candle-close bursts do not open hundreds of sockets.
+const MAX_CONCURRENT_REQUESTS = 6
+const HOSTS_PER_ATTEMPT = 2
+
 export class BinanceProvider implements MarketDataProvider {
   readonly name = 'binance'
   readonly assetType = 'CRYPTO' as const
@@ -38,6 +42,8 @@ export class BinanceProvider implements MarketDataProvider {
   private readonly baseUrls: string[]
   private readonly requestTimeoutMs: number
   private readonly fetcher: FetchLike
+  private activeRequests = 0
+  private readonly requestWaiters: Array<() => void> = []
 
   constructor(options: BinanceProviderOptions = {}) {
     // Several public hosts: some networks block or throttle api.binance.com while the
@@ -94,29 +100,59 @@ export class BinanceProvider implements MarketDataProvider {
     }))
   }
 
+  private async acquireRequestSlot(): Promise<void> {
+    if (this.activeRequests < MAX_CONCURRENT_REQUESTS) {
+      this.activeRequests += 1
+      return
+    }
+    await new Promise<void>((resolve) => this.requestWaiters.push(resolve))
+  }
+
+  private releaseRequestSlot(): void {
+    const next = this.requestWaiters.shift()
+    if (next) next()
+    else this.activeRequests -= 1
+  }
+
   private async request<T>(path: string, params: Record<string, string>): Promise<T> {
-    const controllers = this.baseUrls.map(() => new AbortController())
-    const attempts = this.baseUrls.map(async (baseUrl, index) => {
-      const url = new URL(baseUrl + path)
-      Object.entries(params).forEach(([key, value]) => url.searchParams.set(key, value))
-      const controller = controllers[index]!
-      const timeout = setTimeout(() => controller.abort(), this.requestTimeoutMs)
-      timeout.unref?.()
-      try {
-        const response = await this.fetcher(url, { headers: { Accept: 'application/json' }, signal: controller.signal })
-        if (!response.ok) throw new Error('Binance HTTP ' + response.status + ' from ' + url.host)
-        return await response.json() as T
-      } finally {
-        clearTimeout(timeout)
-      }
-    })
+    await this.acquireRequestSlot()
+    const reasons: string[] = []
     try {
-      return await Promise.any(attempts)
-    } catch (error) {
-      const reasons = error instanceof AggregateError ? error.errors.map((reason) => String(reason instanceof Error ? reason.message : reason)) : [String(error)]
+      // Probe two hosts at a time: one primary and one fallback. A broad fan-out
+      // against every host for every candle can overload the local connection pool.
+      for (let offset = 0; offset < this.baseUrls.length; offset += HOSTS_PER_ATTEMPT) {
+        const hosts = this.baseUrls.slice(offset, offset + HOSTS_PER_ATTEMPT)
+        const controllers = hosts.map(() => new AbortController())
+        const attempts = hosts.map(async (baseUrl, index) => {
+          const url = new URL(baseUrl + path)
+          Object.entries(params).forEach(([key, value]) => url.searchParams.set(key, value))
+          const controller = controllers[index]!
+          const timeout = setTimeout(() => controller.abort(), this.requestTimeoutMs)
+          timeout.unref?.()
+          try {
+            const response = await this.fetcher(url, { headers: { Accept: 'application/json' }, signal: controller.signal })
+            if (!response.ok) throw new Error('Binance HTTP ' + response.status + ' from ' + url.host)
+            return await response.json() as T
+          } finally {
+            clearTimeout(timeout)
+          }
+        })
+
+        try {
+          return await Promise.any(attempts)
+        } catch (error) {
+          if (error instanceof AggregateError) {
+            reasons.push(...error.errors.map((reason) => String(reason instanceof Error ? reason.message : reason)))
+          } else {
+            reasons.push(String(error instanceof Error ? error.message : error))
+          }
+        } finally {
+          controllers.forEach((controller) => controller.abort())
+        }
+      }
       throw new Error('Binance request failed on every endpoint: ' + reasons.join('; '))
     } finally {
-      controllers.forEach((controller) => controller.abort())
+      this.releaseRequestSlot()
     }
   }
 }
