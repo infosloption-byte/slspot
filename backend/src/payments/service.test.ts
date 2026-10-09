@@ -164,6 +164,72 @@ test('provider methods cannot be enabled for an operation the adapter does not s
   assert.deepEqual((await service.listMethods('user-1', 'deposit')).map((method) => method.id), ['live_card'])
 })
 
+test('retries an unmatched signed webhook after the payment reference becomes visible', async () => {
+  let notifications = 0
+  const eventRecord: {
+    id: string
+    provider: string
+    payload: unknown
+    processedAt: Date | null
+    error: string | null
+    createdAt: Date
+  } = {
+    id: 'payment-event-early-1',
+    provider: liveCapabilities.id,
+    payload: {
+      event: {
+        eventId: 'event-early-1',
+        type: 'deposit.failed',
+        providerReference: 'provider-ref-early-1',
+        amount: '25.00',
+        currency: 'USD',
+        reason: 'Declined by provider',
+      },
+      raw: '{}',
+    },
+    processedAt: null,
+    error: 'No matching payment for reference',
+    createdAt: new Date('2026-10-09T10:00:00.000Z'),
+  }
+  const deposit = {
+    id: 'deposit-early-1',
+    amount: { toString: () => '25.00' },
+    currency: 'USD',
+    wallet: { account: { id: 'account-1', userId: 'user-1' } },
+  }
+  const prismaMock = {
+    paymentEvent: {
+      findMany: async () => eventRecord.processedAt === null ? [{ ...eventRecord }] : [],
+      updateMany: async () => ({ count: eventRecord.processedAt === null ? 1 : 0 }),
+      update: async ({ data }: { data: Partial<typeof eventRecord> }) => {
+        Object.assign(eventRecord, data)
+        return eventRecord
+      },
+    },
+    deposit: {
+      findFirst: async () => deposit,
+      updateMany: async () => ({ count: 1 }),
+    },
+    auditLog: { create: async () => ({ id: 'audit-early-1' }) },
+  } as unknown as PrismaClient
+  const registry = new PaymentProviderRegistry()
+  registry.register(liveAdapter())
+  const service = new PaymentService(
+    prismaMock,
+    registry,
+    {} as LedgerService,
+    async () => { notifications += 1 },
+    baseConfig,
+  )
+
+  assert.equal(await service.retryUnmatchedPaymentEvents(), 1)
+  assert.ok(eventRecord.processedAt instanceof Date)
+  assert.equal(eventRecord.error, null)
+  assert.equal(notifications, 1)
+  assert.equal(await service.retryUnmatchedPaymentEvents(), 0)
+  assert.equal(notifications, 1)
+})
+
 test('withdrawal reconciliation leaves funds untouched while the provider still reports pending', async () => {
   let writes = 0
   const withdrawal = {
