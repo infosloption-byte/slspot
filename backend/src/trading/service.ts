@@ -9,6 +9,7 @@ import { publishRealtime } from '../realtime/bus.js'
 import { getTradingRules, TRADING_RULES } from './config.js'
 import { LedgerService } from '../ledger/service.js'
 import { EmailService } from '../email/service.js'
+import { realMoneyOperationBlockReason, type RealMoneyGateConfig } from './real-money-gate.js'
 
 export type TradeDirection = 'UP' | 'DOWN'
 export type WalletMode = 'DEMO' | 'REAL'
@@ -198,6 +199,7 @@ export class TradingService {
       warn: (value: unknown, message?: string) => void
       error: (value: unknown, message?: string) => void
     } = console,
+    private readonly realMoneyGate: RealMoneyGateConfig = env.realMoney,
   ) {
     this.ledger = new LedgerService(prisma)
   }
@@ -269,6 +271,13 @@ export class TradingService {
     }
     if (existing) {
       throw new TradingError(409, 'ORDER_ALREADY_EXISTS', 'The order already exists')
+    }
+
+    // Idempotent retries of an already-created order are returned above, but no
+    // new REAL order may enter the transaction unless both launch flags allow it.
+    if (mode === 'REAL') {
+      const blockReason = realMoneyOperationBlockReason('TRADING', this.realMoneyGate)
+      if (blockReason) throw new TradingError(503, 'REAL_TRADING_DISABLED', blockReason)
     }
 
     try {
