@@ -648,10 +648,74 @@ export class PaymentService {
     if (record) {
       await this.prisma.paymentEvent.update({
         where: { id: record.id },
-        data: { processedAt: this.now(), error: outcome === 'ignored' ? 'No matching payment for reference' : null },
+        // Unknown references can be a legitimate create/webhook race. Keep the signed normalized
+        // event retryable until the payment row's provider reference is visible.
+        data: {
+          processedAt: outcome === 'processed' ? this.now() : null,
+          error: outcome === 'ignored' ? 'No matching payment for reference' : null,
+        },
       })
     }
     return { status: outcome }
+  }
+
+  /**
+   * Retry a small batch of valid, signed webhook events that arrived before their payment reference
+   * was persisted. State transitions remain conditional/idempotent, so replaying a batch is safe.
+   */
+  async retryUnmatchedPaymentEvents(limit = 50): Promise<number> {
+    const take = Math.min(100, Math.max(1, Math.trunc(limit)))
+    const records = await this.prisma.paymentEvent.findMany({
+      where: { processedAt: null, error: 'No matching payment for reference' },
+      orderBy: { createdAt: 'asc' },
+      take,
+    })
+    let processed = 0
+
+    for (const record of records) {
+      const claim = await this.prisma.paymentEvent.updateMany({
+        where: { id: record.id, processedAt: null, error: 'No matching payment for reference' },
+        data: { error: 'Retrying unmatched payment event' },
+      })
+      if (claim.count !== 1) continue
+
+      const payload = record.payload && typeof record.payload === 'object' && !Array.isArray(record.payload)
+        ? record.payload as Prisma.JsonObject
+        : null
+      const eventValue = payload?.event
+      if (!eventValue || typeof eventValue !== 'object' || Array.isArray(eventValue)) {
+        await this.prisma.paymentEvent.update({
+          where: { id: record.id },
+          data: { error: 'Stored webhook event is malformed' },
+        })
+        continue
+      }
+
+      const event = eventValue as unknown as NormalizedEvent
+      try {
+        const outcome = event.type.startsWith('deposit.')
+          ? await this.applyDepositEvent(record.provider, event)
+          : await this.applyWithdrawalEvent(record.provider, event)
+        await this.prisma.paymentEvent.update({
+          where: { id: record.id },
+          data: {
+            processedAt: outcome === 'processed' ? this.now() : null,
+            error: outcome === 'ignored' ? 'No matching payment for reference' : null,
+          },
+        })
+        if (outcome === 'processed') processed += 1
+      } catch (error) {
+        await this.prisma.paymentEvent.update({
+          where: { id: record.id },
+          data: { error: String(error instanceof Error ? error.message : error).slice(0, 255) },
+        }).catch((updateError: unknown) => {
+          this.logger.error({ err: updateError, paymentEventId: record.id }, 'Could not update unmatched payment event after retry failure')
+        })
+        this.logger.error({ err: error, paymentEventId: record.id, provider: record.provider }, 'Retrying unmatched payment event failed')
+      }
+    }
+
+    return processed
   }
 
   // ------------------------------------------------------------ internals
