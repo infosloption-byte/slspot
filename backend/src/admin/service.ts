@@ -274,6 +274,7 @@ export class AdminService {
           select: { id: true, name: true, currency: true, mode: true, status: true, createdAt: true, wallets: { select: { id: true, currency: true, status: true, availableBalance: true, heldBalance: true } } },
         },
         kycCases: { orderBy: { createdAt: 'desc' }, take: 5, select: { id: true, provider: true, providerCaseId: true, status: true, submittedAt: true, resolvedAt: true, createdAt: true, updatedAt: true } },
+        policyAcceptances: { orderBy: { acceptedAt: 'desc' }, take: 20, select: { id: true, policyType: true, version: true, acceptedAt: true, source: true } },
         sessions: { orderBy: { createdAt: 'desc' }, take: 20, select: { id: true, deviceId: true, ipAddress: true, userAgent: true, createdAt: true, updatedAt: true, expiresAt: true, revokedAt: true } },
       },
     })
