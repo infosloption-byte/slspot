@@ -15,10 +15,10 @@ const OPERATION_FLAG: Record<RealMoneyOperation, keyof RealMoneyGateConfig> = {
   WITHDRAWAL: 'withdrawalsEnabled',
 }
 
-const OPERATION_LABEL: Record<RealMoneyOperation, string> = {
-  TRADING: 'trading',
-  DEPOSIT: 'deposits',
-  WITHDRAWAL: 'withdrawals',
+const OPERATION_DISABLED_MESSAGE: Record<RealMoneyOperation, string> = {
+  TRADING: 'Real-money trading is not enabled.',
+  DEPOSIT: 'Real-money deposits are not enabled.',
+  WITHDRAWAL: 'Real-money withdrawals are not enabled.',
 }
 
 /**
@@ -37,7 +37,7 @@ export function realMoneyOperationBlockReason(
   }
 
   if (!gate[OPERATION_FLAG[operation]]) {
-    return 'Real-money ' + OPERATION_LABEL[operation] + ' are not enabled.'
+    return OPERATION_DISABLED_MESSAGE[operation]
   }
 
   return null
