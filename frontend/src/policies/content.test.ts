@@ -15,6 +15,7 @@ test('every public policy link has substantive draft content', () => {
 
 test('cardholder agreement remains clearly conditional in the draft', () => {
   const policy = POLICY_CONTENT.cardholder
+  if (!policy) throw new Error('missing cardholder policy content')
   assert.match(policy.summary, /does not currently offer saved-card/i)
   assert.match(policy.sections[0]?.paragraphs?.join(' ') ?? '', /not currently enabled/i)
 })
