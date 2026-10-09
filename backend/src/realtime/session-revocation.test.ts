@@ -67,9 +67,11 @@ describe('realtime session revocation', () => {
       { assetId: 'asset-a', last: '1' },
       INTERNAL_SESSION_REVOCATION_CHANNEL,
     ))
+    const unscopedControl = serializeRealtimeEvent(createRealtimeEvent('session.revoked', { sessionIds: ['session-a'] }))
 
     assert.equal(parseRealtimeEvent(control)?.type, 'session.revoked')
     assert.equal(parseRealtimeEvent(publicEventOnInternalChannel), null)
+    assert.equal(parseRealtimeEvent(unscopedControl), null)
   })
 
   it('closes only sockets for explicitly revoked session IDs and never forwards the control event', async () => {
