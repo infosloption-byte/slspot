@@ -267,7 +267,7 @@ export function PaymentFlowPanel({ onUpdated }: Props) {
   }
 
   const missingProfile = (eligibility?.missingProfile.length ?? 0) > 0
-  const canCancelDeposit = deposit && ['PENDING', 'PROCESSING'].includes(deposit.status)
+  const canCancelDeposit = deposit?.status === 'PENDING'
 
   return (
     <section className="dashboard-card panel wallet-funding-card payment-flow-card">
