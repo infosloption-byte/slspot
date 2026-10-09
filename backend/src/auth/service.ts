@@ -586,8 +586,8 @@ export class AuthService {
     const now = new Date()
     const session = await this.prisma.session.findUnique({ where: { id: sessionId }, select: { userId: true, deviceId: true } })
     const result = await this.prisma.session.updateMany({ where: { id: sessionId, revokedAt: null }, data: { revokedAt: now } })
-    if (session?.deviceId) await this.prisma.device.update({ where: { id: session.deviceId }, data: { revokedAt: now } })
     if (result.count > 0) await publishSessionsRevoked([sessionId])
+    if (session?.deviceId) await this.prisma.device.update({ where: { id: session.deviceId }, data: { revokedAt: now } })
   }
 
   async logoutAll(userId: string): Promise<void> {
@@ -623,9 +623,9 @@ export class AuthService {
     const session = await this.prisma.session.findFirst({ where: { id: sessionId, userId, revokedAt: null }, select: { deviceId: true } })
     const result = await this.prisma.session.updateMany({ where: { id: sessionId, userId, revokedAt: null }, data: { revokedAt: now } })
     if (result.count === 0) throw new AuthError(404, 'SESSION_NOT_FOUND', 'Session was not found')
+    await publishSessionsRevoked([sessionId])
     if (session?.deviceId) await this.prisma.device.update({ where: { id: session.deviceId }, data: { revokedAt: now } })
     await this.writeAudit('SESSION_REVOKED', sessionId, userId)
-    await publishSessionsRevoked([sessionId])
   }
 
   async verifyEmail(token: string): Promise<AuthUser> {
