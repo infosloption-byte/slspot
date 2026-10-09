@@ -288,6 +288,38 @@ export class TradingService {
 
     try {
       const result = await this.prisma.$transaction(async (tx) => {
+        if (mode === 'REAL') {
+          let administrativeGate: { tradingEnabled: boolean } | null
+          try {
+            administrativeGate = await tx.realMoneyGate.findUnique({
+              where: { id: 'GLOBAL' },
+              select: { tradingEnabled: true },
+            })
+          } catch (error) {
+            this.logger.error(
+              { userId, operation: 'REAL_TRADING', error },
+              'Could not verify the administrative REAL trading gate',
+            )
+            throw new TradingError(
+              503,
+              'REAL_TRADING_GATE_UNAVAILABLE',
+              'Real-money trading is disabled because launch controls could not be verified.',
+            )
+          }
+
+          if (!administrativeGate?.tradingEnabled) {
+            this.logger.warn(
+              { userId, operation: 'REAL_TRADING', code: 'REAL_TRADING_DISABLED' },
+              'Blocked REAL trade because the administrative launch gate is closed',
+            )
+            throw new TradingError(
+              503,
+              'REAL_TRADING_DISABLED',
+              'Real-money trading is disabled by the administrative launch gate.',
+            )
+          }
+        }
+
         const user = await tx.user.findUnique({ where: { id: userId }, select: { status: true } })
         if (!user || user.status !== 'ACTIVE') {
           throw new TradingError(403, 'USER_NOT_ELIGIBLE', 'The account is not eligible for trading')
