@@ -1,4 +1,5 @@
 import 'dotenv/config'
+import { randomBytes } from 'node:crypto'
 
 const NODE_ENVS = ['development', 'test', 'production'] as const
 const LOG_LEVELS = ['fatal', 'error', 'warn', 'info', 'debug', 'trace'] as const
@@ -291,6 +292,17 @@ if (parseBoolean('MARKET_DATA_SIMULATE', process.env.MARKET_DATA_SIMULATE, false
   throw new Error('MARKET_DATA_SIMULATE is no longer supported: all prices come from the live exchange feed')
 }
 // Crypto is priced from Binance only (no cross-exchange failover, so a trade never mixes price sources).
+// Sandbox payment providers fake the money movement (they credit wallets without real funds), so they may
+// only exist outside production. They are what lets deposit/withdrawal flows be tested before real
+// provider credentials exist.
+const paymentsSandbox = parseBoolean('PAYMENTS_SANDBOX', process.env.PAYMENTS_SANDBOX, nodeEnv !== 'production')
+if (paymentsSandbox && nodeEnv === 'production') {
+  throw new Error('PAYMENTS_SANDBOX must not be enabled in production: sandbox providers credit wallets without real funds')
+}
+const paymentsRelaxChecks = parseBoolean('PAYMENTS_RELAX_WITHDRAWAL_CHECKS', process.env.PAYMENTS_RELAX_WITHDRAWAL_CHECKS, false)
+if (paymentsRelaxChecks && nodeEnv === 'production') {
+  throw new Error('PAYMENTS_RELAX_WITHDRAWAL_CHECKS must not be enabled in production')
+}
 const binanceEnabled = parseBoolean('BINANCE_ENABLED', process.env.BINANCE_ENABLED, marketDataProvider !== 'disabled')
 const binanceRestUrl = (process.env.BINANCE_REST_URL?.trim() || 'https://api.binance.com').replace(/\/$/, '')
 const binanceWsUrl = (process.env.BINANCE_WS_URL?.trim() || 'wss://stream.binance.com:9443').replace(/\/$/, '')
@@ -390,6 +402,25 @@ export const env = {
     voidAfterMs: parsePositiveInteger('TRADING_VOID_AFTER_MS', process.env.TRADING_VOID_AFTER_MS, 60_000, 10_000, 3_600_000),
     // 0 disables the scheduled wallet/ledger reconciliation.
     reconcileIntervalMs: parsePositiveInteger('LEDGER_RECONCILE_INTERVAL_MS', process.env.LEDGER_RECONCILE_INTERVAL_MS, 900_000, 0, 86_400_000),
+  },
+  payments: {
+    sandbox: paymentsSandbox,
+    // Secret used to sign sandbox webhooks. Random per boot unless set; only the sandbox uses it.
+    sandboxWebhookSecret: process.env.PAYMENTS_SANDBOX_WEBHOOK_SECRET?.trim() || randomBytes(32).toString('hex'),
+    // Local testing only: skips the KYC, 2FA, turnover and cooling-off withdrawal rules.
+    relaxWithdrawalChecks: paymentsRelaxChecks,
+    // Cumulative completed deposits allowed before ID verification (0 = no limit while limits are being designed).
+    tier1DepositLimit: parseDecimalString('PAYMENTS_TIER1_DEPOSIT_LIMIT', process.env.PAYMENTS_TIER1_DEPOSIT_LIMIT, '0'),
+    // Withdrawals at or above this amount wait for a manual admin review (0 = every withdrawal is reviewed).
+    withdrawalReviewThreshold: parseDecimalString('PAYMENTS_WITHDRAWAL_REVIEW_THRESHOLD', process.env.PAYMENTS_WITHDRAWAL_REVIEW_THRESHOLD, '1000'),
+    // Traded stake required before withdrawing, as a multiple of completed deposits (0 disables).
+    withdrawalTurnoverMultiple: parseDecimalString('PAYMENTS_WITHDRAWAL_TURNOVER_MULTIPLE', process.env.PAYMENTS_WITHDRAWAL_TURNOVER_MULTIPLE, '1'),
+    // Withdrawals are blocked this long after a password or 2FA change.
+    withdrawalCoolingHours: parsePositiveInteger('PAYMENTS_WITHDRAWAL_COOLING_HOURS', process.env.PAYMENTS_WITHDRAWAL_COOLING_HOURS, 24, 0, 720),
+    // A deposit that was never completed at the provider expires after this long.
+    depositExpiryMinutes: parsePositiveInteger('PAYMENTS_DEPOSIT_EXPIRY_MINUTES', process.env.PAYMENTS_DEPOSIT_EXPIRY_MINUTES, 60, 5, 10_080),
+    // Countries (ISO-2, comma separated) that may not use payments. Empty = open to everyone for now.
+    blockedCountries: (process.env.PAYMENTS_BLOCKED_COUNTRIES ?? '').split(',').map((item) => item.trim().toUpperCase()).filter((item) => /^[A-Z]{2}$/.test(item)),
   },
   security: {
     csrfSecret,
