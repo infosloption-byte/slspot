@@ -81,6 +81,7 @@ export function computeKycTier(profile: ProfileInput & { kycApproved: boolean })
 
 export type DepositRuleInput = {
   tier: KycTier
+  age?: number | null
   emailVerified: boolean
   missingProfile: string[]
   countryCode: string | null
@@ -92,6 +93,9 @@ export type DepositRuleInput = {
 
 export function evaluateDeposit(input: DepositRuleInput): RuleBlocker[] {
   const blockers: RuleBlocker[] = []
+  if (input.age !== null && input.age !== undefined && input.age < MINIMUM_AGE_YEARS) {
+    blockers.push({ code: 'AGE_RESTRICTED', message: 'You must be at least ' + MINIMUM_AGE_YEARS + ' years old to use payment services.' })
+  }
   if (!input.emailVerified) blockers.push({ code: 'EMAIL_NOT_VERIFIED', message: 'Verify your email address before depositing.' })
   if (input.missingProfile.length > 0) blockers.push({ code: 'PROFILE_INCOMPLETE', message: 'Complete your profile (legal name, date of birth and country) before depositing.' })
   if (input.countryCode && input.blockedCountries.includes(input.countryCode.toUpperCase())) {
@@ -106,6 +110,7 @@ export function evaluateDeposit(input: DepositRuleInput): RuleBlocker[] {
 
 export type WithdrawalRuleInput = {
   tier: KycTier
+  age?: number | null
   twoFactorEnabled: boolean
   countryCode: string | null
   blockedCountries: readonly string[]
@@ -126,6 +131,9 @@ export type WithdrawalRuleInput = {
 export function evaluateWithdrawal(input: WithdrawalRuleInput): RuleBlocker[] {
   const blockers: RuleBlocker[] = []
   const amount = toUnits(input.amount)
+  if (input.age !== null && input.age !== undefined && input.age < MINIMUM_AGE_YEARS) {
+    blockers.push({ code: 'AGE_RESTRICTED', message: 'You must be at least ' + MINIMUM_AGE_YEARS + ' years old to use payment services.' })
+  }
 
   if (input.tier < 1) blockers.push({ code: 'PROFILE_INCOMPLETE', message: 'Complete your profile before withdrawing.' })
   if (input.countryCode && input.blockedCountries.includes(input.countryCode.toUpperCase())) {
