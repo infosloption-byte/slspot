@@ -1,9 +1,10 @@
 import { ArrowRight, CheckCircle2, KeyRound, MailCheck, ShieldCheck } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router'
 import { ApiError } from '../api/client'
 import { authApi } from '../api/auth'
+import { getCurrentPolicies, type CurrentPolicyCatalogue } from '../api/policies'
 import { formatTime } from '../lib/dateTime'
 import { useAuth } from '../auth/useAuth'
 
@@ -140,6 +141,26 @@ export function AccessPage() {
   const [rememberDevice, setRememberDevice] = useState(initialChallengeRememberDevice)
   const [useRecoveryCode, setUseRecoveryCode] = useState(false)
   const [acceptTerms, setAcceptTerms] = useState(false)
+  const [acknowledgePrivacy, setAcknowledgePrivacy] = useState(false)
+  const [policyCatalogue, setPolicyCatalogue] = useState<CurrentPolicyCatalogue | null>(null)
+  const [policyCatalogueError, setPolicyCatalogueError] = useState('')
+
+  useEffect(() => {
+    if (location.pathname !== '/register') return
+    let active = true
+    setPolicyCatalogue(null)
+    setPolicyCatalogueError('')
+    void getCurrentPolicies()
+      .then((catalogue) => {
+        if (!active) return
+        setPolicyCatalogue(catalogue)
+      })
+      .catch(() => {
+        if (!active) return
+        setPolicyCatalogueError('Current policy versions could not be loaded. Refresh the page before registering.')
+      })
+    return () => { active = false }
+  }, [location.pathname])
   const config = useMemo(
     () => configByPath[location.pathname as keyof typeof configByPath] ?? configByPath['/login'],
     [location.pathname],
@@ -172,7 +193,17 @@ export function AccessPage() {
 
     if (location.pathname === '/register') {
       if (!acceptTerms) {
-        setError('Accept the terms and privacy notice to continue.')
+        setError('You must agree to the Terms & Conditions before registering.')
+        return
+      }
+      if (!acknowledgePrivacy) {
+        setError('You must acknowledge the Privacy Policy before registering.')
+        return
+      }
+      const termsVersion = policyCatalogue?.policies.find((policy) => policy.type === 'TERMS_AND_CONDITIONS')?.version
+      const privacyVersion = policyCatalogue?.policies.find((policy) => policy.type === 'PRIVACY_POLICY')?.version
+      if (!termsVersion || !privacyVersion) {
+        setError(policyCatalogueError || 'Current policy versions are unavailable. Refresh the page and try again.')
         return
       }
       if (values.password !== values.confirm) {
@@ -246,7 +277,13 @@ export function AccessPage() {
       }
 
       if (location.pathname === '/register') {
-        const result = await register(values.email ?? '', values.password ?? '', true, '2026-10')
+        const termsVersion = policyCatalogue?.policies.find((policy) => policy.type === 'TERMS_AND_CONDITIONS')?.version
+        const privacyVersion = policyCatalogue?.policies.find((policy) => policy.type === 'PRIVACY_POLICY')?.version
+        if (!termsVersion || !privacyVersion) {
+          setError(policyCatalogueError || 'Current policy versions are unavailable. Refresh the page and try again.')
+          return
+        }
+        const result = await register(values.email ?? '', values.password ?? '', acceptTerms, acknowledgePrivacy, termsVersion, privacyVersion)
         setSubmitted(true)
         if (result.verification?.token) {
           navigate('/verify-email', {
@@ -405,10 +442,21 @@ export function AccessPage() {
           ) : null}
 
           {location.pathname === '/register' ? (
-            <label className="access-check">
-              <input type="checkbox" checked={acceptTerms} onChange={(event) => { setAcceptTerms(event.target.checked); setError('') }} required />
-              <span>I agree to the SL Spot terms and privacy notice (version 2026-10).</span>
-            </label>
+            <div className="registration-policies">
+              {policyCatalogueError ? <p className="access-form__message" role="alert">{policyCatalogueError}</p> : null}
+              {!policyCatalogue && !policyCatalogueError ? <p className="registration-policies__loading">Loading current policy versions…</p> : null}
+              <label className="access-check">
+                <input type="checkbox" checked={acceptTerms} onChange={(event) => { setAcceptTerms(event.target.checked); setError('') }} required />
+                <span>I have read and agree to the <Link to="/policies/terms" target="_blank" rel="noreferrer">Terms & Conditions</Link>{' '}
+                  {policyCatalogue?.policies.find((policy) => policy.type === 'TERMS_AND_CONDITIONS')?.version ? '(v' + policyCatalogue.policies.find((policy) => policy.type === 'TERMS_AND_CONDITIONS')?.version + ')' : ''}.</span>
+              </label>
+              <label className="access-check">
+                <input type="checkbox" checked={acknowledgePrivacy} onChange={(event) => { setAcknowledgePrivacy(event.target.checked); setError('') }} required />
+                <span>I acknowledge that I have read the <Link to="/policies/privacy" target="_blank" rel="noreferrer">Privacy Policy</Link>{' '}
+                  {policyCatalogue?.policies.find((policy) => policy.type === 'PRIVACY_POLICY')?.version ? '(v' + policyCatalogue.policies.find((policy) => policy.type === 'PRIVACY_POLICY')?.version + ')' : ''}.</span>
+              </label>
+              <small className="registration-policies__notice">Policy pages are review drafts and must be finalized before production launch.</small>
+            </div>
           ) : null}
 
           <button className="btn btn--primary" type="submit" disabled={busy || status === 'loading'}>
