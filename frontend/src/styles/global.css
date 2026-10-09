@@ -3881,3 +3881,5 @@ button.toggle { cursor: pointer; appearance: none; }
   .payment-provider-option__icon { width:32px; height:32px; }
   .payment-result__amount { font-size:21px; }
 }
+
+.payment-provider-option__copy .payment-method-reason { color:var(--accent); font-size:10px; line-height:1.45; }
