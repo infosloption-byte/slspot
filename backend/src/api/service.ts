@@ -1157,7 +1157,13 @@ export class PlatformApiService {
     options?: { announcementId?: string; email?: boolean },
   ): Promise<ApiNotification> {
     const notification = await this.prisma.notification.create({
-      data: { userId, type, title, body },
+      data: {
+        userId,
+        type,
+        title,
+        body,
+        ...(options?.announcementId ? { announcementId: options.announcementId } : {}),
+      },
     })
     const channel = ('user:' + userId) as `user:${string}`
     try {
