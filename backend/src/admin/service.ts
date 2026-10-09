@@ -365,9 +365,9 @@ export class AdminService {
       throw new AdminError(403, 'SUPER_ADMIN_PROTECTED', 'Only a super administrator can revoke a super administrator session')
     }
     const result = await this.prisma.session.updateMany({ where: { userId, revokedAt: null }, data: { revokedAt: new Date() } })
+    await publishUserSessionsRevoked(userId)
     await this.prisma.device.updateMany({ where: { userId, revokedAt: null }, data: { revokedAt: new Date() } })
     await this.prisma.auditLog.create({ data: { actorUserId, action: 'ADMIN_SESSIONS_REVOKED', entityType: 'User', entityId: userId, metadata: { count: result.count } } })
-    await publishUserSessionsRevoked(userId)
     return { revoked: result.count }
   }
 
