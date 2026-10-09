@@ -552,6 +552,9 @@ export class PaymentService {
       outcome: providerStatus.status === 'COMPLETED' ? 'completed' : providerStatus.status === 'FAILED' ? 'refunded' : 'still_processing',
     })
     const updated = await this.prisma.withdrawal.findUniqueOrThrow({ where: { id: withdrawalId } })
+    if (providerStatus.status === 'COMPLETED' && updated.status !== 'COMPLETED') {
+      throw new PaymentError(409, 'WITHDRAWAL_STATE_CHANGED', 'The provider reports completion, but the local withdrawal state changed concurrently. Investigate the request before taking any further action.')
+    }
     return { withdrawal: this.toApiWithdrawal(updated), providerStatus: providerStatus.status }
   }
 
