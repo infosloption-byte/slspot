@@ -58,10 +58,14 @@ export function registerAuthRoutes(app: FastifyInstance, service: AuthServiceLik
     return ok(request,{csrfToken:token})
   })
 
-  app.post<{Body:{email:string;password:string;countryCode?:string;acceptTerms:boolean;termsVersion?:string}}>(PREFIX+'/register',{
-    schema:{body:{type:'object',required:['email','password','acceptTerms'],additionalProperties:false,properties:{
+  app.post<{Body:{email:string;password:string;countryCode?:string;acceptTerms:boolean;acknowledgePrivacy:boolean;termsVersion:string;privacyVersion:string}}>(PREFIX+'/register',{
+    schema:{body:{type:'object',required:['email','password','acceptTerms','acknowledgePrivacy','termsVersion','privacyVersion'],additionalProperties:false,properties:{
       email:{type:'string',minLength:3,maxLength:254},password:{type:'string',minLength:10,maxLength:128},
-      countryCode:{type:'string',minLength:2,maxLength:2},acceptTerms:{type:'boolean',const:true},termsVersion:{type:'string',maxLength:32},
+      countryCode:{type:'string',minLength:2,maxLength:2},
+      acceptTerms:{type:'boolean',const:true},
+      acknowledgePrivacy:{type:'boolean',const:true},
+      termsVersion:{type:'string',minLength:1,maxLength:32},
+      privacyVersion:{type:'string',minLength:1,maxLength:32},
     }}},
   },async(request,reply)=>{
     const result=await service.register(request.body)
