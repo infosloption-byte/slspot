@@ -511,6 +511,7 @@ export class AuthService {
       }
       await tx.auditLog.create({ data: { actorUserId: userId, action: 'TWO_FACTOR_ENABLED', entityType: 'User', entityId: userId } })
     })
+    await this.sendSecurityEmail(userId, 'two-factor-enabled', 'Two-factor authentication enabled', 'Two-factor authentication was enabled for your SL Spot account.')
     return { enabled: true, recoveryCodes }
   }
 
@@ -527,6 +528,7 @@ export class AuthService {
       await tx.recoveryCode.deleteMany({ where: { userId } })
       await tx.auditLog.create({ data: { actorUserId: userId, action: 'TWO_FACTOR_DISABLED', entityType: 'User', entityId: userId } })
     })
+    await this.sendSecurityEmail(userId, 'two-factor-disabled', 'Two-factor authentication changed', 'Two-factor authentication was disabled for your SL Spot account. If you did not make this change, secure your account and contact support.')
   }
 
   async listDevices(userId: string) {
@@ -746,6 +748,7 @@ export class AuthService {
       })
     })
     await publishUserSessionsRevoked(userId, sessionId)
+    await this.sendSecurityEmail(userId, 'password-changed', 'Password changed', 'The password for your SL Spot account was changed. Other active sessions were signed out. If you did not make this change, secure your account and contact support.')
   }
 
   async getPreferences(userId: string): Promise<UserPreferences> {
@@ -816,6 +819,21 @@ export class AuthService {
       })
     })
     await publishUserSessionsRevoked(record.userId)
+    await this.sendSecurityEmail(record.userId, 'password-reset-completed', 'Password changed', 'Your SL Spot password was reset successfully. Other active sessions were signed out. If you did not request this change, secure your account and contact support.')
+  }
+
+  private async sendSecurityEmail(userId: string, eventKey: string, title: string, body: string): Promise<void> {
+    try {
+      const [target, preferences] = await Promise.all([
+        this.prisma.user.findUnique({ where: { id: userId }, select: { email: true } }),
+        this.prisma.userPreference.findUnique({ where: { userId }, select: { emailSecurityAlerts: true } }),
+      ])
+      if (target && preferences?.emailSecurityAlerts !== false) {
+        await this.email.sendNotification(target.email, eventKey + ':' + userId, title, body, 'security')
+      }
+    } catch {
+      // Security state changes must succeed even when email delivery is unavailable.
+    }
   }
 
   private async issueToken(userId: string, type: 'EMAIL_VERIFICATION' | 'PASSWORD_RESET', ttlSeconds: number) {
