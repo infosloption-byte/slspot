@@ -8,7 +8,7 @@ test('registration records the current Terms and Privacy policy versions from th
 
   assert.deepEqual(rows.map((row) => ({ policyType: row.policyType, version: row.version, source: row.source })), [
     { policyType: 'TERMS_AND_CONDITIONS', version: CURRENT_POLICY_VERSIONS.TERMS_AND_CONDITIONS, source: 'REGISTRATION' },
-    { policyType: 'PRIVACY_POLICY', version: CURRENT_POLICY_VERSIONS.PRIVACY_POLICY, source: 'REGISTRATION' },
+    { policyType: 'PRIVACY_POLICY', version: CURRENT_POLICY_VERSIONS.PRIVACY_POLICY, source: 'REGISTRATION_NOTICE' },
   ])
   assert.equal(rows.every((row) => row.userId === 'user-1' && row.acceptedAt === acceptedAt), true)
   assert.deepEqual(REGISTRATION_POLICY_TYPES, ['TERMS_AND_CONDITIONS', 'PRIVACY_POLICY'])
