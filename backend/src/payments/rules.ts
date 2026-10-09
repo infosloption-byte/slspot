@@ -112,7 +112,7 @@ export function evaluateDeposit(input: DepositRuleInput): RuleBlocker[] {
 
 export type WithdrawalRuleInput = {
   tier: KycTier
-  age?: number | null
+  age: number | null
   twoFactorEnabled: boolean
   countryCode: string | null
   blockedCountries: readonly string[]
