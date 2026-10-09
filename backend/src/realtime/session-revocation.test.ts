@@ -84,6 +84,13 @@ describe('realtime session revocation', () => {
     const otherUser = await open(url + '?user=user-b&session=session-c', origin)
     const closed = waitForClose(target.socket)
 
+    gateway.broadcastSerialized(serializeRealtimeEvent(createRealtimeEvent(
+      'session.revoked',
+      null,
+      INTERNAL_SESSION_REVOCATION_CHANNEL,
+    )))
+    assert.equal(target.socket.readyState, WebSocket.OPEN, 'malformed control payloads are ignored')
+
     await publishSessionsRevoked(['session-a'])
     const closeResult = await closed
 
