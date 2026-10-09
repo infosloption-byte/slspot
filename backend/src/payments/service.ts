@@ -750,15 +750,27 @@ export class PaymentService {
       return 'processed'
     }
 
-    // deposit.completed: the provider says the money arrived. The amount must match what we asked for.
-    if ((event.amount !== undefined && toUnits(event.amount) !== toUnits(deposit.amount.toString())) ||
-      (event.currency !== undefined && event.currency.toUpperCase() !== deposit.currency)) {
+    // A deposit completion must include amount and currency so a signed reference alone cannot
+    // credit a wallet when an adapter omitted the settlement details.
+    if (event.amount === undefined || event.currency === undefined) {
+      this.logger.error({ provider: providerId, depositId: deposit.id, eventId: event.eventId }, 'Deposit completion is missing amount or currency; manual review required')
+      await this.audit(userId, 'DEPOSIT_WEBHOOK_INCOMPLETE', 'Deposit', deposit.id, { provider: providerId, eventId: event.eventId })
+      throw new PaymentError(422, 'INCOMPLETE_PROVIDER_EVENT', 'The provider completion event must include amount and currency')
+    }
+
+    let receivedAmount: bigint
+    try {
+      receivedAmount = toUnits(event.amount)
+    } catch {
+      throw new PaymentError(422, 'INVALID_PROVIDER_AMOUNT', 'The provider completion event contains an invalid amount')
+    }
+    if (receivedAmount !== toUnits(deposit.amount.toString()) || event.currency.trim().toUpperCase() !== deposit.currency) {
       await this.prisma.deposit.updateMany({
         where: { id: deposit.id, status: { in: ['PENDING', 'PROCESSING'] } },
         data: { status: 'REJECTED', failureReason: 'Amount or currency did not match the request' },
       })
-      this.logger.error({ provider: providerId, depositId: deposit.id, expected: deposit.amount.toString(), received: event.amount }, 'Deposit amount mismatch; needs manual review')
-      await this.audit(userId, 'DEPOSIT_AMOUNT_MISMATCH', 'Deposit', deposit.id, { expected: deposit.amount.toString(), received: event.amount ?? null, currency: event.currency ?? null })
+      this.logger.error({ provider: providerId, depositId: deposit.id, expected: deposit.amount.toString(), received: event.amount, expectedCurrency: deposit.currency, receivedCurrency: event.currency }, 'Deposit amount/currency mismatch; needs manual review')
+      await this.audit(userId, 'DEPOSIT_AMOUNT_MISMATCH', 'Deposit', deposit.id, { expected: deposit.amount.toString(), received: event.amount, expectedCurrency: deposit.currency, receivedCurrency: event.currency })
       return 'processed'
     }
 
@@ -823,8 +835,27 @@ export class PaymentService {
       this.logger.warn({ provider: providerId, reference: event.providerReference }, 'Webhook for unknown withdrawal')
       return 'ignored'
     }
-    if (event.type === 'withdrawal.completed') await this.finalizeWithdrawal(withdrawal.id)
-    else await this.refundWithdrawal(withdrawal.id, 'FAILED', (event.reason ?? 'The provider could not complete the payout').slice(0, 255), ['PROCESSING'])
+    if (event.type === 'withdrawal.completed') {
+      if (event.amount === undefined || event.currency === undefined) {
+        this.logger.error({ provider: providerId, withdrawalId: withdrawal.id, eventId: event.eventId }, 'Withdrawal completion is missing amount or currency; manual review required')
+        await this.audit(withdrawal.walletId, 'WITHDRAWAL_WEBHOOK_INCOMPLETE', 'Withdrawal', withdrawal.id, { provider: providerId, eventId: event.eventId })
+        throw new PaymentError(422, 'INCOMPLETE_PROVIDER_EVENT', 'The provider payout completion event must include amount and currency')
+      }
+      let receivedAmount: bigint
+      try {
+        receivedAmount = toUnits(event.amount)
+      } catch {
+        throw new PaymentError(422, 'INVALID_PROVIDER_AMOUNT', 'The provider payout completion event contains an invalid amount')
+      }
+      if (receivedAmount !== toUnits(withdrawal.amount.toString()) || event.currency.trim().toUpperCase() !== withdrawal.currency) {
+        this.logger.error({ provider: providerId, withdrawalId: withdrawal.id, expected: withdrawal.amount.toString(), received: event.amount, expectedCurrency: withdrawal.currency, receivedCurrency: event.currency }, 'Withdrawal amount/currency mismatch; payout needs manual review')
+        await this.audit(withdrawal.walletId, 'WITHDRAWAL_AMOUNT_MISMATCH', 'Withdrawal', withdrawal.id, { expected: withdrawal.amount.toString(), received: event.amount, expectedCurrency: withdrawal.currency, receivedCurrency: event.currency })
+        throw new PaymentError(409, 'WITHDRAWAL_AMOUNT_MISMATCH', 'The provider payout amount or currency does not match the request; manual review is required')
+      }
+      await this.finalizeWithdrawal(withdrawal.id)
+    } else {
+      await this.refundWithdrawal(withdrawal.id, 'FAILED', (event.reason ?? 'The provider could not complete the payout').slice(0, 255), ['PROCESSING'])
+    }
     return 'processed'
   }
 
