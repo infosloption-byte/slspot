@@ -195,7 +195,7 @@ describe('authentication routes', () => {
     const profile = await app.inject({
       method: 'PATCH',
       url: '/api/v1/auth/profile',
-      headers: { cookie: 'slspot_session=test-session-token', 'x-csrf-token': csrfToken() },
+      headers: { cookie: 'slspot_session=test-session-token', 'x-csrf-token': csrfToken('slspot_session=test-session-token') },
       payload: { displayName: 'Trader', timezone: 'Asia/Colombo', locale: 'en-LK', countryCode: 'LK' },
     })
     assert.equal(profile.statusCode, 200)
@@ -211,7 +211,7 @@ describe('authentication routes', () => {
     const password = await app.inject({
       method: 'POST',
       url: '/api/v1/auth/password/change',
-      headers: { cookie: 'slspot_session=test-session-token', 'x-csrf-token': csrfToken() },
+      headers: { cookie: 'slspot_session=test-session-token', 'x-csrf-token': csrfToken('slspot_session=test-session-token') },
       payload: { currentPassword: 'old-password-123', newPassword: 'new-password-123' },
     })
     assert.equal(password.statusCode, 200)
