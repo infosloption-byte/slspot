@@ -736,3 +736,11 @@ model AuditLog {
   @@index([entityType, entityId, createdAt])
   @@index([action, createdAt])
 }
+
+model RealMoneyGate {
+  id                String   @id @default("GLOBAL") @db.VarChar(16)
+  tradingEnabled    Boolean  @default(false)
+  depositsEnabled   Boolean  @default(false)
+  withdrawalsEnabled Boolean  @default(false)
+  updatedAt         DateTime @updatedAt @db.DateTime(3)
+}
