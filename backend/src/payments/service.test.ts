@@ -95,6 +95,7 @@ function fixture(input: {
     deposit: {
       findMany: async () => [],
       findUnique: async () => null,
+      aggregate: async () => ({ _sum: { amount: null } }),
     },
     realMoneyGate: { findUnique: async () => input.adminGate ?? null },
     $transaction: async () => { throw new Error('Transaction should not be reached in gate tests') },
@@ -147,6 +148,23 @@ test('service rejects deposit creation for an underage profile before wallet tra
   await assert.rejects(
     service.createDeposit('user-1', { provider: 'card', amount: '10', clientRequestId: 'age-gate-test' }),
     (error: unknown) => error instanceof PaymentError && error.code === 'AGE_RESTRICTED',
+  )
+})
+
+test('providers that do not support USD cannot appear or accept payment requests', async () => {
+  const adapter: PaymentProviderAdapter = {
+    ...liveAdapter(),
+    capabilities: { ...liveCapabilities, currencies: ['EUR'] },
+  }
+  const service = fixture({
+    adapter,
+    adminGate: { depositsEnabled: true, withdrawalsEnabled: true },
+  })
+
+  assert.deepEqual(await service.listMethods('user-1', 'deposit'), [])
+  await assert.rejects(
+    service.createDeposit('user-1', { provider: 'live_card', amount: '10', clientRequestId: 'currency-test' }),
+    (error: unknown) => error instanceof PaymentError && error.code === 'PROVIDER_NOT_FOUND',
   )
 })
 
