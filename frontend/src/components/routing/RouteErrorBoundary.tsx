@@ -8,17 +8,17 @@ type State = { failed: boolean }
  * dynamic import rejects and, without a boundary, the whole app renders blank. Offer a reload instead.
  */
 export class RouteErrorBoundary extends Component<{ children: ReactNode }, State> {
-  state: State = { failed: false }
+  override state: State = { failed: false }
 
   static getDerivedStateFromError(): State {
     return { failed: true }
   }
 
-  componentDidCatch(error: Error, info: ErrorInfo): void {
+  override componentDidCatch(error: Error, info: ErrorInfo): void {
     console.error('Route failed to load', error, info.componentStack)
   }
 
-  render() {
+  override render() {
     if (!this.state.failed) return this.props.children
     return (
       <main className="route-loading" role="alert">
