@@ -15,6 +15,8 @@ const TICK_PERSIST_INTERVAL_MS = 2_000
 const TICK_FRESH_MS = 10_000
 /** Wait before reading a just-closed kline so the exchange has finalized it. */
 const CANDLE_CLOSE_DELAY_MS = 1_500
+const MAX_CONCURRENT_CLOSED_CANDLE_REQUESTS = 2
+const CLOSED_CANDLE_FAILURE_COOLDOWN_MS = 30_000
 
 export type MarketCandleResult = {
   assetId: string
@@ -56,6 +58,10 @@ export class MarketDataService {
   private readonly changePct = new Map<string, string>()
   private readonly candleCloses = new CandleCloseTracker()
   private readonly candleTimers = new Set<ReturnType<typeof setTimeout>>()
+  private readonly closedCandleQueue: Array<{ market: { id: string; assetId: string; symbol: string }; interval: CandleInterval; openTimeMs: number; key: string }> = []
+  private readonly queuedClosedCandleKeys = new Set<string>()
+  private activeClosedCandleRequests = 0
+  private closedCandleCooldownUntil = 0
 
   constructor(
     private readonly prisma: PrismaClient,
@@ -180,10 +186,40 @@ export class MarketDataService {
     if (!provider) return
     const timer = setTimeout(() => {
       this.candleTimers.delete(timer)
-      void this.publishClosedCandle(market, interval, openTimeMs)
+      this.enqueueClosedCandle(market, interval, openTimeMs)
     }, CANDLE_CLOSE_DELAY_MS)
     timer.unref?.()
     this.candleTimers.add(timer)
+  }
+
+  private enqueueClosedCandle(
+    market: { id: string; assetId: string; symbol: string },
+    interval: CandleInterval,
+    openTimeMs: number,
+  ): void {
+    if (!this.running || !this.provider || Date.now() < this.closedCandleCooldownUntil) return
+    const key = market.assetId + ':' + interval + ':' + openTimeMs
+    if (this.queuedClosedCandleKeys.has(key)) return
+    this.queuedClosedCandleKeys.add(key)
+    this.closedCandleQueue.push({ market, interval, openTimeMs, key })
+    this.drainClosedCandleQueue()
+  }
+
+  private drainClosedCandleQueue(): void {
+    if (!this.running) return
+    if (Date.now() < this.closedCandleCooldownUntil) {
+      for (const job of this.closedCandleQueue.splice(0)) this.queuedClosedCandleKeys.delete(job.key)
+      return
+    }
+    while (this.activeClosedCandleRequests < MAX_CONCURRENT_CLOSED_CANDLE_REQUESTS && this.closedCandleQueue.length > 0) {
+      const job = this.closedCandleQueue.shift()!
+      this.activeClosedCandleRequests += 1
+      void this.publishClosedCandle(job.market, job.interval, job.openTimeMs).finally(() => {
+        this.activeClosedCandleRequests -= 1
+        this.queuedClosedCandleKeys.delete(job.key)
+        this.drainClosedCandleQueue()
+      })
+    }
   }
 
   private async publishClosedCandle(
@@ -221,8 +257,10 @@ export class MarketDataService {
         volume: candle.volume,
       }, ('market:' + market.assetId) as `market:${string}`))
     } catch (error) {
-      // Clients keep the locally built bar; the next history load corrects it.
-      this.logger.warn({ err: error, assetId: market.assetId, interval }, 'Closed candle could not be published')
+      // Clients keep the locally built bar; the next history load corrects it. Pause the
+      // queue after a REST failure instead of retrying every symbol/interval at once.
+      this.closedCandleCooldownUntil = Date.now() + CLOSED_CANDLE_FAILURE_COOLDOWN_MS
+      this.logger.warn({ err: error, assetId: market.assetId, interval, cooldownMs: CLOSED_CANDLE_FAILURE_COOLDOWN_MS }, 'Closed candle could not be published; pausing candle REST requests')
     }
   }
 
@@ -230,6 +268,7 @@ export class MarketDataService {
     this.running = false
     this.candleTimers.forEach((timer) => clearTimeout(timer))
     this.candleTimers.clear()
+    for (const job of this.closedCandleQueue.splice(0)) this.queuedClosedCandleKeys.delete(job.key)
     this.candleCloses.clear()
     this.tickStreams.splice(0).forEach((stream) => stream.stop())
     if (this.timer) {
