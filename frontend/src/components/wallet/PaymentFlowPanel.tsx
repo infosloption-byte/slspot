@@ -54,10 +54,14 @@ export function PaymentFlowPanel({ onUpdated }: Props) {
   const [withdrawal, setWithdrawal] = useState<PaymentWithdrawal | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
 
-  useEffect(() => {
-    let active = true
+  function refreshPaymentData() {
     setLoading(true)
     setLoadError('')
+    setRefreshKey((value) => value + 1)
+  }
+
+  useEffect(() => {
+    let active = true
     Promise.all([paymentApi.eligibility(), paymentApi.methods(direction)])
       .then(([nextEligibility, nextMethods]) => {
         if (!active) return
@@ -99,6 +103,8 @@ export function PaymentFlowPanel({ onUpdated }: Props) {
     (direction === 'deposit' ? amountValid : amountValid && selectedMethod?.eligible === true && withdrawalDetailsValid)
 
   function changeDirection(next: PaymentDirection) {
+    setLoading(true)
+    setLoadError('')
     setDirection(next)
     setAmount('')
     setDetails({})
@@ -131,7 +137,7 @@ export function PaymentFlowPanel({ onUpdated }: Props) {
         countryCode: profileDraft.countryCode.trim().toUpperCase(),
       })
       setNotice('Profile saved. Payment eligibility has been refreshed.')
-      setRefreshKey((value) => value + 1)
+      refreshPaymentData()
     } catch (error) {
       setFormError(error instanceof Error ? error.message : 'Could not save your profile.')
     } finally {
@@ -172,7 +178,7 @@ export function PaymentFlowPanel({ onUpdated }: Props) {
       setWithdrawal(null)
       setNotice(result.status === 'COMPLETED' ? 'Deposit completed.' : 'Deposit request created. Follow the checkout instructions below.')
       if (result.status === 'COMPLETED') {
-        setRefreshKey((value) => value + 1)
+        refreshPaymentData()
         onUpdated()
       }
     } catch (error) {
@@ -195,7 +201,7 @@ export function PaymentFlowPanel({ onUpdated }: Props) {
         : outcome === 'fail'
           ? 'Sandbox failure event processed. No real money moved.'
           : 'Sandbox pending event processed. You can send another test outcome later.')
-      setRefreshKey((value) => value + 1)
+      refreshPaymentData()
       if (result.status === 'COMPLETED') onUpdated()
     } catch (error) {
       setFormError(error instanceof Error ? error.message : 'Could not update the sandbox deposit.')
@@ -212,7 +218,7 @@ export function PaymentFlowPanel({ onUpdated }: Props) {
       const result = await paymentApi.cancelDeposit(deposit.id)
       setDeposit(result)
       setNotice('Deposit cancelled.')
-      setRefreshKey((value) => value + 1)
+      refreshPaymentData()
     } catch (error) {
       setFormError(error instanceof Error ? error.message : 'Could not cancel this deposit.')
     } finally {
@@ -229,7 +235,7 @@ export function PaymentFlowPanel({ onUpdated }: Props) {
       const result = await paymentApi.cancelWithdrawal(withdrawal.id)
       setWithdrawal(result)
       setNotice('Withdrawal cancelled. The reserved amount has been returned to your wallet.')
-      setRefreshKey((value) => value + 1)
+      refreshPaymentData()
       onUpdated()
     } catch (error) {
       setFormError(error instanceof Error ? error.message : 'Could not cancel this withdrawal.')
@@ -257,7 +263,7 @@ export function PaymentFlowPanel({ onUpdated }: Props) {
         : result.needsReview
           ? 'Withdrawal submitted and awaiting review.'
           : 'Withdrawal request submitted.')
-      setRefreshKey((value) => value + 1)
+      refreshPaymentData()
       onUpdated()
     } catch (error) {
       setFormError(error instanceof Error ? error.message : 'Could not submit this withdrawal.')
@@ -283,7 +289,7 @@ export function PaymentFlowPanel({ onUpdated }: Props) {
         </div>
       ) : null}
 
-      {loadError ? <div className="form-message form-message--error" role="alert"><AlertCircle size={15} /> {loadError} <button type="button" className="setting-button" onClick={() => setRefreshKey((value) => value + 1)}>Retry</button></div> : null}
+      {loadError ? <div className="form-message form-message--error" role="alert"><AlertCircle size={15} /> {loadError} <button type="button" className="setting-button" onClick={refreshPaymentData}>Retry</button></div> : null}
 
       {eligibility ? (
         <div className="payment-checklist">
@@ -353,7 +359,7 @@ export function PaymentFlowPanel({ onUpdated }: Props) {
           </div>
 
           {selectedMethod ? (
-            <form className="payment-action-form" onSubmit={(event) => { event.preventDefault(); direction === 'deposit' ? void submitDeposit() : void submitWithdrawal() }}>
+            <form className="payment-action-form" onSubmit={(event) => { event.preventDefault(); if (direction === 'deposit') { void submitDeposit() } else { void submitWithdrawal() } }}>
               <label className="wallet-funding-field"><span>Amount (USD)</span><input inputMode="decimal" autoComplete="off" maxLength={32} value={amount} onChange={(event) => setAmount(event.target.value)} placeholder={direction === 'deposit' ? '100.00' : '50.00'} disabled={submitting || !selectedMethod.eligible && direction === 'withdrawal'} required /><small>Minimum {selectedMethod.minAmount} USD{selectedMethod.maxAmount ? ' · Maximum ' + selectedMethod.maxAmount + ' USD' : ''}</small></label>
 
               {direction === 'withdrawal' ? selectedMethod.fields.map((field) => (
