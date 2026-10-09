@@ -40,3 +40,11 @@ h1,h2,p{margin:0}.splash{height:100%;display:grid;place-items:center;gap:10px;co
 .launch-gate-row+.notice{margin:12px 14px 0}
 .launch-gate-row:has(input:disabled) .launch-gate-toggle{opacity:.65}
 @media(max-width:560px){.launch-gate-environment{grid-template-columns:1fr}.launch-gate-row{align-items:flex-start;flex-direction:column;gap:12px}.launch-gate-toggle{white-space:normal}}
+
+
+/* Withdrawal decision controls in the Finance review queue. */
+.withdrawal-review-actions{display:grid;grid-template-columns:auto minmax(140px,1fr) auto;align-items:center;gap:6px;min-width:410px}
+.withdrawal-reason-input{width:100%;min-width:0;height:32px;padding:0 9px;border:1px solid var(--line-strong);border-radius:8px;background:var(--panel-2);color:#fff;font-size:11px}
+.withdrawal-reason-input:focus{outline:0;border-color:var(--gold)}
+.withdrawal-review-actions .button{white-space:nowrap}
+@media(max-width:700px){.withdrawal-review-actions{grid-template-columns:1fr 1fr;min-width:0}.withdrawal-reason-input{grid-column:1/-1;grid-row:1}.withdrawal-review-actions .button{width:100%}}
