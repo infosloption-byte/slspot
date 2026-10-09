@@ -568,13 +568,41 @@ export class PaymentService {
   async approveWithdrawal(adminUserId: string, withdrawalId: string): Promise<ApiWithdrawal> {
     const withdrawal = await this.prisma.withdrawal.findUnique({
       where: { id: withdrawalId },
-      include: { wallet: { include: { account: { select: { userId: true } } } } },
+      include: { wallet: { include: { account: { select: { userId: true, status: true } } } } },
     })
     if (!withdrawal) throw new PaymentError(404, 'WITHDRAWAL_NOT_FOUND', 'Withdrawal not found')
+    if (withdrawal.status !== 'PENDING' || withdrawal.reviewedAt !== null) {
+      throw new PaymentError(409, 'WITHDRAWAL_NOT_PENDING', 'This withdrawal is not waiting for review')
+    }
     // Two people must be involved in moving a customer's money out, unless this is a local test run.
     if (withdrawal.wallet.account.userId === adminUserId && !this.config.relaxWithdrawalChecks) {
       throw new PaymentError(403, 'SELF_APPROVAL_NOT_ALLOWED', 'You cannot approve your own withdrawal')
     }
+
+    // The user, provider config, environment flag and administrator gate may have changed since
+    // the original request. Re-check before recording approval or contacting the provider.
+    if (withdrawal.wallet.account.status !== 'ACTIVE') {
+      throw new PaymentError(403, 'ACCOUNT_NOT_ELIGIBLE', 'The trading account is not active')
+    }
+    const userId = withdrawal.wallet.account.userId
+    const facts = await this.loadFacts(userId)
+    const { adapter, config } = await this.resolveProvider(withdrawal.provider, 'withdrawal', facts.user.countryCode)
+    this.assertWithinLimits(withdrawal.amount.toString(), config.minWithdrawal, config.maxWithdrawal)
+
+    const details = validateDetails(adapter.capabilities.withdrawalFields, this.storedDetails(withdrawal.details))
+    if (!details.ok) throw new PaymentError(409, 'INVALID_STORED_DETAILS', 'The stored payout details no longer satisfy provider requirements; review them before approving.')
+
+    const providerUsedForDeposit = (await this.depositedProviders(userId)).has(adapter.capabilities.id)
+    const wallet = await this.prisma.wallet.findUnique({ where: { id: withdrawal.walletId } })
+    if (!wallet || wallet.status !== 'ACTIVE') {
+      throw new PaymentError(403, 'WALLET_NOT_ELIGIBLE', 'The customer wallet is not active')
+    }
+    const availableForEligibility = wallet.availableBalance.add(withdrawal.amount).toString()
+    const blockers = evaluateWithdrawal(await this.withdrawalRuleInput(
+      facts, userId, withdrawal.amount.toString(), providerUsedForDeposit, availableForEligibility,
+    ))
+    this.throwIfBlocked(blockers)
+
     const marked = await this.prisma.withdrawal.updateMany({
       where: { id: withdrawal.id, status: 'PENDING', reviewedAt: null },
       data: { reviewedByUserId: adminUserId, reviewedAt: this.now() },
