@@ -20,6 +20,18 @@ test('every transactional email template renders a complete branded HTML and tex
   }
 })
 
+test('transactional emails use the SL Spot Black Gold platform theme', () => {
+  const rendered = renderEmailTemplate('deposit-success')
+
+  assert.match(rendered.html, /background:#08080a/)
+  assert.match(rendered.html, /background:#0f0f12/)
+  assert.match(rendered.html, /#ffc21a/)
+  assert.match(rendered.html, /color:#141000/)
+  assert.match(rendered.html, /font-family:Inter/)
+  assert.match(rendered.html, /aria-label="SL SPOT"/)
+  assert.doesNotMatch(rendered.html, /#67e8a5|#111a29|#263244|#080d16/i)
+})
+
 test('dynamic email content is HTML-escaped and does not reuse sample transaction details', () => {
   const rendered = renderEmailTemplate('deposit-success', {
     heading: '<script>alert(1)</script>',
