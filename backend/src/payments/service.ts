@@ -224,10 +224,20 @@ export class PaymentService {
     const configs = await this.prisma.paymentProviderConfig.findMany({ orderBy: { sortOrder: 'asc' } })
     const usedForDeposit = direction === 'withdrawal' ? await this.depositedProviders(userId) : new Set<string>()
     const methods: PaymentMethod[] = []
+    const hasLiveProvider = configs.some((config) => {
+      const adapter = this.registry.get(config.id)
+      return Boolean(adapter && !adapter.capabilities.sandbox)
+    })
+    const adminGate = hasLiveProvider
+      ? await this.prisma.realMoneyGate.findUnique({
+          where: { id: 'GLOBAL' },
+          select: { depositsEnabled: true, withdrawalsEnabled: true },
+        })
+      : null
 
     for (const config of configs) {
       const adapter = this.registry.get(config.id)
-      if (!adapter || !config.enabled || !this.providerOperationAllowed(adapter, direction)) continue
+      if (!adapter || !config.enabled || !this.providerOperationAllowed(adapter, direction, adminGate)) continue
       if (direction === 'deposit' ? !config.depositEnabled : !config.withdrawalEnabled) continue
       if (!this.countryAllowed(config, facts.user.countryCode)) continue
       const capabilities = adapter.capabilities
@@ -889,10 +899,16 @@ export class PaymentService {
   private async resolveProvider(providerId: string, direction: PaymentDirection, countryCode: string | null) {
     const adapter = this.registry.get(providerId)
     if (!adapter) throw new PaymentError(404, 'PROVIDER_NOT_FOUND', 'That payment method is not available')
-    if (!this.providerOperationAllowed(adapter, direction)) {
+    const adminGate = adapter.capabilities.sandbox
+      ? null
+      : await this.prisma.realMoneyGate.findUnique({
+          where: { id: 'GLOBAL' },
+          select: { depositsEnabled: true, withdrawalsEnabled: true },
+        })
+    if (!this.providerOperationAllowed(adapter, direction, adminGate)) {
       throw new PaymentError(403, 'PAYMENT_OPERATION_DISABLED', direction === 'deposit'
-        ? 'Deposits are disabled for this provider until the real-money launch is approved.'
-        : 'Withdrawals are disabled for this provider until the real-money launch is approved.')
+        ? 'Deposits are disabled for this provider until the environment and administrator launch gates are enabled.'
+        : 'Withdrawals are disabled for this provider until the environment and administrator launch gates are enabled.')
     }
     const config = await this.prisma.paymentProviderConfig.findUnique({ where: { id: providerId } })
     const enabled = config?.enabled && (direction === 'deposit' ? config.depositEnabled : config.withdrawalEnabled)
@@ -902,14 +918,22 @@ export class PaymentService {
     return { adapter: adapter as PaymentProviderAdapter, config }
   }
 
-  private providerOperationAllowed(adapter: PaymentProviderAdapter, direction: PaymentDirection): boolean {
+  private providerOperationAllowed(
+    adapter: PaymentProviderAdapter,
+    direction: PaymentDirection,
+    adminGate: { depositsEnabled: boolean; withdrawalsEnabled: boolean } | null,
+  ): boolean {
+    // The environment forbids sandbox providers in production. They intentionally bypass the
+    // real-money launch switches so local test flows remain usable before launch approval.
+    if (adapter.capabilities.sandbox) return this.config.sandbox
+
     return isPaymentProviderOperationAllowed({
       direction,
-      providerIsSandbox: adapter.capabilities.sandbox,
-      sandboxModeEnabled: this.config.sandbox,
+      providerIsSandbox: false,
+      sandboxModeEnabled: false,
       launchApproved: this.config.launchApproved,
-      depositsEnabled: this.config.realDepositsEnabled,
-      withdrawalsEnabled: this.config.realWithdrawalsEnabled,
+      depositsEnabled: this.config.realDepositsEnabled && adminGate?.depositsEnabled === true,
+      withdrawalsEnabled: this.config.realWithdrawalsEnabled && adminGate?.withdrawalsEnabled === true,
     })
   }
 
