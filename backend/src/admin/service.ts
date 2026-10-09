@@ -88,7 +88,7 @@ export class AdminService {
   }
 
   async updateRealMoneyGate(actorUserId: string, input: AdminRealMoneyGateInput) {
-    await this.requireAdmin(actorUserId)
+    const actor = await this.requireAdmin(actorUserId)
 
     return this.prisma.$transaction(async (tx) => {
       const previous = await tx.realMoneyGate.findUnique({ where: { id: 'GLOBAL' } })
@@ -96,6 +96,10 @@ export class AdminService {
         tradingEnabled: previous?.tradingEnabled ?? false,
         depositsEnabled: previous?.depositsEnabled ?? false,
         withdrawalsEnabled: previous?.withdrawalsEnabled ?? false,
+      }
+
+      if (input.tradingEnabled && !before.tradingEnabled && actor.role !== 'SUPER_ADMIN') {
+        throw new AdminError(403, 'SUPER_ADMIN_REQUIRED', 'Only a super administrator can enable REAL trading. Any administrator can disable it.')
       }
 
       // Real funding operations have no provider-backed request lifecycle yet.
