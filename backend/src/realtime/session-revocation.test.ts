@@ -28,14 +28,6 @@ function waitForClose(socket: WebSocket): Promise<{ code: number; reason: string
   })
 }
 
-async function waitFor(check: () => boolean, timeoutMs = 2_000): Promise<void> {
-  const started = Date.now()
-  while (!check()) {
-    if (Date.now() - started > timeoutMs) throw new Error('Timed out waiting for condition')
-    await new Promise((resolve) => setTimeout(resolve, 10))
-  }
-}
-
 describe('realtime session revocation', () => {
   const gateway = new RealtimeGateway({
     authenticate: async (request) => {
