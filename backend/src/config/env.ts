@@ -375,6 +375,15 @@ export const env = {
     bootstrapAssets: marketDataBootstrapAssets,
     binance: { enabled: binanceEnabled, restUrl: binanceRestUrl, wsUrl: binanceWsUrl },
   },
+  // REAL-mode controls are fail-closed. The master approval flag and the
+  // operation-specific flag must both be true. Funding routes remain disabled
+  // until provider-backed workflows are implemented and reviewed.
+  realMoney: {
+    launchApproved: parseBoolean('REAL_MONEY_LAUNCH_APPROVED', process.env.REAL_MONEY_LAUNCH_APPROVED, false),
+    tradingEnabled: parseBoolean('REAL_TRADING_ENABLED', process.env.REAL_TRADING_ENABLED, false),
+    depositsEnabled: parseBoolean('REAL_DEPOSITS_ENABLED', process.env.REAL_DEPOSITS_ENABLED, false),
+    withdrawalsEnabled: parseBoolean('REAL_WITHDRAWALS_ENABLED', process.env.REAL_WITHDRAWALS_ENABLED, false),
+  },
   trading: {
     feeRate: parseDecimalString('TRADING_FEE_RATE', process.env.TRADING_FEE_RATE, '0'),
     initialBalance: parseDecimalString(
