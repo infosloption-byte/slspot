@@ -1,6 +1,7 @@
 import { Prisma, type PrismaClient } from '../generated/prisma/client.js'
 import { env } from '../config/env.js'
 import { getTradingRules } from '../trading/config.js'
+import { isRealMoneyOperationEnabled, realMoneyOperationBlockReason, type RealMoneyOperation } from '../trading/real-money-gate.js'
 import { EmailService } from '../email/service.js'
 import { createRealtimeEvent, serializeRealtimeEvent } from '../realtime/events.js'
 import { publishRealtime } from '../realtime/bus.js'
@@ -37,10 +38,124 @@ export class AdminError extends Error {
 
 export type AdminStatus = 'PENDING_VERIFICATION' | 'ACTIVE' | 'SUSPENDED' | 'DISABLED'
 
+export type AdminRealMoneyGateInput = {
+  tradingEnabled: boolean
+  depositsEnabled: boolean
+  withdrawalsEnabled: boolean
+}
+
+type RealMoneyGateRecord = {
+  tradingEnabled: boolean
+  depositsEnabled: boolean
+  withdrawalsEnabled: boolean
+  updatedAt: Date
+}
+
+function realMoneyGateStatus(record: RealMoneyGateRecord | null) {
+  const settings = {
+    tradingEnabled: record?.tradingEnabled ?? false,
+    depositsEnabled: record?.depositsEnabled ?? false,
+    withdrawalsEnabled: record?.withdrawalsEnabled ?? false,
+  }
+
+  return {
+    settings,
+    environment: {
+      launchApproved: env.realMoney.launchApproved,
+      tradingEnabled: env.realMoney.tradingEnabled,
+      depositsEnabled: env.realMoney.depositsEnabled,
+      withdrawalsEnabled: env.realMoney.withdrawalsEnabled,
+    },
+    effective: {
+      tradingEnabled: settings.tradingEnabled && isRealMoneyOperationEnabled('TRADING'),
+      depositsEnabled: settings.depositsEnabled && isRealMoneyOperationEnabled('DEPOSIT'),
+      withdrawalsEnabled: settings.withdrawalsEnabled && isRealMoneyOperationEnabled('WITHDRAWAL'),
+    },
+    updatedAt: record?.updatedAt.toISOString() ?? null,
+  }
+}
+
 export class AdminService {
   private readonly email = new EmailService()
 
   constructor(private readonly prisma: PrismaClient) {}
+
+  async getRealMoneyGate() {
+    const record = await this.prisma.realMoneyGate.findUnique({ where: { id: 'GLOBAL' } })
+    return realMoneyGateStatus(record)
+  }
+
+  async updateRealMoneyGate(actorUserId: string, input: AdminRealMoneyGateInput) {
+    await this.requireAdmin(actorUserId)
+
+    const requestedOperations: Array<[RealMoneyOperation, boolean]> = [
+      ['TRADING', input.tradingEnabled],
+      ['DEPOSIT', input.depositsEnabled],
+      ['WITHDRAWAL', input.withdrawalsEnabled],
+    ]
+
+    // The admin panel is a second lock, not a way to override deployment approval.
+    // It may only turn an operation on when the environment launch gate permits it.
+    for (const [operation, enabled] of requestedOperations) {
+      if (!enabled) continue
+      const reason = realMoneyOperationBlockReason(operation)
+      if (reason) {
+        throw new AdminError(
+          409,
+          'REAL_MONEY_ENV_GATE_CLOSED',
+          'Cannot enable ' + operation.toLowerCase() + ': ' + reason,
+        )
+      }
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const previous = await tx.realMoneyGate.findUnique({ where: { id: 'GLOBAL' } })
+      const before = {
+        tradingEnabled: previous?.tradingEnabled ?? false,
+        depositsEnabled: previous?.depositsEnabled ?? false,
+        withdrawalsEnabled: previous?.withdrawalsEnabled ?? false,
+      }
+
+      if (
+        before.tradingEnabled === input.tradingEnabled &&
+        before.depositsEnabled === input.depositsEnabled &&
+        before.withdrawalsEnabled === input.withdrawalsEnabled
+      ) {
+        return realMoneyGateStatus(previous)
+      }
+
+      const updated = await tx.realMoneyGate.upsert({
+        where: { id: 'GLOBAL' },
+        create: { id: 'GLOBAL', ...input },
+        update: input,
+      })
+
+      await tx.auditLog.create({
+        data: {
+          actorUserId,
+          action: 'ADMIN_REAL_MONEY_GATE_CHANGED',
+          entityType: 'RealMoneyGate',
+          entityId: 'GLOBAL',
+          metadata: {
+            before,
+            after: {
+              tradingEnabled: updated.tradingEnabled,
+              depositsEnabled: updated.depositsEnabled,
+              withdrawalsEnabled: updated.withdrawalsEnabled,
+            },
+            environmentGate: {
+              launchApproved: env.realMoney.launchApproved,
+              tradingEnabled: env.realMoney.tradingEnabled,
+              depositsEnabled: env.realMoney.depositsEnabled,
+              withdrawalsEnabled: env.realMoney.withdrawalsEnabled,
+            },
+          },
+        },
+      })
+
+      return realMoneyGateStatus(updated)
+    })
+  }
 
   async bootstrapConfiguredAdmins(): Promise<number> {
     if (env.adminBootstrapEmails.length === 0) return 0
