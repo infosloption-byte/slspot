@@ -8,12 +8,12 @@ import {
 import {
   AdminApiError, adminApi, type AssetRecord, type AuditRecord, type Dashboard, type FundingRecord,
   type AnnouncementRecord, type LedgerRecord, type List, type PositionRecord, type Reconciliation, type RiskSummary,
-  type RealMoneyGateStatus, type RealMoneyGateSettings, type SettlementRecord, type SupportTicketDetail, type SupportTicketRecord, type TradeRecord, type UserDetail, type UserRecord, type WalletRecord,
+  type RealMoneyGateStatus, type RealMoneyGateSettings, type SettlementRecord, type SupportTicketDetail, type SupportTicketRecord, type TradeRecord, type UserDetail, type UserRecord, type WalletRecord, type PaymentWithdrawalReviewRecord,
 } from './api'
 
 type Page = 'dashboard' | 'users' | 'trading' | 'finance' | 'support' | 'announcements' | 'risk' | 'audit' | 'launch-gate'
 type TradingView = 'trades' | 'positions' | 'settlements' | 'assets'
-type FinanceView = 'wallets' | 'deposits' | 'withdrawals' | 'reconciliation' | 'ledger'
+type FinanceView = 'wallets' | 'deposits' | 'withdrawals' | 'withdrawal-review' | 'reconciliation' | 'ledger'
 
 const pages: Array<{ id: Page; label: string; icon: typeof LayoutDashboard }> = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -226,19 +226,139 @@ function FinancePage({ refreshKey }: { refreshKey: number }) {
   const [wallets, setWallets] = useState<List<WalletRecord> | null>(null)
   const [deposits, setDeposits] = useState<List<FundingRecord> | null>(null)
   const [withdrawals, setWithdrawals] = useState<List<FundingRecord> | null>(null)
+  const [reviewQueue, setReviewQueue] = useState<List<PaymentWithdrawalReviewRecord> | null>(null)
   const [recon, setRecon] = useState<Reconciliation | null>(null)
   const [ledger, setLedger] = useState<List<LedgerRecord> | null>(null)
   const [error, setError] = useState('')
-  async function load() { setError(''); try { const [w, d, wd, r, l] = await Promise.all([adminApi.wallets(), adminApi.deposits(), adminApi.withdrawals(), adminApi.reconciliation(), adminApi.ledger()]); setWallets(w); setDeposits(d); setWithdrawals(wd); setRecon(r); setLedger(l) } catch (err) { setError(err instanceof Error ? err.message : 'Could not load finance data') } }
+  const [actionError, setActionError] = useState('')
+  const [actionMessage, setActionMessage] = useState('')
+  const [busyWithdrawalId, setBusyWithdrawalId] = useState<string | null>(null)
+  const [rejectionReasons, setRejectionReasons] = useState<Record<string, string>>({})
+
+  async function load() {
+    setError('')
+    try {
+      const [w, d, wd, queue, r, l] = await Promise.all([
+        adminApi.wallets(),
+        adminApi.deposits(),
+        adminApi.withdrawals(),
+        adminApi.paymentWithdrawalQueue('PENDING'),
+        adminApi.reconciliation(),
+        adminApi.ledger(),
+      ])
+      setWallets(w)
+      setDeposits(d)
+      setWithdrawals(wd)
+      setReviewQueue(queue)
+      setRecon(r)
+      setLedger(l)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not load finance data')
+    }
+  }
+
   useEffect(() => { void load() }, [refreshKey])
-  return <div className="page"><section className="toolbar-panel tab-row">{(['wallets', 'deposits', 'withdrawals', 'reconciliation', 'ledger'] as FinanceView[]).map((item) => <button key={item} className={view === item ? 'tab tab--active' : 'tab'} onClick={() => setView(item)}>{item}</button>)}</section>{error ? <ErrorNotice message={error} onRetry={() => void load()} /> : null}<section className="panel">
-    {view === 'wallets' && wallets ? <Table><thead><tr><th>User</th><th>Mode</th><th>Wallet</th><th>Available</th><th>Held</th><th>Status</th></tr></thead><tbody>{wallets.items.map((w) => <tr key={w.id}><td>{w.account.user.email}</td><td><span className="tag">{w.account.mode}</span></td><td>{w.currency}</td><td>{amount(w.availableBalance)}</td><td>{amount(w.heldBalance)}</td><td><span className={tagClass(w.status)}>{w.status}</span></td></tr>)}</tbody></Table> : null}
-    {view === 'deposits' && deposits ? <FundingTable rows={deposits.items} /> : null}
-    {view === 'withdrawals' && withdrawals ? <FundingTable rows={withdrawals.items} withdrawal /> : null}
-    {view === 'reconciliation' && recon ? <ReconciliationView data={recon} /> : null}
-    {view === 'ledger' && ledger ? <Table><thead><tr><th>Transaction</th><th>Reference</th><th>Entries</th><th>Created</th></tr></thead><tbody>{ledger.items.map((row) => <tr key={row.id}><td><strong>{row.id.slice(0, 8)}</strong><small>{row.currency}</small></td><td>{row.referenceType ?? '—'} {row.referenceId ?? ''}</td><td><div className="entry-stack">{row.entries.map((entry, i) => <span key={i} className={entry.direction === 'CREDIT' ? 'text-positive' : 'text-negative'}>{entry.direction} {amount(entry.amount)} · {entry.ledgerAccount.code}</span>)}</div></td><td>{date(row.createdAt)}</td></tr>)}</tbody></Table> : null}
-    {!wallets && !deposits && !withdrawals && !recon && !ledger ? <div className="loading-card"><Activity className="spin" size={20} /> Loading finance data…</div> : null}
-  </section></div>
+
+  async function approveWithdrawal(row: PaymentWithdrawalReviewRecord) {
+    if (busyWithdrawalId) return
+    setBusyWithdrawalId(row.id)
+    setActionError('')
+    setActionMessage('')
+    try {
+      await adminApi.approvePaymentWithdrawal(row.id)
+      await load()
+      setActionMessage('Withdrawal ' + row.id.slice(0, 8) + ' approved and handed to the configured provider.')
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Could not approve this withdrawal.')
+    } finally {
+      setBusyWithdrawalId(null)
+    }
+  }
+
+  async function rejectWithdrawal(row: PaymentWithdrawalReviewRecord) {
+    if (busyWithdrawalId) return
+    const reason = (rejectionReasons[row.id] ?? '').trim()
+    if (reason.length < 3) {
+      setActionError('Enter a rejection reason of at least 3 characters.')
+      setActionMessage('')
+      return
+    }
+    setBusyWithdrawalId(row.id)
+    setActionError('')
+    setActionMessage('')
+    try {
+      await adminApi.rejectPaymentWithdrawal(row.id, reason)
+      await load()
+      setRejectionReasons((current) => ({ ...current, [row.id]: '' }))
+      setActionMessage('Withdrawal ' + row.id.slice(0, 8) + ' rejected. The held amount has been returned to the customer wallet.')
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Could not reject this withdrawal.')
+    } finally {
+      setBusyWithdrawalId(null)
+    }
+  }
+
+  const views: Array<{ id: FinanceView; label: string }> = [
+    { id: 'wallets', label: 'Wallets' },
+    { id: 'deposits', label: 'Deposits' },
+    { id: 'withdrawals', label: 'Withdrawals' },
+    { id: 'withdrawal-review', label: 'Withdrawal review' },
+    { id: 'reconciliation', label: 'Reconciliation' },
+    { id: 'ledger', label: 'Ledger' },
+  ]
+
+  return <div className="page">
+    <section className="toolbar-panel tab-row">
+      {views.map((item) => <button key={item.id} className={view === item.id ? 'tab tab--active' : 'tab'} onClick={() => setView(item.id)}>{item.label}</button>)}
+      <span className="toolbar-spacer" />
+      <button className="button button--ghost button--small" type="button" onClick={() => void load()}><RefreshCw size={13} /> Refresh</button>
+    </section>
+    {error ? <ErrorNotice message={error} onRetry={() => void load()} /> : null}
+    {actionError ? <div className="notice notice--error" role="alert"><AlertTriangle size={15} /><span>{actionError}</span></div> : null}
+    {actionMessage ? <div className="notice" role="status"><CheckCircle2 size={15} /><span>{actionMessage}</span></div> : null}
+    <section className="panel">
+      {view === 'wallets' && wallets ? <Table><thead><tr><th>User</th><th>Mode</th><th>Wallet</th><th>Available</th><th>Held</th><th>Status</th></tr></thead><tbody>{wallets.items.map((w) => <tr key={w.id}><td>{w.account.user.email}</td><td><span className="tag">{w.account.mode}</span></td><td>{w.currency}</td><td>{amount(w.availableBalance)}</td><td>{amount(w.heldBalance)}</td><td><span className={tagClass(w.status)}>{w.status}</span></td></tr>)}</tbody></Table> : null}
+      {view === 'deposits' && deposits ? <FundingTable rows={deposits.items} /> : null}
+      {view === 'withdrawals' && withdrawals ? <FundingTable rows={withdrawals.items} withdrawal /> : null}
+      {view === 'withdrawal-review' && reviewQueue ? (
+        <>
+          <div className="panel-heading"><div><span className="eyebrow">Finance controls</span><h2>Pending withdrawal review</h2><small>Approve only after checking the account, destination and request. Rejections return held funds to the customer wallet.</small></div><span className={reviewQueue.items.length ? 'tag tag--bad' : 'tag tag--good'}>{reviewQueue.items.length} PENDING</span></div>
+          {reviewQueue.items.length ? (
+            <Table>
+              <thead><tr><th>Request</th><th>Customer</th><th>Amount</th><th>Destination</th><th>Requested</th><th>Decision</th></tr></thead>
+              <tbody>{reviewQueue.items.map((row) => (
+                <tr key={row.id}>
+                  <td><strong>{row.id.slice(0, 8)}</strong><small>{row.provider} · {row.id}</small></td>
+                  <td><strong>{row.user.legalName || 'Name not supplied'}</strong><small>{row.user.email} · {row.user.countryCode ?? 'Country missing'}</small></td>
+                  <td><strong>{amount(row.amount)} {row.currency}</strong></td>
+                  <td>{row.destination ?? '—'}</td>
+                  <td>{date(row.requestedAt)}</td>
+                  <td>
+                    <div className="withdrawal-review-actions">
+                      <button className="button button--primary button--small" type="button" disabled={busyWithdrawalId !== null} onClick={() => void approveWithdrawal(row)}>{busyWithdrawalId === row.id ? 'Processing…' : 'Approve'}</button>
+                      <input
+                        className="withdrawal-reason-input"
+                        aria-label={'Rejection reason for withdrawal ' + row.id.slice(0, 8)}
+                        value={rejectionReasons[row.id] ?? ''}
+                        maxLength={255}
+                        placeholder="Reason required"
+                        onChange={(event) => setRejectionReasons((current) => ({ ...current, [row.id]: event.target.value }))}
+                        disabled={busyWithdrawalId !== null}
+                      />
+                      <button className="button button--danger button--small" type="button" disabled={busyWithdrawalId !== null || (rejectionReasons[row.id] ?? '').trim().length < 3} onClick={() => void rejectWithdrawal(row)}>{busyWithdrawalId === row.id ? 'Processing…' : 'Reject & refund'}</button>
+                    </div>
+                  </td>
+                </tr>
+              ))}</tbody>
+            </Table>
+          ) : <div className="empty-state"><CheckCircle2 size={24} /><strong>No withdrawals are waiting for review.</strong><span>New requests requiring manual approval will appear here.</span></div>}
+        </>
+      ) : null}
+      {view === 'reconciliation' && recon ? <ReconciliationView data={recon} /> : null}
+      {view === 'ledger' && ledger ? <Table><thead><tr><th>Transaction</th><th>Reference</th><th>Entries</th><th>Created</th></tr></thead><tbody>{ledger.items.map((row) => <tr key={row.id}><td><strong>{row.id.slice(0, 8)}</strong><small>{row.currency}</small></td><td>{row.referenceType ?? '—'} {row.referenceId ?? ''}</td><td><div className="entry-stack">{row.entries.map((entry, i) => <span key={i} className={entry.direction === 'CREDIT' ? 'text-positive' : 'text-negative'}>{entry.direction} {amount(entry.amount)} · {entry.ledgerAccount.code}</span>)}</div></td><td>{date(row.createdAt)}</td></tr>)}</tbody></Table> : null}
+      {!wallets && !deposits && !withdrawals && !reviewQueue && !recon && !ledger ? <div className="loading-card"><Activity className="spin" size={20} /> Loading finance data…</div> : null}
+    </section>
+  </div>
 }
 
 function FundingTable({ rows, withdrawal = false }: { rows: FundingRecord[]; withdrawal?: boolean }) {
