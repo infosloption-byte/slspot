@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link } from 'react-router'
 import { Pagination } from '../components/ui/Pagination'
+import { PaymentFlowPanel } from '../components/wallet/PaymentFlowPanel'
 import { Select } from '../components/ui/Select'
 import { ApiState } from '../components/ui/ApiState'
 import { Toast } from '../components/ui/Toast'
@@ -518,31 +519,35 @@ function WalletPage() {
         </div>
 
         <div className="wallet-grid">
-          <section className="dashboard-card panel wallet-funding-card">
-            <div className="dashboard-card__header">
-              <div><span className="eyebrow">Funding</span><h2>{fundingAction === 'deposit' ? 'Deposit' : 'Withdraw'}</h2></div>
-              <span className={canFund ? 'status-pill status-pill--positive' : 'status-pill status-pill--pending'}>{canFund ? 'READY' : 'LOCKED'}</span>
-            </div>
-            <div className="wallet-funding-tabs">
-              <button type="button" className={fundingAction === 'deposit' ? 'wallet-funding-tab wallet-funding-tab--active' : 'wallet-funding-tab'} onClick={() => setFundingAction('deposit')}><ArrowDownCircle size={14} /> Deposit</button>
-              <button type="button" className={fundingAction === 'withdrawal' ? 'wallet-funding-tab wallet-funding-tab--active' : 'wallet-funding-tab'} onClick={() => setFundingAction('withdrawal')}><ArrowUpCircle size={14} /> Withdraw</button>
-            </div>
-
-            {fundingAction === 'deposit' ? (
-              <label className="wallet-funding-field"><span>Amount</span><div className="wallet-amount-input"><b>{wallet.data?.currency ?? 'USD'}</b><input inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value)} placeholder="100.00" disabled={!canFund || fundingSubmitting} /></div><small>Demo deposits are credited immediately, capped at $1,000,000, and create a balanced ledger transaction.</small></label>
-            ) : (
-              <>
-                <label className="wallet-funding-field"><span>Destination</span><input value={destination} onChange={(event) => setDestination(event.target.value)} placeholder="Demo destination" disabled={!canFund || fundingSubmitting} /></label>
-                <label className="wallet-funding-field"><span>Amount</span><div className="wallet-amount-input"><b>{wallet.data?.currency ?? 'USD'}</b><input inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value)} placeholder="50.00" disabled={!canFund || fundingSubmitting} /></div><small>Withdrawals use available demo balance, have a $0 demo fee, and are fully ledger-recorded. Maximum $1,000,000.</small></label>
-              </>
-            )}
-
-            <button type="button" className="btn btn--primary" onClick={() => void submitFunding()} disabled={!canFund || fundingSubmitting || !amount.trim() || (fundingAction === 'withdrawal' && !destination.trim())}>
-              {fundingSubmitting ? 'Processing…' : fundingAction === 'deposit' ? 'Submit deposit' : 'Submit withdrawal'}
-            </button>
-            {fundingError ? <div className="wallet-form-note" role="alert">{fundingError}</div> : null}
-            {fundingMessage ? <div className="wallet-form-note wallet-form-note--success" role="status"><Check size={14} /> {fundingMessage}</div> : null}
-          </section>
+          {isDemo ? (
+            <section className="dashboard-card panel wallet-funding-card">
+              <div className="dashboard-card__header">
+                <div><span className="eyebrow">Funding</span><h2>{fundingAction === 'deposit' ? 'Deposit' : 'Withdraw'}</h2></div>
+                <span className={canFund ? 'status-pill status-pill--positive' : 'status-pill status-pill--pending'}>{canFund ? 'READY' : 'LOCKED'}</span>
+              </div>
+              <div className="wallet-funding-tabs">
+                <button type="button" className={fundingAction === 'deposit' ? 'wallet-funding-tab wallet-funding-tab--active' : 'wallet-funding-tab'} onClick={() => setFundingAction('deposit')}><ArrowDownCircle size={14} /> Deposit</button>
+                <button type="button" className={fundingAction === 'withdrawal' ? 'wallet-funding-tab wallet-funding-tab--active' : 'wallet-funding-tab'} onClick={() => setFundingAction('withdrawal')}><ArrowUpCircle size={14} /> Withdraw</button>
+              </div>
+  
+              {fundingAction === 'deposit' ? (
+                <label className="wallet-funding-field"><span>Amount</span><div className="wallet-amount-input"><b>{wallet.data?.currency ?? 'USD'}</b><input inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value)} placeholder="100.00" disabled={!canFund || fundingSubmitting} /></div><small>Demo deposits are credited immediately, capped at $1,000,000, and create a balanced ledger transaction.</small></label>
+              ) : (
+                <>
+                  <label className="wallet-funding-field"><span>Destination</span><input value={destination} onChange={(event) => setDestination(event.target.value)} placeholder="Demo destination" disabled={!canFund || fundingSubmitting} /></label>
+                  <label className="wallet-funding-field"><span>Amount</span><div className="wallet-amount-input"><b>{wallet.data?.currency ?? 'USD'}</b><input inputMode="decimal" value={amount} onChange={(event) => setAmount(event.target.value)} placeholder="50.00" disabled={!canFund || fundingSubmitting} /></div><small>Withdrawals use available demo balance, have a $0 demo fee, and are fully ledger-recorded. Maximum $1,000,000.</small></label>
+                </>
+              )}
+  
+              <button type="button" className="btn btn--primary" onClick={() => void submitFunding()} disabled={!canFund || fundingSubmitting || !amount.trim() || (fundingAction === 'withdrawal' && !destination.trim())}>
+                {fundingSubmitting ? 'Processing…' : fundingAction === 'deposit' ? 'Submit deposit' : 'Submit withdrawal'}
+              </button>
+              {fundingError ? <div className="wallet-form-note" role="alert">{fundingError}</div> : null}
+              {fundingMessage ? <div className="wallet-form-note wallet-form-note--success" role="status"><Check size={14} /> {fundingMessage}</div> : null}
+            </section>
+          ) : (
+            <PaymentFlowPanel onUpdated={() => { void Promise.all([wallet.reload(), wallets.reload(), transactions.reload()]) }} />
+          )}
 
           <section className="dashboard-card panel">
             <div className="dashboard-card__header">
