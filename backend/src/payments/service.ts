@@ -5,6 +5,7 @@ import {
   computeKycTier,
   evaluateDeposit,
   evaluateWithdrawal,
+  isPaymentProviderOperationAllowed,
   maskDestination,
   missingProfileFields,
   toUnits,
@@ -46,6 +47,10 @@ export type PaymentsConfig = {
   withdrawalCoolingHours: number
   depositExpiryMinutes: number
   relaxWithdrawalChecks: boolean
+  sandbox: boolean
+  launchApproved: boolean
+  realDepositsEnabled: boolean
+  realWithdrawalsEnabled: boolean
 }
 
 type Notify = (userId: string, type: 'DEPOSIT' | 'WITHDRAWAL', title: string, body: string) => Promise<unknown>
@@ -222,7 +227,7 @@ export class PaymentService {
 
     for (const config of configs) {
       const adapter = this.registry.get(config.id)
-      if (!adapter || !config.enabled) continue
+      if (!adapter || !config.enabled || !this.providerOperationAllowed(adapter, direction)) continue
       if (direction === 'deposit' ? !config.depositEnabled : !config.withdrawalEnabled) continue
       if (!this.countryAllowed(config, facts.user.countryCode)) continue
       const capabilities = adapter.capabilities
@@ -884,12 +889,28 @@ export class PaymentService {
   private async resolveProvider(providerId: string, direction: PaymentDirection, countryCode: string | null) {
     const adapter = this.registry.get(providerId)
     if (!adapter) throw new PaymentError(404, 'PROVIDER_NOT_FOUND', 'That payment method is not available')
+    if (!this.providerOperationAllowed(adapter, direction)) {
+      throw new PaymentError(403, 'PAYMENT_OPERATION_DISABLED', direction === 'deposit'
+        ? 'Deposits are disabled for this provider until the real-money launch is approved.'
+        : 'Withdrawals are disabled for this provider until the real-money launch is approved.')
+    }
     const config = await this.prisma.paymentProviderConfig.findUnique({ where: { id: providerId } })
     const enabled = config?.enabled && (direction === 'deposit' ? config.depositEnabled : config.withdrawalEnabled)
     if (!config || !enabled || !this.countryAllowed(config, countryCode)) {
       throw new PaymentError(404, 'PROVIDER_NOT_FOUND', 'That payment method is not available')
     }
     return { adapter: adapter as PaymentProviderAdapter, config }
+  }
+
+  private providerOperationAllowed(adapter: PaymentProviderAdapter, direction: PaymentDirection): boolean {
+    return isPaymentProviderOperationAllowed({
+      direction,
+      providerIsSandbox: adapter.capabilities.sandbox,
+      sandboxModeEnabled: this.config.sandbox,
+      launchApproved: this.config.launchApproved,
+      depositsEnabled: this.config.realDepositsEnabled,
+      withdrawalsEnabled: this.config.realWithdrawalsEnabled,
+    })
   }
 
   private countryAllowed(config: { allowedCountries: Prisma.JsonValue | null; blockedCountries: Prisma.JsonValue | null }, countryCode: string | null): boolean {
