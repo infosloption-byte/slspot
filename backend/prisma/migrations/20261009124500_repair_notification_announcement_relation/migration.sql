@@ -41,6 +41,79 @@ PREPARE slspot_announcement_index_stmt FROM @slspot_announcement_index_sql;
 EXECUTE slspot_announcement_index_stmt;
 DEALLOCATE PREPARE slspot_announcement_index_stmt;
 
+-- A pre-existing Notification table can have a different default collation
+-- from SystemAnnouncement. MySQL requires matching character set/collation for
+-- string columns used in a foreign key, even when both columns are CHAR(36).
+-- Copy the referenced primary-key column's metadata rather than assuming a
+-- server/database default.
+SET @slspot_announcement_id_charset = (
+  SELECT character_set_name
+  FROM information_schema.columns
+  WHERE table_schema = DATABASE()
+    AND table_name = 'SystemAnnouncement'
+    AND column_name = 'id'
+  LIMIT 1
+);
+
+SET @slspot_announcement_id_collation = (
+  SELECT collation_name
+  FROM information_schema.columns
+  WHERE table_schema = DATABASE()
+    AND table_name = 'SystemAnnouncement'
+    AND column_name = 'id'
+  LIMIT 1
+);
+
+SET @slspot_normalize_announcement_column_sql = IF(
+  @slspot_announcement_id_charset IS NOT NULL
+    AND @slspot_announcement_id_collation IS NOT NULL,
+  CONCAT(
+    'ALTER TABLE `Notification` MODIFY COLUMN `announcementId` CHAR(36) CHARACTER SET ',
+    @slspot_announcement_id_charset,
+    ' COLLATE ',
+    @slspot_announcement_id_collation,
+    ' NULL'
+  ),
+  'SELECT 1'
+);
+
+PREPARE slspot_normalize_announcement_column_stmt FROM @slspot_normalize_announcement_column_sql;
+EXECUTE slspot_normalize_announcement_column_stmt;
+DEALLOCATE PREPARE slspot_normalize_announcement_column_stmt;
+
+-- Both sides of a MySQL foreign key must use a supporting storage engine.
+-- Normalize only if an existing database has drifted from the migration schema.
+SET @slspot_notification_engine = (
+  SELECT engine FROM information_schema.tables
+  WHERE table_schema = DATABASE() AND table_name = 'Notification'
+  LIMIT 1
+);
+SET @slspot_announcement_engine = (
+  SELECT engine FROM information_schema.tables
+  WHERE table_schema = DATABASE() AND table_name = 'SystemAnnouncement'
+  LIMIT 1
+);
+
+SET @slspot_notification_engine_sql = IF(
+  @slspot_notification_engine IS NOT NULL
+    AND UPPER(@slspot_notification_engine) <> 'INNODB',
+  'ALTER TABLE `Notification` ENGINE=InnoDB',
+  'SELECT 1'
+);
+PREPARE slspot_notification_engine_stmt FROM @slspot_notification_engine_sql;
+EXECUTE slspot_notification_engine_stmt;
+DEALLOCATE PREPARE slspot_notification_engine_stmt;
+
+SET @slspot_announcement_engine_sql = IF(
+  @slspot_announcement_engine IS NOT NULL
+    AND UPPER(@slspot_announcement_engine) <> 'INNODB',
+  'ALTER TABLE `SystemAnnouncement` ENGINE=InnoDB',
+  'SELECT 1'
+);
+PREPARE slspot_announcement_engine_stmt FROM @slspot_announcement_engine_sql;
+EXECUTE slspot_announcement_engine_stmt;
+DEALLOCATE PREPARE slspot_announcement_engine_stmt;
+
 -- Check for the expected FK definition, not just its name.
 SET @slspot_expected_announcement_fk_exists = (
   SELECT COUNT(*)
