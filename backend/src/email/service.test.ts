@@ -14,6 +14,11 @@ test('development with email delivery disabled captures rendered messages in the
     'Withdrawal request received',
     'We received your withdrawal request for 10.00 USD.',
     'withdrawal',
+    [
+      { label: 'Amount', value: '10.00 USD' },
+      { label: 'Reference', value: 'DEMO-WD-TEST' },
+      { label: 'Status', value: 'Request received' },
+    ],
   )
 
   assert.equal(result.sent, false)
@@ -28,4 +33,6 @@ test('development with email delivery disabled captures rendered messages in the
   assert.equal(message.templateKey, 'withdrawal-request')
   assert.match(message.subject, /Withdrawal request received/)
   assert.match(message.html, /We received your withdrawal request for 10\.00 USD\./)
+  assert.match(message.html, /DEMO-WD-TEST/)
+  assert.match(message.html, /Request received/)
 })
