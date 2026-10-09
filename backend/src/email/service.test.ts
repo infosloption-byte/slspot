@@ -19,7 +19,7 @@ test('development with email delivery disabled captures rendered messages in the
   assert.equal(result.sent, false)
   assert.ok(result.providerId?.startsWith('preview:'))
   const after = listEmailPreviewMessages()
-  assert.equal(after.length, before + 1)
+  assert.equal(after.length, Math.min(before + 1, 250))
 
   const id = result.providerId?.slice('preview:'.length) ?? ''
   const message = getEmailPreviewMessage(id)
