@@ -238,6 +238,7 @@ export class PaymentService {
     for (const config of configs) {
       const adapter = this.registry.get(config.id)
       if (!adapter || !config.enabled || !this.providerOperationAllowed(adapter, direction, adminGate)) continue
+      if (direction === 'deposit' ? !adapter.capabilities.deposit : !adapter.capabilities.withdrawal) continue
       if (direction === 'deposit' ? !config.depositEnabled : !config.withdrawalEnabled) continue
       if (!this.countryAllowed(config, facts.user.countryCode)) continue
       const capabilities = adapter.capabilities
@@ -958,6 +959,8 @@ export class PaymentService {
   private async resolveProvider(providerId: string, direction: PaymentDirection, countryCode: string | null) {
     const adapter = this.registry.get(providerId)
     if (!adapter) throw new PaymentError(404, 'PROVIDER_NOT_FOUND', 'That payment method is not available')
+    const supportsOperation = direction === 'deposit' ? adapter.capabilities.deposit : adapter.capabilities.withdrawal
+    if (!supportsOperation) throw new PaymentError(404, 'PROVIDER_NOT_FOUND', 'That payment method is not available for this operation')
     const adminGate = adapter.capabilities.sandbox
       ? null
       : await this.prisma.realMoneyGate.findUnique({
