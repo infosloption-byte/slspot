@@ -9,7 +9,6 @@ import {
   isPaymentProviderOperationAllowed,
   maskDestination,
   missingProfileFields,
-  MINIMUM_AGE_YEARS,
   toUnits,
   validateDetails,
   withdrawalNeedsReview,
