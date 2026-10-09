@@ -92,7 +92,7 @@ export type SecurityEventRecord = LoginHistoryRecord & {
 }
 
 export const authApi = {
-  register: (input: { email: string; password: string; countryCode?: string; acceptTerms: boolean; termsVersion?: string }) =>
+  register: (input: { email: string; password: string; countryCode?: string; acceptTerms: boolean; acknowledgePrivacy: boolean; termsVersion: string; privacyVersion: string }) =>
     apiClient.post<ApiSuccess<RegistrationResponse>>('/auth/register', input).then(data),
 
   login: (input: { email: string; password: string; rememberDevice?: boolean }) =>
