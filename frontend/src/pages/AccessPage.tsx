@@ -91,6 +91,12 @@ type RouteState = {
 
 const challengeStorageKey = 'slspot:2fa-challenge'
 
+type PolicyLoadState = {
+  locationKey: string
+  catalogue?: CurrentPolicyCatalogue
+  error?: string
+}
+
 function hasField(fields: readonly Field[], field: Field): boolean {
   return fields.includes(field)
 }
@@ -142,25 +148,29 @@ export function AccessPage() {
   const [useRecoveryCode, setUseRecoveryCode] = useState(false)
   const [acceptTerms, setAcceptTerms] = useState(false)
   const [acknowledgePrivacy, setAcknowledgePrivacy] = useState(false)
-  const [policyCatalogue, setPolicyCatalogue] = useState<CurrentPolicyCatalogue | null>(null)
-  const [policyCatalogueError, setPolicyCatalogueError] = useState('')
+  const [policyLoadState, setPolicyLoadState] = useState<PolicyLoadState | null>(null)
 
   useEffect(() => {
     if (location.pathname !== '/register') return
     let active = true
-    setPolicyCatalogue(null)
-    setPolicyCatalogueError('')
     void getCurrentPolicies()
       .then((catalogue) => {
         if (!active) return
-        setPolicyCatalogue(catalogue)
+        setPolicyLoadState({ locationKey: location.key, catalogue })
       })
       .catch(() => {
         if (!active) return
-        setPolicyCatalogueError('Current policy versions could not be loaded. Refresh the page before registering.')
+        setPolicyLoadState({
+          locationKey: location.key,
+          error: 'Current policy versions could not be loaded. Refresh the page before registering.',
+        })
       })
     return () => { active = false }
-  }, [location.pathname])
+  }, [location.key, location.pathname])
+
+  const policyLoadMatchesLocation = policyLoadState?.locationKey === location.key
+  const policyCatalogue = policyLoadMatchesLocation ? policyLoadState?.catalogue ?? null : null
+  const policyCatalogueError = policyLoadMatchesLocation ? policyLoadState?.error ?? '' : ''
   const config = useMemo(
     () => configByPath[location.pathname as keyof typeof configByPath] ?? configByPath['/login'],
     [location.pathname],
