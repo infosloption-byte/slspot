@@ -8,6 +8,9 @@ import { AdminService } from './admin/service.js'
 import { LedgerService } from './ledger/service.js'
 import { LedgerReconciliationWorker } from './ledger/reconciliation-worker.js'
 import { env } from './config/env.js'
+import { PaymentService } from './payments/service.js'
+import { PaymentProviderRegistry } from './payments/registry.js'
+import { createSandboxProviders } from './payments/sandbox.js'
 import { prisma } from './db/prisma.js'
 import {
   checkRedis,
@@ -37,6 +40,17 @@ const realtimeGateway = new RealtimeGateway({
 })
 // Without Redis, realtime events are delivered straight to this process's gateway.
 setLocalRealtimeSink((message) => realtimeGateway.broadcastSerialized(message))
+const ledgerService = new LedgerService(prisma)
+const paymentRegistry = new PaymentProviderRegistry()
+// Real adapters register here by id once provider credentials exist. Sandbox adapters can never load in production.
+if (env.payments.sandbox) for (const provider of createSandboxProviders(env.payments.sandboxWebhookSecret)) paymentRegistry.register(provider)
+const paymentService = new PaymentService(
+  prisma,
+  paymentRegistry,
+  ledgerService,
+  (userId, type, title, body) => apiService.createNotification(userId, type, title, body),
+  env.payments,
+)
 const app = buildApp({
   checkDatabase,
   checkRedis,
@@ -47,8 +61,9 @@ const app = buildApp({
   marketDataService,
   tradingService,
   adminService,
+  paymentService,
+  paymentRegistry,
 })
-const ledgerService = new LedgerService(prisma)
 const reconciliationWorker = new LedgerReconciliationWorker(
   prisma,
   (userId, accountId) => ledgerService.reconcileWallet(userId, accountId),
@@ -56,6 +71,7 @@ const reconciliationWorker = new LedgerReconciliationWorker(
   env.trading.reconcileIntervalMs,
 )
 let shuttingDown = false
+let paymentExpiryTimer: NodeJS.Timeout | undefined
 
 async function shutdown(signal: string) {
   if (shuttingDown) return
@@ -76,6 +92,7 @@ async function shutdown(signal: string) {
     await app.close()
     await disconnectRedis()
     reconciliationWorker.stop()
+    if (paymentExpiryTimer) clearInterval(paymentExpiryTimer)
     await tradingService.stop()
     await marketDataService.stop()
     await disconnectDatabase()
@@ -133,6 +150,13 @@ try {
   app.log.info('Starting trading service')
   await tradingService.start()
   app.log.info('Trading service started')
+
+  await paymentService.syncProviderConfigs()
+  paymentExpiryTimer = setInterval(() => {
+    paymentService.expireStaleDeposits().catch((error) => app.log.error({ err: error }, 'Expiring stale deposits failed'))
+  }, 60_000)
+  paymentExpiryTimer.unref()
+  app.log.info({ providers: paymentRegistry.size, sandbox: env.payments.sandbox }, 'Payments initialised')
 
   reconciliationWorker.start()
   if (env.trading.reconcileIntervalMs > 0) app.log.info({ intervalMs: env.trading.reconcileIntervalMs }, 'Scheduled wallet/ledger reconciliation started')

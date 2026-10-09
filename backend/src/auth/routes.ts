@@ -188,12 +188,14 @@ export function registerAuthRoutes(app: FastifyInstance, service: AuthServiceLik
     return ok(request,{user:session,sessionId:session.sessionId})
   })
 
-  app.patch<{Body:{displayName?:string|null;countryCode?:string|null;timezone?:string|null;locale?:string|null}}>(PREFIX+'/profile',{
+  app.patch<{Body:{displayName?:string|null;countryCode?:string|null;timezone?:string|null;locale?:string|null;legalName?:string|null;dateOfBirth?:string|null}}>(PREFIX+'/profile',{
     schema:{body:{type:'object',additionalProperties:false,properties:{
       displayName:{anyOf:[{type:'string',maxLength:120},{type:'null'}]},
       countryCode:{anyOf:[{type:'string',minLength:2,maxLength:2},{type:'null'}]},
       timezone:{anyOf:[{type:'string',maxLength:64},{type:'null'}]},
       locale:{anyOf:[{type:'string',maxLength:35},{type:'null'}]},
+      legalName:{anyOf:[{type:'string',maxLength:160},{type:'null'}]},
+      dateOfBirth:{anyOf:[{type:'string',maxLength:10},{type:'null'}]},
     }}},
   },async(request)=>{
     const session=await requireSession(request,service)

@@ -36,7 +36,33 @@ async function requireAdmin(request: FastifyRequest, authService: AuthServiceLik
 
 function ok<T>(request: FastifyRequest, data: T) { return { success: true as const, data, requestId: request.id } }
 
-export function registerAdminRoutes(app: FastifyInstance, options: { authService: AuthServiceLike; adminService: AdminService; checkDatabase?: () => Promise<boolean>; checkRedis?: () => Promise<boolean> }) {
+export function registerAdminRoutes(app: FastifyInstance, options: { authService: AuthServiceLike; adminService: AdminService; paymentService?: import('../payments/service.js').PaymentService; checkDatabase?: () => Promise<boolean>; checkRedis?: () => Promise<boolean> }) {
+  if (options.paymentService) {
+    const payments = options.paymentService
+    app.get<{ Querystring: Query }>(PREFIX + '/payments/withdrawals', async (request) => {
+      await requireAdmin(request, options.authService, options.adminService)
+      const status = enumValue(request.query.status, ['PENDING', 'PROCESSING'], 'Withdrawal status') as 'PENDING' | 'PROCESSING' | undefined
+      return ok(request, await payments.listWithdrawalsForReview(status ?? 'PENDING', positive(request.query.page, 1), positive(request.query.pageSize, 25)))
+    })
+
+    app.post<{ Params: { id: string } }>(PREFIX + '/payments/withdrawals/:id/approve', {
+      schema: { params: { type: 'object', required: ['id'], properties: { id: { type: 'string', pattern: UUID_PATTERN } } } },
+    }, async (request) => {
+      const session = await requireAdmin(request, options.authService, options.adminService)
+      return ok(request, await payments.approveWithdrawal(session.id, request.params.id))
+    })
+
+    app.post<{ Params: { id: string }; Body: { reason: string } }>(PREFIX + '/payments/withdrawals/:id/reject', {
+      schema: {
+        params: { type: 'object', required: ['id'], properties: { id: { type: 'string', pattern: UUID_PATTERN } } },
+        body: { type: 'object', required: ['reason'], additionalProperties: false, properties: { reason: { type: 'string', minLength: 3, maxLength: 255 } } },
+      },
+    }, async (request) => {
+      const session = await requireAdmin(request, options.authService, options.adminService)
+      return ok(request, await payments.rejectWithdrawal(session.id, request.params.id, request.body.reason.trim()))
+    })
+  }
+
   app.get(PREFIX + '/me', async (request) => {
     const session = await requireAdmin(request, options.authService, options.adminService)
     return ok(request, await options.adminService.getMe(session.id))

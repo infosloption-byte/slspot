@@ -8,6 +8,7 @@ import type { PlatformApiService } from './api/service.js'
 import cookie from '@fastify/cookie'
 import { registerAuthRoutes, type AuthServiceLike } from './auth/routes.js'
 import { registerAdminRoutes } from './admin/routes.js'
+import { registerPaymentRoutes } from './payments/routes.js'
 import { registerPolicyRoutes } from './policies/routes.js'
 import { registerEmailPreviewRoutes } from './email/preview-routes.js'
 import type { AdminService } from './admin/service.js'
@@ -44,6 +45,8 @@ type AppOptions = {
   marketDataService?: import('./market/service.js').MarketDataServiceLike
   tradingService?: import('./api/routes.js').TradingServiceLike
   adminService?: AdminService
+  paymentService?: import('./payments/service.js').PaymentService
+  paymentRegistry?: import('./payments/registry.js').PaymentProviderRegistry
 }
 
 function resolveRequestId(value: string | string[] | undefined): string {
@@ -169,7 +172,7 @@ export function buildApp(options: AppOptions = {}) {
   }
 
   if (options.authService && options.adminService) {
-    registerAdminRoutes(app, { authService: options.authService, adminService: options.adminService, checkDatabase: options.checkDatabase, checkRedis: options.checkRedis })
+    registerAdminRoutes(app, { authService: options.authService, adminService: options.adminService, paymentService: options.paymentService, checkDatabase: options.checkDatabase, checkRedis: options.checkRedis })
   }
 
   if (options.authService && options.apiService) {
@@ -179,6 +182,10 @@ export function buildApp(options: AppOptions = {}) {
       marketDataService: options.marketDataService,
       tradingService: options.tradingService,
     })
+  }
+
+  if (options.authService && options.paymentService && options.paymentRegistry) {
+    registerPaymentRoutes(app, { authService: options.authService, paymentService: options.paymentService, registry: options.paymentRegistry })
   }
 
   app.get(API_PREFIX + '/health', async (request) =>

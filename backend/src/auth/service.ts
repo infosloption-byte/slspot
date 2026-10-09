@@ -19,6 +19,9 @@ export type AuthUser = {
   timezone: string | null
   locale: string | null
   emailVerifiedAt: Date | null
+  legalName: string | null
+  /** ISO calendar date (YYYY-MM-DD). */
+  dateOfBirth: string | null
 }
 
 export type UserPreferences = {
@@ -50,6 +53,28 @@ export type TwoFactorSetup = {
 }
 
 export type AuthTokenResult = { token: string; expiresAt: Date }
+
+function validateLegalName(value: string | null): string | null {
+  if (value === null) return null
+  const name = value.trim().replace(/\s+/g, ' ')
+  if (name.length < 2 || name.length > 160 || !/^[\p{L}\p{M}][\p{L}\p{M}\s.'-]*$/u.test(name)) {
+    throw new AuthError(400, 'INVALID_LEGAL_NAME', 'Enter your full legal name as it appears on your ID')
+  }
+  return name
+}
+
+function validateDateOfBirth(value: string | null): Date | null {
+  if (value === null) return null
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) throw new AuthError(400, 'INVALID_DATE_OF_BIRTH', 'Date of birth must be a valid date')
+  const date = new Date(value + 'T00:00:00.000Z')
+  if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== value) throw new AuthError(400, 'INVALID_DATE_OF_BIRTH', 'Date of birth must be a valid date')
+  const now = new Date()
+  let age = now.getUTCFullYear() - date.getUTCFullYear()
+  if (now.getUTCMonth() < date.getUTCMonth() || (now.getUTCMonth() === date.getUTCMonth() && now.getUTCDate() < date.getUTCDate())) age -= 1
+  if (age < 18) throw new AuthError(400, 'UNDERAGE', 'You must be at least 18 years old')
+  if (age > 120) throw new AuthError(400, 'INVALID_DATE_OF_BIRTH', 'Date of birth must be a valid date')
+  return date
+}
 
 export class AuthError extends Error {
   readonly statusCode: number
@@ -695,16 +720,18 @@ export class AuthService {
     return this.toUser(user)
   }
 
-  async updateProfile(userId: string, input: { displayName?: string | null; countryCode?: string | null; timezone?: string | null; locale?: string | null }, ipAddress?: string, userAgent?: string): Promise<AuthUser> {
+  async updateProfile(userId: string, input: { displayName?: string | null; countryCode?: string | null; timezone?: string | null; locale?: string | null; legalName?: string | null; dateOfBirth?: string | null }, ipAddress?: string, userAgent?: string): Promise<AuthUser> {
     const displayName = input.displayName === undefined ? undefined : normalizeOptionalText(input.displayName, 120)
     const countryCode = input.countryCode === undefined ? undefined : validateCountryCode(input.countryCode ?? undefined)
     const timezone = input.timezone === undefined ? undefined : validateTimeZone(input.timezone)
     const locale = input.locale === undefined ? undefined : validateLocale(input.locale)
+    const legalName = input.legalName === undefined ? undefined : validateLegalName(input.legalName)
+    const dateOfBirth = input.dateOfBirth === undefined ? undefined : validateDateOfBirth(input.dateOfBirth)
 
     const user = await this.prisma.$transaction(async (tx) => {
       const updated = await tx.user.update({
         where: { id: userId },
-        data: { displayName, countryCode, timezone, locale },
+        data: { displayName, countryCode, timezone, locale, legalName, dateOfBirth },
       })
       await tx.auditLog.create({
         data: {
@@ -714,7 +741,7 @@ export class AuthService {
           entityId: userId,
           ipAddress,
           userAgent,
-          metadata: { displayNameChanged: displayName !== undefined, countryChanged: countryCode !== undefined, timezoneChanged: timezone !== undefined, localeChanged: locale !== undefined },
+          metadata: { displayNameChanged: displayName !== undefined, countryChanged: countryCode !== undefined, timezoneChanged: timezone !== undefined, localeChanged: locale !== undefined, legalNameChanged: legalName !== undefined, dateOfBirthChanged: dateOfBirth !== undefined },
         },
       })
       return updated
@@ -1064,7 +1091,7 @@ export class AuthService {
     }
   }
 
-  private toUser(user: { id: string; email: string; status: string; countryCode: string | null; displayName: string | null; timezone: string | null; locale: string | null; emailVerifiedAt: Date | null }): AuthUser {
+  private toUser(user: { id: string; email: string; status: string; countryCode: string | null; displayName: string | null; timezone: string | null; locale: string | null; emailVerifiedAt: Date | null; legalName?: string | null; dateOfBirth?: Date | null }): AuthUser {
     return {
       id: user.id,
       email: user.email,
@@ -1074,6 +1101,8 @@ export class AuthService {
       timezone: user.timezone,
       locale: user.locale,
       emailVerifiedAt: user.emailVerifiedAt,
+      legalName: user.legalName ?? null,
+      dateOfBirth: user.dateOfBirth ? user.dateOfBirth.toISOString().slice(0, 10) : null,
     }
   }
 }
