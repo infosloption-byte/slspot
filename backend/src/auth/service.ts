@@ -829,7 +829,7 @@ export class AuthService {
         this.prisma.userPreference.findUnique({ where: { userId }, select: { emailSecurityAlerts: true } }),
       ])
       if (target && preferences?.emailSecurityAlerts !== false) {
-        await this.email.sendNotification(target.email, eventKey + ':' + userId, title, body, 'security')
+        await this.email.sendNotification(target.email, eventKey + ':' + userId + ':' + Date.now(), title, body, 'security')
       }
     } catch {
       // Security state changes must succeed even when email delivery is unavailable.
