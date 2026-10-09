@@ -188,6 +188,7 @@ export type UserDetail = UserRecord & {
   updatedAt: string
   termsAcceptedAt: string | null
   termsVersion: string | null
+  policyAcceptances: Array<{ id: string; policyType: string; version: string; acceptedAt: string; source: string }>
   accounts: Array<{ id: string; name: string; currency: string; mode: string; status: string; createdAt: string; wallets: Array<{ id: string; currency: string; status: string; availableBalance: string; heldBalance: string }> }>
   kycCases: Array<{ id: string; provider: string | null; providerCaseId: string | null; status: string; submittedAt: string | null; resolvedAt: string | null; createdAt: string; updatedAt: string }>
   sessions: Array<{ id: string; deviceId: string | null; ipAddress: string | null; userAgent: string | null; createdAt: string; updatedAt: string; expiresAt: string; revokedAt: string | null }>
