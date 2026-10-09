@@ -113,7 +113,7 @@ export const authApi = {
   profile: () =>
     apiClient.get<ApiSuccess<{ user: AuthUser }>>('/auth/me').then(data),
 
-  updateProfile: (input: { displayName?: string | null; countryCode?: string | null; timezone?: string | null; locale?: string | null }) =>
+  updateProfile: (input: { displayName?: string | null; countryCode?: string | null; timezone?: string | null; locale?: string | null; legalName?: string | null; dateOfBirth?: string | null }) =>
     apiClient.patch<ApiSuccess<{ user: AuthUser }>>('/auth/profile', input).then(data),
 
   preferences: () =>
