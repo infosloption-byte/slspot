@@ -13,7 +13,7 @@ import {
 
 type Page = 'dashboard' | 'users' | 'trading' | 'finance' | 'support' | 'announcements' | 'risk' | 'audit' | 'launch-gate'
 type TradingView = 'trades' | 'positions' | 'settlements' | 'assets'
-type FinanceView = 'wallets' | 'deposits' | 'withdrawals' | 'withdrawal-review' | 'reconciliation' | 'ledger'
+type FinanceView = 'wallets' | 'deposits' | 'withdrawals' | 'withdrawal-review' | 'payout-reconciliation' | 'reconciliation' | 'ledger'
 
 const pages: Array<{ id: Page; label: string; icon: typeof LayoutDashboard }> = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -227,6 +227,7 @@ function FinancePage({ refreshKey }: { refreshKey: number }) {
   const [deposits, setDeposits] = useState<List<FundingRecord> | null>(null)
   const [withdrawals, setWithdrawals] = useState<List<FundingRecord> | null>(null)
   const [reviewQueue, setReviewQueue] = useState<List<PaymentWithdrawalReviewRecord> | null>(null)
+  const [processingQueue, setProcessingQueue] = useState<List<PaymentWithdrawalReviewRecord> | null>(null)
   const [recon, setRecon] = useState<Reconciliation | null>(null)
   const [ledger, setLedger] = useState<List<LedgerRecord> | null>(null)
   const [error, setError] = useState('')
@@ -238,11 +239,12 @@ function FinancePage({ refreshKey }: { refreshKey: number }) {
   async function load() {
     setError('')
     try {
-      const [w, d, wd, queue, r, l] = await Promise.all([
+      const [w, d, wd, queue, processing, r, l] = await Promise.all([
         adminApi.wallets(),
         adminApi.deposits(),
         adminApi.withdrawals(),
         adminApi.paymentWithdrawalQueue('PENDING'),
+        adminApi.paymentWithdrawalQueue('PROCESSING'),
         adminApi.reconciliation(),
         adminApi.ledger(),
       ])
@@ -250,6 +252,7 @@ function FinancePage({ refreshKey }: { refreshKey: number }) {
       setDeposits(d)
       setWithdrawals(wd)
       setReviewQueue(queue)
+      setProcessingQueue(processing)
       setRecon(r)
       setLedger(l)
     } catch (err) {
@@ -298,11 +301,33 @@ function FinancePage({ refreshKey }: { refreshKey: number }) {
     }
   }
 
+  async function reconcileWithdrawal(row: PaymentWithdrawalReviewRecord) {
+    if (busyWithdrawalId) return
+    setBusyWithdrawalId(row.id)
+    setActionError('')
+    setActionMessage('')
+    try {
+      const result = await adminApi.reconcilePaymentWithdrawal(row.id)
+      await load()
+      const status = result.providerStatus
+      setActionMessage(status === 'COMPLETED'
+        ? 'Provider confirmed payout ' + row.id.slice(0, 8) + ' completed.'
+        : status === 'FAILED'
+          ? 'Provider confirmed payout ' + row.id.slice(0, 8) + ' failed; the reserved amount was refunded.'
+          : 'Provider still reports ' + status.toLowerCase() + '. No wallet or ledger change was made.')
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Could not reconcile this withdrawal.')
+    } finally {
+      setBusyWithdrawalId(null)
+    }
+  }
+
   const views: Array<{ id: FinanceView; label: string }> = [
     { id: 'wallets', label: 'Wallets' },
     { id: 'deposits', label: 'Deposits' },
     { id: 'withdrawals', label: 'Withdrawals' },
     { id: 'withdrawal-review', label: 'Withdrawal review' },
+    { id: 'payout-reconciliation', label: 'Payout reconciliation' },
     { id: 'reconciliation', label: 'Reconciliation' },
     { id: 'ledger', label: 'Ledger' },
   ]
@@ -320,6 +345,31 @@ function FinancePage({ refreshKey }: { refreshKey: number }) {
       {view === 'wallets' && wallets ? <Table><thead><tr><th>User</th><th>Mode</th><th>Wallet</th><th>Available</th><th>Held</th><th>Status</th></tr></thead><tbody>{wallets.items.map((w) => <tr key={w.id}><td>{w.account.user.email}</td><td><span className="tag">{w.account.mode}</span></td><td>{w.currency}</td><td>{amount(w.availableBalance)}</td><td>{amount(w.heldBalance)}</td><td><span className={tagClass(w.status)}>{w.status}</span></td></tr>)}</tbody></Table> : null}
       {view === 'deposits' && deposits ? <FundingTable rows={deposits.items} /> : null}
       {view === 'withdrawals' && withdrawals ? <FundingTable rows={withdrawals.items} withdrawal /> : null}
+      {view === 'payout-reconciliation' && processingQueue ? (
+        <>
+          <div className="panel-heading"><div><span className="eyebrow">Operations</span><h2>Processing payouts</h2><small>Check the original provider’s status before closing or refunding a payout whose final result is uncertain. If the provider is unreachable, funds remain reserved.</small></div><span className={processingQueue.items.length ? 'tag tag--bad' : 'tag tag--good'}>{processingQueue.items.length} PROCESSING</span></div>
+          {processingQueue.items.length ? (
+            <Table>
+              <thead><tr><th>Request</th><th>Customer</th><th>Amount</th><th>Destination</th><th>Updated</th><th>Provider check</th></tr></thead>
+              <tbody>{processingQueue.items.map((row) => (
+                <tr key={row.id}>
+                  <td><strong>{row.id.slice(0, 8)}</strong><small>{row.provider} · {row.id}</small></td>
+                  <td><strong>{row.user.legalName || 'Name not supplied'}</strong><small>{row.user.email}</small></td>
+                  <td><strong>{amount(row.amount)} {row.currency}</strong></td>
+                  <td>{row.destination ?? '—'}</td>
+                  <td>{date(row.requestedAt)}</td>
+                  <td>
+                    <button className="button button--ghost button--small" type="button" disabled={busyWithdrawalId !== null} onClick={() => void reconcileWithdrawal(row)}>
+                      {busyWithdrawalId === row.id ? 'Checking…' : 'Check provider status'}
+                    </button>
+                    {row.failureReason ? <small>{row.failureReason}</small> : null}
+                  </td>
+                </tr>
+              ))}</tbody>
+            </Table>
+          ) : <div className="empty-state"><CheckCircle2 size={24} /><strong>No payouts are currently processing.</strong><span>Requests awaiting a provider result will appear here.</span></div>}
+        </>
+      ) : null}
       {view === 'withdrawal-review' && reviewQueue ? (
         <>
           <div className="panel-heading"><div><span className="eyebrow">Finance controls</span><h2>Pending withdrawal review</h2><small>Approve only after checking the account, destination and request. Rejections return held funds to the customer wallet.</small></div><span className={reviewQueue.items.length ? 'tag tag--bad' : 'tag tag--good'}>{reviewQueue.items.length} PENDING</span></div>
@@ -356,7 +406,7 @@ function FinancePage({ refreshKey }: { refreshKey: number }) {
       ) : null}
       {view === 'reconciliation' && recon ? <ReconciliationView data={recon} /> : null}
       {view === 'ledger' && ledger ? <Table><thead><tr><th>Transaction</th><th>Reference</th><th>Entries</th><th>Created</th></tr></thead><tbody>{ledger.items.map((row) => <tr key={row.id}><td><strong>{row.id.slice(0, 8)}</strong><small>{row.currency}</small></td><td>{row.referenceType ?? '—'} {row.referenceId ?? ''}</td><td><div className="entry-stack">{row.entries.map((entry, i) => <span key={i} className={entry.direction === 'CREDIT' ? 'text-positive' : 'text-negative'}>{entry.direction} {amount(entry.amount)} · {entry.ledgerAccount.code}</span>)}</div></td><td>{date(row.createdAt)}</td></tr>)}</tbody></Table> : null}
-      {!wallets && !deposits && !withdrawals && !reviewQueue && !recon && !ledger ? <div className="loading-card"><Activity className="spin" size={20} /> Loading finance data…</div> : null}
+      {!wallets && !deposits && !withdrawals && !reviewQueue && !processingQueue && !recon && !ledger ? <div className="loading-card"><Activity className="spin" size={20} /> Loading finance data…</div> : null}
     </section>
   </div>
 }
