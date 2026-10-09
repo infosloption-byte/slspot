@@ -88,32 +88,32 @@ export class AdminService {
   async updateRealMoneyGate(actorUserId: string, input: AdminRealMoneyGateInput) {
     await this.requireAdmin(actorUserId)
 
-    const requestedOperations: Array<[RealMoneyOperation, boolean]> = [
-      ['TRADING', input.tradingEnabled],
-      ['DEPOSIT', input.depositsEnabled],
-      ['WITHDRAWAL', input.withdrawalsEnabled],
-    ]
-
-    // The admin panel is a second lock, not a way to override deployment approval.
-    // It may only turn an operation on when the environment launch gate permits it.
-    for (const [operation, enabled] of requestedOperations) {
-      if (!enabled) continue
-      const reason = realMoneyOperationBlockReason(operation)
-      if (reason) {
-        throw new AdminError(
-          409,
-          'REAL_MONEY_ENV_GATE_CLOSED',
-          'Cannot enable ' + operation.toLowerCase() + ': ' + reason,
-        )
-      }
-    }
-
     return this.prisma.$transaction(async (tx) => {
       const previous = await tx.realMoneyGate.findUnique({ where: { id: 'GLOBAL' } })
       const before = {
         tradingEnabled: previous?.tradingEnabled ?? false,
         depositsEnabled: previous?.depositsEnabled ?? false,
         withdrawalsEnabled: previous?.withdrawalsEnabled ?? false,
+      }
+
+      // The admin panel is a second lock, not a way to override deployment approval.
+      // Validate only newly-enabled operations so an operator can always switch
+      // operations off even after the deployment gate has been closed.
+      const requestedOperations: Array<[RealMoneyOperation, boolean, boolean]> = [
+        ['TRADING', input.tradingEnabled, before.tradingEnabled],
+        ['DEPOSIT', input.depositsEnabled, before.depositsEnabled],
+        ['WITHDRAWAL', input.withdrawalsEnabled, before.withdrawalsEnabled],
+      ]
+      for (const [operation, enabled, wasEnabled] of requestedOperations) {
+        if (!enabled || wasEnabled) continue
+        const reason = realMoneyOperationBlockReason(operation)
+        if (reason) {
+          throw new AdminError(
+            409,
+            'REAL_MONEY_ENV_GATE_CLOSED',
+            'Cannot enable ' + operation.toLowerCase() + ': ' + reason,
+          )
+        }
       }
 
       if (
