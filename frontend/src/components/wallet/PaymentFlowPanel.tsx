@@ -217,6 +217,24 @@ export function PaymentFlowPanel({ onUpdated }: Props) {
     }
   }
 
+  async function cancelCurrentWithdrawal() {
+    if (!withdrawal || withdrawal.status !== 'PENDING' || sandboxBusy) return
+    setFormError('')
+    setNotice('')
+    setSandboxBusy(true)
+    try {
+      const result = await paymentApi.cancelWithdrawal(withdrawal.id)
+      setWithdrawal(result)
+      setNotice('Withdrawal cancelled. The reserved amount has been returned to your wallet.')
+      setRefreshKey((value) => value + 1)
+      onUpdated()
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : 'Could not cancel this withdrawal.')
+    } finally {
+      setSandboxBusy(false)
+    }
+  }
+
   async function submitWithdrawal() {
     if (!selectedMethod || !canSubmit) return
     setFormError('')
@@ -395,6 +413,7 @@ export function PaymentFlowPanel({ onUpdated }: Props) {
           {withdrawal.destination ? <p>Destination: {withdrawal.destination}</p> : null}
           {withdrawal.needsReview ? <p className="payment-footnote">This request is waiting for an administrator to review it.</p> : null}
           {withdrawal.failureReason ? <p className="payment-result__failure">{withdrawal.failureReason}</p> : null}
+          {withdrawal.status === 'PENDING' ? <button type="button" className="setting-button" disabled={sandboxBusy} onClick={() => void cancelCurrentWithdrawal()}>{sandboxBusy ? 'Processing…' : 'Cancel pending withdrawal'}</button> : null}
         </div>
       ) : null}
 
