@@ -208,6 +208,14 @@ describe('authentication routes', () => {
     })
     assert.equal(preferences.statusCode, 200)
 
+    const supportPreference = await app.inject({
+      method: 'PATCH',
+      url: '/api/v1/auth/preferences',
+      headers: { cookie: 'slspot_session=test-session-token', 'x-csrf-token': csrfToken('slspot_session=test-session-token') },
+      payload: { emailSupportUpdates: false },
+    })
+    assert.equal(supportPreference.statusCode, 200)
+
     const password = await app.inject({
       method: 'POST',
       url: '/api/v1/auth/password/change',
