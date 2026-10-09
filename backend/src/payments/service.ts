@@ -937,14 +937,15 @@ export class PaymentService {
       })
       if (!withdrawal || withdrawal.status !== 'COMPLETED') return null
 
-      // The payout state and wallet transaction status must commit together. Also repair a legacy
-      // partial finalization safely if the withdrawal was already completed by older code.
-      if (withdrawal.walletTransactionId) {
-        await tx.walletTransaction.update({
-          where: { id: withdrawal.walletTransactionId },
-          data: { status: 'COMPLETED' },
-        })
+      // The payout state and wallet transaction status must commit together. Without the
+      // original wallet transaction we cannot safely mark the payout complete.
+      if (!withdrawal.walletTransactionId) {
+        throw new PaymentError(409, 'WALLET_TRANSACTION_MISSING', 'The wallet transaction for this payout is missing; manual reconciliation is required.')
       }
+      await tx.walletTransaction.update({
+        where: { id: withdrawal.walletTransactionId },
+        data: { status: 'COMPLETED' },
+      })
 
       return {
         transitioned: done.count === 1,
