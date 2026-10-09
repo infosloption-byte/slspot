@@ -310,10 +310,11 @@ function FinancePage({ refreshKey }: { refreshKey: number }) {
       const result = await adminApi.reconcilePaymentWithdrawal(row.id)
       await load()
       const status = result.providerStatus
-      setActionMessage(status === 'COMPLETED'
-        ? 'Provider confirmed payout ' + row.id.slice(0, 8) + ' completed.'
-        : status === 'FAILED'
-          ? 'Provider confirmed payout ' + row.id.slice(0, 8) + ' failed; the reserved amount was refunded.'
+      const finalStatus = result.withdrawal.status
+      setActionMessage(finalStatus === 'COMPLETED'
+        ? 'Withdrawal ' + row.id.slice(0, 8) + ' is completed.'
+        : finalStatus === 'FAILED'
+          ? 'Withdrawal ' + row.id.slice(0, 8) + ' failed; the reserved amount was refunded.'
           : 'Provider still reports ' + status.toLowerCase() + '. No wallet or ledger change was made.')
     } catch (err) {
       setActionError(err instanceof Error ? err.message : 'Could not reconcile this withdrawal.')
