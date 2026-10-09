@@ -49,7 +49,12 @@ const paymentService = new PaymentService(
   paymentRegistry,
   ledgerService,
   (userId, type, title, body) => apiService.createNotification(userId, type, title, body),
-  env.payments,
+  {
+    ...env.payments,
+    launchApproved: env.realMoney.launchApproved,
+    realDepositsEnabled: env.realMoney.depositsEnabled,
+    realWithdrawalsEnabled: env.realMoney.withdrawalsEnabled,
+  },
 )
 const app = buildApp({
   checkDatabase,
