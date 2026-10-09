@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import {
   ageOn,
+  isPaymentProviderOperationAllowed,
   computeKycTier,
   evaluateDeposit,
   evaluateWithdrawal,
@@ -35,6 +36,33 @@ const withdrawal = (overrides: Partial<WithdrawalRuleInput> = {}): WithdrawalRul
 })
 
 const codes = (input: WithdrawalRuleInput) => evaluateWithdrawal(input).map((blocker) => blocker.code)
+
+describe('payment provider launch gate', () => {
+  const base = {
+    direction: 'deposit' as const,
+    providerIsSandbox: false,
+    sandboxModeEnabled: true,
+    launchApproved: false,
+    depositsEnabled: false,
+    withdrawalsEnabled: false,
+  }
+
+  it('allows sandbox providers only when sandbox mode is enabled', () => {
+    assert.equal(isPaymentProviderOperationAllowed({ ...base, providerIsSandbox: true }), true)
+    assert.equal(isPaymentProviderOperationAllowed({ ...base, providerIsSandbox: true, sandboxModeEnabled: false }), false)
+  })
+
+  it('requires master approval and the operation-specific flag for real providers', () => {
+    assert.equal(isPaymentProviderOperationAllowed({ ...base, launchApproved: true, depositsEnabled: true }), true)
+    assert.equal(isPaymentProviderOperationAllowed({ ...base, launchApproved: false, depositsEnabled: true }), false)
+    assert.equal(isPaymentProviderOperationAllowed({ ...base, launchApproved: true, depositsEnabled: false }), false)
+  })
+
+  it('checks deposits and withdrawals independently', () => {
+    assert.equal(isPaymentProviderOperationAllowed({ ...base, direction: 'withdrawal', launchApproved: true, depositsEnabled: true, withdrawalsEnabled: false }), false)
+    assert.equal(isPaymentProviderOperationAllowed({ ...base, direction: 'withdrawal', launchApproved: true, depositsEnabled: false, withdrawalsEnabled: true }), true)
+  })
+})
 
 describe('decimal units', () => {
   it('round-trips amounts exactly', () => {
