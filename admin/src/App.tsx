@@ -11,7 +11,7 @@ import {
   type SettlementRecord, type SupportTicketDetail, type SupportTicketRecord, type TradeRecord, type UserDetail, type UserRecord, type WalletRecord,
 } from './api'
 
-type Page = 'dashboard' | 'users' | 'trading' | 'finance' | 'support' | 'announcements' | 'risk' | 'audit' | 'support' | 'announcements'
+type Page = 'dashboard' | 'users' | 'trading' | 'finance' | 'support' | 'announcements' | 'risk' | 'audit'
 type TradingView = 'trades' | 'positions' | 'settlements' | 'assets'
 type FinanceView = 'wallets' | 'deposits' | 'withdrawals' | 'reconciliation' | 'ledger'
 
@@ -20,12 +20,10 @@ const pages: Array<{ id: Page; label: string; icon: typeof LayoutDashboard }> = 
   { id: 'users', label: 'Users', icon: Users },
   { id: 'trading', label: 'Trading', icon: BarChart3 },
   { id: 'finance', label: 'Finance', icon: WalletCards },
-  { id: 'support', label: 'Support', icon: MessageCircle },
+  { id: 'support', label: 'Support', icon: LifeBuoy },
   { id: 'announcements', label: 'Announcements', icon: Megaphone },
   { id: 'risk', label: 'Risk', icon: ShieldAlert },
   { id: 'audit', label: 'Audit', icon: Activity },
-  { id: 'support', label: 'Support', icon: LifeBuoy },
-  { id: 'announcements', label: 'Announcements', icon: Megaphone },
 ]
 
 function amount(value: string | null | undefined) {
@@ -133,8 +131,6 @@ function AdminShell({ admin, onLogout }: { admin: { id: string; email: string; r
         {page === 'announcements' ? <AnnouncementsPage refreshKey={refreshKey} /> : null}
         {page === 'risk' ? <RiskPage refreshKey={refreshKey} /> : null}
         {page === 'audit' ? <AuditPage refreshKey={refreshKey} /> : null}
-        {page === 'support' ? <SupportPage refreshKey={refreshKey} /> : null}
-        {page === 'announcements' ? <AnnouncementsPage refreshKey={refreshKey} /> : null}
       </main>
     </section>
   </div>
