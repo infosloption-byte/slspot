@@ -117,6 +117,9 @@ export const adminApi = {
   wallets: () => request<List<WalletRecord>>('/admin/wallets'),
   deposits: () => request<List<FundingRecord>>('/admin/deposits'),
   withdrawals: () => request<List<FundingRecord>>('/admin/withdrawals'),
+  paymentWithdrawalQueue: (status: 'PENDING' | 'PROCESSING' = 'PENDING') => request<List<PaymentWithdrawalReviewRecord>>('/admin/payments/withdrawals?status=' + status),
+  approvePaymentWithdrawal: (id: string) => request<PaymentWithdrawalReviewRecord>('/admin/payments/withdrawals/' + encodeURIComponent(id) + '/approve', { method: 'POST' }),
+  rejectPaymentWithdrawal: (id: string, reason: string) => request<PaymentWithdrawalReviewRecord>('/admin/payments/withdrawals/' + encodeURIComponent(id) + '/reject', { method: 'POST', body: JSON.stringify({ reason }) }),
   reconciliation: () => request<Reconciliation>('/admin/finance/reconciliation'),
   ledger: () => request<List<LedgerRecord>>('/admin/ledger'),
   realMoneyGate: () => request<RealMoneyGateStatus>('/admin/real-money-gate'),
@@ -199,6 +202,7 @@ export type SettlementRecord = { id: string; status: string; settlementPrice: st
 export type AssetRecord = { id: string; symbol: string; name: string; type: string; isActive: boolean; sortOrder: number; quoteCurrency: string | null; rules: { enabled: boolean; payoutRate: string; minAmount: string; maxAmount: string; durationsSeconds: number[]; feeRate: string }; markets: Array<{ id: string; provider: string; externalSymbol: string; status: string; lastPrice: string | null; lastChangePct: string | null; lastVolume: string | null }> }
 export type WalletRecord = { id: string; currency: string; status: string; availableBalance: string; heldBalance: string; totalBalance: string; updatedAt: string; account: { id: string; name: string; mode: string; user: { id: string; email: string } } }
 export type FundingRecord = { id: string; provider: string; providerReference: string | null; amount: string; currency: string; status: string; failureReason: string | null; requestedAt: string; completedAt: string | null; wallet: { id: string; account: { mode: string; user: { email: string } } } }
+export type PaymentWithdrawalReviewRecord = { id: string; provider: string; status: string; amount: string; currency: string; destination: string | null; needsReview: boolean; failureReason: string | null; requestedAt: string; completedAt: string | null; user: { id: string; email: string; legalName: string | null; countryCode: string | null }; details: unknown }
 export type Reconciliation = { scanned: number; balanced: number; unbalanced: Array<{ id: string; currency: string; referenceType: string | null; referenceId: string | null; description: string | null; createdAt: string; balanced: boolean; debit: string; credit: string }> }
 export type LedgerRecord = { id: string; currency: string; referenceType: string | null; referenceId: string | null; description: string | null; createdAt: string; entries: Array<{ direction: string; amount: string; ledgerAccount: { code: string; name: string } }> }
 export type RealMoneyGateSettings = {
