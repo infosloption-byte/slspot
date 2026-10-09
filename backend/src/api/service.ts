@@ -6,6 +6,7 @@ import { LedgerService } from '../ledger/service.js'
 import { createRealtimeEvent, serializeRealtimeEvent } from '../realtime/events.js'
 import { publishRealtime } from '../realtime/bus.js'
 import { EmailService } from '../email/service.js'
+import type { EmailDetail } from '../email/templates.js'
 import { realMoneyOperationBlockReason } from '../trading/real-money-gate.js'
 
 export type WalletMode = 'DEMO' | 'REAL'
@@ -836,7 +837,20 @@ export class PlatformApiService {
         metadata: { amount: result.amount.toString(), currency: result.currency, clientRequestId: requestId },
       },
     })
-    await this.createNotification(userId, 'DEPOSIT', 'Demo deposit completed', 'Demo wallet was credited with ' + amount.toString() + ' ' + result.currency + '.')
+    await this.createNotification(
+      userId,
+      'DEPOSIT',
+      'Demo deposit completed',
+      'Demo wallet was credited with ' + amount.toString() + ' ' + result.currency + '.',
+      {
+        emailDetails: [
+          { label: 'Amount', value: amount.toString() + ' ' + result.currency },
+          { label: 'Wallet', value: 'Demo wallet' },
+          { label: 'Reference', value: result.providerReference ?? result.id },
+          { label: 'Status', value: 'Completed' },
+        ],
+      },
+    )
     return this.toApiDeposit(result)
   }
 
@@ -958,13 +972,32 @@ export class PlatformApiService {
           'Demo withdrawal request received',
           'We received your demo withdrawal request for ' + result.amount.toString() + ' ' + result.currency + '. Demo withdrawals are processed immediately; a separate completion confirmation follows.',
           'withdrawal',
+          [
+            { label: 'Amount', value: result.amount.toString() + ' ' + result.currency },
+            { label: 'Destination', value: 'Demo destination' },
+            { label: 'Reference', value: result.providerReference ?? result.id },
+            { label: 'Status', value: 'Request received' },
+          ],
         )
       }
     } catch {
       // Wallet state and the in-app result remain authoritative if email preview/provider is unavailable.
     }
 
-    await this.createNotification(userId, 'WITHDRAWAL', 'Demo withdrawal completed', 'Demo wallet withdrawal of ' + result.amount.toString() + ' ' + result.currency + ' was completed.')
+    await this.createNotification(
+      userId,
+      'WITHDRAWAL',
+      'Demo withdrawal completed',
+      'Demo wallet withdrawal of ' + result.amount.toString() + ' ' + result.currency + ' was completed.',
+      {
+        emailDetails: [
+          { label: 'Amount', value: result.amount.toString() + ' ' + result.currency },
+          { label: 'Destination', value: 'Demo destination' },
+          { label: 'Reference', value: result.providerReference ?? result.id },
+          { label: 'Status', value: 'Completed' },
+        ],
+      },
+    )
     return this.toApiWithdrawal(result)
   }
 
@@ -1200,7 +1233,7 @@ export class PlatformApiService {
     type: 'TRADE_RESULT' | 'DEPOSIT' | 'WITHDRAWAL' | 'SECURITY' | 'VERIFICATION' | 'SYSTEM',
     title: string,
     body: string,
-    options?: { announcementId?: string; email?: boolean },
+    options?: { announcementId?: string; email?: boolean; emailDetails?: EmailDetail[] },
   ): Promise<ApiNotification> {
     const notification = await this.prisma.notification.create({
       data: {
@@ -1245,7 +1278,7 @@ export class PlatformApiService {
           type === 'SYSTEM' ? preferences?.emailAnnouncements !== false :
           false
         if (user && enabled) {
-          await this.email.sendNotification(user.email, notification.id, title, body, type.toLowerCase())
+          await this.email.sendNotification(user.email, notification.id, title, body, type.toLowerCase(), options?.emailDetails)
         }
       } catch {
         // Email delivery is best-effort; durable in-app notifications remain authoritative.
