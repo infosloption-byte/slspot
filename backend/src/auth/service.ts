@@ -145,16 +145,17 @@ export class AuthService {
     this.email = new EmailService()
   }
 
-  async register(input: { email: string; password: string; countryCode?: string; acceptTerms: boolean; termsVersion?: string }) {
+  async register(input: { email: string; password: string; countryCode?: string; acceptTerms: boolean; acknowledgePrivacy: boolean; termsVersion: string; privacyVersion: string }) {
     const email = normalizeEmail(input.email)
     validateEmail(email)
     validatePassword(input.password)
     const countryCode = validateCountryCode(input.countryCode)
-    if (!input.acceptTerms) throw new AuthError(400, 'TERMS_CONSENT_REQUIRED', 'You must accept the terms and privacy notice')
+    if (!input.acceptTerms) throw new AuthError(400, 'TERMS_CONSENT_REQUIRED', 'You must agree to the Terms & Conditions')
+    if (!input.acknowledgePrivacy) throw new AuthError(400, 'PRIVACY_ACKNOWLEDGEMENT_REQUIRED', 'You must acknowledge the Privacy Policy')
     const termsVersion = CURRENT_POLICY_VERSIONS.TERMS_AND_CONDITIONS
-    const submittedTermsVersion = input.termsVersion?.trim()
-    if (submittedTermsVersion && submittedTermsVersion !== termsVersion) {
-      throw new AuthError(409, 'POLICY_VERSION_STALE', 'The terms have changed. Refresh the page and review the current terms and privacy notice before registering.')
+    const privacyVersion = CURRENT_POLICY_VERSIONS.PRIVACY_POLICY
+    if (input.termsVersion.trim() !== termsVersion || input.privacyVersion.trim() !== privacyVersion) {
+      throw new AuthError(409, 'POLICY_VERSION_STALE', 'A policy has changed. Refresh the page and review the current Terms & Conditions and Privacy Policy before registering.')
     }
 
     const existing = await this.prisma.user.findUnique({ where: { email } })
@@ -196,7 +197,7 @@ export class AuthService {
       })
 
       await tx.auditLog.create({
-        data: { actorUserId: user.id, action: 'REGISTER', entityType: 'User', entityId: user.id, metadata: { termsVersion } },
+        data: { actorUserId: user.id, action: 'REGISTER', entityType: 'User', entityId: user.id, metadata: { termsVersion, privacyVersion } },
       })
 
       return { user, verification: { token, expiresAt } }
