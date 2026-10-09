@@ -4,6 +4,8 @@ import { buildApp } from '../app.js'
 import type { AuthServiceLike } from '../auth/routes.js'
 import type { AuthSession } from '../auth/service.js'
 import type { AdminService } from './service.js'
+import { PaymentProviderRegistry } from '../payments/registry.js'
+import type { PaymentService } from '../payments/service.js'
 
 const session: AuthSession = {
   id: 'user-1',
@@ -197,7 +199,7 @@ describe('admin API routes', () => {
   })
 
   it('registers the protected admin route surface', async () => {
-    const app = buildApp({ logging: false, authService, adminService: mockAdmin() })
+    const app = buildApp({ logging: false, authService, adminService: mockAdmin(), paymentService: {} as PaymentService, paymentRegistry: new PaymentProviderRegistry() })
     await app.ready()
     const routes: Array<{ method: 'GET' | 'POST' | 'PUT'; url: string }> = [
       { method: 'GET', url: '/api/v1/admin/me' },
@@ -215,6 +217,10 @@ describe('admin API routes', () => {
       { method: 'GET', url: '/api/v1/admin/wallets' },
       { method: 'GET', url: '/api/v1/admin/deposits' },
       { method: 'GET', url: '/api/v1/admin/withdrawals' },
+      { method: 'GET', url: '/api/v1/admin/payments/withdrawals' },
+      { method: 'POST', url: '/api/v1/admin/payments/withdrawals/:id/approve' },
+      { method: 'POST', url: '/api/v1/admin/payments/withdrawals/:id/reject' },
+      { method: 'POST', url: '/api/v1/admin/payments/withdrawals/:id/reconcile' },
       { method: 'GET', url: '/api/v1/admin/finance/reconciliation' },
       { method: 'GET', url: '/api/v1/admin/ledger' },
       { method: 'GET', url: '/api/v1/admin/real-money-gate' },
