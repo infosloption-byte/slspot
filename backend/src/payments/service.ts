@@ -499,6 +499,62 @@ export class PaymentService {
     }
   }
 
+  /**
+   * Re-check a payout whose provider outcome is still uncertain. This is an explicit admin action so an
+   * unresolved request is never refunded merely because a webhook was delayed. Only a definitive provider
+   * result can settle or refund funds; PENDING/PROCESSING leaves the wallet and ledger untouched.
+   */
+  async reconcileWithdrawal(
+    adminUserId: string,
+    withdrawalId: string,
+  ): Promise<{ withdrawal: ApiWithdrawal; providerStatus: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED' }> {
+    const withdrawal = await this.prisma.withdrawal.findUnique({ where: { id: withdrawalId } })
+    if (!withdrawal) throw new PaymentError(404, 'WITHDRAWAL_NOT_FOUND', 'Withdrawal not found')
+    if (withdrawal.status !== 'PROCESSING') {
+      throw new PaymentError(409, 'WITHDRAWAL_NOT_PROCESSING', 'Only a processing withdrawal can be reconciled')
+    }
+    if (!withdrawal.providerReference) {
+      throw new PaymentError(409, 'PROVIDER_REFERENCE_MISSING', 'The provider has not returned a payout reference; this request needs manual investigation')
+    }
+    const adapter = this.registry.get(withdrawal.provider)
+    if (!adapter) {
+      throw new PaymentError(409, 'PROVIDER_NOT_CONFIGURED', 'The original provider is not configured. Do not refund this request until its outcome is confirmed.')
+    }
+
+    let providerStatus: Awaited<ReturnType<PaymentProviderAdapter['getStatus']>>
+    try {
+      providerStatus = await adapter.getStatus('withdrawal', withdrawal.providerReference)
+    } catch (error) {
+      this.logger.error({ err: error, withdrawalId, provider: withdrawal.provider }, 'Withdrawal status lookup failed; no wallet changes were made')
+      await this.audit(adminUserId, 'WITHDRAWAL_RECONCILIATION_FAILED', 'Withdrawal', withdrawalId, {
+        provider: withdrawal.provider,
+        reason: 'Provider status lookup failed',
+      })
+      throw new PaymentError(502, 'PROVIDER_STATUS_UNAVAILABLE', 'The provider status could not be confirmed. The withdrawal remains processing and no refund was issued.')
+    }
+
+    if (providerStatus.status === 'COMPLETED') {
+      await this.finalizeWithdrawal(withdrawalId)
+    } else if (providerStatus.status === 'FAILED') {
+      const refunded = await this.refundWithdrawal(
+        withdrawalId,
+        'FAILED',
+        (providerStatus.reason ?? 'Provider confirmed that the payout failed').slice(0, 255),
+        ['PROCESSING'],
+        adminUserId,
+      )
+      if (!refunded) throw new PaymentError(409, 'WITHDRAWAL_STATE_CHANGED', 'The withdrawal changed while it was being reconciled. Refresh its status.')
+    }
+
+    await this.audit(adminUserId, 'WITHDRAWAL_RECONCILED', 'Withdrawal', withdrawalId, {
+      provider: withdrawal.provider,
+      providerStatus: providerStatus.status,
+      outcome: providerStatus.status === 'COMPLETED' ? 'completed' : providerStatus.status === 'FAILED' ? 'refunded' : 'still_processing',
+    })
+    const updated = await this.prisma.withdrawal.findUniqueOrThrow({ where: { id: withdrawalId } })
+    return { withdrawal: this.toApiWithdrawal(updated), providerStatus: providerStatus.status }
+  }
+
   async approveWithdrawal(adminUserId: string, withdrawalId: string): Promise<ApiWithdrawal> {
     const withdrawal = await this.prisma.withdrawal.findUnique({
       where: { id: withdrawalId },
