@@ -23,9 +23,13 @@ function open(url: string, origin: string): Promise<OpenSocket> {
   })
 }
 
-function waitForClose(socket: WebSocket): Promise<{ code: number; reason: string }> {
-  return new Promise((resolve) => {
-    socket.once('close', (code, reason) => resolve({ code, reason: reason.toString() }))
+function waitForClose(socket: WebSocket, timeoutMs = 2_000): Promise<{ code: number; reason: string }> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('Timed out waiting for WebSocket close')), timeoutMs)
+    socket.once('close', (code, reason) => {
+      clearTimeout(timer)
+      resolve({ code, reason: reason.toString() })
+    })
   })
 }
 
