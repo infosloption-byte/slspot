@@ -159,6 +159,11 @@ try {
   await paymentService.syncProviderConfigs()
   paymentExpiryTimer = setInterval(() => {
     paymentService.expireStaleDeposits().catch((error) => app.log.error({ err: error }, 'Expiring stale deposits failed'))
+    paymentService.retryUnmatchedPaymentEvents()
+      .then((processed) => {
+        if (processed > 0) app.log.info({ processed }, 'Retried early payment webhooks')
+      })
+      .catch((error) => app.log.error({ err: error }, 'Retrying unmatched payment webhooks failed'))
   }, 60_000)
   paymentExpiryTimer.unref()
   app.log.info({ providers: paymentRegistry.size, sandbox: env.payments.sandbox }, 'Payments initialised')
