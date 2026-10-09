@@ -830,7 +830,10 @@ export class PaymentService {
   }
 
   private async applyWithdrawalEvent(providerId: string, event: NormalizedEvent): Promise<'processed' | 'ignored'> {
-    const withdrawal = await this.prisma.withdrawal.findFirst({ where: { provider: providerId, providerReference: event.providerReference } })
+    const withdrawal = await this.prisma.withdrawal.findFirst({
+      where: { provider: providerId, providerReference: event.providerReference },
+      include: { wallet: { include: { account: { select: { userId: true } } } } },
+    })
     if (!withdrawal) {
       this.logger.warn({ provider: providerId, reference: event.providerReference }, 'Webhook for unknown withdrawal')
       return 'ignored'
@@ -838,7 +841,7 @@ export class PaymentService {
     if (event.type === 'withdrawal.completed') {
       if (event.amount === undefined || event.currency === undefined) {
         this.logger.error({ provider: providerId, withdrawalId: withdrawal.id, eventId: event.eventId }, 'Withdrawal completion is missing amount or currency; manual review required')
-        await this.audit(withdrawal.walletId, 'WITHDRAWAL_WEBHOOK_INCOMPLETE', 'Withdrawal', withdrawal.id, { provider: providerId, eventId: event.eventId })
+        await this.audit(withdrawal.wallet.account.userId, 'WITHDRAWAL_WEBHOOK_INCOMPLETE', 'Withdrawal', withdrawal.id, { provider: providerId, eventId: event.eventId })
         throw new PaymentError(422, 'INCOMPLETE_PROVIDER_EVENT', 'The provider payout completion event must include amount and currency')
       }
       let receivedAmount: bigint
@@ -849,7 +852,7 @@ export class PaymentService {
       }
       if (receivedAmount !== toUnits(withdrawal.amount.toString()) || event.currency.trim().toUpperCase() !== withdrawal.currency) {
         this.logger.error({ provider: providerId, withdrawalId: withdrawal.id, expected: withdrawal.amount.toString(), received: event.amount, expectedCurrency: withdrawal.currency, receivedCurrency: event.currency }, 'Withdrawal amount/currency mismatch; payout needs manual review')
-        await this.audit(withdrawal.walletId, 'WITHDRAWAL_AMOUNT_MISMATCH', 'Withdrawal', withdrawal.id, { expected: withdrawal.amount.toString(), received: event.amount, expectedCurrency: withdrawal.currency, receivedCurrency: event.currency })
+        await this.audit(withdrawal.wallet.account.userId, 'WITHDRAWAL_AMOUNT_MISMATCH', 'Withdrawal', withdrawal.id, { expected: withdrawal.amount.toString(), received: event.amount, expectedCurrency: withdrawal.currency, receivedCurrency: event.currency })
         throw new PaymentError(409, 'WITHDRAWAL_AMOUNT_MISMATCH', 'The provider payout amount or currency does not match the request; manual review is required')
       }
       await this.finalizeWithdrawal(withdrawal.id)
