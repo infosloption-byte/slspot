@@ -7,6 +7,7 @@ import { enforceRateLimit } from '../security/rate-limit.js'
 import { isUserChannelAuthorized, type RealtimeChannel } from '../contracts/realtime.js'
 import {
   createRealtimeEvent,
+  INTERNAL_SESSION_REVOCATION_CHANNEL,
   parseRealtimeClientMessage,
   parseRealtimeEvent,
   serializeRealtimeEvent,
@@ -197,7 +198,10 @@ export class RealtimeGateway {
         continue
       }
 
-      if (this.subscriptions.get(socket)?.has(event.channel)) {
+      if (
+        event.channel !== INTERNAL_SESSION_REVOCATION_CHANNEL &&
+        this.subscriptions.get(socket)?.has(event.channel)
+      ) {
         socket.send(message)
       }
     }
