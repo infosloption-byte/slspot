@@ -47,7 +47,14 @@ function capturePreview(message: EmailMessage): EmailPreviewRecord {
 }
 
 export function listEmailPreviewMessages(): Array<Omit<EmailPreviewRecord, 'html' | 'text'>> {
-  return previewOutbox.map(({ html: _html, text: _text, ...message }) => ({ ...message }))
+  return previewOutbox.map((message) => ({
+    id: message.id,
+    capturedAt: message.capturedAt,
+    to: message.to,
+    subject: message.subject,
+    templateKey: message.templateKey,
+    category: message.category,
+  }))
 }
 
 export function getEmailPreviewMessage(id: string): EmailPreviewRecord | null {
