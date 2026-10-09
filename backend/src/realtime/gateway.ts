@@ -157,6 +157,7 @@ export class RealtimeGateway {
     // This is an internal bus command, not a client-facing event. Every API instance
     // consumes it locally so revocation closes sockets without waiting for cache expiry.
     if (event.type === 'session.revoked') {
+      if (!event.data || typeof event.data !== 'object' || Array.isArray(event.data)) return
       const payload = event.data as {
         sessionIds?: unknown
         userId?: unknown
@@ -171,6 +172,7 @@ export class RealtimeGateway {
       const exceptSessionId = typeof payload.exceptSessionId === 'string'
         ? payload.exceptSessionId
         : null
+      if (sessionIds === null && userId === null) return
 
       for (const sessionId of sessionIds ?? []) this.sessionChecks.delete(sessionId)
 
