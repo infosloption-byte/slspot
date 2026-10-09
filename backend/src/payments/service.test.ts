@@ -134,6 +134,93 @@ test('live payment methods appear only when both gates allow that operation', as
   assert.deepEqual(await service.listMethods('user-1', 'withdrawal'), [])
 })
 
+test('withdrawal reconciliation leaves funds untouched while the provider still reports pending', async () => {
+  let writes = 0
+  const withdrawal = {
+    id: 'withdrawal-pending-1',
+    provider: liveCapabilities.id,
+    providerReference: 'provider-ref-1',
+    status: 'PROCESSING',
+    amount: { toString: () => '25.00' },
+    currency: 'USD',
+    destination: 'Live card provider · •••• 4242',
+    details: null,
+    failureReason: null,
+    requestedAt: new Date('2026-10-09T10:00:00.000Z'),
+    completedAt: null,
+  }
+  const adapter: PaymentProviderAdapter = {
+    ...liveAdapter(),
+    getStatus: async () => ({ status: 'PENDING' }),
+  }
+  const prismaMock = {
+    withdrawal: {
+      findUnique: async () => ({ ...withdrawal }),
+      findUniqueOrThrow: async () => ({ ...withdrawal }),
+      updateMany: async () => { writes += 1; return { count: 1 } },
+    },
+    auditLog: { create: async () => ({ id: 'audit-1' }) },
+  } as unknown as PrismaClient
+  const registry = new PaymentProviderRegistry()
+  registry.register(adapter)
+  const service = new PaymentService(
+    prismaMock,
+    registry,
+    {} as LedgerService,
+    async () => undefined,
+    baseConfig,
+  )
+
+  const result = await service.reconcileWithdrawal('admin-1', withdrawal.id)
+  assert.equal(result.providerStatus, 'PENDING')
+  assert.equal(result.withdrawal.status, 'PROCESSING')
+  assert.equal(writes, 0)
+})
+
+test('withdrawal reconciliation does not refund when provider status lookup fails', async () => {
+  let writes = 0
+  const withdrawal = {
+    id: 'withdrawal-uncertain-1',
+    provider: liveCapabilities.id,
+    providerReference: 'provider-ref-2',
+    status: 'PROCESSING',
+    amount: { toString: () => '25.00' },
+    currency: 'USD',
+    destination: null,
+    details: null,
+    failureReason: null,
+    requestedAt: new Date('2026-10-09T10:00:00.000Z'),
+    completedAt: null,
+  }
+  const adapter: PaymentProviderAdapter = {
+    ...liveAdapter(),
+    getStatus: async () => { throw new Error('provider timeout') },
+  }
+  const prismaMock = {
+    withdrawal: {
+      findUnique: async () => ({ ...withdrawal }),
+      findUniqueOrThrow: async () => ({ ...withdrawal }),
+      updateMany: async () => { writes += 1; return { count: 1 } },
+    },
+    auditLog: { create: async () => ({ id: 'audit-2' }) },
+  } as unknown as PrismaClient
+  const registry = new PaymentProviderRegistry()
+  registry.register(adapter)
+  const service = new PaymentService(
+    prismaMock,
+    registry,
+    {} as LedgerService,
+    async () => undefined,
+    baseConfig,
+  )
+
+  await assert.rejects(
+    service.reconcileWithdrawal('admin-1', withdrawal.id),
+    (error: unknown) => error instanceof PaymentError && error.code === 'PROVIDER_STATUS_UNAVAILABLE',
+  )
+  assert.equal(writes, 0)
+})
+
 test('sandbox methods remain available with sandbox enabled even while real-money gates are closed', async () => {
   const [sandboxCard] = createSandboxProviders('sandbox-test-secret')
   const service = fixture({
