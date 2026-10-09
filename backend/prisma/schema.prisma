@@ -202,6 +202,8 @@ model User {
   displayName   String?      @db.VarChar(120)
   timezone      String?      @db.VarChar(64)
   locale        String?      @db.VarChar(35)
+  legalName     String?      @db.VarChar(160)
+  dateOfBirth   DateTime?    @db.Date
   createdAt     DateTime     @default(now()) @db.DateTime(3)
   updatedAt     DateTime     @updatedAt @db.DateTime(3)
   lastLoginAt       DateTime?    @db.DateTime(3)
@@ -600,6 +602,9 @@ model Deposit {
   currency          String        @db.Char(3)
   status            DepositStatus @default(PENDING)
   failureReason     String?       @db.VarChar(255)
+  idempotencyKey    String?       @unique @db.VarChar(128)
+  expiresAt         DateTime?     @db.DateTime(3)
+  details           Json?
   requestedAt       DateTime      @default(now()) @db.DateTime(3)
   completedAt       DateTime?     @db.DateTime(3)
   createdAt         DateTime      @default(now()) @db.DateTime(3)
@@ -623,6 +628,12 @@ model Withdrawal {
   currency          String           @db.Char(3)
   status            WithdrawalStatus @default(PENDING)
   failureReason     String?           @db.VarChar(255)
+  idempotencyKey    String?          @unique @db.VarChar(128)
+  details           Json?
+  reviewReason      String?          @db.VarChar(255)
+  reviewedByUserId  String?          @db.Char(36)
+  reviewedAt        DateTime?        @db.DateTime(3)
+  refundWalletTransactionId String?  @unique @db.Char(36)
   requestedAt       DateTime         @default(now()) @db.DateTime(3)
   completedAt       DateTime?        @db.DateTime(3)
   createdAt         DateTime         @default(now()) @db.DateTime(3)
@@ -633,6 +644,38 @@ model Withdrawal {
 
   @@index([walletId, createdAt])
   @@index([provider, status, createdAt])
+}
+
+model PaymentProviderConfig {
+  id                String   @id @db.VarChar(32)
+  displayName       String   @db.VarChar(80)
+  enabled           Boolean  @default(true)
+  depositEnabled    Boolean  @default(true)
+  withdrawalEnabled Boolean  @default(true)
+  minDeposit        Decimal  @db.Decimal(30, 8)
+  maxDeposit        Decimal? @db.Decimal(30, 8)
+  minWithdrawal     Decimal  @db.Decimal(30, 8)
+  maxWithdrawal     Decimal? @db.Decimal(30, 8)
+  allowedCountries  Json?
+  blockedCountries  Json?
+  sortOrder         Int      @default(100)
+  createdAt         DateTime @default(now()) @db.DateTime(3)
+  updatedAt         DateTime @updatedAt @db.DateTime(3)
+}
+
+model PaymentEvent {
+  id           String    @id @default(uuid()) @db.Char(36)
+  provider     String    @db.VarChar(32)
+  eventId      String    @db.VarChar(128)
+  type         String    @db.VarChar(64)
+  providerReference String? @db.VarChar(128)
+  payload      Json
+  processedAt  DateTime? @db.DateTime(3)
+  error        String?   @db.VarChar(255)
+  createdAt    DateTime  @default(now()) @db.DateTime(3)
+
+  @@unique([provider, eventId])
+  @@index([provider, createdAt])
 }
 
 model KycCase {

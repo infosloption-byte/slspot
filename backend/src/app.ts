@@ -95,8 +95,11 @@ export function buildApp(options: AppOptions = {}) {
     if (request.method === 'OPTIONS') return
 
     const isAuthRoute = path.startsWith(API_PREFIX + '/auth/')
-    const isTradingRoute = path.startsWith(API_PREFIX + '/trades') || path.startsWith(API_PREFIX + '/wallet')
-    const isUnsafe = !SAFE_METHODS.has(request.method)
+    const isTradingRoute = path.startsWith(API_PREFIX + '/trades') || path.startsWith(API_PREFIX + '/wallet') || path.startsWith(API_PREFIX + '/payments')
+    // Payment providers call this server-to-server: there is no browser origin, session cookie or CSRF
+    // token. The adapter verifies the provider's own signature on the raw body instead.
+    const isPaymentWebhook = path.startsWith(API_PREFIX + '/payments/webhooks/')
+    const isUnsafe = !SAFE_METHODS.has(request.method) && !isPaymentWebhook
     // Authentication reads such as /auth/me are normal dashboard reads. Reserve the
     // stricter auth bucket for state-changing authentication operations.
     const isAuthMutation = isAuthRoute && isUnsafe
@@ -125,7 +128,7 @@ export function buildApp(options: AppOptions = {}) {
     }
 
     await enforceRateLimit({
-      key: (isAuthMutation ? 'auth:' : isTradingMutation ? 'trading:' : 'api:') + request.ip,
+      key: (isPaymentWebhook ? 'webhook:' : isAuthMutation ? 'auth:' : isTradingMutation ? 'trading:' : 'api:') + request.ip,
       limit: isAuthMutation ? env.security.rateLimit.authLimit : isTradingMutation ? env.security.rateLimit.tradingLimit : env.security.rateLimit.generalLimit,
       windowSeconds: isAuthMutation ? env.security.rateLimit.authWindowSeconds : isTradingMutation ? env.security.rateLimit.tradingWindowSeconds : env.security.rateLimit.generalWindowSeconds,
     })
