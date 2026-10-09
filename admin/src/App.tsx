@@ -128,7 +128,7 @@ function AdminShell({ admin, onLogout }: { admin: { id: string; email: string; r
         {page === 'users' ? <UsersPage refreshKey={refreshKey} /> : null}
         {page === 'trading' ? <TradingPage refreshKey={refreshKey} /> : null}
         {page === 'finance' ? <FinancePage refreshKey={refreshKey} /> : null}
-        {page === 'launch-gate' ? <LaunchGatePage refreshKey={refreshKey} /> : null}
+        {page === 'launch-gate' ? <LaunchGatePage refreshKey={refreshKey} role={admin.role} /> : null}
         {page === 'support' ? <SupportPage refreshKey={refreshKey} /> : null}
         {page === 'announcements' ? <AnnouncementsPage refreshKey={refreshKey} /> : null}
         {page === 'risk' ? <RiskPage refreshKey={refreshKey} /> : null}
@@ -428,7 +428,7 @@ function AnnouncementsPage({ refreshKey }: { refreshKey: number }) {
   </div>
 }
 
-function LaunchGatePage({ refreshKey }: { refreshKey: number }) {
+function LaunchGatePage({ refreshKey, role }: { refreshKey: number; role: string }) {
   const [data, setData] = useState<RealMoneyGateStatus | null>(null)
   const [draft, setDraft] = useState<RealMoneyGateSettings | null>(null)
   const [error, setError] = useState('')
@@ -453,6 +453,7 @@ function LaunchGatePage({ refreshKey }: { refreshKey: number }) {
     data.settings.withdrawalsEnabled !== draft.withdrawalsEnabled
   ))
   const deploymentAllowsTrading = Boolean(data?.environment.launchApproved && data.environment.tradingEnabled)
+  const canEnableTrading = deploymentAllowsTrading && role === 'SUPER_ADMIN'
   const tradingEnabled = Boolean(data?.effective.tradingEnabled)
 
   async function save() {
@@ -500,12 +501,12 @@ function LaunchGatePage({ refreshKey }: { refreshKey: number }) {
             <input
               type="checkbox"
               checked={draft.tradingEnabled}
-              disabled={busy || (!draft.tradingEnabled && !deploymentAllowsTrading)}
+              disabled={busy || (!draft.tradingEnabled && !canEnableTrading)}
               onChange={(event) => setDraft((current) => current ? { ...current, tradingEnabled: event.target.checked } : current)}
             />
           </label>
         </div>
-        {!deploymentAllowsTrading ? <div className="notice"><ShieldCheck size={17} /><span>The deployment launch gate is closed. The admin switch cannot enable REAL trading until both required environment flags are configured and the backend is restarted.</span></div> : null}
+        {!deploymentAllowsTrading ? <div className="notice"><ShieldCheck size={17} /><span>The deployment launch gate is closed. The admin switch cannot enable REAL trading until both required environment flags are configured and the backend is restarted.</span></div> : role !== 'SUPER_ADMIN' ? <div className="notice"><ShieldCheck size={17} /><span>Only a SUPER_ADMIN can enable REAL trading. Any administrator can switch it off in an emergency.</span></div> : null}
         <div className="action-row">
           <button type="button" className="button button--primary" disabled={busy || !changed} onClick={() => void save()}>{busy ? 'Saving…' : 'Save audited changes'}</button>
           <button type="button" className="button button--ghost" disabled={busy || !changed} onClick={() => setDraft(data.settings)}>Discard changes</button>
