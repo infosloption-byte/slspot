@@ -81,7 +81,7 @@ export function computeKycTier(profile: ProfileInput & { kycApproved: boolean })
 
 export type DepositRuleInput = {
   tier: KycTier
-  age?: number | null
+  age: number | null
   emailVerified: boolean
   missingProfile: string[]
   countryCode: string | null
@@ -93,7 +93,9 @@ export type DepositRuleInput = {
 
 export function evaluateDeposit(input: DepositRuleInput): RuleBlocker[] {
   const blockers: RuleBlocker[] = []
-  if (input.age !== null && input.age !== undefined && input.age < MINIMUM_AGE_YEARS) {
+  if (input.age === null) {
+    blockers.push({ code: 'AGE_NOT_VERIFIED', message: 'Enter your date of birth before using payment services.' })
+  } else if (input.age < MINIMUM_AGE_YEARS) {
     blockers.push({ code: 'AGE_RESTRICTED', message: 'You must be at least ' + MINIMUM_AGE_YEARS + ' years old to use payment services.' })
   }
   if (!input.emailVerified) blockers.push({ code: 'EMAIL_NOT_VERIFIED', message: 'Verify your email address before depositing.' })
