@@ -134,6 +134,20 @@ test('live payment methods appear only when both gates allow that operation', as
   assert.deepEqual(await service.listMethods('user-1', 'withdrawal'), [])
 })
 
+test('provider methods cannot be enabled for an operation the adapter does not support', async () => {
+  const adapter: PaymentProviderAdapter = {
+    ...liveAdapter(),
+    capabilities: { ...liveCapabilities, withdrawal: false },
+  }
+  const service = fixture({
+    adapter,
+    adminGate: { depositsEnabled: true, withdrawalsEnabled: true },
+  })
+
+  assert.deepEqual(await service.listMethods('user-1', 'withdrawal'), [])
+  assert.deepEqual((await service.listMethods('user-1', 'deposit')).map((method) => method.id), ['live_card'])
+})
+
 test('withdrawal reconciliation leaves funds untouched while the provider still reports pending', async () => {
   let writes = 0
   const withdrawal = {
