@@ -20,6 +20,7 @@ export type RealtimeEventType =
   | 'position.update'
   | 'wallet.update'
   | 'notification.created'
+  | 'session.revoked'
 
 export type RealtimeEvent<T = unknown> = {
   version: typeof REALTIME_EVENT_VERSION
