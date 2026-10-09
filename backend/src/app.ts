@@ -79,8 +79,6 @@ export function buildApp(options: AppOptions = {}) {
 
   realtimeGateway.register(app)
 
-  registerPolicyRoutes(app)
-
   app.register(cors, {
     credentials: true,
     origin: env.corsOrigins,
@@ -151,6 +149,9 @@ export function buildApp(options: AppOptions = {}) {
       )
     }
   })
+
+  // Register public policy metadata after global security and response hooks.
+  registerPolicyRoutes(app)
 
   if (options.authService) {
     registerAuthRoutes(app, options.authService)
