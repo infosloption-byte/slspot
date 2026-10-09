@@ -6,6 +6,7 @@ import { LedgerService } from '../ledger/service.js'
 import { createRealtimeEvent, serializeRealtimeEvent } from '../realtime/events.js'
 import { publishRealtime } from '../realtime/bus.js'
 import { EmailService } from '../email/service.js'
+import { realMoneyOperationBlockReason } from '../trading/real-money-gate.js'
 
 export type WalletMode = 'DEMO' | 'REAL'
 
@@ -274,16 +275,16 @@ export class PlatformApiService {
       : demoWallet?.status !== 'ACTIVE'
         ? 'Your demo wallet is not active.'
         : null
+    const realTradeReason = !userActive
+      ? 'Your account is not eligible for trading.'
+      : realWallet?.status !== 'ACTIVE'
+        ? 'A real trading wallet is not currently available for this account.'
+        : realMoneyOperationBlockReason('TRADING')
 
     return {
       trading: {
         DEMO: { enabled: demoTradeReason === null, reason: demoTradeReason },
-        REAL: {
-          enabled: false,
-          reason: userActive && realWallet?.status === 'ACTIVE'
-            ? 'Real-money trading is not enabled on this platform.'
-            : 'A real trading wallet is not currently available for this account.',
-        },
+        REAL: { enabled: realTradeReason === null, reason: realTradeReason },
       },
       funding: {
         deposit: {
