@@ -13,6 +13,8 @@ const user = {
   timezone: 'Asia/Colombo',
   locale: 'en-LK',
   emailVerifiedAt: new Date('2026-10-01T00:00:00.000Z'),
+  legalName: null,
+  dateOfBirth: null,
 }
 
 function createMockAuthService(): AuthServiceLike {

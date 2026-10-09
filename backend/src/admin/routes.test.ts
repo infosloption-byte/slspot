@@ -14,6 +14,8 @@ const session: AuthSession = {
   timezone: 'Asia/Colombo',
   locale: 'en-LK',
   emailVerifiedAt: new Date(),
+  legalName: null,
+  dateOfBirth: null,
   sessionId: 'session-1',
   expiresAt: new Date(Date.now() + 60_000),
 }
