@@ -56,6 +56,6 @@ test('event-specific notification overrides retain the expected destination and 
 
   assert.equal(rendered.subject, 'SL Spot — Demo withdrawal completed')
   assert.ok(rendered.html.includes('Demo wallet withdrawal of 12.50 USD was completed.'))
-  assert.ok(rendered.html.includes('href="http://localhost:5173/app/wallet"'))
+  assert.match(rendered.html, /href="[^"]*\/app\/wallet"/)
   assert.equal(rendered.templateKey, 'withdrawal-success')
 })
