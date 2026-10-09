@@ -9,6 +9,8 @@ export type AuthUser = {
   timezone: string | null
   locale: string | null
   emailVerifiedAt: string | null
+  legalName: string | null
+  dateOfBirth: string | null
 }
 
 export type AuthSession = AuthUser & {
