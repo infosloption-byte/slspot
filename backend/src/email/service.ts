@@ -3,6 +3,7 @@ import { env } from '../config/env.js'
 import {
   classifyNotificationTemplate,
   renderEmailTemplate,
+  type EmailDetail,
   type EmailTemplateKey,
 } from './templates.js'
 
@@ -124,14 +125,14 @@ export class EmailService {
     })
   }
 
-  async sendNotification(to: string, notificationId: string, title: string, body: string, category: string): Promise<void> {
+  async sendNotification(to: string, notificationId: string, title: string, body: string, category: string, details?: EmailDetail[]): Promise<void> {
     const templateKey = classifyNotificationTemplate(category, title, body)
     const rendered = renderEmailTemplate(templateKey, {
       subject: 'SL Spot — ' + title,
       heading: title,
       preheader: body,
       body,
-      details: [],
+      details: details ?? [],
     })
     await this.send({
       to,
