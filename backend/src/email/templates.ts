@@ -238,7 +238,7 @@ export function classifyNotificationTemplate(category: string, title: string, bo
     return 'deposit-success'
   }
   if (normalizedCategory.includes('withdrawal') || normalizedCategory.includes('wallet')) {
-    if (/fail|reject|declin|not completed|could not/.test(searchable)) return 'withdrawal-failed'
+    if (/fail|reject|declin|not completed|not sent|could not|refunded|returned to your wallet|cancel/.test(searchable)) return 'withdrawal-failed'
     if (/request|received|processing|pending/.test(searchable) && !/complete|success|completed/.test(searchable)) return 'withdrawal-request'
     if (/completed|success|paid/.test(searchable)) return 'withdrawal-success'
     return 'withdrawal-request'

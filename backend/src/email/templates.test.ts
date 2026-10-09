@@ -71,3 +71,11 @@ test('event-specific notification overrides retain the expected destination and 
   assert.match(rendered.html, /href="[^"]*\/app\/wallet"/)
   assert.equal(rendered.templateKey, 'withdrawal-success')
 })
+
+test('a withdrawal that was not sent and refunded uses the failure template', () => {
+  assert.equal(
+    classifyNotificationTemplate('withdrawal', 'Withdrawal not sent', 'Your withdrawal was not sent (declined). The full amount was returned to your wallet.'),
+    'withdrawal-failed',
+  )
+  assert.equal(classifyNotificationTemplate('withdrawal', 'Withdrawal completed', 'Your withdrawal was sent.'), 'withdrawal-success')
+})

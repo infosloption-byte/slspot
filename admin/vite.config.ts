@@ -18,11 +18,23 @@ const devSecurityHeaders = {
   ),
 } as const
 
-import { defineConfig } from 'vite'
+import { defineConfig, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 
+// The meta tag used to be hard-coded in index.html, which broke the dev server's React preamble. Inject it into
+// production builds only, so a static host that sends no headers still serves the admin app under the strict policy.
+// (frame-ancestors is ignored in a meta tag; set it, and the other headers, on the web server as well.)
+const productionCsp: Plugin = {
+  name: 'admin-production-csp',
+  apply: 'build',
+  transformIndexHtml(html) {
+    const tag = '<meta http-equiv="Content-Security-Policy" content="' + securityHeaders['Content-Security-Policy'] + '" />'
+    return html.replace('</head>', '    ' + tag + '\n  </head>')
+  },
+}
+
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), productionCsp],
   server: {
     port: 5174,
     headers: devSecurityHeaders,
