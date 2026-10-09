@@ -1,4 +1,4 @@
-import { createRealtimeEvent, serializeRealtimeEvent } from './events.js'
+import { createRealtimeEvent, INTERNAL_SESSION_REVOCATION_CHANNEL, serializeRealtimeEvent } from './events.js'
 import { publishRealtime } from './bus.js'
 
 type SessionRevocationPayload =
@@ -11,7 +11,7 @@ type SessionRevocationPayload =
  */
 async function publishRevocation(payload: SessionRevocationPayload): Promise<void> {
   try {
-    await publishRealtime(serializeRealtimeEvent(createRealtimeEvent('session.revoked', payload)))
+    await publishRealtime(serializeRealtimeEvent(createRealtimeEvent('session.revoked', payload, INTERNAL_SESSION_REVOCATION_CHANNEL)))
   } catch {
     // Database session state remains authoritative; gateway heartbeat/message validation
     // is the fail-closed fallback if the realtime bus cannot deliver the signal.
