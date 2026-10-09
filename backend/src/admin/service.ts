@@ -68,8 +68,10 @@ function realMoneyGateStatus(record: RealMoneyGateRecord | null) {
     },
     effective: {
       tradingEnabled: settings.tradingEnabled && isRealMoneyOperationEnabled('TRADING'),
-      depositsEnabled: settings.depositsEnabled && isRealMoneyOperationEnabled('DEPOSIT'),
-      withdrawalsEnabled: settings.withdrawalsEnabled && isRealMoneyOperationEnabled('WITHDRAWAL'),
+      // Funding endpoints remain disabled until provider-backed deposit and withdrawal
+      // workflows are implemented and integrated with the financial ledger.
+      depositsEnabled: false,
+      withdrawalsEnabled: false,
     },
     updatedAt: record?.updatedAt.toISOString() ?? null,
   }
@@ -94,6 +96,15 @@ export class AdminService {
         tradingEnabled: previous?.tradingEnabled ?? false,
         depositsEnabled: previous?.depositsEnabled ?? false,
         withdrawalsEnabled: previous?.withdrawalsEnabled ?? false,
+      }
+
+      // Real funding operations have no provider-backed request lifecycle yet.
+      // Keep their switches off until the payment integration phase is complete.
+      if (input.depositsEnabled && !before.depositsEnabled) {
+        throw new AdminError(409, 'REAL_DEPOSITS_UNAVAILABLE', 'Real deposits cannot be enabled before payment provider integration is complete.')
+      }
+      if (input.withdrawalsEnabled && !before.withdrawalsEnabled) {
+        throw new AdminError(409, 'REAL_WITHDRAWALS_UNAVAILABLE', 'Real withdrawals cannot be enabled before payment provider integration is complete.')
       }
 
       // The admin panel is a second lock, not a way to override deployment approval.
