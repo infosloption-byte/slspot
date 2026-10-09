@@ -87,7 +87,11 @@ test('real-money launch gate rejects new REAL trades before transaction side eff
       throw new Error('REAL trade must not reach a transaction while the launch gate is closed')
     },
   } as unknown as PrismaClient
-  const service = new TradingService(prisma, undefined, {
+  const service = new TradingService(prisma, {
+    info: () => undefined,
+    warn: () => undefined,
+    error: () => undefined,
+  }, {
     launchApproved: false,
     tradingEnabled: true,
     depositsEnabled: true,
@@ -123,7 +127,11 @@ test('administrative REAL-trading switch blocks creation inside the transaction'
       })
     },
   } as unknown as PrismaClient
-  const service = new TradingService(prisma, undefined, {
+  const service = new TradingService(prisma, {
+    info: () => undefined,
+    warn: () => undefined,
+    error: () => undefined,
+  }, {
     launchApproved: true,
     tradingEnabled: true,
     depositsEnabled: false,
