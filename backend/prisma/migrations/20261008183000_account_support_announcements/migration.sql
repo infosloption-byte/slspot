@@ -70,7 +70,7 @@ CREATE TABLE `SystemAnnouncement` (
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 ALTER TABLE `Notification`
-  ADD COLUMN `announcementId` VARCHAR(191) NULL,
+  ADD COLUMN `announcementId` CHAR(36) NULL,
   ADD INDEX `Notification_announcementId_idx` (`announcementId`),
   ADD CONSTRAINT `Notification_announcementId_fkey`
     FOREIGN KEY (`announcementId`) REFERENCES `SystemAnnouncement`(`id`) ON DELETE SET NULL ON UPDATE CASCADE;
