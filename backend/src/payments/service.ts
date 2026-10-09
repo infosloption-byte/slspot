@@ -246,6 +246,7 @@ export class PaymentService {
       if (direction === 'deposit' ? !config.depositEnabled : !config.withdrawalEnabled) continue
       if (!this.countryAllowed(config, facts.user.countryCode)) continue
       const capabilities = adapter.capabilities
+      if (!capabilities.currencies.includes(CURRENCY)) continue
       const eligible = direction === 'deposit' || usedForDeposit.has(config.id)
       methods.push({
         id: config.id,
@@ -1032,6 +1033,9 @@ export class PaymentService {
     if (!adapter) throw new PaymentError(404, 'PROVIDER_NOT_FOUND', 'That payment method is not available')
     const supportsOperation = direction === 'deposit' ? adapter.capabilities.deposit : adapter.capabilities.withdrawal
     if (!supportsOperation) throw new PaymentError(404, 'PROVIDER_NOT_FOUND', 'That payment method is not available for this operation')
+    if (!adapter.capabilities.currencies.includes(CURRENCY)) {
+      throw new PaymentError(404, 'PROVIDER_NOT_FOUND', 'That payment method does not support ' + CURRENCY)
+    }
     const adminGate = adapter.capabilities.sandbox
       ? null
       : await this.prisma.realMoneyGate.findUnique({
