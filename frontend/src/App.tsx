@@ -5,6 +5,7 @@ import { AccessPage } from './pages/AccessPage'
 import { NotFoundPage } from './pages/NotFoundPage'
 import { TradingPage } from './pages/TradingPage'
 import { WorkspacePage } from './pages/WorkspacePage'
+import { PolicyPage } from './pages/PolicyPage'
 
 export default function App() {
   return (
@@ -17,6 +18,7 @@ export default function App() {
       <Route path="/reset-password" element={<AccessPage />} />
       <Route path="/verify-email" element={<AccessPage />} />
       <Route path="/2fa" element={<AccessPage />} />
+      <Route path="/policies/:slug" element={<PolicyPage />} />
 
       <Route element={<ProtectedRoute />}>
         <Route path="/app" element={<AppShell />}>
