@@ -493,7 +493,7 @@ function LaunchGatePage({ refreshKey }: { refreshKey: number }) {
         <div className="launch-gate-row">
           <div className="launch-gate-info">
             <strong>REAL trading database switch</strong>
-            <p>This is the runtime switch stored in MySQL. It cannot override either environment lock. Turning it off blocks new REAL trades; existing trades can still settle or recover so customer funds are not stranded.</p>
+            <p>This is the runtime switch stored in MySQL. Only a SUPER_ADMIN can turn it on, and it cannot override either environment lock. Any administrator can turn it off. Turning it off blocks new REAL trades; existing trades can still settle or recover so customer funds are not stranded.</p>
             <span className={draft.tradingEnabled ? 'tag tag--good' : 'tag tag--bad'}>{draft.tradingEnabled ? 'ADMIN SWITCH ON' : 'ADMIN SWITCH OFF'}</span>
           </div>
           <label className="launch-gate-toggle">Allow new REAL trades
