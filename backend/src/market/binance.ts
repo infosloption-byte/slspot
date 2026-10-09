@@ -47,7 +47,7 @@ export class BinanceProvider implements MarketDataProvider {
 
   constructor(options: BinanceProviderOptions = {}) {
     // Several public hosts: some networks block or throttle api.binance.com while the
-    // market-data-only mirror still answers. Requests race and the first good answer wins.
+    // market-data-only mirror still answers. Requests are bounded and probe two hosts at a time.
     this.baseUrls = [...new Set([
       options.baseUrl ?? 'https://api.binance.com',
       ...(options.fallbackUrls ?? DEFAULT_FALLBACK_URLS),
