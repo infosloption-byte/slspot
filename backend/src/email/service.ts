@@ -1,4 +1,10 @@
+import { randomUUID } from 'node:crypto'
 import { env } from '../config/env.js'
+import {
+  classifyNotificationTemplate,
+  renderEmailTemplate,
+  type EmailTemplateKey,
+} from './templates.js'
 
 export type EmailMessage = {
   to: string
@@ -6,12 +12,57 @@ export type EmailMessage = {
   html: string
   text?: string
   idempotencyKey: string
+  templateKey?: EmailTemplateKey
   tags?: Array<{ name: string; value: string }>
+}
+
+export type EmailPreviewRecord = {
+  id: string
+  capturedAt: string
+  to: string
+  subject: string
+  html: string
+  text: string | null
+  templateKey: EmailTemplateKey | null
+  category: string | null
+}
+
+const MAX_PREVIEW_OUTBOX = 250
+const previewOutbox: EmailPreviewRecord[] = []
+
+function capturePreview(message: EmailMessage): EmailPreviewRecord {
+  const record: EmailPreviewRecord = {
+    id: randomUUID(),
+    capturedAt: new Date().toISOString(),
+    to: message.to,
+    subject: message.subject,
+    html: message.html,
+    text: message.text ?? null,
+    templateKey: message.templateKey ?? null,
+    category: message.tags?.find((tag) => tag.name === 'category')?.value ?? null,
+  }
+  previewOutbox.unshift(record)
+  if (previewOutbox.length > MAX_PREVIEW_OUTBOX) previewOutbox.length = MAX_PREVIEW_OUTBOX
+  return record
+}
+
+export function listEmailPreviewMessages(): Array<Omit<EmailPreviewRecord, 'html' | 'text'>> {
+  return previewOutbox.map(({ html: _html, text: _text, ...message }) => ({ ...message }))
+}
+
+export function getEmailPreviewMessage(id: string): EmailPreviewRecord | null {
+  return previewOutbox.find((message) => message.id === id) ?? null
 }
 
 export class EmailService {
   async send(message: EmailMessage): Promise<{ sent: boolean; providerId: string | null }> {
-    if (env.email.provider === 'disabled') return { sent: false, providerId: null }
+    if (env.email.provider === 'disabled') {
+      if (env.nodeEnv === 'development') {
+        const preview = capturePreview(message)
+        return { sent: false, providerId: 'preview:' + preview.id }
+      }
+      return { sent: false, providerId: null }
+    }
 
     const response = await fetch(env.email.apiUrl + '/emails', {
       method: 'POST',
@@ -46,11 +97,10 @@ export class EmailService {
 
   async sendVerification(to: string, token: string): Promise<void> {
     const link = env.email.appBaseUrl + '/verify-email?token=' + encodeURIComponent(token)
+    const rendered = renderEmailTemplate('email-verification', { actionUrl: link })
     await this.send({
       to,
-      subject: 'Verify your SL Spot email address',
-      html: this.layout('Verify your email', '<p>Thanks for creating your SL Spot account.</p><p><a href="' + link + '">Verify your email address</a></p><p>This link expires according to the verification policy shown in your account.</p>'),
-      text: 'Verify your SL Spot email address: ' + link,
+      ...rendered,
       idempotencyKey: 'auth-email-verification:' + token,
       tags: [{ name: 'category', value: 'email_verification' }],
     })
@@ -58,37 +108,29 @@ export class EmailService {
 
   async sendPasswordReset(to: string, token: string): Promise<void> {
     const link = env.email.appBaseUrl + '/reset-password?token=' + encodeURIComponent(token)
+    const rendered = renderEmailTemplate('password-reset', { actionUrl: link })
     await this.send({
       to,
-      subject: 'Reset your SL Spot password',
-      html: this.layout('Reset your password', '<p>A password reset was requested for your SL Spot account.</p><p><a href="' + link + '">Reset your password</a></p><p>If you did not request this, you can safely ignore this email.</p>'),
-      text: 'Reset your SL Spot password: ' + link,
+      ...rendered,
       idempotencyKey: 'auth-password-reset:' + token,
       tags: [{ name: 'category', value: 'password_reset' }],
     })
   }
 
   async sendNotification(to: string, notificationId: string, title: string, body: string, category: string): Promise<void> {
+    const templateKey = classifyNotificationTemplate(category, title, body)
+    const rendered = renderEmailTemplate(templateKey, {
+      subject: 'SL Spot — ' + title,
+      heading: title,
+      preheader: body,
+      body,
+      details: [],
+    })
     await this.send({
       to,
-      subject: 'SL Spot — ' + title,
-      html: this.layout(title, '<p>' + escapeHtml(body).replace(/\n/g, '<br>') + '</p><p><a href="' + env.email.appBaseUrl + '/app/alerts">Open notifications</a></p>'),
-      text: body + '\n\nOpen notifications: ' + env.email.appBaseUrl + '/app/alerts',
+      ...rendered,
       idempotencyKey: 'notification-email:' + notificationId,
-      tags: [{ name: 'category', value: category }],
+      tags: [{ name: 'category', value: category }, { name: 'template', value: templateKey }],
     })
   }
-
-  private layout(title: string, body: string): string {
-    return '<!doctype html><html><body style="margin:0;background:#0b0b0d;color:#f5f5f5;font-family:Arial,sans-serif"><div style="max-width:640px;margin:0 auto;padding:32px"><div style="font-weight:800;font-size:18px;margin-bottom:24px">SL SPOT</div><div style="background:#151518;border:1px solid #2a2a2f;border-radius:16px;padding:24px"><h1 style="font-size:22px;margin:0 0 16px">' + escapeHtml(title) + '</h1>' + body + '</div><p style="color:#8b8b94;font-size:12px;margin-top:20px">This is an automated message from SL Spot.</p></div></body></html>'
-  }
-}
-
-function escapeHtml(value: string): string {
-  return value
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#39;')
 }
