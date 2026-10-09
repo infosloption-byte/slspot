@@ -89,7 +89,8 @@ function normalizeOptionalText(value: string | null, maxLength: number): string 
   return normalized
 }
 
-function validateTimeZone(value: string): string | null {
+function validateTimeZone(value: string | null): string | null {
+  if (value === null) return null
   const timezone = value.trim()
   if (!timezone) return null
   try {
@@ -100,7 +101,8 @@ function validateTimeZone(value: string): string | null {
   }
 }
 
-function validateLocale(value: string): string | null {
+function validateLocale(value: string | null): string | null {
+  if (value === null) return null
   const locale = value.trim()
   if (!locale) return null
   if (locale.length > 35 || !/^[A-Za-z]{2,3}(?:-[A-Za-z0-9]{2,8})*$/.test(locale)) {
