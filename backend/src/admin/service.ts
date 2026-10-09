@@ -5,6 +5,7 @@ import { isRealMoneyOperationEnabled, realMoneyOperationBlockReason, type RealMo
 import { EmailService } from '../email/service.js'
 import { createRealtimeEvent, serializeRealtimeEvent } from '../realtime/events.js'
 import { publishRealtime } from '../realtime/bus.js'
+import { publishUserSessionsRevoked } from '../realtime/session-revocation.js'
 
 const DEFAULT_PAGE = 1
 const DEFAULT_PAGE_SIZE = 25
@@ -299,12 +300,17 @@ export class AdminService {
       throw new AdminError(403, 'SUPER_ADMIN_PROTECTED', 'Only a super administrator can change a super administrator account')
     }
 
+    const revokedAt = new Date()
     const user = await this.prisma.$transaction(async (tx) => {
       const updated = await tx.user.update({
         where: { id: userId },
         data: { status },
         select: { id: true, email: true, status: true },
       })
+      if (status !== 'ACTIVE') {
+        await tx.session.updateMany({ where: { userId, revokedAt: null }, data: { revokedAt } })
+        await tx.device.updateMany({ where: { userId, revokedAt: null }, data: { revokedAt } })
+      }
       await tx.auditLog.create({
         data: {
           actorUserId,
@@ -316,6 +322,7 @@ export class AdminService {
       })
       return updated
     })
+    if (status !== 'ACTIVE') await publishUserSessionsRevoked(userId)
     return user
   }
 
@@ -360,6 +367,7 @@ export class AdminService {
     const result = await this.prisma.session.updateMany({ where: { userId, revokedAt: null }, data: { revokedAt: new Date() } })
     await this.prisma.device.updateMany({ where: { userId, revokedAt: null }, data: { revokedAt: new Date() } })
     await this.prisma.auditLog.create({ data: { actorUserId, action: 'ADMIN_SESSIONS_REVOKED', entityType: 'User', entityId: userId, metadata: { count: result.count } } })
+    await publishUserSessionsRevoked(userId)
     return { revoked: result.count }
   }
 
