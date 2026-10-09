@@ -210,6 +210,7 @@ export function registerAuthRoutes(app: FastifyInstance, service: AuthServiceLik
       emailWalletUpdates:{type:'boolean'},
       emailSecurityAlerts:{type:'boolean'},
       emailAnnouncements:{type:'boolean'},
+      emailSupportUpdates:{type:'boolean'},
     }}},
   },async(request)=>{
     const session=await requireSession(request,service)
