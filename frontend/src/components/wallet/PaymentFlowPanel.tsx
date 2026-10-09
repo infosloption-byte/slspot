@@ -68,7 +68,7 @@ export function PaymentFlowPanel({ onUpdated }: Props) {
           dateOfBirth: nextEligibility.profile.dateOfBirth ?? '',
           countryCode: nextEligibility.profile.countryCode ?? '',
         })
-        setSelectedProvider((current) => nextMethods.some((method) => method.id === current) ? current : (nextMethods.find((method) => method.eligible)?.id ?? nextMethods[0]?.id ?? ''))
+        setSelectedProvider((current) => nextMethods.some((method) => method.id === current && (direction === 'deposit' || method.eligible)) ? current : (nextMethods.find((method) => direction === 'deposit' || method.eligible)?.id ?? nextMethods[0]?.id ?? ''))
       })
       .catch((error: unknown) => {
         if (!active) return
@@ -255,10 +255,12 @@ export function PaymentFlowPanel({ onUpdated }: Props) {
         <span className="status-pill status-pill--pending">{availableMethods ? (methods.some((method) => method.sandbox) ? 'SANDBOX' : 'PROVIDERS') : 'UNAVAILABLE'}</span>
       </div>
 
-      <div className="payment-sandbox-warning" role="note">
-        <ShieldCheck size={16} />
-        <span><strong>Sandbox testing only.</strong> The configured methods simulate payment events and do not move real money. Do not treat sandbox credits as withdrawable real funds.</span>
-      </div>
+      {methods.some((method) => method.sandbox) ? (
+        <div className="payment-sandbox-warning" role="note">
+          <ShieldCheck size={16} />
+          <span><strong>Sandbox testing only.</strong> Methods labelled TEST simulate payment events and do not move real money. Do not treat sandbox credits as withdrawable real funds.</span>
+        </div>
+      ) : null}
 
       {loadError ? <div className="form-message form-message--error" role="alert"><AlertCircle size={15} /> {loadError} <button type="button" className="setting-button" onClick={() => setRefreshKey((value) => value + 1)}>Retry</button></div> : null}
 
@@ -323,7 +325,7 @@ export function PaymentFlowPanel({ onUpdated }: Props) {
                 onClick={() => { setSelectedProvider(method.id); setDetails({}); setFormError(''); setDeposit(null); setWithdrawal(null) }}
               >
                 <span className="payment-provider-option__icon"><CreditCard size={18} /></span>
-                <span className="payment-provider-option__copy"><strong>{method.displayName}</strong><small>{method.description}</small><em>{method.minAmount}–{method.maxAmount ?? 'no maximum'} {method.currencies[0] ?? 'USD'}</em></span>
+                <span className="payment-provider-option__copy"><strong>{method.displayName}</strong><small>{method.description}</small>{method.reason ? <small className="payment-method-reason">{method.reason}</small> : null}<em>{method.minAmount}–{method.maxAmount ?? 'no maximum'} {method.currencies[0] ?? 'USD'}</em></span>
                 <span className={method.sandbox ? 'payment-method-tag payment-method-tag--sandbox' : 'payment-method-tag'}>{method.sandbox ? 'TEST' : 'LIVE'}</span>
               </button>
             ))}
