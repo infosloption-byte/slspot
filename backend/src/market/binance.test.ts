@@ -38,6 +38,22 @@ test('quote and candles are parsed from Binance responses', async () => {
   assert.ok(klines.some((url) => url.includes('endTime=1699999999999')))
 })
 
+test('REST request concurrency is bounded during market bursts', async () => {
+  let active = 0
+  let maxActive = 0
+  const fetcher = (async () => {
+    active += 1
+    maxActive = Math.max(maxActive, active)
+    await new Promise((resolve) => setTimeout(resolve, 10))
+    active -= 1
+    return new Response(JSON.stringify({ lastPrice: '105.5', bidPrice: '105.4', askPrice: '105.6', closeTime: 1 }), { status: 200 })
+  }) as typeof fetch
+  const provider = new BinanceProvider({ fetcher })
+  const quotes = await Promise.all(Array.from({ length: 24 }, () => provider.quote(btc)))
+  assert.equal(quotes.length, 24)
+  assert.ok(maxActive <= 12, 'six logical requests should probe at most two hosts each')
+})
+
 test('tick stream emits ticks, ignores junk and reconnects after a close', async () => {
   const sockets: Array<{ onopen: any; onmessage: any; onclose: any; onerror: any; close: () => void; url: string }> = []
   const ticks: string[] = []
