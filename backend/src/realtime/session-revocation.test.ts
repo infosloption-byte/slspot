@@ -6,6 +6,7 @@ import { buildApp } from '../app.js'
 import { env } from '../config/env.js'
 import { setLocalRealtimeSink } from './bus.js'
 import { RealtimeGateway } from './gateway.js'
+import { createRealtimeEvent, INTERNAL_SESSION_REVOCATION_CHANNEL, parseRealtimeEvent, serializeRealtimeEvent } from './events.js'
 import { publishSessionsRevoked, publishUserSessionsRevoked } from './session-revocation.js'
 
 type Message = { type: string; data?: Record<string, unknown> }
@@ -53,6 +54,22 @@ describe('realtime session revocation', () => {
     setLocalRealtimeSink(null)
     gateway.closeAll()
     await app.close()
+  })
+
+  it('accepts the reserved internal channel only for session revocation events', () => {
+    const control = serializeRealtimeEvent(createRealtimeEvent(
+      'session.revoked',
+      { sessionIds: ['session-a'] },
+      INTERNAL_SESSION_REVOCATION_CHANNEL,
+    ))
+    const publicEventOnInternalChannel = serializeRealtimeEvent(createRealtimeEvent(
+      'market.price',
+      { assetId: 'asset-a', last: '1' },
+      INTERNAL_SESSION_REVOCATION_CHANNEL,
+    ))
+
+    assert.equal(parseRealtimeEvent(control)?.type, 'session.revoked')
+    assert.equal(parseRealtimeEvent(publicEventOnInternalChannel), null)
   })
 
   it('closes only sockets for explicitly revoked session IDs and never forwards the control event', async () => {
