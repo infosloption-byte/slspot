@@ -176,6 +176,9 @@ export function AccessPage() {
     ? routeState.token
     : new URLSearchParams(location.search).get('token') ?? ''
 
+  const displayedTermsVersion = policyCatalogue?.policies.find((policy) => policy.type === 'TERMS_AND_CONDITIONS')?.version
+  const displayedPrivacyVersion = policyCatalogue?.policies.find((policy) => policy.type === 'PRIVACY_POLICY')?.version
+
   if (isAuthenticated && (location.pathname === '/login' || location.pathname === '/register' || location.pathname === '/2fa')) {
     return <Navigate to="/app/trading" replace />
   }
@@ -200,8 +203,8 @@ export function AccessPage() {
         setError('You must acknowledge the Privacy Policy before registering.')
         return
       }
-      const termsVersion = policyCatalogue?.policies.find((policy) => policy.type === 'TERMS_AND_CONDITIONS')?.version
-      const privacyVersion = policyCatalogue?.policies.find((policy) => policy.type === 'PRIVACY_POLICY')?.version
+      const termsVersion = displayedTermsVersion
+      const privacyVersion = displayedPrivacyVersion
       if (!termsVersion || !privacyVersion) {
         setError(policyCatalogueError || 'Current policy versions are unavailable. Refresh the page and try again.')
         return
@@ -277,8 +280,8 @@ export function AccessPage() {
       }
 
       if (location.pathname === '/register') {
-        const termsVersion = policyCatalogue?.policies.find((policy) => policy.type === 'TERMS_AND_CONDITIONS')?.version
-        const privacyVersion = policyCatalogue?.policies.find((policy) => policy.type === 'PRIVACY_POLICY')?.version
+        const termsVersion = displayedTermsVersion
+        const privacyVersion = displayedPrivacyVersion
         if (!termsVersion || !privacyVersion) {
           setError(policyCatalogueError || 'Current policy versions are unavailable. Refresh the page and try again.')
           return
@@ -448,12 +451,12 @@ export function AccessPage() {
               <label className="access-check">
                 <input type="checkbox" checked={acceptTerms} onChange={(event) => { setAcceptTerms(event.target.checked); setError('') }} required />
                 <span>I have read and agree to the <Link to="/policies/terms" target="_blank" rel="noreferrer">Terms & Conditions</Link>{' '}
-                  {policyCatalogue?.policies.find((policy) => policy.type === 'TERMS_AND_CONDITIONS')?.version ? '(v' + policyCatalogue.policies.find((policy) => policy.type === 'TERMS_AND_CONDITIONS')?.version + ')' : ''}.</span>
+                  {displayedTermsVersion ? '(v' + displayedTermsVersion + ')' : ''}.</span>
               </label>
               <label className="access-check">
                 <input type="checkbox" checked={acknowledgePrivacy} onChange={(event) => { setAcknowledgePrivacy(event.target.checked); setError('') }} required />
                 <span>I acknowledge that I have read the <Link to="/policies/privacy" target="_blank" rel="noreferrer">Privacy Policy</Link>{' '}
-                  {policyCatalogue?.policies.find((policy) => policy.type === 'PRIVACY_POLICY')?.version ? '(v' + policyCatalogue.policies.find((policy) => policy.type === 'PRIVACY_POLICY')?.version + ')' : ''}.</span>
+                  {displayedPrivacyVersion ? '(v' + displayedPrivacyVersion + ')' : ''}.</span>
               </label>
               <small className="registration-policies__notice">Policy pages are review drafts and must be finalized before production launch.</small>
             </div>
