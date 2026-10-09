@@ -4,6 +4,7 @@ import type { FormEvent } from 'react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router'
 import { ApiError } from '../api/client'
 import { authApi } from '../api/auth'
+import { formatTime } from '../lib/dateTime'
 import { useAuth } from '../auth/useAuth'
 
 const configByPath = {
@@ -329,7 +330,7 @@ export function AccessPage() {
           <div className="two-factor-help">
             <div className="two-factor-help__row">
               <CheckCircle2 size={16} />
-              <span>Challenge expires {(() => { const value = routeState.challengeExpiresAt ?? storedChallenge?.challengeExpiresAt; return value ? new Date(value).toLocaleTimeString() : 'soon' })()}.</span>
+              <span>Challenge expires {(() => { const value = routeState.challengeExpiresAt ?? storedChallenge?.challengeExpiresAt; return value ? formatTime(value) : 'soon' })()}.</span>
             </div>
             <button type="button" className="quiet-button" onClick={() => setUseRecoveryCode((value) => !value)}>
               {useRecoveryCode ? 'Use authenticator code' : 'Use recovery code'}

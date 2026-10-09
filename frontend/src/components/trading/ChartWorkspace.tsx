@@ -25,6 +25,9 @@ import {
 import type { MarketAsset } from '../../data/mockMarket'
 import type { MarketCandle } from '../../api/contracts'
 import { marketApi } from '../../api/market'
+import { countPrepended, type ChartTime, formatChartCrosshairTime, formatChartTick } from '../../lib/chartTime'
+import { timeZoneLabel } from '../../lib/dateTime'
+import { useDisplayTimeZone } from '../../hooks/useDisplayTimeZone'
 import { useMarketCandles } from '../../hooks/useServerState'
 import type { OpenTrade } from '../../types/trading'
 import { tradeRemainingSeconds } from '../../types/trading'
@@ -76,45 +79,6 @@ type ChartCandle = {
   low: number
   close: number
   volume: number
-}
-
-function chartTimeToDate(time: import('lightweight-charts').Time): Date | null {
-  if (typeof time === 'number') return new Date(time * 1000)
-  if (typeof time === 'string') {
-    const date = new Date(time)
-    return Number.isNaN(date.getTime()) ? null : date
-  }
-  const date = new Date(Date.UTC(time.year, time.month - 1, time.day))
-  return Number.isNaN(date.getTime()) ? null : date
-}
-
-function formatLocalChartTime(time: import('lightweight-charts').Time): string {
-  const date = chartTimeToDate(time)
-  if (!date) return ''
-  return new Intl.DateTimeFormat(undefined, {
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  }).format(date)
-}
-
-function formatLocalChartTick(time: Time, tickMarkType: TickMarkType, locale: string): string | null {
-  const date = chartTimeToDate(time)
-  if (!date) return null
-  const type = String(tickMarkType)
-  const options: Intl.DateTimeFormatOptions =
-    type === 'Year'
-      ? { year: 'numeric' }
-      : type === 'Month'
-        ? { month: 'short' }
-        : type === 'DayOfMonth'
-          ? { month: '2-digit', day: '2-digit' }
-          : type === 'TimeWithSeconds'
-            ? { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }
-            : { hour: '2-digit', minute: '2-digit', hour12: false }
-  return new Intl.DateTimeFormat(locale, options).format(date)
 }
 
 type ChartWorkspaceProps = {
@@ -187,6 +151,8 @@ function ChartCanvas({
   const displayPriceRef = useRef(asset.price)
   const animationFrameRef = useRef<number | null>(null)
   const entryLinesRef = useRef<Map<string, PriceLineHandle>>(new Map())
+  const displayZone = useDisplayTimeZone()
+  const zoneLabel = timeZoneLabel(new Date(), displayZone)
   const onReachHistoryStartRef = useRef(onReachHistoryStart)
   const historyLoadArmedRef = useRef(false)
   const previousDataRef = useRef<{ datasetKey: string; length: number; firstTime: number | null } | null>(null)
@@ -194,6 +160,15 @@ function ChartCanvas({
   useEffect(() => {
     onReachHistoryStartRef.current = onReachHistoryStart
   }, [onReachHistoryStart])
+
+  useEffect(() => {
+    // The formatters read the display timezone on every call; applying the options makes the chart
+    // redraw its axis and labels when the profile timezone changes.
+    chartRef.current?.applyOptions({
+      localization: { timeFormatter: (time: Time) => formatChartCrosshairTime(time as ChartTime) },
+      timeScale: { tickMarkFormatter: (time: Time, tickMarkType: TickMarkType, locale: string) => formatChartTick(time as ChartTime, tickMarkType as unknown as number, locale) },
+    })
+  }, [displayZone])
 
   const closes = useMemo(
     () => candles.map((candle) => ({ time: candle.time, value: candle.close })),
@@ -239,14 +214,14 @@ function ChartCanvas({
       },
       localization: {
         locale: navigator.language,
-        timeFormatter: (time: Time) => formatLocalChartTime(time),
+        timeFormatter: (time: Time) => formatChartCrosshairTime(time as ChartTime),
       },
       timeScale: {
         borderColor: 'rgba(255,255,255,.08)',
         timeVisible: true,
         secondsVisible: false,
         rightOffset: 5,
-        tickMarkFormatter: (time: Time, tickMarkType: TickMarkType, locale: string) => formatLocalChartTick(time, tickMarkType, locale),
+        tickMarkFormatter: (time: Time, tickMarkType: TickMarkType, locale: string) => formatChartTick(time as ChartTime, tickMarkType as unknown as number, locale),
       },
       handleScale: { axisPressedMouseMove: true, mouseWheel: true, pinch: true },
       handleScroll: {
@@ -349,12 +324,11 @@ function ChartCanvas({
 
     const previous = previousDataRef.current
     const isNewDataset = previous?.datasetKey !== datasetKey
-    const prependedCount = !isNewDataset &&
-      previous?.firstTime !== null &&
-      candles[0] &&
-      Number(candles[0].time) < (previous?.firstTime ?? Number.POSITIVE_INFINITY)
-      ? Math.max(0, candles.length - (previous?.length ?? 0))
-      : 0
+    // Count the bars that really came before the old first bar; a live bar appended in the same
+    // update must not be mistaken for history.
+    const prependedCount = isNewDataset
+      ? 0
+      : countPrepended(previous?.firstTime ?? null, candles.map((candle) => Number(candle.time)))
     const visibleRangeBeforeUpdate = prependedCount > 0 ? chart.timeScale().getVisibleLogicalRange() : null
 
     if (chartType === 'candles') {
@@ -608,7 +582,7 @@ function ChartCanvas({
         aria-label={asset.symbol + ' ' + chartType + ' market chart'}
       />
       {historyLoading ? <div className="chart-history-loading">Loading earlier candles…</div> : null}
-      <div className="chart-attribution">Server OHLC · Volume {volumeEnabled ? 'on' : 'off'}</div>
+      <div className="chart-attribution">Server OHLC · Volume {volumeEnabled ? 'on' : 'off'}{zoneLabel ? ' · ' + zoneLabel : ''}</div>
     </div>
   )
 }

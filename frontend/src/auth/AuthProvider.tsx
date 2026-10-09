@@ -7,6 +7,7 @@ import { AuthContext, AUTH_EXPIRED_EVENT, type AuthContextValue } from './contex
 import { clearSession, sessionStore, setSession, useSessionStore } from '../state/sessionStore'
 import { resetServerPreferences, setServerPreferences } from '../state/preferencesStore'
 import { setSoundEnabled } from '../state/tradingUiStore'
+import { setDisplayTimeZone } from '../lib/dateTime'
 
 let bootstrapPromise: Promise<AuthSession | null> | null = null
 
@@ -100,6 +101,12 @@ async function logoutAll(): Promise<void> {
 
 export function AuthProvider({ children }: PropsWithChildren) {
   const current = useSessionStore()
+  const profileTimeZone = current.user?.timezone ?? null
+
+  useEffect(() => {
+    // Times are shown in the profile timezone when set, otherwise the browser's.
+    setDisplayTimeZone(profileTimeZone)
+  }, [profileTimeZone])
 
   useEffect(() => {
     void bootstrap()
