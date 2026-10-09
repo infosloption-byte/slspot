@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { AlertCircle, ArrowDownCircle, ArrowUpCircle, CheckCircle2, Clock3, CreditCard, ExternalLink, MailCheck, ShieldCheck } from 'lucide-react'
+import { AlertCircle, ArrowDownCircle, ArrowUpCircle, CheckCircle2, CreditCard, ExternalLink, MailCheck, ShieldCheck } from 'lucide-react'
 import { authApi } from '../../api/auth'
 import { paymentApi, type PaymentDirection, type PaymentEligibility, type PaymentMethod, type PaymentDeposit, type PaymentWithdrawal } from '../../api/payments'
 import { useAuth } from '../../auth/useAuth'
@@ -374,8 +374,8 @@ export function PaymentFlowPanel({ onUpdated }: Props) {
               <p>Choose a simulated provider result. No real payment is attempted.</p>
               <div>
                 <button type="button" className="btn btn--primary" disabled={sandboxBusy} onClick={() => void chooseSandboxOutcome('succeed')}>{sandboxBusy ? 'Processing…' : 'Simulate success'}</button>
-                <button type="button" className="btn btn--secondary" disabled={sandboxBusy} onClick={() => void chooseSandboxOutcome('fail')}>Simulate failure</button>
-                <button type="button" className="btn btn--secondary" disabled={sandboxBusy} onClick={() => void chooseSandboxOutcome('pending')}>Keep pending</button>
+                <button type="button" className="btn btn--ghost" disabled={sandboxBusy} onClick={() => void chooseSandboxOutcome('fail')}>Simulate failure</button>
+                <button type="button" className="btn btn--ghost" disabled={sandboxBusy} onClick={() => void chooseSandboxOutcome('pending')}>Keep pending</button>
               </div>
             </div>
           ) : null}
