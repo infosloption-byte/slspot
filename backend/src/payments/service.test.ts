@@ -113,6 +113,51 @@ function fixture(input: {
   return service
 }
 
+test('does not approve a pending payout after the administrator withdrawal gate is closed', async () => {
+  let approvalWrites = 0
+  const withdrawal = {
+    id: 'withdrawal-gate-closed',
+    walletId: 'wallet-1',
+    provider: liveCapabilities.id,
+    amount: { toString: () => '1000.00' },
+    currency: 'USD',
+    status: 'PENDING',
+    reviewedAt: null,
+    details: { email: 'trader@example.test', needsReview: true },
+    wallet: { account: { userId: 'customer-1', status: 'ACTIVE' } },
+  }
+  const prismaMock = {
+    user: {
+      findUnique: async () => ({
+        id: 'customer-1',
+        email: 'trader@example.test',
+        status: 'ACTIVE',
+        countryCode: 'LK',
+        legalName: 'Test Trader',
+        dateOfBirth: new Date('1990-01-01T00:00:00.000Z'),
+        emailVerifiedAt: new Date('2026-01-01T00:00:00.000Z'),
+        twoFactorEnabled: true,
+      }),
+    },
+    kycCase: { findFirst: async () => ({ status: 'APPROVED' }) },
+    withdrawal: {
+      findUnique: async () => withdrawal,
+      updateMany: async () => { approvalWrites += 1; return { count: 1 } },
+    },
+    realMoneyGate: { findUnique: async () => ({ depositsEnabled: true, withdrawalsEnabled: false }) },
+    paymentProviderConfig: { findUnique: async () => configRow(liveCapabilities.id) },
+  } as unknown as PrismaClient
+  const registry = new PaymentProviderRegistry()
+  registry.register(liveAdapter())
+  const service = new PaymentService(prismaMock, registry, {} as LedgerService, async () => undefined, baseConfig)
+
+  await assert.rejects(
+    service.approveWithdrawal('admin-1', withdrawal.id),
+    (error: unknown) => error instanceof PaymentError && error.code === 'PAYMENT_OPERATION_DISABLED',
+  )
+  assert.equal(approvalWrites, 0)
+})
+
 test('live payment methods require the database administrator switch as well as environment switches', async () => {
   const service = fixture({
     adapter: liveAdapter(),
