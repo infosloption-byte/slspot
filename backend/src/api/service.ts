@@ -267,7 +267,13 @@ export class PlatformApiService {
       select: { status: true },
     })
     const userActive = user?.status === 'ACTIVE'
-    const wallets = await this.getWallets(userId)
+    const [wallets, administrativeGate] = await Promise.all([
+      this.getWallets(userId),
+      this.prisma.realMoneyGate.findUnique({
+        where: { id: 'GLOBAL' },
+        select: { tradingEnabled: true },
+      }).catch(() => null),
+    ])
     const demoWallet = wallets.find((wallet) => wallet.mode === 'DEMO')
     const realWallet = wallets.find((wallet) => wallet.mode === 'REAL')
     const demoTradeReason = !userActive
@@ -277,9 +283,12 @@ export class PlatformApiService {
         : null
     const realTradeReason = !userActive
       ? 'Your account is not eligible for trading.'
-      : realWallet?.status !== 'ACTIVE'
-        ? 'A real trading wallet is not currently available for this account.'
-        : realMoneyOperationBlockReason('TRADING')
+      : realMoneyOperationBlockReason('TRADING') ??
+        (!administrativeGate?.tradingEnabled
+          ? 'Real-money trading is disabled by the administrative launch gate.'
+          : realWallet?.status !== 'ACTIVE'
+            ? 'A real trading wallet is not currently available for this account.'
+            : null)
 
     return {
       trading: {
