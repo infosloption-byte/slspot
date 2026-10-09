@@ -955,12 +955,13 @@ export class PaymentService {
         amount: withdrawal.amount.toString(),
         currency: withdrawal.currency,
         destination: withdrawal.destination,
+        provider: withdrawal.provider,
       }
     })
 
     if (!result || !result.transitioned) return
     await this.audit(result.userId, 'WITHDRAWAL_COMPLETED', 'Withdrawal', withdrawalId, {
-      provider: (await this.prisma.withdrawal.findUnique({ where: { id: withdrawalId }, select: { provider: true } }))?.provider ?? 'unknown',
+      provider: result.provider,
       amount: result.amount,
     })
     await this.safeNotify(
