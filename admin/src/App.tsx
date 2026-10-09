@@ -2,16 +2,16 @@ import { useEffect, useMemo, useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
 import {
   Activity, AlertTriangle, BarChart3, CheckCircle2, ChevronRight, Database, Download,
-  KeyRound, LayoutDashboard, LifeBuoy, LogOut, Megaphone, Radio, RefreshCw, Search, ShieldAlert, UserRound,
+  KeyRound, LayoutDashboard, LifeBuoy, LogOut, Megaphone, Radio, RefreshCw, Search, ShieldAlert, ShieldCheck, UserRound,
   Users, WalletCards, XCircle,
 } from 'lucide-react'
 import {
   AdminApiError, adminApi, type AssetRecord, type AuditRecord, type Dashboard, type FundingRecord,
   type AnnouncementRecord, type LedgerRecord, type List, type PositionRecord, type Reconciliation, type RiskSummary,
-  type SettlementRecord, type SupportTicketDetail, type SupportTicketRecord, type TradeRecord, type UserDetail, type UserRecord, type WalletRecord,
+  type RealMoneyGateStatus, type RealMoneyGateSettings, type SettlementRecord, type SupportTicketDetail, type SupportTicketRecord, type TradeRecord, type UserDetail, type UserRecord, type WalletRecord,
 } from './api'
 
-type Page = 'dashboard' | 'users' | 'trading' | 'finance' | 'support' | 'announcements' | 'risk' | 'audit'
+type Page = 'dashboard' | 'users' | 'trading' | 'finance' | 'support' | 'announcements' | 'risk' | 'audit' | 'launch-gate'
 type TradingView = 'trades' | 'positions' | 'settlements' | 'assets'
 type FinanceView = 'wallets' | 'deposits' | 'withdrawals' | 'reconciliation' | 'ledger'
 
@@ -20,6 +20,7 @@ const pages: Array<{ id: Page; label: string; icon: typeof LayoutDashboard }> = 
   { id: 'users', label: 'Users', icon: Users },
   { id: 'trading', label: 'Trading', icon: BarChart3 },
   { id: 'finance', label: 'Finance', icon: WalletCards },
+  { id: 'launch-gate', label: 'Launch Gate', icon: ShieldCheck },
   { id: 'support', label: 'Support', icon: LifeBuoy },
   { id: 'announcements', label: 'Announcements', icon: Megaphone },
   { id: 'risk', label: 'Risk', icon: ShieldAlert },
@@ -127,6 +128,7 @@ function AdminShell({ admin, onLogout }: { admin: { id: string; email: string; r
         {page === 'users' ? <UsersPage refreshKey={refreshKey} /> : null}
         {page === 'trading' ? <TradingPage refreshKey={refreshKey} /> : null}
         {page === 'finance' ? <FinancePage refreshKey={refreshKey} /> : null}
+        {page === 'launch-gate' ? <LaunchGatePage refreshKey={refreshKey} /> : null}
         {page === 'support' ? <SupportPage refreshKey={refreshKey} /> : null}
         {page === 'announcements' ? <AnnouncementsPage refreshKey={refreshKey} /> : null}
         {page === 'risk' ? <RiskPage refreshKey={refreshKey} /> : null}
@@ -423,6 +425,106 @@ function AnnouncementsPage({ refreshKey }: { refreshKey: number }) {
       </tbody></Table> : <div className="loading-card"><Activity className="spin" size={20} /> Loading announcements…</div>}
       {data?.items.length === 0 ? <div className="empty-state">No announcements yet.</div> : null}
     </section>
+  </div>
+}
+
+function LaunchGatePage({ refreshKey }: { refreshKey: number }) {
+  const [data, setData] = useState<RealMoneyGateStatus | null>(null)
+  const [draft, setDraft] = useState<RealMoneyGateSettings | null>(null)
+  const [error, setError] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  async function load() {
+    setError('')
+    try {
+      const result = await adminApi.realMoneyGate()
+      setData(result)
+      setDraft(result.settings)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not load real-money launch controls')
+    }
+  }
+
+  useEffect(() => { void load() }, [refreshKey])
+
+  const changed = Boolean(data && draft && (
+    data.settings.tradingEnabled !== draft.tradingEnabled ||
+    data.settings.depositsEnabled !== draft.depositsEnabled ||
+    data.settings.withdrawalsEnabled !== draft.withdrawalsEnabled
+  ))
+  const deploymentAllowsTrading = Boolean(data?.environment.launchApproved && data.environment.tradingEnabled)
+  const tradingEnabled = Boolean(data?.effective.tradingEnabled)
+
+  async function save() {
+    if (!draft || !data || !changed) return
+    if (draft.tradingEnabled && !data.settings.tradingEnabled) {
+      const approved = window.confirm(
+        'Enable the database REAL-trading switch? The master launch-approval flag and REAL_TRADING_ENABLED environment flag must also be true. Confirm that the remaining launch checks have been completed before enabling real-money trading.',
+      )
+      if (!approved) return
+    }
+    setBusy(true)
+    setError('')
+    try {
+      const result = await adminApi.updateRealMoneyGate(draft)
+      setData(result)
+      setDraft(result.settings)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not update real-money launch controls')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return <div className="page">
+    {error ? <ErrorNotice message={error} onRetry={() => void load()} /> : null}
+    {!data || !draft ? <div className="loading-card"><Activity className="spin" size={20} /> Loading real-money launch controls…</div> : <>
+      <section className="panel">
+        <div className="panel-heading">
+          <div><span className="eyebrow">Deployment + database controls</span><h2>Real-money launch gate</h2><small>Both locks must allow an operation before it can proceed.</small></div>
+          <span className={tradingEnabled ? 'tag tag--good' : 'tag tag--bad'}>{tradingEnabled ? 'REAL TRADING ENABLED' : 'REAL TRADING BLOCKED'}</span>
+        </div>
+        <div className="launch-gate-environment">
+          <div><strong>Master launch approval</strong><small><span className={data.environment.launchApproved ? 'tag tag--good' : 'tag tag--bad'}>{data.environment.launchApproved ? 'ENABLED' : 'BLOCKED'}</span></small><small>REAL_MONEY_LAUNCH_APPROVED</small></div>
+          <div><strong>Environment trading flag</strong><small><span className={data.environment.tradingEnabled ? 'tag tag--good' : 'tag tag--bad'}>{data.environment.tradingEnabled ? 'ENABLED' : 'BLOCKED'}</span></small><small>REAL_TRADING_ENABLED</small></div>
+          <div><strong>Environment deposit flag</strong><small><span className={data.environment.depositsEnabled ? 'tag tag--good' : 'tag tag--bad'}>{data.environment.depositsEnabled ? 'ENABLED' : 'BLOCKED'}</span></small><small>REAL_DEPOSITS_ENABLED</small></div>
+          <div><strong>Environment withdrawal flag</strong><small><span className={data.environment.withdrawalsEnabled ? 'tag tag--good' : 'tag tag--bad'}>{data.environment.withdrawalsEnabled ? 'ENABLED' : 'BLOCKED'}</span></small><small>REAL_WITHDRAWALS_ENABLED</small></div>
+        </div>
+        <div className="launch-gate-row">
+          <div className="launch-gate-info">
+            <strong>REAL trading database switch</strong>
+            <p>This is the runtime switch stored in MySQL. It cannot override either environment lock. Turning it off blocks new REAL trades; existing trades can still settle or recover so customer funds are not stranded.</p>
+            <span className={draft.tradingEnabled ? 'tag tag--good' : 'tag tag--bad'}>{draft.tradingEnabled ? 'ADMIN SWITCH ON' : 'ADMIN SWITCH OFF'}</span>
+          </div>
+          <label className="launch-gate-toggle">Allow new REAL trades
+            <input
+              type="checkbox"
+              checked={draft.tradingEnabled}
+              disabled={busy || (!draft.tradingEnabled && !deploymentAllowsTrading)}
+              onChange={(event) => setDraft((current) => current ? { ...current, tradingEnabled: event.target.checked } : current)}
+            />
+          </label>
+        </div>
+        {!deploymentAllowsTrading ? <div className="notice"><ShieldCheck size={17} /><span>The deployment launch gate is closed. The admin switch cannot enable REAL trading until both required environment flags are configured and the backend is restarted.</span></div> : null}
+        <div className="action-row">
+          <button type="button" className="button button--primary" disabled={busy || !changed} onClick={() => void save()}>{busy ? 'Saving…' : 'Save audited changes'}</button>
+          <button type="button" className="button button--ghost" disabled={busy || !changed} onClick={() => setDraft(data.settings)}>Discard changes</button>
+          <button type="button" className="button button--ghost" disabled={busy} onClick={() => void load()}>Refresh status</button>
+        </div>
+        <div className="subsection"><span className="eyebrow">Last change</span><span>{data.updatedAt ? date(data.updatedAt) : 'No database switch changes recorded yet'}</span><p className="muted-label">Every persisted setting change is recorded in the admin audit log.</p></div>
+      </section>
+      <section className="panel">
+        <div className="panel-heading"><div><span className="eyebrow">Payment integration pending</span><h2>Real deposits and withdrawals</h2></div><span className="tag tag--bad">BLOCKED</span></div>
+        <div className="launch-gate-row">
+          <div className="launch-gate-info"><strong>Deposits</strong><p>Disabled until provider-backed deposit intents, signed webhook verification, idempotency, refunds and ledger reconciliation are implemented.</p></div>
+          <span className="tag tag--bad">NOT AVAILABLE</span>
+        </div>
+        <div className="launch-gate-row">
+          <div className="launch-gate-info"><strong>Withdrawals</strong><p>Disabled until eligibility checks, destination verification, approval controls, provider transfers and failure recovery are implemented.</p></div>
+          <span className="tag tag--bad">NOT AVAILABLE</span>
+        </div>
+      </section>
+    </>}
   </div>
 }
 
