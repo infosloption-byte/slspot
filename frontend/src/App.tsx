@@ -1,5 +1,6 @@
 import { lazy, Suspense } from 'react'
 import { Navigate, Route, Routes } from 'react-router'
+import { RouteErrorBoundary } from './components/routing/RouteErrorBoundary'
 
 const AppShell = lazy(() => import('./components/layout/AppShell').then((module) => ({ default: module.AppShell })))
 const ProtectedRoute = lazy(() => import('./components/routing/ProtectedRoute').then((module) => ({ default: module.ProtectedRoute })))
@@ -26,6 +27,7 @@ function RouteLoading() {
 
 export default function App() {
   return (
+    <RouteErrorBoundary>
     <Suspense fallback={<RouteLoading />}>
       <Routes>
         <Route path="/" element={<Navigate to="/app/trading" replace />} />
@@ -56,5 +58,6 @@ export default function App() {
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </Suspense>
+    </RouteErrorBoundary>
   )
 }
