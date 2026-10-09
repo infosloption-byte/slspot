@@ -3749,3 +3749,42 @@ button.toggle { cursor: pointer; appearance: none; }
 .support-message p{margin:8px 0 0;white-space:pre-wrap;line-height:1.55;color:var(--muted)}
 @media(max-width:1180px){.account-layout--wide{grid-template-columns:1fr 1fr}.account-layout--wide>aside{grid-column:1/-1}.support-layout--tickets{grid-template-columns:1fr}}
 @media(max-width:720px){.account-layout--wide{grid-template-columns:1fr}.support-ticket-row{grid-template-columns:1fr}.support-ticket-row>span:last-child{justify-items:start}}
+
+
+/* ---------- 12. Public policy documents ---------- */
+.policy-shell{min-height:100dvh;padding:24px clamp(14px,3vw,40px) 48px;background:var(--bg-0);color:var(--text)}
+.policy-topbar{max-width:1240px;margin:0 auto 22px;display:flex;align-items:center;justify-content:space-between;gap:16px}
+.policy-brand{font-size:17px;font-weight:900;letter-spacing:.08em;text-decoration:none;color:var(--text)}
+.policy-brand span{color:var(--accent);margin-left:3px}
+.policy-back-link{display:inline-flex;align-items:center;gap:7px;color:var(--muted);font-size:12px;text-decoration:none}
+.policy-back-link:hover,.policy-footer a:hover{color:var(--accent)}
+.policy-layout{max-width:1240px;margin:0 auto;display:grid;grid-template-columns:minmax(190px,240px) minmax(0,1fr);align-items:start;gap:18px}
+.policy-sidebar,.policy-card{background:var(--bg-1);border:1px solid var(--line);border-radius:16px;min-width:0}
+.policy-sidebar{padding:13px;position:sticky;top:16px}
+.policy-sidebar__heading{display:flex;align-items:center;gap:8px;padding:7px 8px 12px;color:var(--muted);font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.09em}
+.policy-sidebar nav{display:grid;gap:3px}
+.policy-nav-link{display:block;padding:10px 9px;border-radius:9px;color:var(--muted);font-size:12px;line-height:1.4;text-decoration:none}
+.policy-nav-link:hover{background:var(--bg-2);color:var(--text)}
+.policy-nav-link--active{background:var(--accent-soft);color:var(--accent);font-weight:700}
+.policy-card{padding:clamp(18px,3.2vw,38px)}
+.policy-eyebrow{margin-bottom:9px;color:var(--accent);font-size:10px;font-weight:800;letter-spacing:.11em;text-transform:uppercase}
+.policy-card h1{font-size:clamp(24px,3vw,34px);line-height:1.2;margin:0 0 11px}
+.policy-summary{max-width:800px;margin:0;color:var(--muted);font-size:14px;line-height:1.65}
+.policy-metadata{display:flex;align-items:center;flex-wrap:wrap;gap:9px;margin-top:18px;color:var(--muted-2);font-size:11px}
+.policy-status{padding:4px 7px;border-radius:5px;border:1px solid rgba(255,194,26,.25);background:rgba(255,194,26,.07);color:var(--accent);font-size:9px;font-weight:800;letter-spacing:.06em}
+.policy-draft-notice{display:flex;gap:11px;margin:22px 0 28px;padding:13px 14px;border:1px solid rgba(255,194,26,.25);border-radius:11px;background:rgba(255,194,26,.055);color:var(--accent)}
+.policy-draft-notice>svg{flex:none;margin-top:1px}
+.policy-draft-notice strong{display:block;font-size:12px;color:var(--text)}
+.policy-draft-notice p{margin:5px 0 0;color:var(--muted);font-size:11px;line-height:1.6}
+.policy-content{max-width:850px}
+.policy-content section+section{margin-top:25px;padding-top:22px;border-top:1px solid var(--line)}
+.policy-content h2{font-size:15px;line-height:1.4;margin:0 0 10px;color:var(--text)}
+.policy-content p,.policy-content li{font-size:12px;line-height:1.8;color:var(--muted)}
+.policy-content p{margin:0 0 10px}
+.policy-content ul{margin:7px 0 0;padding-left:20px}
+.policy-content li+li{margin-top:7px}
+.policy-footer{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-top:30px;padding-top:17px;border-top:1px solid var(--line);color:var(--muted-2);font-size:10px}
+.policy-footer a{display:inline-flex;align-items:center;gap:6px;color:var(--text);text-decoration:none}
+.policy-footer a svg{transform:rotate(180deg)}
+@media(max-width:800px){.policy-layout{grid-template-columns:1fr}.policy-sidebar{position:static;padding:10px}.policy-sidebar nav{grid-template-columns:repeat(2,minmax(0,1fr))}.policy-nav-link{font-size:11px}.policy-card{padding:20px}}
+@media(max-width:440px){.policy-shell{padding:16px 10px 30px}.policy-topbar{margin-bottom:14px}.policy-back-link{font-size:11px}.policy-sidebar nav{grid-template-columns:1fr}.policy-card{padding:16px}.policy-card h1{font-size:25px}.policy-footer{align-items:flex-start;flex-direction:column}}
