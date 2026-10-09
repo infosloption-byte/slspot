@@ -87,7 +87,10 @@ export function PaymentFlowPanel({ onUpdated }: Props) {
     : (eligibility?.withdrawalBlockers ?? [])
   const availableMethods = methods.length > 0
   const amountNumber = Number(amount)
-  const amountLooksValid = amount.trim() !== '' && Number.isFinite(amountNumber) && amountNumber > 0
+  // Keep the client-side shape identical to the server's decimal parser; Number() alone
+  // accepts exponent notation and excess precision that the API intentionally rejects.
+  const amountSyntaxValid = /^\d{1,20}(?:\.\d{1,8})?$/.test(amount.trim())
+  const amountLooksValid = amountSyntaxValid && Number.isFinite(amountNumber) && amountNumber > 0
   const amountAboveMinimum = selectedMethod ? amountNumber >= Number(selectedMethod.minAmount) : false
   const amountBelowMaximum = !selectedMethod?.maxAmount || amountNumber <= Number(selectedMethod.maxAmount)
   const amountValid = amountLooksValid && amountAboveMinimum && amountBelowMaximum
@@ -327,7 +330,7 @@ export function PaymentFlowPanel({ onUpdated }: Props) {
       <div className="payment-step-heading"><span className="eyebrow">Step {missingProfile ? '2' : '1'}</span><h3>{direction === 'deposit' ? 'Choose a deposit method' : 'Choose a withdrawal method'}</h3><p>{direction === 'deposit' ? 'Select an enabled provider and enter the amount.' : 'Withdrawals are restricted to a method previously used for a completed deposit.'}</p></div>
 
       {loading ? <div className="dashboard-note">Loading provider methods and eligibility…</div> : null}
-      {!loading && !methods.length ? <div className="dashboard-note">No payment providers are currently available for this country and operation. Real payment providers have not been connected yet.</div> : null}
+      {!loading && !methods.length ? <div className="dashboard-note">No payment methods are enabled for this operation in your current environment. Live payments require a configured provider plus both environment and administrator approval.</div> : null}
 
       {methods.length > 0 ? (
         <>
