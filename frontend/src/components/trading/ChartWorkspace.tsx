@@ -151,6 +151,11 @@ function ChartCanvas({
   const displayPriceRef = useRef(asset.price)
   const animationFrameRef = useRef<number | null>(null)
   const entryLinesRef = useRef<Map<string, PriceLineHandle>>(new Map())
+  // Latest chart settings for the creation effect, which must not re-run (and rebuild the chart) on a toggle.
+  const chartSettingsRef = useRef({ gridEnabled, crosshairEnabled })
+  useEffect(() => {
+    chartSettingsRef.current = { gridEnabled, crosshairEnabled }
+  }, [gridEnabled, crosshairEnabled])
   const displayZone = useDisplayTimeZone()
   const zoneLabel = timeZoneLabel(new Date(), displayZone)
   const onReachHistoryStartRef = useRef(onReachHistoryStart)
@@ -180,6 +185,7 @@ function ChartCanvas({
     const container = containerRef.current
     const entryLineHandles = entryLinesRef.current
     if (!container) return
+    const { gridEnabled: initialGrid, crosshairEnabled: initialCrosshair } = chartSettingsRef.current
 
     const chart = createChart(container, {
       width: container.clientWidth,
@@ -192,20 +198,20 @@ function ChartCanvas({
       // A new Lightweight Charts instance otherwise falls back to its default grid,
       // even when the user has hidden it in settings.
       grid: {
-        vertLines: { visible: gridEnabled, color: 'rgba(255,255,255,.045)' },
-        horzLines: { visible: gridEnabled, color: 'rgba(255,255,255,.045)' },
+        vertLines: { visible: initialGrid, color: 'rgba(255,255,255,.045)' },
+        horzLines: { visible: initialGrid, color: 'rgba(255,255,255,.045)' },
       },
       crosshair: {
-        mode: crosshairEnabled ? CrosshairMode.Normal : CrosshairMode.Hidden,
+        mode: initialCrosshair ? CrosshairMode.Normal : CrosshairMode.Hidden,
         vertLine: {
           color: 'rgba(255,194,26,.28)',
           width: 1,
-          labelVisible: crosshairEnabled,
+          labelVisible: initialCrosshair,
         },
         horzLine: {
           color: 'rgba(255,194,26,.18)',
           width: 1,
-          labelVisible: crosshairEnabled,
+          labelVisible: initialCrosshair,
         },
       },
       rightPriceScale: {
