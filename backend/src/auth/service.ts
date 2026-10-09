@@ -350,7 +350,7 @@ export class AuthService {
       }
     }
 
-    return this.finishLogin(user.id, user, input.ipAddress, input.userAgent, input.rememberDevice ?? false, now)
+    return this.finishLogin(user.id, this.toUser(user), input.ipAddress, input.userAgent, input.rememberDevice ?? false, now)
   }
 
   private async finishLogin(userId: string, user: AuthUser, ipAddress: string | undefined, userAgent: string | undefined, rememberDevice: boolean, now = new Date()): Promise<AuthLoginResult> {
