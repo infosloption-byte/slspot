@@ -100,6 +100,10 @@ describe('deposit rules', () => {
   it('allows a verified user with a complete profile', () => {
     assert.deepEqual(evaluateDeposit(base), [])
   })
+  it('blocks payment deposits for users below the minimum age', () => {
+    assert.deepEqual(evaluateDeposit({ ...base, age: 17 }).map((item) => item.code), ['AGE_RESTRICTED'])
+    assert.deepEqual(evaluateDeposit({ ...base, age: 18 }), [])
+  })
   it('blocks incomplete profiles and unverified email', () => {
     const codes = evaluateDeposit({ ...base, emailVerified: false, missingProfile: ['legalName'] }).map((item) => item.code)
     assert.deepEqual(codes, ['EMAIL_NOT_VERIFIED', 'PROFILE_INCOMPLETE'])
@@ -119,6 +123,10 @@ describe('deposit rules', () => {
 describe('withdrawal rules', () => {
   it('allows a verified, 2FA-protected user who has traded', () => {
     assert.deepEqual(codes(withdrawal()), [])
+  })
+  it('blocks payment withdrawals for users below the minimum age, even in relaxed test mode', () => {
+    assert.deepEqual(codes(withdrawal({ age: 17, relaxed: true })), ['AGE_RESTRICTED'])
+    assert.deepEqual(codes(withdrawal({ age: 18 })), [])
   })
   it('requires identity verification and 2FA', () => {
     assert.deepEqual(codes(withdrawal({ tier: 1, twoFactorEnabled: false })), ['KYC_REQUIRED', 'TWO_FACTOR_REQUIRED'])
