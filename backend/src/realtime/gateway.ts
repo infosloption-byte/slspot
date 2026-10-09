@@ -7,6 +7,7 @@ import { enforceRateLimit } from '../security/rate-limit.js'
 import { isUserChannelAuthorized, type RealtimeChannel } from '../contracts/realtime.js'
 import {
   createRealtimeEvent,
+  INTERNAL_SESSION_REVOCATION_CHANNEL,
   parseRealtimeClientMessage,
   parseRealtimeEvent,
   serializeRealtimeEvent,
@@ -154,15 +155,53 @@ export class RealtimeGateway {
     const event = parseRealtimeEvent(message)
     if (!event) return
 
+    // This is an internal bus command, not a client-facing event. Every API instance
+    // consumes it locally so revocation closes sockets without waiting for cache expiry.
+    if (event.type === 'session.revoked') {
+      if (!event.data || typeof event.data !== 'object' || Array.isArray(event.data)) return
+      const payload = event.data as {
+        sessionIds?: unknown
+        userId?: unknown
+        exceptSessionId?: unknown
+      }
+      const sessionIds = Array.isArray(payload.sessionIds)
+        ? new Set(payload.sessionIds.filter((id): id is string => typeof id === 'string' && id.length > 0))
+        : null
+      const userId = typeof payload.userId === 'string' && payload.userId.length > 0
+        ? payload.userId
+        : null
+      const exceptSessionId = typeof payload.exceptSessionId === 'string'
+        ? payload.exceptSessionId
+        : null
+      if (sessionIds === null && userId === null) return
+
+      for (const sessionId of sessionIds ?? []) this.sessionChecks.delete(sessionId)
+
+      for (const [socket, principal] of this.sockets) {
+        const revokedById = sessionIds?.has(principal.sessionId) ?? false
+        const revokedByUser = userId !== null &&
+          principal.userId === userId &&
+          principal.sessionId !== exceptSessionId
+        if (!revokedById && !revokedByUser) continue
+
+        this.sessionChecks.delete(principal.sessionId)
+        if (socket.readyState === 1) socket.close(1008, 'Session revoked')
+      }
+      return
+    }
+
     for (const socket of this.sockets.keys()) {
       if (socket.readyState !== 1) continue
 
-      if (!event?.channel) {
+      if (!event.channel) {
         socket.send(message)
         continue
       }
 
-      if (this.subscriptions.get(socket)?.has(event.channel)) {
+      if (
+        event.channel !== INTERNAL_SESSION_REVOCATION_CHANNEL &&
+        this.subscriptions.get(socket)?.has(event.channel)
+      ) {
         socket.send(message)
       }
     }

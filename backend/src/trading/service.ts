@@ -9,6 +9,7 @@ import { publishRealtime } from '../realtime/bus.js'
 import { getTradingRules, TRADING_RULES } from './config.js'
 import { LedgerService } from '../ledger/service.js'
 import { EmailService } from '../email/service.js'
+import { realMoneyOperationBlockReason, type RealMoneyGateConfig } from './real-money-gate.js'
 
 export type TradeDirection = 'UP' | 'DOWN'
 export type WalletMode = 'DEMO' | 'REAL'
@@ -198,6 +199,7 @@ export class TradingService {
       warn: (value: unknown, message?: string) => void
       error: (value: unknown, message?: string) => void
     } = console,
+    private readonly realMoneyGate: RealMoneyGateConfig = env.realMoney,
   ) {
     this.ledger = new LedgerService(prisma)
   }
@@ -271,8 +273,53 @@ export class TradingService {
       throw new TradingError(409, 'ORDER_ALREADY_EXISTS', 'The order already exists')
     }
 
+    // Idempotent retries of an already-created order are returned above, but no
+    // new REAL order may enter the transaction unless both launch flags allow it.
+    if (mode === 'REAL') {
+      const blockReason = realMoneyOperationBlockReason('TRADING', this.realMoneyGate)
+      if (blockReason) {
+        this.logger.warn(
+          { userId, operation: 'REAL_TRADING', code: 'REAL_TRADING_DISABLED' },
+          'Blocked REAL trade request while the launch gate is closed',
+        )
+        throw new TradingError(503, 'REAL_TRADING_DISABLED', blockReason)
+      }
+    }
+
     try {
       const result = await this.prisma.$transaction(async (tx) => {
+        if (mode === 'REAL') {
+          let administrativeGate: { tradingEnabled: boolean } | null
+          try {
+            administrativeGate = await tx.realMoneyGate.findUnique({
+              where: { id: 'GLOBAL' },
+              select: { tradingEnabled: true },
+            })
+          } catch (error) {
+            this.logger.error(
+              { userId, operation: 'REAL_TRADING', error },
+              'Could not verify the administrative REAL trading gate',
+            )
+            throw new TradingError(
+              503,
+              'REAL_TRADING_GATE_UNAVAILABLE',
+              'Real-money trading is disabled because launch controls could not be verified.',
+            )
+          }
+
+          if (!administrativeGate?.tradingEnabled) {
+            this.logger.warn(
+              { userId, operation: 'REAL_TRADING', code: 'REAL_TRADING_DISABLED' },
+              'Blocked REAL trade because the administrative launch gate is closed',
+            )
+            throw new TradingError(
+              503,
+              'REAL_TRADING_DISABLED',
+              'Real-money trading is disabled by the administrative launch gate.',
+            )
+          }
+        }
+
         const user = await tx.user.findUnique({ where: { id: userId }, select: { status: true } })
         if (!user || user.status !== 'ACTIVE') {
           throw new TradingError(403, 'USER_NOT_ELIGIBLE', 'The account is not eligible for trading')

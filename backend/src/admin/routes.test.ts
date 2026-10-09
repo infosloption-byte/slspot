@@ -142,10 +142,62 @@ describe('admin API routes', () => {
     await app.close()
   })
 
+  it('binds real-money gate updates to the authenticated admin session', async () => {
+    let actorUserId = ''
+    const service = mockAdmin({
+      updateRealMoneyGate: async (actor: string, input: {
+        tradingEnabled: boolean
+        depositsEnabled: boolean
+        withdrawalsEnabled: boolean
+      }) => {
+        actorUserId = actor
+        assert.deepEqual(input, {
+          tradingEnabled: false,
+          depositsEnabled: false,
+          withdrawalsEnabled: false,
+        })
+        return {
+          settings: input,
+          environment: {
+            launchApproved: false,
+            tradingEnabled: false,
+            depositsEnabled: false,
+            withdrawalsEnabled: false,
+          },
+          effective: {
+            tradingEnabled: false,
+            depositsEnabled: false,
+            withdrawalsEnabled: false,
+          },
+          updatedAt: null,
+        }
+      },
+    })
+    const app = buildApp({ logging: false, authService, adminService: service })
+    await app.ready()
+    const response = await app.inject({
+      method: 'PUT',
+      url: '/api/v1/admin/real-money-gate',
+      headers: {
+        cookie: 'slspot_session=test-session',
+        'x-csrf-token': await csrfToken(app, 'slspot_session=test-session'),
+      },
+      payload: {
+        tradingEnabled: false,
+        depositsEnabled: false,
+        withdrawalsEnabled: false,
+      },
+    })
+    assert.equal(response.statusCode, 200)
+    assert.equal(actorUserId, 'user-1')
+    assert.equal(response.json<{ data: { effective: { tradingEnabled: boolean } } }>().data.effective.tradingEnabled, false)
+    await app.close()
+  })
+
   it('registers the protected admin route surface', async () => {
     const app = buildApp({ logging: false, authService, adminService: mockAdmin() })
     await app.ready()
-    const routes: Array<{ method: 'GET' | 'POST'; url: string }> = [
+    const routes: Array<{ method: 'GET' | 'POST' | 'PUT'; url: string }> = [
       { method: 'GET', url: '/api/v1/admin/me' },
       { method: 'GET', url: '/api/v1/admin/dashboard' },
       { method: 'GET', url: '/api/v1/admin/users' },
@@ -163,6 +215,8 @@ describe('admin API routes', () => {
       { method: 'GET', url: '/api/v1/admin/withdrawals' },
       { method: 'GET', url: '/api/v1/admin/finance/reconciliation' },
       { method: 'GET', url: '/api/v1/admin/ledger' },
+      { method: 'GET', url: '/api/v1/admin/real-money-gate' },
+      { method: 'PUT', url: '/api/v1/admin/real-money-gate' },
       { method: 'GET', url: '/api/v1/admin/risk' },
       { method: 'GET', url: '/api/v1/admin/audit' },
       { method: 'GET', url: '/api/v1/admin/security-events' },

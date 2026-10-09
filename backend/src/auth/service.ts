@@ -3,10 +3,12 @@ import { Prisma, type PrismaClient } from '../generated/prisma/client.js'
 import { env } from '../config/env.js'
 import { createRealtimeEvent, serializeRealtimeEvent } from '../realtime/events.js'
 import { publishRealtime } from '../realtime/bus.js'
+import { publishSessionsRevoked, publishUserSessionsRevoked } from '../realtime/session-revocation.js'
 import { createOpaqueToken, hashOpaqueToken, hashPassword, verifyPassword } from './crypto.js'
 import { createOtpAuthUri, createRecoveryCodes, decryptTotpSecret, encryptTotpSecret, generateTotpSecret, normalizeRecoveryCode, verifyTotpCode } from './totp.js'
 import { LedgerService } from '../ledger/service.js'
 import { EmailService } from '../email/service.js'
+import { buildRegistrationPolicyAcceptanceRows, CURRENT_POLICY_VERSIONS } from '../policies/registry.js'
 
 export type AuthUser = {
   id: string
@@ -144,14 +146,18 @@ export class AuthService {
     this.email = new EmailService()
   }
 
-  async register(input: { email: string; password: string; countryCode?: string; acceptTerms: boolean; termsVersion?: string }) {
+  async register(input: { email: string; password: string; countryCode?: string; acceptTerms: boolean; acknowledgePrivacy: boolean; termsVersion: string; privacyVersion: string }) {
     const email = normalizeEmail(input.email)
     validateEmail(email)
     validatePassword(input.password)
     const countryCode = validateCountryCode(input.countryCode)
-    if (!input.acceptTerms) throw new AuthError(400, 'TERMS_CONSENT_REQUIRED', 'You must accept the terms and privacy notice')
-    const termsVersion = input.termsVersion?.trim() || '2026-10'
-    if (termsVersion.length > 32) throw new AuthError(400, 'INVALID_TERMS_VERSION', 'Terms version is invalid')
+    if (!input.acceptTerms) throw new AuthError(400, 'TERMS_CONSENT_REQUIRED', 'You must agree to the Terms & Conditions')
+    if (!input.acknowledgePrivacy) throw new AuthError(400, 'PRIVACY_ACKNOWLEDGEMENT_REQUIRED', 'You must acknowledge the Privacy Policy')
+    const termsVersion = CURRENT_POLICY_VERSIONS.TERMS_AND_CONDITIONS
+    const privacyVersion = CURRENT_POLICY_VERSIONS.PRIVACY_POLICY
+    if (input.termsVersion.trim() !== termsVersion || input.privacyVersion.trim() !== privacyVersion) {
+      throw new AuthError(409, 'POLICY_VERSION_STALE', 'A policy has changed. Refresh the page and review the current Terms & Conditions and Privacy Policy before registering.')
+    }
 
     const existing = await this.prisma.user.findUnique({ where: { email } })
     if (existing) {
@@ -176,6 +182,9 @@ export class AuthService {
 
       await this.ensureTradingAccounts(tx, user.id, 'USD')
       await tx.userPreference.create({ data: { userId: user.id } })
+      await tx.policyAcceptance.createMany({
+        data: buildRegistrationPolicyAcceptanceRows(user.id, now),
+      })
 
       const token = createOpaqueToken()
       const expiresAt = new Date(now.getTime() + env.auth.verificationTtlSeconds * 1000)
@@ -189,7 +198,7 @@ export class AuthService {
       })
 
       await tx.auditLog.create({
-        data: { actorUserId: user.id, action: 'REGISTER', entityType: 'User', entityId: user.id, metadata: { termsVersion } },
+        data: { actorUserId: user.id, action: 'REGISTER', entityType: 'User', entityId: user.id, metadata: { termsVersion, privacyVersion } },
       })
 
       return { user, verification: { token, expiresAt } }
@@ -502,6 +511,7 @@ export class AuthService {
       }
       await tx.auditLog.create({ data: { actorUserId: userId, action: 'TWO_FACTOR_ENABLED', entityType: 'User', entityId: userId } })
     })
+    await this.sendSecurityEmail(userId, 'two-factor-enabled', 'Two-factor authentication enabled', 'Two-factor authentication was enabled for your SL Spot account.')
     return { enabled: true, recoveryCodes }
   }
 
@@ -518,6 +528,7 @@ export class AuthService {
       await tx.recoveryCode.deleteMany({ where: { userId } })
       await tx.auditLog.create({ data: { actorUserId: userId, action: 'TWO_FACTOR_DISABLED', entityType: 'User', entityId: userId } })
     })
+    await this.sendSecurityEmail(userId, 'two-factor-disabled', 'Two-factor authentication changed', 'Two-factor authentication was disabled for your SL Spot account. If you did not make this change, secure your account and contact support.')
   }
 
   async listDevices(userId: string) {
@@ -576,7 +587,8 @@ export class AuthService {
   async logout(sessionId: string): Promise<void> {
     const now = new Date()
     const session = await this.prisma.session.findUnique({ where: { id: sessionId }, select: { userId: true, deviceId: true } })
-    await this.prisma.session.updateMany({ where: { id: sessionId, revokedAt: null }, data: { revokedAt: now } })
+    const result = await this.prisma.session.updateMany({ where: { id: sessionId, revokedAt: null }, data: { revokedAt: now } })
+    if (result.count > 0) await publishSessionsRevoked([sessionId])
     if (session?.deviceId) await this.prisma.device.update({ where: { id: session.deviceId }, data: { revokedAt: now } })
   }
 
@@ -586,6 +598,7 @@ export class AuthService {
       await tx.session.updateMany({ where: { userId, revokedAt: null }, data: { revokedAt: now } })
       await tx.device.updateMany({ where: { userId, revokedAt: null }, data: { revokedAt: now } })
     })
+    await publishUserSessionsRevoked(userId)
   }
 
   async listSessions(userId: string, currentSessionId: string) {
@@ -612,6 +625,7 @@ export class AuthService {
     const session = await this.prisma.session.findFirst({ where: { id: sessionId, userId, revokedAt: null }, select: { deviceId: true } })
     const result = await this.prisma.session.updateMany({ where: { id: sessionId, userId, revokedAt: null }, data: { revokedAt: now } })
     if (result.count === 0) throw new AuthError(404, 'SESSION_NOT_FOUND', 'Session was not found')
+    await publishSessionsRevoked([sessionId])
     if (session?.deviceId) await this.prisma.device.update({ where: { id: session.deviceId }, data: { revokedAt: now } })
     await this.writeAudit('SESSION_REVOKED', sessionId, userId)
   }
@@ -733,6 +747,8 @@ export class AuthService {
         data: { actorUserId: userId, action: 'PASSWORD_CHANGED', entityType: 'User', entityId: userId, ipAddress, userAgent },
       })
     })
+    await publishUserSessionsRevoked(userId, sessionId)
+    await this.sendSecurityEmail(userId, 'password-changed', 'Password changed', 'The password for your SL Spot account was changed. Other active sessions were signed out. If you did not make this change, secure your account and contact support.')
   }
 
   async getPreferences(userId: string): Promise<UserPreferences> {
@@ -802,6 +818,22 @@ export class AuthService {
         data: { actorUserId: record.userId, action: 'PASSWORD_RESET', entityType: 'User', entityId: record.userId },
       })
     })
+    await publishUserSessionsRevoked(record.userId)
+    await this.sendSecurityEmail(record.userId, 'password-reset-completed', 'Password changed', 'Your SL Spot password was reset successfully. Other active sessions were signed out. If you did not request this change, secure your account and contact support.')
+  }
+
+  private async sendSecurityEmail(userId: string, eventKey: string, title: string, body: string): Promise<void> {
+    try {
+      const [target, preferences] = await Promise.all([
+        this.prisma.user.findUnique({ where: { id: userId }, select: { email: true } }),
+        this.prisma.userPreference.findUnique({ where: { userId }, select: { emailSecurityAlerts: true } }),
+      ])
+      if (target && preferences?.emailSecurityAlerts !== false) {
+        await this.email.sendNotification(target.email, eventKey + ':' + userId + ':' + Date.now(), title, body, 'security')
+      }
+    } catch {
+      // Security state changes must succeed even when email delivery is unavailable.
+    }
   }
 
   private async issueToken(userId: string, type: 'EMAIL_VERIFICATION' | 'PASSWORD_RESET', ttlSeconds: number) {

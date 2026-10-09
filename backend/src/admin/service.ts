@@ -1,9 +1,11 @@
 import { Prisma, type PrismaClient } from '../generated/prisma/client.js'
 import { env } from '../config/env.js'
 import { getTradingRules } from '../trading/config.js'
+import { isRealMoneyOperationEnabled, realMoneyOperationBlockReason, type RealMoneyOperation } from '../trading/real-money-gate.js'
 import { EmailService } from '../email/service.js'
 import { createRealtimeEvent, serializeRealtimeEvent } from '../realtime/events.js'
 import { publishRealtime } from '../realtime/bus.js'
+import { publishUserSessionsRevoked } from '../realtime/session-revocation.js'
 
 const DEFAULT_PAGE = 1
 const DEFAULT_PAGE_SIZE = 25
@@ -37,10 +39,139 @@ export class AdminError extends Error {
 
 export type AdminStatus = 'PENDING_VERIFICATION' | 'ACTIVE' | 'SUSPENDED' | 'DISABLED'
 
+export type AdminRealMoneyGateInput = {
+  tradingEnabled: boolean
+  depositsEnabled: boolean
+  withdrawalsEnabled: boolean
+}
+
+type RealMoneyGateRecord = {
+  tradingEnabled: boolean
+  depositsEnabled: boolean
+  withdrawalsEnabled: boolean
+  updatedAt: Date
+}
+
+function realMoneyGateStatus(record: RealMoneyGateRecord | null) {
+  const settings = {
+    tradingEnabled: record?.tradingEnabled ?? false,
+    depositsEnabled: record?.depositsEnabled ?? false,
+    withdrawalsEnabled: record?.withdrawalsEnabled ?? false,
+  }
+
+  return {
+    settings,
+    environment: {
+      launchApproved: env.realMoney.launchApproved,
+      tradingEnabled: env.realMoney.tradingEnabled,
+      depositsEnabled: env.realMoney.depositsEnabled,
+      withdrawalsEnabled: env.realMoney.withdrawalsEnabled,
+    },
+    effective: {
+      tradingEnabled: settings.tradingEnabled && isRealMoneyOperationEnabled('TRADING'),
+      // Funding endpoints remain disabled until provider-backed deposit and withdrawal
+      // workflows are implemented and integrated with the financial ledger.
+      depositsEnabled: false,
+      withdrawalsEnabled: false,
+    },
+    updatedAt: record?.updatedAt.toISOString() ?? null,
+  }
+}
+
 export class AdminService {
   private readonly email = new EmailService()
 
   constructor(private readonly prisma: PrismaClient) {}
+
+  async getRealMoneyGate() {
+    const record = await this.prisma.realMoneyGate.findUnique({ where: { id: 'GLOBAL' } })
+    return realMoneyGateStatus(record)
+  }
+
+  async updateRealMoneyGate(actorUserId: string, input: AdminRealMoneyGateInput) {
+    const actor = await this.requireAdmin(actorUserId)
+
+    return this.prisma.$transaction(async (tx) => {
+      const previous = await tx.realMoneyGate.findUnique({ where: { id: 'GLOBAL' } })
+      const before = {
+        tradingEnabled: previous?.tradingEnabled ?? false,
+        depositsEnabled: previous?.depositsEnabled ?? false,
+        withdrawalsEnabled: previous?.withdrawalsEnabled ?? false,
+      }
+
+      if (input.tradingEnabled && !before.tradingEnabled && actor.role !== 'SUPER_ADMIN') {
+        throw new AdminError(403, 'SUPER_ADMIN_REQUIRED', 'Only a super administrator can enable REAL trading. Any administrator can disable it.')
+      }
+
+      // Real funding operations have no provider-backed request lifecycle yet.
+      // Keep their switches off until the payment integration phase is complete.
+      if (input.depositsEnabled) {
+        throw new AdminError(409, 'REAL_DEPOSITS_UNAVAILABLE', 'Real deposits cannot be enabled before payment provider integration is complete.')
+      }
+      if (input.withdrawalsEnabled) {
+        throw new AdminError(409, 'REAL_WITHDRAWALS_UNAVAILABLE', 'Real withdrawals cannot be enabled before payment provider integration is complete.')
+      }
+
+      // The admin panel is a second lock, not a way to override deployment approval.
+      // Validate only newly-enabled operations so an operator can always switch
+      // operations off even after the deployment gate has been closed.
+      const requestedOperations: Array<[RealMoneyOperation, boolean, boolean]> = [
+        ['TRADING', input.tradingEnabled, before.tradingEnabled],
+        ['DEPOSIT', input.depositsEnabled, before.depositsEnabled],
+        ['WITHDRAWAL', input.withdrawalsEnabled, before.withdrawalsEnabled],
+      ]
+      for (const [operation, enabled, wasEnabled] of requestedOperations) {
+        if (!enabled || wasEnabled) continue
+        const reason = realMoneyOperationBlockReason(operation)
+        if (reason) {
+          throw new AdminError(
+            409,
+            'REAL_MONEY_ENV_GATE_CLOSED',
+            'Cannot enable ' + operation.toLowerCase() + ': ' + reason,
+          )
+        }
+      }
+
+      if (
+        before.tradingEnabled === input.tradingEnabled &&
+        before.depositsEnabled === input.depositsEnabled &&
+        before.withdrawalsEnabled === input.withdrawalsEnabled
+      ) {
+        return realMoneyGateStatus(previous)
+      }
+
+      const updated = await tx.realMoneyGate.upsert({
+        where: { id: 'GLOBAL' },
+        create: { id: 'GLOBAL', ...input },
+        update: input,
+      })
+
+      await tx.auditLog.create({
+        data: {
+          actorUserId,
+          action: 'ADMIN_REAL_MONEY_GATE_CHANGED',
+          entityType: 'RealMoneyGate',
+          entityId: 'GLOBAL',
+          metadata: {
+            before,
+            after: {
+              tradingEnabled: updated.tradingEnabled,
+              depositsEnabled: updated.depositsEnabled,
+              withdrawalsEnabled: updated.withdrawalsEnabled,
+            },
+            environmentGate: {
+              launchApproved: env.realMoney.launchApproved,
+              tradingEnabled: env.realMoney.tradingEnabled,
+              depositsEnabled: env.realMoney.depositsEnabled,
+              withdrawalsEnabled: env.realMoney.withdrawalsEnabled,
+            },
+          },
+        },
+      })
+
+      return realMoneyGateStatus(updated)
+    })
+  }
 
   async bootstrapConfiguredAdmins(): Promise<number> {
     if (env.adminBootstrapEmails.length === 0) return 0
@@ -144,6 +275,7 @@ export class AdminService {
           select: { id: true, name: true, currency: true, mode: true, status: true, createdAt: true, wallets: { select: { id: true, currency: true, status: true, availableBalance: true, heldBalance: true } } },
         },
         kycCases: { orderBy: { createdAt: 'desc' }, take: 5, select: { id: true, provider: true, providerCaseId: true, status: true, submittedAt: true, resolvedAt: true, createdAt: true, updatedAt: true } },
+        policyAcceptances: { orderBy: { acceptedAt: 'desc' }, take: 20, select: { id: true, policyType: true, version: true, acceptedAt: true, source: true } },
         sessions: { orderBy: { createdAt: 'desc' }, take: 20, select: { id: true, deviceId: true, ipAddress: true, userAgent: true, createdAt: true, updatedAt: true, expiresAt: true, revokedAt: true } },
       },
     })
@@ -168,12 +300,17 @@ export class AdminService {
       throw new AdminError(403, 'SUPER_ADMIN_PROTECTED', 'Only a super administrator can change a super administrator account')
     }
 
+    const revokedAt = new Date()
     const user = await this.prisma.$transaction(async (tx) => {
       const updated = await tx.user.update({
         where: { id: userId },
         data: { status },
         select: { id: true, email: true, status: true },
       })
+      if (status !== 'ACTIVE') {
+        await tx.session.updateMany({ where: { userId, revokedAt: null }, data: { revokedAt } })
+        await tx.device.updateMany({ where: { userId, revokedAt: null }, data: { revokedAt } })
+      }
       await tx.auditLog.create({
         data: {
           actorUserId,
@@ -185,6 +322,7 @@ export class AdminService {
       })
       return updated
     })
+    if (status !== 'ACTIVE') await publishUserSessionsRevoked(userId)
     return user
   }
 
@@ -227,6 +365,7 @@ export class AdminService {
       throw new AdminError(403, 'SUPER_ADMIN_PROTECTED', 'Only a super administrator can revoke a super administrator session')
     }
     const result = await this.prisma.session.updateMany({ where: { userId, revokedAt: null }, data: { revokedAt: new Date() } })
+    await publishUserSessionsRevoked(userId)
     await this.prisma.device.updateMany({ where: { userId, revokedAt: null }, data: { revokedAt: new Date() } })
     await this.prisma.auditLog.create({ data: { actorUserId, action: 'ADMIN_SESSIONS_REVOKED', entityType: 'User', entityId: userId, metadata: { count: result.count } } })
     return { revoked: result.count }

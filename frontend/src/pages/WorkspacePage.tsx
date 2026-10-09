@@ -1156,8 +1156,13 @@ function AccountPage() {
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [preferenceError, setPreferenceError] = useState<string | null>(null)
+  const [savingPreferences, setSavingPreferences] = useState<Partial<Record<keyof _PreferencesStateKeys, boolean>>>({})
 
   const togglePreference = async (key: keyof _PreferencesStateKeys, enabled: boolean) => {
+    if (savingPreferences[key]) return
+    setSavingPreferences((current) => ({ ...current, [key]: true }))
+    setPreferenceError(null)
     if (key === 'compactTradingLayout') setCompactTradingLayout(enabled)
     if (key === 'priceMovementAlerts') setPriceMovementAlerts(enabled)
     if (key === 'soundEnabled') setSoundEnabled(enabled)
@@ -1166,11 +1171,18 @@ function AccountPage() {
       const next = await authApi.updatePreferences({ [key]: enabled })
       setServerPreferences(next)
       if (key === 'soundEnabled') setSoundEnabled(next.soundEnabled)
-    } catch {
+    } catch (error) {
       setServerPreferences({ [key]: !enabled })
       if (key === 'compactTradingLayout') setCompactTradingLayout(!enabled)
       if (key === 'priceMovementAlerts') setPriceMovementAlerts(!enabled)
       if (key === 'soundEnabled') setSoundEnabled(!enabled)
+      setPreferenceError(error instanceof Error ? error.message : 'Unable to save this preference. Your previous setting was restored.')
+    } finally {
+      setSavingPreferences((current) => {
+        const next = { ...current }
+        delete next[key]
+        return next
+      })
     }
   }
 
@@ -1263,11 +1275,13 @@ function AccountPage() {
         </section>
 
         <aside className="dashboard-card panel">
-          <div className="dashboard-card__header"><div><span className="eyebrow">Preferences</span><h2>Workspace &amp; email</h2></div><span className="status-pill status-pill--pending">{preferences.loading ? 'SYNCING' : 'SYNCED'}</span></div>
+          <div className="dashboard-card__header"><div><span className="eyebrow">Preferences</span><h2>Workspace &amp; email</h2></div><span className="status-pill status-pill--pending">{preferences.loading || Object.values(savingPreferences).some(Boolean) ? 'SYNCING' : preferences.error ? 'SYNC ERROR' : 'SYNCED'}</span></div>
+          {preferences.error ? <div className="form-message form-message--error" role="alert">Saved preferences could not be loaded. <button type="button" className="quiet-button" onClick={() => void preferences.reload()}>Retry</button></div> : null}
+          {preferenceError ? <div className="form-message form-message--error" role="alert">{preferenceError}</div> : null}
           {preferenceRows.map((row) => (
             <div className="setting-row" key={row.key}>
               <div><strong>{row.label}</strong><small>{row.description}</small></div>
-              <button type="button" role="switch" aria-checked={row.enabled} className={row.enabled ? 'toggle toggle--on' : 'toggle'} onClick={() => void togglePreference(row.key, !row.enabled)} title={row.enabled ? 'Disable ' + row.label : 'Enable ' + row.label}><span /></button>
+              <button type="button" role="switch" aria-checked={row.enabled} aria-label={row.label} aria-busy={Boolean(savingPreferences[row.key])} disabled={preferences.loading || Boolean(savingPreferences[row.key])} className={row.enabled ? 'toggle toggle--on' : 'toggle'} onClick={() => void togglePreference(row.key, !row.enabled)} title={row.enabled ? 'Disable ' + row.label : 'Enable ' + row.label}><span /></button>
             </div>
           ))}
           <div className="dashboard-note">Email delivery is active only when the platform has a configured email provider. In-app notifications remain available regardless.</div>

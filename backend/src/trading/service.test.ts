@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import type { PrismaClient } from '../generated/prisma/client.js'
 import {
   assertManualSettlementAllowed,
   calculateSettlementTerms,
   evaluateTrade,
   TradingError,
+  TradingService,
 } from './service.js'
 
 test('UP wins only when the settlement price is above entry', () => {
@@ -74,4 +76,79 @@ test('manual settlement is allowed at and after expiry', () => {
     assertManualSettlementAllowed(new Date('2026-10-03T12:05:00.000Z'), new Date('2026-10-03T12:05:00.000Z'))
     assertManualSettlementAllowed(new Date('2026-10-03T12:05:00.000Z'), new Date('2026-10-03T12:05:01.000Z'))
   })
+})
+
+test('real-money launch gate rejects new REAL trades before transaction side effects', async () => {
+  let transactionStarted = false
+  const prisma = {
+    order: { findUnique: async () => null },
+    $transaction: async () => {
+      transactionStarted = true
+      throw new Error('REAL trade must not reach a transaction while the launch gate is closed')
+    },
+  } as unknown as PrismaClient
+  const service = new TradingService(prisma, {
+    info: () => undefined,
+    warn: () => undefined,
+    error: () => undefined,
+  }, {
+    launchApproved: false,
+    tradingEnabled: true,
+    depositsEnabled: true,
+    withdrawalsEnabled: true,
+  })
+
+  await assert.rejects(
+    service.createTrade('user-1', {
+      clientRequestId: 'real-gate-regression',
+      assetId: 'asset-1',
+      direction: 'UP',
+      amount: '10',
+      durationSeconds: 60,
+    }, 'REAL'),
+    (error: unknown) => error instanceof TradingError
+      && error.code === 'REAL_TRADING_DISABLED'
+      && error.statusCode === 503,
+  )
+  assert.equal(transactionStarted, false)
+})
+
+test('administrative REAL-trading switch blocks creation inside the transaction', async () => {
+  let userLookupStarted = false
+  const prisma = {
+    order: { findUnique: async () => null },
+    $transaction: async (callback: (tx: unknown) => unknown) => {
+      return callback({
+        realMoneyGate: { findUnique: async () => ({ tradingEnabled: false }) },
+        user: { findUnique: async () => {
+          userLookupStarted = true
+          return { status: 'ACTIVE' }
+        } },
+      })
+    },
+  } as unknown as PrismaClient
+  const service = new TradingService(prisma, {
+    info: () => undefined,
+    warn: () => undefined,
+    error: () => undefined,
+  }, {
+    launchApproved: true,
+    tradingEnabled: true,
+    depositsEnabled: false,
+    withdrawalsEnabled: false,
+  })
+
+  await assert.rejects(
+    service.createTrade('user-1', {
+      clientRequestId: 'admin-real-gate-regression',
+      assetId: 'asset-1',
+      direction: 'UP',
+      amount: '10',
+      durationSeconds: 60,
+    }, 'REAL'),
+    (error: unknown) => error instanceof TradingError
+      && error.code === 'REAL_TRADING_DISABLED'
+      && error.statusCode === 503,
+  )
+  assert.equal(userLookupStarted, false)
 })

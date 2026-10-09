@@ -6,6 +6,9 @@ import {
   type RealtimeClientMessage,
 } from '../contracts/realtime.js'
 
+export const INTERNAL_SESSION_REVOCATION_CHANNEL = 'internal:session-revocation' as const
+export type RealtimeEventChannel = RealtimeChannel | typeof INTERNAL_SESSION_REVOCATION_CHANNEL
+
 export const REALTIME_EVENT_VERSION = 1 as const
 
 export type RealtimeEventType =
@@ -20,20 +23,21 @@ export type RealtimeEventType =
   | 'position.update'
   | 'wallet.update'
   | 'notification.created'
+  | 'session.revoked'
 
 export type RealtimeEvent<T = unknown> = {
   version: typeof REALTIME_EVENT_VERSION
   id: string
   type: RealtimeEventType
   timestamp: string
-  channel?: RealtimeChannel
+  channel?: RealtimeEventChannel
   data: T
 }
 
 export function createRealtimeEvent<T>(
   type: RealtimeEventType,
   data: T,
-  channel?: RealtimeChannel,
+  channel?: RealtimeEventChannel,
 ): RealtimeEvent<T> {
   return {
     version: REALTIME_EVENT_VERSION,
@@ -62,7 +66,10 @@ export function parseRealtimeEvent(value: string): RealtimeEvent | null {
       typeof candidate.id !== 'string' ||
       typeof candidate.type !== 'string' ||
       typeof candidate.timestamp !== 'string' ||
-      (candidate.channel !== undefined && !isRealtimeChannel(candidate.channel)) ||
+      (candidate.type === 'session.revoked' && candidate.channel !== INTERNAL_SESSION_REVOCATION_CHANNEL) ||
+      (candidate.channel !== undefined &&
+        !isRealtimeChannel(candidate.channel) &&
+        !(candidate.type === 'session.revoked' && candidate.channel === INTERNAL_SESSION_REVOCATION_CHANNEL)) ||
       !('data' in candidate)
     ) {
       return null

@@ -119,6 +119,8 @@ export const adminApi = {
   withdrawals: () => request<List<FundingRecord>>('/admin/withdrawals'),
   reconciliation: () => request<Reconciliation>('/admin/finance/reconciliation'),
   ledger: () => request<List<LedgerRecord>>('/admin/ledger'),
+  realMoneyGate: () => request<RealMoneyGateStatus>('/admin/real-money-gate'),
+  updateRealMoneyGate: (settings: RealMoneyGateSettings) => request<RealMoneyGateStatus>('/admin/real-money-gate', { method: 'PUT', body: JSON.stringify(settings) }),
   risk: () => request<RiskSummary>('/admin/risk'),
   audit: () => request<List<AuditRecord>>('/admin/audit'),
   supportTickets: (params = '') => request<List<SupportTicketRecord>>('/admin/support/tickets' + params),
@@ -186,6 +188,7 @@ export type UserDetail = UserRecord & {
   updatedAt: string
   termsAcceptedAt: string | null
   termsVersion: string | null
+  policyAcceptances: Array<{ id: string; policyType: string; version: string; acceptedAt: string; source: string }>
   accounts: Array<{ id: string; name: string; currency: string; mode: string; status: string; createdAt: string; wallets: Array<{ id: string; currency: string; status: string; availableBalance: string; heldBalance: string }> }>
   kycCases: Array<{ id: string; provider: string | null; providerCaseId: string | null; status: string; submittedAt: string | null; resolvedAt: string | null; createdAt: string; updatedAt: string }>
   sessions: Array<{ id: string; deviceId: string | null; ipAddress: string | null; userAgent: string | null; createdAt: string; updatedAt: string; expiresAt: string; revokedAt: string | null }>
@@ -198,5 +201,21 @@ export type WalletRecord = { id: string; currency: string; status: string; avail
 export type FundingRecord = { id: string; provider: string; providerReference: string | null; amount: string; currency: string; status: string; failureReason: string | null; requestedAt: string; completedAt: string | null; wallet: { id: string; account: { mode: string; user: { email: string } } } }
 export type Reconciliation = { scanned: number; balanced: number; unbalanced: Array<{ id: string; currency: string; referenceType: string | null; referenceId: string | null; description: string | null; createdAt: string; balanced: boolean; debit: string; credit: string }> }
 export type LedgerRecord = { id: string; currency: string; referenceType: string | null; referenceId: string | null; description: string | null; createdAt: string; entries: Array<{ direction: string; amount: string; ledgerAccount: { code: string; name: string } }> }
+export type RealMoneyGateSettings = {
+  tradingEnabled: boolean
+  depositsEnabled: boolean
+  withdrawalsEnabled: boolean
+}
+export type RealMoneyGateStatus = {
+  settings: RealMoneyGateSettings
+  environment: {
+    launchApproved: boolean
+    tradingEnabled: boolean
+    depositsEnabled: boolean
+    withdrawalsEnabled: boolean
+  }
+  effective: RealMoneyGateSettings
+  updatedAt: string | null
+}
 export type RiskSummary = { limits: { maxOpenPositions: number; maxOpenExposure: string; marketMaxAgeMs: number; feeRate: string }; exposure: { openPositions: number; total: string; byAsset: Array<{ symbol: string; amount: string }> }; monitoring: { pendingOrders: number; rejectedOrders24h: number } }
 export type AuditRecord = { id: string; action: string; entityType: string; entityId: string | null; metadata: unknown; ipAddress: string | null; userAgent: string | null; createdAt: string; actorUser: { id: string; email: string } | null }

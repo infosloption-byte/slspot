@@ -182,6 +182,17 @@ enum AnnouncementStatus {
   ARCHIVED
 }
 
+enum PolicyType {
+  TERMS_AND_CONDITIONS
+  PRIVACY_POLICY
+  TRADING_RULES
+  PAYMENT_POLICY
+  RETURN_REFUND_POLICY
+  AML_KYC_POLICY
+  COOKIE_POLICY
+  CARDHOLDER_AGREEMENT
+}
+
 model User {
   id            String       @id @default(uuid()) @db.Char(36)
   email         String       @unique @db.VarChar(191)
@@ -208,6 +219,7 @@ model User {
   sessions      Session[]
   devices       Device[]
   authTokens    AuthToken[]
+  policyAcceptances PolicyAcceptance[]
   accounts      Account[]
   orders        Order[]
   positions     Position[]
@@ -778,4 +790,27 @@ model AuditLog {
   @@index([actorUserId, createdAt])
   @@index([entityType, entityId, createdAt])
   @@index([action, createdAt])
+}
+
+model RealMoneyGate {
+  id                String   @id @default("GLOBAL") @db.VarChar(16)
+  tradingEnabled    Boolean  @default(false)
+  depositsEnabled   Boolean  @default(false)
+  withdrawalsEnabled Boolean  @default(false)
+  updatedAt         DateTime @updatedAt @db.DateTime(3)
+}
+
+model PolicyAcceptance {
+  id         String     @id @default(uuid()) @db.Char(36)
+  userId     String     @db.Char(36)
+  policyType PolicyType
+  version    String     @db.VarChar(32)
+  acceptedAt DateTime   @default(now()) @db.DateTime(3)
+  source     String     @db.VarChar(32)
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@unique([userId, policyType, version])
+  @@index([userId, policyType, acceptedAt])
+  @@index([policyType, version, acceptedAt])
 }

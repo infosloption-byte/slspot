@@ -82,9 +82,11 @@ async function register(
   email: string,
   password: string,
   acceptTerms: boolean,
-  termsVersion = '2026-10',
+  acknowledgePrivacy: boolean,
+  termsVersion: string,
+  privacyVersion: string,
 ): Promise<RegistrationResponse> {
-  return authApi.register({ email, password, acceptTerms, termsVersion })
+  return authApi.register({ email, password, acceptTerms, acknowledgePrivacy, termsVersion, privacyVersion })
 }
 
 async function logout(): Promise<void> {
@@ -126,7 +128,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const refresh = useCallback(() => refreshSession(), [])
   const handleLogin = useCallback((email: string, password: string, rememberDevice?: boolean) => login(email, password, rememberDevice), [])
   const handleTwoFactor = useCallback((challengeToken: string, code?: string, recoveryCode?: string, rememberDevice?: boolean) => verifyTwoFactor(challengeToken, code, recoveryCode, rememberDevice), [])
-  const handleRegister = useCallback((email: string, password: string, acceptTerms: boolean, termsVersion?: string) => register(email, password, acceptTerms, termsVersion), [])
+  const handleRegister = useCallback((email: string, password: string, acceptTerms: boolean, acknowledgePrivacy: boolean, termsVersion: string, privacyVersion: string) => register(email, password, acceptTerms, acknowledgePrivacy, termsVersion, privacyVersion), [])
   const handleLogout = useCallback(() => logout(), [])
   const handleLogoutAll = useCallback(() => logoutAll(), [])
 

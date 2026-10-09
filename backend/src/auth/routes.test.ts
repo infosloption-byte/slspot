@@ -100,7 +100,7 @@ describe('authentication routes', () => {
       method: 'POST',
       url: '/api/v1/auth/register',
       headers: { 'x-csrf-token': csrfToken() },
-      payload: { email: user.email, password: 'A-strong-password-123', acceptTerms: true },
+      payload: { email: user.email, password: 'A-strong-password-123', acceptTerms: true, acknowledgePrivacy: true, termsVersion: '2026-10', privacyVersion: '2026-10' },
     })
 
     assert.equal(response.statusCode, 202)
@@ -236,7 +236,7 @@ describe('authentication routes', () => {
       method: 'POST',
       url: '/api/v1/auth/register',
       headers: { 'x-csrf-token': csrfToken() },
-      payload: { email: user.email, password: 'A-strong-password-123', acceptTerms: false },
+      payload: { email: user.email, password: 'A-strong-password-123', acceptTerms: false, acknowledgePrivacy: false, termsVersion: '2026-10', privacyVersion: '2026-10' },
     })
 
     assert.equal(response.statusCode, 400)

@@ -6,6 +6,8 @@ import { LedgerService } from '../ledger/service.js'
 import { createRealtimeEvent, serializeRealtimeEvent } from '../realtime/events.js'
 import { publishRealtime } from '../realtime/bus.js'
 import { EmailService } from '../email/service.js'
+import type { EmailDetail } from '../email/templates.js'
+import { realMoneyOperationBlockReason } from '../trading/real-money-gate.js'
 
 export type WalletMode = 'DEMO' | 'REAL'
 
@@ -266,7 +268,13 @@ export class PlatformApiService {
       select: { status: true },
     })
     const userActive = user?.status === 'ACTIVE'
-    const wallets = await this.getWallets(userId)
+    const [wallets, administrativeGate] = await Promise.all([
+      this.getWallets(userId),
+      this.prisma.realMoneyGate.findUnique({
+        where: { id: 'GLOBAL' },
+        select: { tradingEnabled: true },
+      }).catch(() => null),
+    ])
     const demoWallet = wallets.find((wallet) => wallet.mode === 'DEMO')
     const realWallet = wallets.find((wallet) => wallet.mode === 'REAL')
     const demoTradeReason = !userActive
@@ -274,16 +282,19 @@ export class PlatformApiService {
       : demoWallet?.status !== 'ACTIVE'
         ? 'Your demo wallet is not active.'
         : null
+    const realTradeReason = !userActive
+      ? 'Your account is not eligible for trading.'
+      : realMoneyOperationBlockReason('TRADING') ??
+        (!administrativeGate?.tradingEnabled
+          ? 'Real-money trading is disabled by the administrative launch gate.'
+          : realWallet?.status !== 'ACTIVE'
+            ? 'A real trading wallet is not currently available for this account.'
+            : null)
 
     return {
       trading: {
         DEMO: { enabled: demoTradeReason === null, reason: demoTradeReason },
-        REAL: {
-          enabled: false,
-          reason: userActive && realWallet?.status === 'ACTIVE'
-            ? 'Real-money trading is not enabled on this platform.'
-            : 'A real trading wallet is not currently available for this account.',
-        },
+        REAL: { enabled: realTradeReason === null, reason: realTradeReason },
       },
       funding: {
         deposit: {
@@ -826,7 +837,20 @@ export class PlatformApiService {
         metadata: { amount: result.amount.toString(), currency: result.currency, clientRequestId: requestId },
       },
     })
-    await this.createNotification(userId, 'DEPOSIT', 'Demo deposit completed', 'Demo wallet was credited with ' + amount.toString() + ' ' + result.currency + '.')
+    await this.createNotification(
+      userId,
+      'DEPOSIT',
+      'Demo deposit completed',
+      'Demo wallet was credited with ' + amount.toString() + ' ' + result.currency + '.',
+      {
+        emailDetails: [
+          { label: 'Amount', value: amount.toString() + ' ' + result.currency },
+          { label: 'Wallet', value: 'Demo wallet' },
+          { label: 'Reference', value: result.providerReference ?? result.id },
+          { label: 'Status', value: 'Completed' },
+        ],
+      },
+    )
     return this.toApiDeposit(result)
   }
 
@@ -840,6 +864,7 @@ export class PlatformApiService {
     const destination = input.destination.trim()
     if (!destination) throw new FinanceError(400, 'INVALID_DESTINATION', 'A withdrawal destination is required')
 
+    let previouslyProcessed = false
     const result = await this.prisma.$transaction(async (tx) => {
       const walletRecord = await this.ensureWallet(tx, userId, 'USD', 'DEMO')
       const systemCode = await this.ledger.ensureSystemLedgerAccount(tx, 'SYSTEM:DEMO_WITHDRAWAL', 'Demo withdrawal clearing', 'ASSET', walletRecord.wallet.currency)
@@ -853,6 +878,7 @@ export class PlatformApiService {
         if (existingTx.withdrawal.wallet.account.userId !== userId) {
           throw new FinanceError(409, 'IDEMPOTENCY_CONFLICT', 'The idempotency key is already associated with another user')
         }
+        previouslyProcessed = true
         return existingTx.withdrawal
       }
 
@@ -920,6 +946,8 @@ export class PlatformApiService {
       })
     })
 
+    if (previouslyProcessed) return this.toApiWithdrawal(result)
+
     await this.prisma.auditLog.create({
       data: {
         actorUserId: userId,
@@ -929,7 +957,47 @@ export class PlatformApiService {
         metadata: { amount: result.amount.toString(), currency: result.currency, clientRequestId: requestId },
       },
     })
-    await this.createNotification(userId, 'WITHDRAWAL', 'Demo withdrawal completed', 'Demo wallet withdrawal of ' + result.amount.toString() + ' ' + result.currency + ' was completed.')
+
+    // Demo withdrawals complete immediately. Send both lifecycle emails so the
+    // request and completion templates can be reviewed locally before a live PSP is wired.
+    try {
+      const [target, preferences] = await Promise.all([
+        this.prisma.user.findUnique({ where: { id: userId }, select: { email: true } }),
+        this.prisma.userPreference.findUnique({ where: { userId }, select: { emailWalletUpdates: true } }),
+      ])
+      if (target && preferences?.emailWalletUpdates !== false) {
+        await this.email.sendNotification(
+          target.email,
+          result.id + ':requested',
+          'Demo withdrawal request received',
+          'We received your demo withdrawal request for ' + result.amount.toString() + ' ' + result.currency + '. Demo withdrawals are processed immediately; a separate completion confirmation follows.',
+          'withdrawal',
+          [
+            { label: 'Amount', value: result.amount.toString() + ' ' + result.currency },
+            { label: 'Destination', value: 'Demo destination' },
+            { label: 'Reference', value: result.providerReference ?? result.id },
+            { label: 'Status', value: 'Request received' },
+          ],
+        )
+      }
+    } catch {
+      // Wallet state and the in-app result remain authoritative if email preview/provider is unavailable.
+    }
+
+    await this.createNotification(
+      userId,
+      'WITHDRAWAL',
+      'Demo withdrawal completed',
+      'Demo wallet withdrawal of ' + result.amount.toString() + ' ' + result.currency + ' was completed.',
+      {
+        emailDetails: [
+          { label: 'Amount', value: result.amount.toString() + ' ' + result.currency },
+          { label: 'Destination', value: 'Demo destination' },
+          { label: 'Reference', value: result.providerReference ?? result.id },
+          { label: 'Status', value: 'Completed' },
+        ],
+      },
+    )
     return this.toApiWithdrawal(result)
   }
 
@@ -1165,7 +1233,7 @@ export class PlatformApiService {
     type: 'TRADE_RESULT' | 'DEPOSIT' | 'WITHDRAWAL' | 'SECURITY' | 'VERIFICATION' | 'SYSTEM',
     title: string,
     body: string,
-    options?: { announcementId?: string; email?: boolean },
+    options?: { announcementId?: string; email?: boolean; emailDetails?: EmailDetail[] },
   ): Promise<ApiNotification> {
     const notification = await this.prisma.notification.create({
       data: {
@@ -1210,7 +1278,7 @@ export class PlatformApiService {
           type === 'SYSTEM' ? preferences?.emailAnnouncements !== false :
           false
         if (user && enabled) {
-          await this.email.sendNotification(user.email, notification.id, title, body, type.toLowerCase())
+          await this.email.sendNotification(user.email, notification.id, title, body, type.toLowerCase(), options?.emailDetails)
         }
       } catch {
         // Email delivery is best-effort; durable in-app notifications remain authoritative.
