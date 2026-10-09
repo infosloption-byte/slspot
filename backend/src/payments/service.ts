@@ -696,18 +696,15 @@ export class PaymentService {
   async retryUnmatchedPaymentEvents(limit = 50): Promise<number> {
     const take = Math.min(100, Math.max(1, Math.trunc(limit)))
     const records = await this.prisma.paymentEvent.findMany({
-      where: { processedAt: null, error: 'No matching payment for reference' },
+      where: { processedAt: null, error: { in: ['No matching payment for reference', 'Retry pending payment event'] } },
       orderBy: { createdAt: 'asc' },
       take,
     })
     let processed = 0
 
     for (const record of records) {
-      const claim = await this.prisma.paymentEvent.updateMany({
-        where: { id: record.id, processedAt: null, error: 'No matching payment for reference' },
-        data: { error: 'Retrying unmatched payment event' },
-      })
-      if (claim.count !== 1) continue
+      // The state transitions below are conditional/idempotent, so retries need no durable lease.
+      // Avoid a permanent 'claimed' marker if the process exits while an event is being applied.
 
       const payload = record.payload && typeof record.payload === 'object' && !Array.isArray(record.payload)
         ? record.payload as Prisma.JsonObject
@@ -737,7 +734,7 @@ export class PaymentService {
       } catch (error) {
         await this.prisma.paymentEvent.update({
           where: { id: record.id },
-          data: { error: String(error instanceof Error ? error.message : error).slice(0, 255) },
+          data: { error: 'Retry pending payment event' },
         }).catch((updateError: unknown) => {
           this.logger.error({ err: updateError, paymentEventId: record.id }, 'Could not update unmatched payment event after retry failure')
         })
