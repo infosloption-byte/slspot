@@ -520,7 +520,7 @@ export class AdminService {
           createdAt: notification.createdAt.toISOString(),
         }, channel)))
         const user = users.find((item) => item.id === notification.userId)
-        if (user?.preferences?.emailAnnouncements !== false) {
+        if (user && user.preferences?.emailAnnouncements !== false) {
           try {
             await this.email.sendNotification(user.email, notification.id, announcement.title, announcement.body, 'system')
           } catch {
@@ -558,7 +558,7 @@ export class AdminService {
     if (emailSupport) {
       try {
         const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { email: true, preferences: { select: { emailSupportUpdates: true } } } })
-        if (user?.preferences?.emailSupportUpdates !== false) {
+        if (user && user.preferences?.emailSupportUpdates !== false) {
           await this.email.sendNotification(user.email, notification.id, title, body, 'support')
         }
       } catch {
