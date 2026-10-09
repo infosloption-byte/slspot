@@ -133,7 +133,9 @@ export type WithdrawalRuleInput = {
 export function evaluateWithdrawal(input: WithdrawalRuleInput): RuleBlocker[] {
   const blockers: RuleBlocker[] = []
   const amount = toUnits(input.amount)
-  if (input.age !== null && input.age !== undefined && input.age < MINIMUM_AGE_YEARS) {
+  if (input.age === null) {
+    blockers.push({ code: 'AGE_NOT_VERIFIED', message: 'Enter your date of birth before using payment services.' })
+  } else if (input.age < MINIMUM_AGE_YEARS) {
     blockers.push({ code: 'AGE_RESTRICTED', message: 'You must be at least ' + MINIMUM_AGE_YEARS + ' years old to use payment services.' })
   }
 
