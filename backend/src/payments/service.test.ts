@@ -182,6 +182,94 @@ test('provider methods cannot be enabled for an operation the adapter does not s
   assert.deepEqual((await service.listMethods('user-1', 'deposit')).map((method) => method.id), ['live_card'])
 })
 
+test('does not credit a deposit from a completion webhook missing amount or currency', async () => {
+  let walletCredits = 0
+  const paymentEvent = { id: 'payment-event-incomplete-deposit', processedAt: null as Date | null, error: null as string | null }
+  const adapter: PaymentProviderAdapter = {
+    ...liveAdapter(),
+    verifyWebhook: () => ({
+      eventId: 'event-incomplete-deposit',
+      type: 'deposit.completed',
+      providerReference: 'deposit-provider-ref',
+    }),
+  }
+  const prismaMock = {
+    paymentEvent: {
+      findUnique: async () => null,
+      create: async () => paymentEvent,
+      update: async ({ data }: { data: Partial<typeof paymentEvent> }) => {
+        Object.assign(paymentEvent, data)
+        return paymentEvent
+      },
+    },
+    deposit: {
+      findFirst: async () => ({
+        id: 'deposit-1',
+        amount: { toString: () => '25.00' },
+        currency: 'USD',
+        wallet: { account: { id: 'account-1', userId: 'user-1' } },
+      }),
+      updateMany: async () => { walletCredits += 1; return { count: 1 } },
+    },
+    auditLog: { create: async () => ({ id: 'audit-incomplete-deposit' }) },
+  } as unknown as PrismaClient
+  const registry = new PaymentProviderRegistry()
+  registry.register(adapter)
+  const service = new PaymentService(prismaMock, registry, {} as LedgerService, async () => undefined, baseConfig)
+
+  await assert.rejects(
+    service.handleWebhook('live_card', '{}', {}),
+    (error: unknown) => error instanceof PaymentError && error.code === 'INCOMPLETE_PROVIDER_EVENT',
+  )
+  assert.equal(walletCredits, 0)
+  assert.equal(paymentEvent.processedAt, null)
+  assert.match(paymentEvent.error ?? '', /amount and currency/)
+})
+
+test('does not finalize a payout from a completion webhook missing amount or currency', async () => {
+  let finalized = 0
+  const paymentEvent = { id: 'payment-event-incomplete-withdrawal', processedAt: null as Date | null, error: null as string | null }
+  const adapter: PaymentProviderAdapter = {
+    ...liveAdapter(),
+    verifyWebhook: () => ({
+      eventId: 'event-incomplete-withdrawal',
+      type: 'withdrawal.completed',
+      providerReference: 'withdrawal-provider-ref',
+    }),
+  }
+  const prismaMock = {
+    paymentEvent: {
+      findUnique: async () => null,
+      create: async () => paymentEvent,
+      update: async ({ data }: { data: Partial<typeof paymentEvent> }) => {
+        Object.assign(paymentEvent, data)
+        return paymentEvent
+      },
+    },
+    withdrawal: {
+      findFirst: async () => ({
+        id: 'withdrawal-1',
+        amount: { toString: () => '25.00' },
+        currency: 'USD',
+        wallet: { account: { id: 'account-1', userId: 'user-1' } },
+      }),
+      updateMany: async () => { finalized += 1; return { count: 1 } },
+    },
+    auditLog: { create: async () => ({ id: 'audit-incomplete-withdrawal' }) },
+  } as unknown as PrismaClient
+  const registry = new PaymentProviderRegistry()
+  registry.register(adapter)
+  const service = new PaymentService(prismaMock, registry, {} as LedgerService, async () => undefined, baseConfig)
+
+  await assert.rejects(
+    service.handleWebhook('live_card', '{}', {}),
+    (error: unknown) => error instanceof PaymentError && error.code === 'INCOMPLETE_PROVIDER_EVENT',
+  )
+  assert.equal(finalized, 0)
+  assert.equal(paymentEvent.processedAt, null)
+  assert.match(paymentEvent.error ?? '', /amount and currency/)
+})
+
 test('retries an unmatched signed webhook after the payment reference becomes visible', async () => {
   let notifications = 0
   const eventRecord: {
