@@ -258,6 +258,7 @@ export type ApiSupportMessage = {
 
 export class PlatformApiService {
   private readonly ledger: LedgerService
+  private readonly email: EmailService
 
   async getCapabilities(userId: string): Promise<ApiCapabilities> {
     const user = await this.prisma.user.findUnique({
@@ -299,6 +300,7 @@ export class PlatformApiService {
 
   constructor(private readonly prisma: PrismaClient) {
     this.ledger = new LedgerService(prisma)
+    this.email = new EmailService()
   }
 
   async listAssets(input: { page?: number; pageSize?: number; type?: string }): Promise<ApiListResult<ApiMarketAsset>> {
