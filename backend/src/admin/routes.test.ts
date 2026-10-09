@@ -145,7 +145,7 @@ describe('admin API routes', () => {
   it('registers the protected admin route surface', async () => {
     const app = buildApp({ logging: false, authService, adminService: mockAdmin() })
     await app.ready()
-    const routes: Array<{ method: 'GET' | 'POST'; url: string }> = [
+    const routes: Array<{ method: 'GET' | 'POST' | 'PUT'; url: string }> = [
       { method: 'GET', url: '/api/v1/admin/me' },
       { method: 'GET', url: '/api/v1/admin/dashboard' },
       { method: 'GET', url: '/api/v1/admin/users' },
@@ -163,6 +163,8 @@ describe('admin API routes', () => {
       { method: 'GET', url: '/api/v1/admin/withdrawals' },
       { method: 'GET', url: '/api/v1/admin/finance/reconciliation' },
       { method: 'GET', url: '/api/v1/admin/ledger' },
+      { method: 'GET', url: '/api/v1/admin/real-money-gate' },
+      { method: 'PUT', url: '/api/v1/admin/real-money-gate' },
       { method: 'GET', url: '/api/v1/admin/risk' },
       { method: 'GET', url: '/api/v1/admin/audit' },
       { method: 'GET', url: '/api/v1/admin/security-events' },
