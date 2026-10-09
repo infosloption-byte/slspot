@@ -148,6 +148,9 @@ export class BinanceProvider implements MarketDataProvider {
           }
         } finally {
           controllers.forEach((controller) => controller.abort())
+          // Keep the logical request slot until both host probes have actually settled.
+          // This prevents queued requests from replacing an aborted-but-still-settling probe.
+          await Promise.allSettled(attempts)
         }
       }
       throw new Error('Binance request failed on every endpoint: ' + reasons.join('; '))
