@@ -850,6 +850,7 @@ export class PlatformApiService {
     const destination = input.destination.trim()
     if (!destination) throw new FinanceError(400, 'INVALID_DESTINATION', 'A withdrawal destination is required')
 
+    let previouslyProcessed = false
     const result = await this.prisma.$transaction(async (tx) => {
       const walletRecord = await this.ensureWallet(tx, userId, 'USD', 'DEMO')
       const systemCode = await this.ledger.ensureSystemLedgerAccount(tx, 'SYSTEM:DEMO_WITHDRAWAL', 'Demo withdrawal clearing', 'ASSET', walletRecord.wallet.currency)
@@ -863,6 +864,7 @@ export class PlatformApiService {
         if (existingTx.withdrawal.wallet.account.userId !== userId) {
           throw new FinanceError(409, 'IDEMPOTENCY_CONFLICT', 'The idempotency key is already associated with another user')
         }
+        previouslyProcessed = true
         return existingTx.withdrawal
       }
 
@@ -930,6 +932,8 @@ export class PlatformApiService {
       })
     })
 
+    if (previouslyProcessed) return this.toApiWithdrawal(result)
+
     await this.prisma.auditLog.create({
       data: {
         actorUserId: userId,
@@ -939,6 +943,27 @@ export class PlatformApiService {
         metadata: { amount: result.amount.toString(), currency: result.currency, clientRequestId: requestId },
       },
     })
+
+    // Demo withdrawals complete immediately. Send both lifecycle emails so the
+    // request and completion templates can be reviewed locally before a live PSP is wired.
+    try {
+      const [target, preferences] = await Promise.all([
+        this.prisma.user.findUnique({ where: { id: userId }, select: { email: true } }),
+        this.prisma.userPreference.findUnique({ where: { userId }, select: { emailWalletUpdates: true } }),
+      ])
+      if (target && preferences?.emailWalletUpdates !== false) {
+        await this.email.sendNotification(
+          target.email,
+          result.id + ':requested',
+          'Demo withdrawal request received',
+          'We received your demo withdrawal request for ' + result.amount.toString() + ' ' + result.currency + '. Demo withdrawals are processed immediately; a separate completion confirmation follows.',
+          'withdrawal',
+        )
+      }
+    } catch {
+      // Wallet state and the in-app result remain authoritative if email preview/provider is unavailable.
+    }
+
     await this.createNotification(userId, 'WITHDRAWAL', 'Demo withdrawal completed', 'Demo wallet withdrawal of ' + result.amount.toString() + ' ' + result.currency + ' was completed.')
     return this.toApiWithdrawal(result)
   }
