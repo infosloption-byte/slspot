@@ -1106,6 +1106,17 @@ export class PlatformApiService {
       this.prisma.notification.count({ where }),
       this.prisma.notification.findMany({
         where,
+        // Select only fields required by the inbox. In particular, don't select
+        // announcementId implicitly: failed/partially applied older migrations may
+        // leave that optional relation column absent until migration recovery completes.
+        select: {
+          id: true,
+          type: true,
+          title: true,
+          body: true,
+          readAt: true,
+          createdAt: true,
+        },
         orderBy: { createdAt: 'desc' },
         skip: (paging.page - 1) * paging.pageSize,
         take: paging.pageSize,
