@@ -66,6 +66,7 @@ export function parseRealtimeEvent(value: string): RealtimeEvent | null {
       typeof candidate.id !== 'string' ||
       typeof candidate.type !== 'string' ||
       typeof candidate.timestamp !== 'string' ||
+      (candidate.type === 'session.revoked' && candidate.channel !== INTERNAL_SESSION_REVOCATION_CHANNEL) ||
       (candidate.channel !== undefined &&
         !isRealtimeChannel(candidate.channel) &&
         !(candidate.type === 'session.revoked' && candidate.channel === INTERNAL_SESSION_REVOCATION_CHANNEL)) ||
