@@ -277,7 +277,13 @@ export class TradingService {
     // new REAL order may enter the transaction unless both launch flags allow it.
     if (mode === 'REAL') {
       const blockReason = realMoneyOperationBlockReason('TRADING', this.realMoneyGate)
-      if (blockReason) throw new TradingError(503, 'REAL_TRADING_DISABLED', blockReason)
+      if (blockReason) {
+        this.logger.warn(
+          { userId, operation: 'REAL_TRADING', code: 'REAL_TRADING_DISABLED' },
+          'Blocked REAL trade request while the launch gate is closed',
+        )
+        throw new TradingError(503, 'REAL_TRADING_DISABLED', blockReason)
+      }
     }
 
     try {
