@@ -9,6 +9,7 @@ import cookie from '@fastify/cookie'
 import { registerAuthRoutes, type AuthServiceLike } from './auth/routes.js'
 import { registerAdminRoutes } from './admin/routes.js'
 import { registerPolicyRoutes } from './policies/routes.js'
+import { registerEmailPreviewRoutes } from './email/preview-routes.js'
 import type { AdminService } from './admin/service.js'
 import type { ApiError, ApiSuccess } from './contracts/api.js'
 import { assertTrustedOrigin } from './security/origin.js'
@@ -137,7 +138,11 @@ export function buildApp(options: AppOptions = {}) {
     reply.header('referrer-policy', 'no-referrer')
     reply.header('permissions-policy', 'camera=(), microphone=(), geolocation=()')
     reply.header('cache-control', 'no-store')
-    reply.header('content-security-policy', "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'")
+    const path = request.url.split('?', 1)[0] ?? ''
+    const isLocalEmailPreview = env.nodeEnv === 'development' && path.startsWith('/api/v1/dev/email-previews')
+    reply.header('content-security-policy', isLocalEmailPreview
+      ? "default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'"
+      : "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'")
     reply.header('cross-origin-opener-policy', 'same-origin')
     reply.header('cross-origin-resource-policy', 'same-origin')
     reply.header('x-permitted-cross-domain-policies', 'none')
@@ -152,6 +157,9 @@ export function buildApp(options: AppOptions = {}) {
 
   // Register public policy metadata after global security and response hooks.
   registerPolicyRoutes(app)
+
+  // Email previews are available only in local development and only to loopback clients.
+  if (env.nodeEnv === 'development') registerEmailPreviewRoutes(app)
 
   if (options.authService) {
     registerAuthRoutes(app, options.authService)
