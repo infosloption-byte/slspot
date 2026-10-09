@@ -19,6 +19,7 @@ const NOW = new Date('2026-10-09T10:00:00Z')
 
 const withdrawal = (overrides: Partial<WithdrawalRuleInput> = {}): WithdrawalRuleInput => ({
   tier: 2,
+  age: 25,
   twoFactorEnabled: true,
   countryCode: 'LK',
   blockedCountries: [],
@@ -96,13 +97,14 @@ describe('kyc tier', () => {
 })
 
 describe('deposit rules', () => {
-  const base = { tier: 1 as const, emailVerified: true, missingProfile: [], countryCode: 'LK', blockedCountries: [], amount: '50', completedDeposits: '0', tier1DepositLimit: '0' }
+  const base = { tier: 1 as const, age: 25, emailVerified: true, missingProfile: [], countryCode: 'LK', blockedCountries: [], amount: '50', completedDeposits: '0', tier1DepositLimit: '0' }
   it('allows a verified user with a complete profile', () => {
     assert.deepEqual(evaluateDeposit(base), [])
   })
-  it('blocks payment deposits for users below the minimum age', () => {
+  it('blocks payment deposits below the minimum age or when age is unverified', () => {
     assert.deepEqual(evaluateDeposit({ ...base, age: 17 }).map((item) => item.code), ['AGE_RESTRICTED'])
     assert.deepEqual(evaluateDeposit({ ...base, age: 18 }), [])
+    assert.deepEqual(evaluateDeposit({ ...base, age: null }).map((item) => item.code), ['AGE_NOT_VERIFIED'])
   })
   it('blocks incomplete profiles and unverified email', () => {
     const codes = evaluateDeposit({ ...base, emailVerified: false, missingProfile: ['legalName'] }).map((item) => item.code)
@@ -124,9 +126,10 @@ describe('withdrawal rules', () => {
   it('allows a verified, 2FA-protected user who has traded', () => {
     assert.deepEqual(codes(withdrawal()), [])
   })
-  it('blocks payment withdrawals for users below the minimum age, even in relaxed test mode', () => {
+  it('blocks payment withdrawals below the minimum age or when age is unverified, even in relaxed test mode', () => {
     assert.deepEqual(codes(withdrawal({ age: 17, relaxed: true })), ['AGE_RESTRICTED'])
     assert.deepEqual(codes(withdrawal({ age: 18 })), [])
+    assert.deepEqual(codes(withdrawal({ age: null, relaxed: true })), ['AGE_NOT_VERIFIED'])
   })
   it('requires identity verification and 2FA', () => {
     assert.deepEqual(codes(withdrawal({ tier: 1, twoFactorEnabled: false })), ['KYC_REQUIRED', 'TWO_FACTOR_REQUIRED'])
