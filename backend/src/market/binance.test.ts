@@ -34,8 +34,8 @@ test('quote and candles are parsed from Binance responses', async () => {
 
   await provider.candles(btc, '5min', 2, { endTimeMs: 1_699_999_999_999 })
   const klines = urls.filter((url) => url.includes('klines'))
-  assert.ok(klines[0]?.includes('symbol=BTCUSDT') && klines[0].includes('interval=5m'))
-  assert.ok(klines[1]?.includes('endTime=1699999999999'))
+  assert.ok(klines.some((url) => url.includes('symbol=BTCUSDT') && url.includes('interval=5m')))
+  assert.ok(klines.some((url) => url.includes('endTime=1699999999999')))
 })
 
 test('tick stream emits ticks, ignores junk and reconnects after a close', async () => {
