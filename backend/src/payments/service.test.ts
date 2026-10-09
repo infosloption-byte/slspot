@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import type { PrismaClient } from '../generated/prisma/client.js'
+import type { Prisma, PrismaClient } from '../generated/prisma/client.js'
 import type { LedgerService } from '../ledger/service.js'
 import { PaymentService, PaymentError, type PaymentsConfig } from './service.js'
 import { PaymentProviderRegistry } from './registry.js'
@@ -379,6 +379,87 @@ test('retries an unmatched signed webhook after the payment reference becomes vi
   assert.equal(notifications, 1)
   assert.equal(await service.retryUnmatchedPaymentEvents(), 0)
   assert.equal(notifications, 1)
+})
+
+test('provider completion commits withdrawal and wallet transaction state atomically', async () => {
+  const txEvents: string[] = []
+  let withdrawalStatus = 'PROCESSING'
+  let walletTransactionStatus = 'PENDING'
+  let transactionCommitted = false
+  let notificationCount = 0
+  const withdrawal = {
+    id: 'withdrawal-finalize-1',
+    provider: liveCapabilities.id,
+    providerReference: 'provider-ref-finalize-1',
+    status: 'PROCESSING',
+    amount: { toString: () => '25.00' },
+    currency: 'USD',
+    destination: 'Live card provider · •••• 4242',
+    details: null,
+    failureReason: null,
+    requestedAt: new Date('2026-10-09T10:00:00.000Z'),
+    completedAt: null,
+    walletTransactionId: 'wallet-tx-finalize-1',
+  }
+  const adapter: PaymentProviderAdapter = {
+    ...liveAdapter(),
+    getStatus: async () => ({ status: 'COMPLETED' }),
+  }
+  const tx = {
+    withdrawal: {
+      updateMany: async (_args: unknown) => {
+        txEvents.push('withdrawal')
+        if (withdrawalStatus !== 'PROCESSING') return { count: 0 }
+        withdrawalStatus = 'COMPLETED'
+        return { count: 1 }
+      },
+      findUnique: async (_args: unknown) => ({
+        ...withdrawal,
+        status: withdrawalStatus,
+        wallet: { account: { userId: 'user-1' } },
+      }),
+    },
+    walletTransaction: {
+      update: async (_args: unknown) => {
+        txEvents.push('wallet-transaction')
+        walletTransactionStatus = 'COMPLETED'
+        return { id: 'wallet-tx-finalize-1', status: walletTransactionStatus }
+      },
+    },
+  }
+  const prismaMock = {
+    withdrawal: {
+      findUnique: async (_args: unknown) => ({ ...withdrawal, status: withdrawalStatus }),
+      findUniqueOrThrow: async (_args: unknown) => ({ ...withdrawal, status: withdrawalStatus }),
+    },
+    $transaction: async (callback: (client: Prisma.TransactionClient) => Promise<unknown>) => {
+      const result = await callback(tx as unknown as Prisma.TransactionClient)
+      transactionCommitted = true
+      return result
+    },
+    auditLog: { create: async () => ({ id: 'audit-finalize-1' }) },
+  } as unknown as PrismaClient
+  const registry = new PaymentProviderRegistry()
+  registry.register(adapter)
+  const service = new PaymentService(
+    prismaMock,
+    registry,
+    {} as LedgerService,
+    async () => {
+      assert.equal(transactionCommitted, true)
+      notificationCount += 1
+    },
+    baseConfig,
+  )
+
+  const result = await service.reconcileWithdrawal('admin-1', withdrawal.id)
+  assert.deepEqual(txEvents, ['withdrawal', 'wallet-transaction'])
+  assert.equal(withdrawalStatus, 'COMPLETED')
+  assert.equal(walletTransactionStatus, 'COMPLETED')
+  assert.equal(result.withdrawal.status, 'COMPLETED')
+  assert.equal(result.providerStatus, 'COMPLETED')
+  assert.equal(transactionCommitted, true)
+  assert.equal(notificationCount, 1)
 })
 
 test('withdrawal reconciliation leaves funds untouched while the provider still reports pending', async () => {
