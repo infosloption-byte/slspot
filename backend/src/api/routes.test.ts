@@ -100,11 +100,16 @@ const apiService = {
   markNotificationRead: async () => true,
 } as unknown as PlatformApiService
 
+let lastCandleOptions: { endTimeMs?: number } | undefined
+
 const marketDataService = {
-  getCandles: async (assetId: string, interval: CandleInterval, _limit: number) => ({
+  getCandles: async (assetId: string, interval: CandleInterval, _limit: number, options?: { endTimeMs?: number }) => {
+    lastCandleOptions = options
+    return {
     assetId, symbol: 'BTC/USD', interval,
     candles: [{ assetId, symbol: 'BTC/USD', interval, openTime: new Date(0).toISOString(), closeTime: new Date(60_000).toISOString(), open: '100', high: '101', low: '99', close: '100.5', volume: '10' }],
-  }),
+    }
+  },
 }
 
 const tradingService = {
@@ -295,6 +300,20 @@ describe('platform API routes', () => {
     const response = await app.inject({ method: 'GET', url: '/api/v1/market/assets/asset-1/candles?interval=5min&limit=20' })
     assert.equal(response.statusCode, 200)
     assert.equal(response.json<{ data: { candles: unknown[] } }>().data.candles.length, 1)
+    await app.close()
+  })
+
+  it('passes endTime to the market data service for older candle pages and rejects invalid values', async () => {
+    const app = buildApp({ logging: false, authService, apiService, marketDataService })
+    await app.ready()
+    lastCandleOptions = undefined
+    const paged = await app.inject({ method: 'GET', url: '/api/v1/market/assets/asset-1/candles?interval=5min&limit=500&endTime=1700000000000' })
+    assert.equal(paged.statusCode, 200)
+    assert.deepEqual(lastCandleOptions, { endTimeMs: 1_700_000_000_000 })
+    for (const bad of ['abc', '-5', '1.5']) {
+      const response = await app.inject({ method: 'GET', url: '/api/v1/market/assets/asset-1/candles?interval=5min&endTime=' + bad })
+      assert.equal(response.statusCode, 400, 'endTime=' + bad)
+    }
     await app.close()
   })
 

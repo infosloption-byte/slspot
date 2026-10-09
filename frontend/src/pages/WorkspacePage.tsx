@@ -13,6 +13,7 @@ import { tradesApi } from '../api/trades'
 import { walletApi, type WalletTransactionFilters } from '../api/wallet'
 import { supportApi, type SupportCategory } from '../api/support'
 import { useAuth } from '../auth/useAuth'
+import { formatDateTime as formatLocalDateTime } from '../lib/dateTime'
 import { useWalletMode } from '../hooks/useWalletMode'
 import { recordNotificationEvent, useNotificationStore, setUnreadCount, decrementUnreadCount } from '../state/notificationStore'
 import { usePortfolioStore } from '../state/portfolioStore'
@@ -1438,15 +1439,15 @@ function formatMoney(value: string | null | undefined, currency?: string | null)
   }).format(amount)
 }
 
+function formatDateTime(value: string): string {
+  return formatLocalDateTime(value, { dateStyle: 'short', fallback: value })
+}
+
 function signedMoney(value: string | null | undefined): string {
   const amount = Number(value ?? 0)
   return (amount >= 0 ? '+' : '-') + formatMoney(Math.abs(amount).toFixed(8))
 }
 
-function formatDateTime(value: string): string {
-  const date = new Date(value)
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleString('en-US', { dateStyle: 'short', timeStyle: 'short' })
-}
 
 function avatarFor(email: string | undefined): string {
   if (!email) return 'SL'
