@@ -23,6 +23,7 @@ import {
   type PaymentDirection,
   type PaymentProviderAdapter,
   type PaymentUser,
+  type ProviderField,
   type WebhookHeaders,
 } from './types.js'
 
@@ -70,7 +71,7 @@ export type PaymentMethod = {
   minAmount: string
   maxAmount: string | null
   sandbox: boolean
-  fields: Array<{ name: string; label: string; type: string; required: boolean; placeholder?: string; maxLength?: number }>
+  fields: ProviderField[]
   /** Withdrawals only: false when the user has not deposited with this method. */
   eligible: boolean
   reason?: string
