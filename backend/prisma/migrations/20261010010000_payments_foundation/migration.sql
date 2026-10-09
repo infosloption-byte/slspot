@@ -122,3 +122,34 @@ CREATE TABLE IF NOT EXISTS `PaymentEvent` (
   INDEX `PaymentEvent_provider_createdAt_idx`(`provider`, `createdAt`),
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+
+-- Keep payment state and configuration transactional even on WAMP/MySQL installs
+-- where the database default engine is MyISAM.
+SET @slspot_payment_provider_engine = (
+  SELECT engine FROM information_schema.tables
+  WHERE table_schema = DATABASE() AND table_name = 'PaymentProviderConfig'
+  LIMIT 1
+);
+SET @slspot_payment_provider_engine_sql = IF(
+  @slspot_payment_provider_engine IS NOT NULL AND UPPER(@slspot_payment_provider_engine) <> 'INNODB',
+  'ALTER TABLE `PaymentProviderConfig` ENGINE=InnoDB',
+  'SELECT 1'
+);
+PREPARE slspot_payment_provider_engine_stmt FROM @slspot_payment_provider_engine_sql;
+EXECUTE slspot_payment_provider_engine_stmt;
+DEALLOCATE PREPARE slspot_payment_provider_engine_stmt;
+
+SET @slspot_payment_event_engine = (
+  SELECT engine FROM information_schema.tables
+  WHERE table_schema = DATABASE() AND table_name = 'PaymentEvent'
+  LIMIT 1
+);
+SET @slspot_payment_event_engine_sql = IF(
+  @slspot_payment_event_engine IS NOT NULL AND UPPER(@slspot_payment_event_engine) <> 'INNODB',
+  'ALTER TABLE `PaymentEvent` ENGINE=InnoDB',
+  'SELECT 1'
+);
+PREPARE slspot_payment_event_engine_stmt FROM @slspot_payment_event_engine_sql;
+EXECUTE slspot_payment_event_engine_stmt;
+DEALLOCATE PREPARE slspot_payment_event_engine_stmt;
