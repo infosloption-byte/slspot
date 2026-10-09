@@ -7,6 +7,7 @@ import { createOpaqueToken, hashOpaqueToken, hashPassword, verifyPassword } from
 import { createOtpAuthUri, createRecoveryCodes, decryptTotpSecret, encryptTotpSecret, generateTotpSecret, normalizeRecoveryCode, verifyTotpCode } from './totp.js'
 import { LedgerService } from '../ledger/service.js'
 import { EmailService } from '../email/service.js'
+import { buildRegistrationPolicyAcceptanceRows, CURRENT_POLICY_VERSIONS } from '../policies/registry.js'
 
 export type AuthUser = {
   id: string
@@ -150,8 +151,11 @@ export class AuthService {
     validatePassword(input.password)
     const countryCode = validateCountryCode(input.countryCode)
     if (!input.acceptTerms) throw new AuthError(400, 'TERMS_CONSENT_REQUIRED', 'You must accept the terms and privacy notice')
-    const termsVersion = input.termsVersion?.trim() || '2026-10'
-    if (termsVersion.length > 32) throw new AuthError(400, 'INVALID_TERMS_VERSION', 'Terms version is invalid')
+    const termsVersion = CURRENT_POLICY_VERSIONS.TERMS_AND_CONDITIONS
+    const submittedTermsVersion = input.termsVersion?.trim()
+    if (submittedTermsVersion && submittedTermsVersion !== termsVersion) {
+      throw new AuthError(409, 'POLICY_VERSION_STALE', 'The terms have changed. Refresh the page and review the current terms and privacy notice before registering.')
+    }
 
     const existing = await this.prisma.user.findUnique({ where: { email } })
     if (existing) {
@@ -176,6 +180,9 @@ export class AuthService {
 
       await this.ensureTradingAccounts(tx, user.id, 'USD')
       await tx.userPreference.create({ data: { userId: user.id } })
+      await tx.policyAcceptance.createMany({
+        data: buildRegistrationPolicyAcceptanceRows(user.id, now),
+      })
 
       const token = createOpaqueToken()
       const expiresAt = new Date(now.getTime() + env.auth.verificationTtlSeconds * 1000)
