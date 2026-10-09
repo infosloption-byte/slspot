@@ -120,6 +120,7 @@ export const adminApi = {
   paymentWithdrawalQueue: (status: 'PENDING' | 'PROCESSING' = 'PENDING') => request<List<PaymentWithdrawalReviewRecord>>('/admin/payments/withdrawals?status=' + status),
   approvePaymentWithdrawal: (id: string) => request<PaymentWithdrawalReviewRecord>('/admin/payments/withdrawals/' + encodeURIComponent(id) + '/approve', { method: 'POST' }),
   rejectPaymentWithdrawal: (id: string, reason: string) => request<PaymentWithdrawalReviewRecord>('/admin/payments/withdrawals/' + encodeURIComponent(id) + '/reject', { method: 'POST', body: JSON.stringify({ reason }) }),
+  reconcilePaymentWithdrawal: (id: string) => request<{ withdrawal: PaymentWithdrawalReviewRecord; providerStatus: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED' }>('/admin/payments/withdrawals/' + encodeURIComponent(id) + '/reconcile', { method: 'POST' }),
   reconciliation: () => request<Reconciliation>('/admin/finance/reconciliation'),
   ledger: () => request<List<LedgerRecord>>('/admin/ledger'),
   realMoneyGate: () => request<RealMoneyGateStatus>('/admin/real-money-gate'),
