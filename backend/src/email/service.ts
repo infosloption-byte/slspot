@@ -125,7 +125,7 @@ export class EmailService {
     })
   }
 
-  async sendNotification(to: string, notificationId: string, title: string, body: string, category: string, details?: EmailDetail[]): Promise<void> {
+  async sendNotification(to: string, notificationId: string, title: string, body: string, category: string, details?: EmailDetail[]): Promise<{ sent: boolean; providerId: string | null }> {
     const templateKey = classifyNotificationTemplate(category, title, body)
     const rendered = renderEmailTemplate(templateKey, {
       subject: 'SL Spot — ' + title,
@@ -134,7 +134,7 @@ export class EmailService {
       body,
       details: details ?? [],
     })
-    await this.send({
+    return this.send({
       to,
       ...rendered,
       idempotencyKey: 'notification-email:' + notificationId,
