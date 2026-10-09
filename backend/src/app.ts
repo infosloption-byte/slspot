@@ -8,6 +8,7 @@ import type { PlatformApiService } from './api/service.js'
 import cookie from '@fastify/cookie'
 import { registerAuthRoutes, type AuthServiceLike } from './auth/routes.js'
 import { registerAdminRoutes } from './admin/routes.js'
+import { registerPolicyRoutes } from './policies/routes.js'
 import type { AdminService } from './admin/service.js'
 import type { ApiError, ApiSuccess } from './contracts/api.js'
 import { assertTrustedOrigin } from './security/origin.js'
@@ -77,6 +78,8 @@ export function buildApp(options: AppOptions = {}) {
   app.register(cookie)
 
   realtimeGateway.register(app)
+
+  registerPolicyRoutes(app)
 
   app.register(cors, {
     credentials: true,
