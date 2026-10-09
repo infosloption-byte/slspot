@@ -214,6 +214,25 @@ function ChartCanvas({
         textColor: '#9a9aa4',
         attributionLogo: false,
       },
+      // A new Lightweight Charts instance otherwise falls back to its default grid,
+      // even when the user has hidden it in settings.
+      grid: {
+        vertLines: { visible: gridEnabled, color: 'rgba(255,255,255,.045)' },
+        horzLines: { visible: gridEnabled, color: 'rgba(255,255,255,.045)' },
+      },
+      crosshair: {
+        mode: crosshairEnabled ? CrosshairMode.Normal : CrosshairMode.Hidden,
+        vertLine: {
+          color: 'rgba(255,194,26,.28)',
+          width: 1,
+          labelVisible: crosshairEnabled,
+        },
+        horzLine: {
+          color: 'rgba(255,194,26,.18)',
+          width: 1,
+          labelVisible: crosshairEnabled,
+        },
+      },
       rightPriceScale: {
         borderColor: 'rgba(255,255,255,.08)',
         scaleMargins: { top: 0.08, bottom: 0.1 },
@@ -301,8 +320,8 @@ function ChartCanvas({
 
     chart.applyOptions({
       grid: {
-        vertLines: { color: gridEnabled ? 'rgba(255,255,255,.045)' : 'transparent' },
-        horzLines: { color: gridEnabled ? 'rgba(255,255,255,.045)' : 'transparent' },
+        vertLines: { visible: gridEnabled, color: 'rgba(255,255,255,.045)' },
+        horzLines: { visible: gridEnabled, color: 'rgba(255,255,255,.045)' },
       },
       crosshair: {
         mode: crosshairEnabled ? CrosshairMode.Normal : CrosshairMode.Hidden,
@@ -318,7 +337,8 @@ function ChartCanvas({
         },
       },
     })
-  }, [crosshairEnabled, gridEnabled])
+  // Reapply settings whenever the chart instance is replaced by a symbol/type change.
+  }, [asset.symbol, chartType, crosshairEnabled, gridEnabled])
 
   useEffect(() => {
     const series = primarySeriesRef.current as {
