@@ -321,7 +321,7 @@ export class KycService {
     const age = user.dateOfBirth ? ageOn(user.dateOfBirth, this.now()) : null
     return {
       emailVerified: user.emailVerifiedAt !== null,
-      missingProfile: missingProfileFields({ legalName: user.legalName, dateOfBirth: user.dateOfBirth, countryCode: user.countryCode }) as string[],
+      missingProfile: missingProfileFields({ emailVerified: user.emailVerifiedAt !== null, legalName: user.legalName, dateOfBirth: user.dateOfBirth, countryCode: user.countryCode }) as string[],
       ageOk: age !== null && age >= MINIMUM_AGE_YEARS,
     }
   }
