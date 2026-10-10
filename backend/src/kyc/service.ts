@@ -1,4 +1,4 @@
-import { Prisma, type PrismaClient } from '../generated/prisma/client.js'
+import type { Prisma, PrismaClient } from '../generated/prisma/client.js'
 import { ageOn, MINIMUM_AGE_YEARS, missingProfileFields } from '../payments/rules.js'
 import {
   InvalidKycSignatureError,
