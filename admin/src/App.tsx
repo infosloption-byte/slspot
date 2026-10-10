@@ -3,21 +3,22 @@ import type { FormEvent, ReactNode } from 'react'
 import {
   Activity, AlertTriangle, BarChart3, CheckCircle2, ChevronRight, Database, Download,
   KeyRound, LayoutDashboard, LifeBuoy, LogOut, Megaphone, Radio, RefreshCw, Search, ShieldAlert, ShieldCheck, UserRound,
-  Users, WalletCards, XCircle,
+  Users, WalletCards, XCircle, BadgeCheck,
 } from 'lucide-react'
 import {
   AdminApiError, adminApi, type AssetRecord, type AuditRecord, type Dashboard, type FundingRecord,
   type AnnouncementRecord, type LedgerRecord, type List, type PositionRecord, type Reconciliation, type RiskSummary,
-  type RealMoneyGateStatus, type RealMoneyGateSettings, type SettlementRecord, type SupportTicketDetail, type SupportTicketRecord, type TradeRecord, type UserDetail, type UserRecord, type WalletRecord, type PaymentWithdrawalReviewRecord,
+  type RealMoneyGateStatus, type RealMoneyGateSettings, type SettlementRecord, type SupportTicketDetail, type SupportTicketRecord, type TradeRecord, type UserDetail, type UserRecord, type WalletRecord, type PaymentWithdrawalReviewRecord, type KycCaseRecord,
 } from './api'
 
-type Page = 'dashboard' | 'users' | 'trading' | 'finance' | 'support' | 'announcements' | 'risk' | 'audit' | 'launch-gate'
+type Page = 'dashboard' | 'users' | 'kyc' | 'trading' | 'finance' | 'support' | 'announcements' | 'risk' | 'audit' | 'launch-gate'
 type TradingView = 'trades' | 'positions' | 'settlements' | 'assets'
 type FinanceView = 'wallets' | 'deposits' | 'withdrawals' | 'withdrawal-review' | 'payout-reconciliation' | 'reconciliation' | 'ledger'
 
 const pages: Array<{ id: Page; label: string; icon: typeof LayoutDashboard }> = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { id: 'users', label: 'Users', icon: Users },
+  { id: 'kyc', label: 'KYC', icon: BadgeCheck },
   { id: 'trading', label: 'Trading', icon: BarChart3 },
   { id: 'finance', label: 'Finance', icon: WalletCards },
   { id: 'launch-gate', label: 'Launch Gate', icon: ShieldCheck },
@@ -126,6 +127,7 @@ function AdminShell({ admin, onLogout }: { admin: { id: string; email: string; r
       <main className="admin-content">
         {page === 'dashboard' ? <DashboardPage refreshKey={refreshKey} /> : null}
         {page === 'users' ? <UsersPage refreshKey={refreshKey} /> : null}
+        {page === 'kyc' ? <KycPage refreshKey={refreshKey} /> : null}
         {page === 'trading' ? <TradingPage refreshKey={refreshKey} /> : null}
         {page === 'finance' ? <FinancePage refreshKey={refreshKey} /> : null}
         {page === 'launch-gate' ? <LaunchGatePage refreshKey={refreshKey} role={admin.role} /> : null}
@@ -418,6 +420,78 @@ function FundingTable({ rows, withdrawal = false }: { rows: FundingRecord[]; wit
 
 function ReconciliationView({ data }: { data: Reconciliation }) {
   return <div className="recon-card"><div className={data.unbalanced.length === 0 ? 'recon-status recon-status--good' : 'recon-status recon-status--bad'}>{data.unbalanced.length === 0 ? <CheckCircle2 size={26} /> : <AlertTriangle size={26} />}<div><strong>{data.unbalanced.length === 0 ? 'Ledger balanced' : 'Unbalanced transactions found'}</strong><span>{data.balanced} of {data.scanned} scanned transactions balanced</span></div></div>{data.unbalanced.length ? <Table><thead><tr><th>Transaction</th><th>Reference</th><th>Debit</th><th>Credit</th><th>Created</th></tr></thead><tbody>{data.unbalanced.map((row) => <tr key={row.id}><td>{row.id.slice(0, 8)}</td><td>{row.referenceType ?? '—'} {row.referenceId ?? ''}</td><td>{amount(row.debit)}</td><td>{amount(row.credit)}</td><td>{date(row.createdAt)}</td></tr>)}</tbody></Table> : null}</div>
+}
+
+function KycPage({ refreshKey }: { refreshKey: number }) {
+  const [data, setData] = useState<List<KycCaseRecord> | null>(null)
+  const [status, setStatus] = useState('IN_REVIEW')
+  const [error, setError] = useState('')
+  const [message, setMessage] = useState('')
+  const [busyId, setBusyId] = useState<string | null>(null)
+  const [reasons, setReasons] = useState<Record<string, string>>({})
+
+  async function load() {
+    setError('')
+    try {
+      const q = new URLSearchParams({ page: '1', pageSize: '50' })
+      if (status) q.set('status', status)
+      setData(await adminApi.kycCases('?' + q.toString()))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not load verification cases')
+    }
+  }
+
+  useEffect(() => { void load() }, [refreshKey, status])
+
+  async function decide(row: KycCaseRecord, approve: boolean) {
+    if (busyId) return
+    const reason = (reasons[row.id] ?? '').trim()
+    if (!approve && reason.length < 3) {
+      setError('Enter a rejection reason of at least 3 characters.')
+      setMessage('')
+      return
+    }
+    setBusyId(row.id)
+    setError('')
+    setMessage('')
+    try {
+      if (approve) await adminApi.approveKycCase(row.id)
+      else await adminApi.rejectKycCase(row.id, reason)
+      setMessage('Case ' + row.id.slice(0, 8) + (approve ? ' approved.' : ' rejected. The customer has been told why and may retry.'))
+      await load()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not record this decision.')
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  return <div className="page">
+    <section className="toolbar-panel">
+      <div className="filter-row">
+        <label className="field"><span>Status</span><select value={status} onChange={(event) => setStatus(event.target.value)}><option value="IN_REVIEW">Needs review</option><option value="PENDING">Awaiting customer</option><option value="APPROVED">Approved</option><option value="REJECTED">Rejected</option><option value="">All cases</option></select></label>
+        <button type="button" className="button button--primary" onClick={() => void load()}>Refresh</button>
+      </div>
+    </section>
+    {error ? <ErrorNotice message={error} onRetry={() => void load()} /> : null}
+    {message ? <div className="notice"><CheckCircle2 size={17} className="text-positive" /><span>{message}</span></div> : null}
+    <section className="panel kyc-table">
+      <div className="panel-heading"><div><span className="eyebrow">Identity verification</span><h2>{data?.pagination.total.toLocaleString() ?? '—'} cases</h2></div><span className="muted-label">Documents are captured and held by the verification provider</span></div>
+      {data ? <Table><thead><tr><th>Customer</th><th>Document</th><th>Provider</th><th>Status</th><th>Submitted</th><th>Decision</th></tr></thead><tbody>
+        {data.items.map((row) => <tr key={row.id}>
+          <td><strong>{row.user.legalName ?? row.user.email}</strong><small>{row.user.email} · {row.user.countryCode ?? '—'}</small></td>
+          <td>{row.documentType ? row.documentType.replace('_', ' ') : '—'}</td>
+          <td>{row.provider ?? '—'}<small>{row.providerCaseId ?? ''}</small></td>
+          <td><span className={tagClass(row.status)}>{row.status.replace('_', ' ')}</span>{row.decisionReason ? <small>{row.decisionReason}</small> : null}</td>
+          <td>{date(row.submittedAt)}</td>
+          <td>{row.status === 'PENDING' || row.status === 'IN_REVIEW'
+            ? <div className="kyc-decision"><button type="button" className="button button--primary button--small" disabled={busyId !== null} onClick={() => void decide(row, true)}>Approve</button><input className="withdrawal-reason-input" aria-label="Rejection reason" placeholder="Reason to reject" maxLength={255} value={reasons[row.id] ?? ''} onChange={(event) => setReasons((current) => ({ ...current, [row.id]: event.target.value }))} /><button type="button" className="button button--danger button--small" disabled={busyId !== null} onClick={() => void decide(row, false)}>Reject</button></div>
+            : <small>{date(row.resolvedAt)}</small>}</td>
+        </tr>)}
+      </tbody></Table> : <div className="loading-card"><Activity className="spin" size={20} /> Loading verification cases…</div>}
+      {data?.items.length === 0 ? <div className="empty-state">No verification cases match this filter.</div> : null}
+    </section>
+  </div>
 }
 
 function SupportPage({ refreshKey }: { refreshKey: number }) {
