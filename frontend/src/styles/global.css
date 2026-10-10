@@ -3252,6 +3252,7 @@ button.toggle { cursor: pointer; appearance: none; }
     flex-direction: column;
     gap: 8px;
   }
+}
 
 @media (max-width: 420px) {
   .trade-mobile-config-row {
