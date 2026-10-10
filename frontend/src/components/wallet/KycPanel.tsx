@@ -28,7 +28,8 @@ export function KycPanel({ onChanged }: Props) {
 
   const load = useCallback(async () => {
     try {
-      setState(await kycApi.status())
+      const next = await kycApi.status()
+      setState(next)
       setError('')
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Could not load verification status.')
