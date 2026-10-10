@@ -48,3 +48,29 @@ h1,h2,p{margin:0}.splash{height:100%;display:grid;place-items:center;gap:10px;co
 .withdrawal-reason-input:focus{outline:0;border-color:var(--gold)}
 .withdrawal-review-actions .button{white-space:nowrap}
 @media(max-width:700px){.withdrawal-review-actions{grid-template-columns:1fr 1fr;min-width:0}.withdrawal-reason-input{grid-column:1/-1;grid-row:1}.withdrawal-review-actions .button{width:100%}}
+
+
+/* Support and Announcements layout fixes. */
+.panel-grid > * { min-width:0; }
+.filter-row { align-items:flex-end; flex-wrap:wrap; }
+.filter-row .field { margin:0; min-width:180px; }
+.toolbar-panel .filter-row .field { flex:0 1 240px; }
+.support-layout { display:grid; grid-template-columns:minmax(0,1fr); gap:14px; align-items:start; }
+.support-layout--open { grid-template-columns:minmax(0,1.3fr) minmax(340px,.9fr); }
+.support-layout .admin-table { min-width:640px; }
+.support-layout .admin-table td:first-child { max-width:260px; }
+.support-layout .admin-table td strong { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.detail-panel .panel-heading > div { min-width:0; }
+.detail-panel .panel-heading h2 { overflow-wrap:anywhere; }
+.detail-panel form { padding:0 14px 14px; }
+.detail-panel form .action-row { padding:0; }
+.detail-panel > .notice { margin:0 14px 14px; }
+.announcement-form { display:grid; grid-template-columns:minmax(0,1fr); gap:2px; padding:6px 16px 16px; max-width:760px; }
+.announcement-form .field { margin:8px 0; }
+.announcement-form .button { justify-self:start; }
+.announcement-table .admin-table { min-width:820px; }
+.announcement-table td:first-child { max-width:420px; }
+.announcement-table td small { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; line-height:1.5; }
+.announcement-table td .action-row { padding:0; flex-wrap:nowrap; }
+@media(max-width:1100px){ .support-layout--open { grid-template-columns:minmax(0,1fr); } }
+@media(max-width:560px){ .filter-row .field, .toolbar-panel .filter-row .field { flex:1 1 100%; min-width:0; } }
