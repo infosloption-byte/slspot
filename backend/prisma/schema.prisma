@@ -684,6 +684,10 @@ model KycCase {
   provider       String?    @db.VarChar(64)
   providerCaseId String?    @unique @db.VarChar(128)
   status         KycStatus  @default(NOT_STARTED)
+  /// Kind of identity document the customer said they would provide (the provider captures it; we never store images or numbers).
+  documentType   String?    @db.VarChar(32)
+  decisionReason String?    @db.VarChar(255)
+  reviewedByUserId String?  @db.Char(36)
   submittedAt    DateTime?  @db.DateTime(3)
   resolvedAt     DateTime?  @db.DateTime(3)
   createdAt      DateTime   @default(now()) @db.DateTime(3)
@@ -693,6 +697,21 @@ model KycCase {
 
   @@index([userId, status])
   @@index([provider, status])
+}
+
+model KycEvent {
+  id             String    @id @default(uuid()) @db.Char(36)
+  provider       String    @db.VarChar(32)
+  eventId        String    @db.VarChar(128)
+  providerCaseId String?   @db.VarChar(128)
+  outcome        String    @db.VarChar(32)
+  payload        Json
+  processedAt    DateTime? @db.DateTime(3)
+  error          String?   @db.VarChar(255)
+  createdAt      DateTime  @default(now()) @db.DateTime(3)
+
+  @@unique([provider, eventId])
+  @@index([provider, createdAt])
 }
 
 model UserPreference {

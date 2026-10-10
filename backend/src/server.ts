@@ -9,6 +9,8 @@ import { LedgerService } from './ledger/service.js'
 import { LedgerReconciliationWorker } from './ledger/reconciliation-worker.js'
 import { env } from './config/env.js'
 import { PaymentService } from './payments/service.js'
+import { KycService } from './kyc/service.js'
+import { KycSandboxProvider } from './kyc/sandbox.js'
 import { PaymentProviderRegistry } from './payments/registry.js'
 import { createSandboxProviders } from './payments/sandbox.js'
 import { prisma } from './db/prisma.js'
@@ -56,6 +58,14 @@ const paymentService = new PaymentService(
     realWithdrawalsEnabled: env.realMoney.withdrawalsEnabled,
   },
 )
+// A real vendor adapter replaces the sandbox here once credentials exist. Without either, KYC reports itself unavailable.
+const kycProvider = env.kyc.sandbox ? new KycSandboxProvider(env.kyc.sandboxWebhookSecret) : null
+const kycService = new KycService(
+  prisma,
+  kycProvider,
+  (userId, type, title, body) => apiService.createNotification(userId, type, title, body),
+  { maxAttempts: env.kyc.maxAttempts, relaxReviewChecks: env.kyc.relaxReviewChecks },
+)
 const app = buildApp({
   checkDatabase,
   checkRedis,
@@ -68,6 +78,7 @@ const app = buildApp({
   adminService,
   paymentService,
   paymentRegistry,
+  kycService,
 })
 const reconciliationWorker = new LedgerReconciliationWorker(
   prisma,

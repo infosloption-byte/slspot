@@ -36,7 +36,7 @@ async function requireAdmin(request: FastifyRequest, authService: AuthServiceLik
 
 function ok<T>(request: FastifyRequest, data: T) { return { success: true as const, data, requestId: request.id } }
 
-export function registerAdminRoutes(app: FastifyInstance, options: { authService: AuthServiceLike; adminService: AdminService; paymentService?: import('../payments/service.js').PaymentService; checkDatabase?: () => Promise<boolean>; checkRedis?: () => Promise<boolean> }) {
+export function registerAdminRoutes(app: FastifyInstance, options: { authService: AuthServiceLike; adminService: AdminService; paymentService?: import('../payments/service.js').PaymentService; kycService?: import('../kyc/service.js').KycService; checkDatabase?: () => Promise<boolean>; checkRedis?: () => Promise<boolean> }) {
   if (options.paymentService) {
     const payments = options.paymentService
     app.get<{ Querystring: Query }>(PREFIX + '/payments/withdrawals', async (request) => {
@@ -67,6 +67,35 @@ export function registerAdminRoutes(app: FastifyInstance, options: { authService
     }, async (request) => {
       const session = await requireAdmin(request, options.authService, options.adminService)
       return ok(request, await payments.reconcileWithdrawal(session.id, request.params.id))
+    })
+  }
+
+  if (options.kycService) {
+    const kyc = options.kycService
+    const caseStatuses = ['PENDING', 'IN_REVIEW', 'APPROVED', 'REJECTED'] as const
+    app.get<{ Querystring: Query }>(PREFIX + '/kyc/cases', async (request) => {
+      await requireAdmin(request, options.authService, options.adminService)
+      const status = enumValue(request.query.status, caseStatuses, 'KYC status') as (typeof caseStatuses)[number] | undefined
+      return ok(request, await kyc.listCases({ status, page: positive(request.query.page, 1), pageSize: positive(request.query.pageSize, 25) }))
+    })
+
+    app.post<{ Params: { id: string } }>(PREFIX + '/kyc/cases/:id/approve', {
+      schema: { params: { type: 'object', required: ['id'], properties: { id: { type: 'string', pattern: UUID_PATTERN } } } },
+    }, async (request) => {
+      const session = await requireAdmin(request, options.authService, options.adminService)
+      await kyc.approveCase(session.id, request.params.id)
+      return ok(request, { approved: true })
+    })
+
+    app.post<{ Params: { id: string }; Body: { reason: string } }>(PREFIX + '/kyc/cases/:id/reject', {
+      schema: {
+        params: { type: 'object', required: ['id'], properties: { id: { type: 'string', pattern: UUID_PATTERN } } },
+        body: { type: 'object', required: ['reason'], additionalProperties: false, properties: { reason: { type: 'string', minLength: 3, maxLength: 255 } } },
+      },
+    }, async (request) => {
+      const session = await requireAdmin(request, options.authService, options.adminService)
+      await kyc.rejectCase(session.id, request.params.id, request.body.reason)
+      return ok(request, { rejected: true })
     })
   }
 

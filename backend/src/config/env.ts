@@ -299,6 +299,10 @@ const paymentsSandbox = parseBoolean('PAYMENTS_SANDBOX', process.env.PAYMENTS_SA
 if (paymentsSandbox && nodeEnv === 'production') {
   throw new Error('PAYMENTS_SANDBOX must not be enabled in production: sandbox providers credit wallets without real funds')
 }
+const kycSandbox = parseBoolean('KYC_SANDBOX', process.env.KYC_SANDBOX, nodeEnv !== 'production')
+if (kycSandbox && nodeEnv === 'production') {
+  throw new Error('KYC_SANDBOX must not be enabled in production: the sandbox can approve identities without any real check')
+}
 const paymentsRelaxChecks = parseBoolean('PAYMENTS_RELAX_WITHDRAWAL_CHECKS', process.env.PAYMENTS_RELAX_WITHDRAWAL_CHECKS, false)
 if (paymentsRelaxChecks && nodeEnv === 'production') {
   throw new Error('PAYMENTS_RELAX_WITHDRAWAL_CHECKS must not be enabled in production')
@@ -430,6 +434,15 @@ export const env = {
     depositExpiryMinutes: parsePositiveInteger('PAYMENTS_DEPOSIT_EXPIRY_MINUTES', process.env.PAYMENTS_DEPOSIT_EXPIRY_MINUTES, 60, 5, 10_080),
     // Countries (ISO-2, comma separated) that may not use payments. Empty = open to everyone for now.
     blockedCountries: (process.env.PAYMENTS_BLOCKED_COUNTRIES ?? '').split(',').map((item) => item.trim().toUpperCase()).filter((item) => /^[A-Z]{2}$/.test(item)),
+  },
+  kyc: {
+    sandbox: kycSandbox,
+    // Secret used to sign sandbox KYC webhooks. Random per boot unless set.
+    sandboxWebhookSecret: process.env.KYC_SANDBOX_WEBHOOK_SECRET?.trim() || randomBytes(32).toString('hex'),
+    // Rejected verifications a customer may retry before support has to step in.
+    maxAttempts: parsePositiveInteger('KYC_MAX_ATTEMPTS', process.env.KYC_MAX_ATTEMPTS, 3, 1, 20),
+    // Local testing only: lets an administrator decide their own verification case.
+    relaxReviewChecks: parseBoolean('KYC_RELAX_REVIEW_CHECKS', process.env.KYC_RELAX_REVIEW_CHECKS, false) && nodeEnv !== 'production',
   },
   security: {
     csrfSecret,
