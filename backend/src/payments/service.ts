@@ -696,7 +696,12 @@ export class PaymentService {
   async retryUnmatchedPaymentEvents(limit = 50): Promise<number> {
     const take = Math.min(100, Math.max(1, Math.trunc(limit)))
     const records = await this.prisma.paymentEvent.findMany({
-      where: { processedAt: null, error: { in: ['No matching payment for reference', 'Retry pending payment event'] } },
+      where: {
+        processedAt: null,
+        error: { in: ['No matching payment for reference', 'Retry pending payment event'] },
+        // Give up on references that never appear instead of retrying them every minute forever.
+        createdAt: { gte: new Date(this.now().getTime() - 24 * 60 * 60 * 1000) },
+      },
       orderBy: { createdAt: 'asc' },
       take,
     })
