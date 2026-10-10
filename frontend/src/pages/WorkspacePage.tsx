@@ -518,7 +518,7 @@ function WalletPage() {
           <StatCard label="Transactions" value={String(transactions.data?.pagination.total ?? 0)} change={formatMoney(wallet.data?.pendingFunds, wallet.data?.currency) + ' pending'} positive icon={Clock3} />
         </div>
 
-        <div className="wallet-grid">
+        <div className={isDemo ? 'wallet-grid' : 'wallet-grid wallet-grid--real'}>
           {isDemo ? (
             <section className="dashboard-card panel wallet-funding-card">
               <div className="dashboard-card__header">

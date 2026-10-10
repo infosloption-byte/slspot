@@ -488,7 +488,7 @@ function SupportPage({ refreshKey }: { refreshKey: number }) {
       </div>
     </section>
     {error ? <ErrorNotice message={error} onRetry={() => void load()} /> : null}
-    <section className="panel-grid">
+    <section className={detail ? 'support-layout support-layout--open' : 'support-layout'}>
       <article className="panel">
         <div className="panel-heading"><div><span className="eyebrow">Customer support</span><h2>{data?.pagination.total.toLocaleString() ?? '—'} tickets</h2></div></div>
         {data ? <Table><thead><tr><th>Ticket</th><th>User</th><th>Category</th><th>Status</th><th>Messages</th><th>Updated</th></tr></thead><tbody>
@@ -577,13 +577,13 @@ function AnnouncementsPage({ refreshKey }: { refreshKey: number }) {
     {error ? <ErrorNotice message={error} onRetry={() => void load()} /> : null}
     <section className="panel">
       <div className="panel-heading"><div><span className="eyebrow">System messaging</span><h2>Create announcement</h2></div></div>
-      <form className="filter-row" onSubmit={(event) => void create(event)}>
+      <form className="announcement-form" onSubmit={(event) => void create(event)}>
         <label className="field"><span>Title</span><input value={title} onChange={(event) => setTitle(event.target.value)} maxLength={160} required placeholder="Scheduled maintenance" /></label>
         <label className="field"><span>Message</span><textarea rows={3} value={body} onChange={(event) => setBody(event.target.value)} maxLength={10000} required placeholder="Tell users what they need to know." /></label>
         <button className="button button--primary" disabled={busy || !title.trim() || !body.trim()}>{busy ? 'Saving…' : 'Save draft'}</button>
       </form>
     </section>
-    <section className="panel">
+    <section className="panel announcement-table">
       <div className="panel-heading"><div><span className="eyebrow">Announcements</span><h2>Publication history</h2></div></div>
       {data ? <Table><thead><tr><th>Announcement</th><th>Status</th><th>Recipients</th><th>Created</th><th>Published</th><th /></tr></thead><tbody>
         {data.items.map((item) => <tr key={item.id}>
