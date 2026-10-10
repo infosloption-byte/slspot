@@ -74,3 +74,7 @@ h1,h2,p{margin:0}.splash{height:100%;display:grid;place-items:center;gap:10px;co
 .announcement-table td .action-row { padding:0; flex-wrap:nowrap; }
 @media(max-width:1100px){ .support-layout--open { grid-template-columns:minmax(0,1fr); } }
 @media(max-width:560px){ .filter-row .field, .toolbar-panel .filter-row .field { flex:1 1 100%; min-width:0; } }
+
+.kyc-table .admin-table { min-width:900px; }
+.kyc-decision { display:grid; grid-template-columns:auto minmax(150px,1fr) auto; align-items:center; gap:6px; min-width:420px; }
+@media(max-width:700px){ .kyc-decision { grid-template-columns:1fr 1fr; min-width:0; } .kyc-decision .withdrawal-reason-input { grid-column:1/-1; grid-row:1; } }

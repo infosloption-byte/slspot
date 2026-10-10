@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
+import type { KycService } from '../kyc/service.js'
 import { buildApp } from '../app.js'
 import type { AuthServiceLike } from '../auth/routes.js'
 import type { AuthSession } from '../auth/service.js'
@@ -199,7 +200,7 @@ describe('admin API routes', () => {
   })
 
   it('registers the protected admin route surface', async () => {
-    const app = buildApp({ logging: false, authService, adminService: mockAdmin(), paymentService: {} as PaymentService, paymentRegistry: new PaymentProviderRegistry() })
+    const app = buildApp({ logging: false, authService, adminService: mockAdmin(), paymentService: {} as PaymentService, paymentRegistry: new PaymentProviderRegistry(), kycService: {} as KycService })
     await app.ready()
     const routes: Array<{ method: 'GET' | 'POST' | 'PUT'; url: string }> = [
       { method: 'GET', url: '/api/v1/admin/me' },
@@ -221,6 +222,9 @@ describe('admin API routes', () => {
       { method: 'POST', url: '/api/v1/admin/payments/withdrawals/:id/approve' },
       { method: 'POST', url: '/api/v1/admin/payments/withdrawals/:id/reject' },
       { method: 'POST', url: '/api/v1/admin/payments/withdrawals/:id/reconcile' },
+      { method: 'GET', url: '/api/v1/admin/kyc/cases' },
+      { method: 'POST', url: '/api/v1/admin/kyc/cases/:id/approve' },
+      { method: 'POST', url: '/api/v1/admin/kyc/cases/:id/reject' },
       { method: 'GET', url: '/api/v1/admin/finance/reconciliation' },
       { method: 'GET', url: '/api/v1/admin/ledger' },
       { method: 'GET', url: '/api/v1/admin/real-money-gate' },

@@ -3,6 +3,7 @@ import { AlertCircle, ArrowDownCircle, ArrowUpCircle, CheckCircle2, CreditCard, 
 import { authApi } from '../../api/auth'
 import { paymentApi, type PaymentDirection, type PaymentEligibility, type PaymentMethod, type PaymentDeposit, type PaymentWithdrawal } from '../../api/payments'
 import { useAuth } from '../../auth/useAuth'
+import { KycPanel } from './KycPanel'
 
 type Props = { onUpdated: () => void }
 
@@ -304,7 +305,7 @@ export function PaymentFlowPanel({ onUpdated }: Props) {
           </div>
           <div className={eligibility.tier === 2 ? 'payment-checklist__row payment-checklist__row--done' : 'payment-checklist__row'}>
             {eligibility.tier === 2 ? <CheckCircle2 size={15} /> : <ShieldCheck size={15} />}
-            <span><strong>Identity verification</strong><small>{eligibility.tier === 2 ? 'Approved' : 'Not connected yet · verification provider is not configured.'}</small></span>
+            <span><strong>Identity verification</strong><small>{eligibility.tier === 2 ? 'Approved' : 'Required before withdrawals. Start the verification below.'}</small></span>
           </div>
           {direction === 'withdrawal' ? (
             <div className={eligibility.twoFactorEnabled ? 'payment-checklist__row payment-checklist__row--done' : 'payment-checklist__row'}>
@@ -315,6 +316,8 @@ export function PaymentFlowPanel({ onUpdated }: Props) {
           ) : null}
         </div>
       ) : null}
+
+      {eligibility && !missingProfile && eligibility.emailVerified ? <KycPanel onChanged={refreshPaymentData} /> : null}
 
       {missingProfile ? (
         <div className="payment-profile-step">
@@ -427,7 +430,7 @@ export function PaymentFlowPanel({ onUpdated }: Props) {
       ) : null}
 
       {eligibility && eligibility.kycStatus !== 'APPROVED' && direction === 'withdrawal' ? (
-        <p className="payment-footnote">KYC provider integration is not yet connected. The interface will not mark an identity as verified locally or bypass the server's withdrawal rules.</p>
+        <p className="payment-footnote">Withdrawals stay locked until your identity is verified. The interface never marks an identity as verified itself; only the verification result recorded on the server counts.</p>
       ) : null}
     </section>
   )

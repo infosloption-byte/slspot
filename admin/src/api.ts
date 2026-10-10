@@ -121,6 +121,9 @@ export const adminApi = {
   approvePaymentWithdrawal: (id: string) => request<PaymentWithdrawalReviewRecord>('/admin/payments/withdrawals/' + encodeURIComponent(id) + '/approve', { method: 'POST' }),
   rejectPaymentWithdrawal: (id: string, reason: string) => request<PaymentWithdrawalReviewRecord>('/admin/payments/withdrawals/' + encodeURIComponent(id) + '/reject', { method: 'POST', body: JSON.stringify({ reason }) }),
   reconcilePaymentWithdrawal: (id: string) => request<{ withdrawal: PaymentWithdrawalRecord; providerStatus: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED' }>('/admin/payments/withdrawals/' + encodeURIComponent(id) + '/reconcile', { method: 'POST' }),
+  kycCases: (params = '') => request<List<KycCaseRecord>>('/admin/kyc/cases' + params),
+  approveKycCase: (id: string) => request<{ approved: boolean }>('/admin/kyc/cases/' + encodeURIComponent(id) + '/approve', { method: 'POST' }),
+  rejectKycCase: (id: string, reason: string) => request<{ rejected: boolean }>('/admin/kyc/cases/' + encodeURIComponent(id) + '/reject', { method: 'POST', body: JSON.stringify({ reason }) }),
   reconciliation: () => request<Reconciliation>('/admin/finance/reconciliation'),
   ledger: () => request<List<LedgerRecord>>('/admin/ledger'),
   realMoneyGate: () => request<RealMoneyGateStatus>('/admin/real-money-gate'),
@@ -205,6 +208,18 @@ export type WalletRecord = { id: string; currency: string; status: string; avail
 export type FundingRecord = { id: string; provider: string; providerReference: string | null; amount: string; currency: string; status: string; failureReason: string | null; requestedAt: string; completedAt: string | null; wallet: { id: string; account: { mode: string; user: { email: string } } } }
 export type PaymentWithdrawalRecord = { id: string; provider: string; status: string; amount: string; currency: string; destination: string | null; needsReview: boolean; failureReason: string | null; requestedAt: string; completedAt: string | null }
 export type PaymentWithdrawalReviewRecord = PaymentWithdrawalRecord & { user: { id: string; email: string; legalName: string | null; countryCode: string | null }; details: unknown }
+export type KycCaseRecord = {
+  id: string
+  status: 'PENDING' | 'IN_REVIEW' | 'APPROVED' | 'REJECTED'
+  provider: string | null
+  providerCaseId: string | null
+  documentType: string | null
+  decisionReason: string | null
+  user: { id: string; email: string; legalName: string | null; countryCode: string | null }
+  submittedAt: string | null
+  resolvedAt: string | null
+  createdAt: string
+}
 export type Reconciliation = { scanned: number; balanced: number; unbalanced: Array<{ id: string; currency: string; referenceType: string | null; referenceId: string | null; description: string | null; createdAt: string; balanced: boolean; debit: string; credit: string }> }
 export type LedgerRecord = { id: string; currency: string; referenceType: string | null; referenceId: string | null; description: string | null; createdAt: string; entries: Array<{ direction: string; amount: string; ledgerAccount: { code: string; name: string } }> }
 export type RealMoneyGateSettings = {
