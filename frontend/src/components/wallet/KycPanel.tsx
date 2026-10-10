@@ -26,27 +26,46 @@ export function KycPanel({ onChanged }: Props) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
-  const load = useCallback(async () => {
-    try {
-      const next = await kycApi.status()
-      setState(next)
-      setError('')
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Could not load verification status.')
-    } finally {
-      setLoading(false)
-    }
+  // Keep the request itself free of React state updates. Effects can start this request
+  // safely, then apply its result from the asynchronous promise callbacks below.
+  const load = useCallback(() => kycApi.status(), [])
+
+  const applyLoadedStatus = useCallback((next: KycStatus) => {
+    setState(next)
+    setError('')
   }, [])
 
-  useEffect(() => { void load() }, [load])
+  const reportLoadError = useCallback((cause: unknown) => {
+    setError(cause instanceof Error ? cause.message : 'Could not load verification status.')
+  }, [])
+
+  useEffect(() => {
+    let active = true
+    void load()
+      .then((next) => {
+        if (active) applyLoadedStatus(next)
+      })
+      .catch((cause: unknown) => {
+        if (active) reportLoadError(cause)
+      })
+      .finally(() => {
+        if (active) setLoading(false)
+      })
+    return () => { active = false }
+  }, [load, applyLoadedStatus, reportLoadError])
+
 
   // While a verification is open, check back so a vendor decision shows up without a manual refresh.
   const open = state?.status === 'PENDING' || state?.status === 'IN_REVIEW'
   useEffect(() => {
     if (!open) return
-    const timer = window.setInterval(() => { void load() }, 15_000)
+    const timer = window.setInterval(() => {
+      void load()
+        .then(applyLoadedStatus)
+        .catch(reportLoadError)
+    }, 15_000)
     return () => window.clearInterval(timer)
-  }, [open, load])
+  }, [open, load, applyLoadedStatus, reportLoadError])
 
   async function run(action: () => Promise<KycStatus>) {
     if (busy) return
