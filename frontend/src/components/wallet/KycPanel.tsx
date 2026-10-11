@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { AlertCircle, BadgeCheck, CheckCircle2, Clock3, ExternalLink, ShieldCheck } from 'lucide-react'
-import { kycApi, type KycDocumentType, type KycSandboxOutcome, type KycStatus } from '../../api/kyc'
+import { kycApi, type KycDocumentType, type KycProvider, type KycSandboxOutcome, type KycStatus, type KycUploadKind } from '../../api/kyc'
+import { prepareKycImage } from '../../api/kycImage'
 
 type Props = { onChanged: () => void }
 
@@ -8,6 +9,22 @@ const DOCUMENT_LABELS: Record<KycDocumentType, string> = {
   passport: 'Passport',
   national_id: 'National ID card',
   driving_licence: 'Driving licence',
+}
+
+const PROVIDER_BLURBS: Record<string, string> = {
+  didit: 'Automatic check on a secure page run by our verification partner. Usually done in a few minutes.',
+  manual: 'Upload photos of your ID and a selfie. Our team reviews them, which can take longer.',
+  sandbox: 'Test mode: you pick the result. No documents are checked.',
+}
+
+function uploadLabel(kind: KycUploadKind, documentType: string | null): { title: string; hint: string } {
+  if (kind === 'ID_FRONT') return { title: documentType === 'passport' ? 'Passport photo page' : 'Front of your ID', hint: 'All four corners visible, text sharp and free of glare.' }
+  if (kind === 'ID_BACK') return { title: 'Back of your ID', hint: 'All four corners visible, text sharp and free of glare.' }
+  return { title: 'Selfie holding your ID', hint: 'Hold the ID next to your face. Your face and the ID must both be clear.' }
+}
+
+function providerLabel(provider: KycProvider): string {
+  return provider.id === 'didit' ? 'Automatic verification' : provider.id === 'manual' ? 'Manual review' : provider.displayName
 }
 
 function isWebUrl(value: string): boolean {
@@ -22,6 +39,8 @@ function isWebUrl(value: string): boolean {
 export function KycPanel({ onChanged }: Props) {
   const [state, setState] = useState<KycStatus | null>(null)
   const [documentType, setDocumentType] = useState<KycDocumentType>('passport')
+  const [providerChoice, setProviderChoice] = useState('')
+  const [busyKind, setBusyKind] = useState<KycUploadKind | null>(null)
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -82,11 +101,27 @@ export function KycPanel({ onChanged }: Props) {
     }
   }
 
+  async function upload(kind: KycUploadKind, file: File) {
+    setBusyKind(kind)
+    try {
+      await run(async () => kycApi.uploadDocument(kind, await prepareKycImage(file)))
+    } finally {
+      setBusyKind(null)
+    }
+  }
+
   if (loading) return <div className="kyc-panel"><div className="dashboard-note">Loading verification status…</div></div>
   if (!state) return error ? <div className="kyc-panel"><div className="form-message form-message--error" role="alert"><AlertCircle size={15} /> {error}</div></div> : null
 
   const current = state.case
   const approved = state.status === 'APPROVED'
+  const providerId = state.providers.some((item) => item.id === providerChoice) ? providerChoice : (state.provider?.id ?? '')
+  // The case itself says how it is being verified once it exists; before that the customer's choice decides the wording.
+  const activeProviderId = current && (state.status === 'PENDING' || state.status === 'IN_REVIEW') ? current.provider : providerId
+  const manualFlow = activeProviderId === 'manual'
+  const requiredKinds = current?.requiredDocuments ?? []
+  const uploadedKinds = new Set((current?.documents ?? []).map((doc) => doc.kind))
+  const allUploaded = requiredKinds.length > 0 && requiredKinds.every((kind) => uploadedKinds.has(kind))
 
   return (
     <div className={approved ? 'kyc-panel kyc-panel--approved' : 'kyc-panel'}>
@@ -94,14 +129,51 @@ export function KycPanel({ onChanged }: Props) {
         <span className="kyc-panel__icon">{approved ? <BadgeCheck size={18} /> : <ShieldCheck size={18} />}</span>
         <div>
           <strong>Identity verification</strong>
-          <small>{approved ? 'Your identity is verified.' : 'Required before you can withdraw. Documents are checked by a verification provider; SL Spot never stores your document images or numbers.'}</small>
+          <small>{approved ? 'Your identity is verified.' : manualFlow
+            ? 'Required before you can withdraw. Your photos are stored encrypted, only our verification team can open them, and they are deleted automatically a limited time after the decision.'
+            : 'Required before you can withdraw. Documents are checked by our verification partner; SL Spot does not keep your document images or numbers.'}</small>
         </div>
         {state.provider?.sandbox ? <span className="payment-method-tag payment-method-tag--sandbox">TEST</span> : null}
       </div>
 
       {state.status === 'PENDING' || state.status === 'IN_REVIEW' ? (
         <div className="kyc-panel__body">
-          <p className="kyc-panel__status"><Clock3 size={14} /> {state.status === 'IN_REVIEW' ? 'Your documents are being reviewed. This usually takes a short while.' : 'Waiting for you to finish the verification steps.'}</p>
+          <p className="kyc-panel__status"><Clock3 size={14} /> {state.status === 'IN_REVIEW'
+            ? (manualFlow ? 'Your documents have been submitted. Our team will review them and notify you of the result.' : 'Your documents are being reviewed. This usually takes a short while.')
+            : (manualFlow ? 'Upload each photo below, then submit them for review.' : 'Waiting for you to finish the verification steps.')}</p>
+          {current?.flow?.kind === 'upload' ? (
+            <>
+              <ul className="kyc-upload">
+                {requiredKinds.map((kind) => {
+                  const done = uploadedKinds.has(kind)
+                  const label = uploadLabel(kind, current.documentType)
+                  return (
+                    <li key={kind} className="kyc-upload__item">
+                      <div><strong>{label.title}</strong><small>{label.hint}</small></div>
+                      <span className={done ? 'kyc-upload__state kyc-upload__state--done' : 'kyc-upload__state'}>{done ? 'Uploaded' : 'Required'}</span>
+                      <label className="btn btn--ghost kyc-upload__button">
+                        {busyKind === kind ? 'Uploading…' : done ? 'Replace' : 'Choose photo'}
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp"
+                          disabled={busy}
+                          onChange={(event) => {
+                            const file = event.target.files?.[0]
+                            event.target.value = ''
+                            if (file) void upload(kind, file)
+                          }}
+                        />
+                      </label>
+                    </li>
+                  )
+                })}
+              </ul>
+              <button type="button" className="btn btn--primary" disabled={busy || !allUploaded} onClick={() => void run(() => kycApi.submit())}>
+                Submit for review
+              </button>
+              <small className="kyc-upload__note">After you submit, the photos can no longer be changed. Photos are resized in your browser and location data is removed before upload.</small>
+            </>
+          ) : null}
           {current?.flow?.kind === 'redirect' && isWebUrl(current.flow.url) ? (
             <a className="btn btn--primary payment-checkout-link" href={current.flow.url} target="_blank" rel="noopener noreferrer">Continue verification <ExternalLink size={14} /></a>
           ) : null}
@@ -136,7 +208,18 @@ export function KycPanel({ onChanged }: Props) {
             <small>Attempt {Math.min(state.attemptsUsed + 1, state.maxAttempts)} of {state.maxAttempts}. Your legal name, date of birth and country come from your profile.</small>
           </label>
           {state.blockedReason ? <p className="kyc-panel__status"><AlertCircle size={14} /> {state.blockedReason}</p> : null}
-          <button type="button" className="btn btn--primary" disabled={busy || !state.canStart} onClick={() => void run(() => kycApi.start(documentType))}>
+          {state.providers.length > 1 ? (
+            <fieldset className="kyc-providers">
+              <legend>How would you like to verify?</legend>
+              {state.providers.map((item) => (
+                <label key={item.id} className={item.id === providerId ? 'kyc-providers__option kyc-providers__option--selected' : 'kyc-providers__option'}>
+                  <input type="radio" name="kyc-provider" value={item.id} checked={item.id === providerId} disabled={busy} onChange={() => setProviderChoice(item.id)} />
+                  <span><strong>{providerLabel(item)}</strong><small>{PROVIDER_BLURBS[item.id] ?? item.displayName}</small></span>
+                </label>
+              ))}
+            </fieldset>
+          ) : null}
+          <button type="button" className="btn btn--primary" disabled={busy || !state.canStart} onClick={() => void run(() => kycApi.start(documentType, providerId || undefined))}>
             {busy ? 'Starting…' : state.status === 'REJECTED' ? 'Try verification again' : 'Start verification'}
           </button>
         </div>

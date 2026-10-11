@@ -122,7 +122,10 @@ export const adminApi = {
   rejectPaymentWithdrawal: (id: string, reason: string) => request<PaymentWithdrawalReviewRecord>('/admin/payments/withdrawals/' + encodeURIComponent(id) + '/reject', { method: 'POST', body: JSON.stringify({ reason }) }),
   reconcilePaymentWithdrawal: (id: string) => request<{ withdrawal: PaymentWithdrawalRecord; providerStatus: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED' }>('/admin/payments/withdrawals/' + encodeURIComponent(id) + '/reconcile', { method: 'POST' }),
   kycCases: (params = '') => request<List<KycCaseRecord>>('/admin/kyc/cases' + params),
-  approveKycCase: (id: string) => request<{ approved: boolean }>('/admin/kyc/cases/' + encodeURIComponent(id) + '/approve', { method: 'POST' }),
+  approveKycCase: (id: string, checklist?: KycChecklist) => request<{ approved: boolean }>('/admin/kyc/cases/' + encodeURIComponent(id) + '/approve', { method: 'POST', body: JSON.stringify(checklist ? { checklist } : {}) }),
+  kycDocuments: (caseId: string) => request<KycDocumentMeta[]>('/admin/kyc/cases/' + encodeURIComponent(caseId) + '/documents'),
+  // Opening an image is recorded in the audit log with the administrator's id.
+  kycDocument: (id: string) => request<{ kind: string; mimeType: string; data: string }>('/admin/kyc/documents/' + encodeURIComponent(id)),
   rejectKycCase: (id: string, reason: string) => request<{ rejected: boolean }>('/admin/kyc/cases/' + encodeURIComponent(id) + '/reject', { method: 'POST', body: JSON.stringify({ reason }) }),
   reconciliation: () => request<Reconciliation>('/admin/finance/reconciliation'),
   ledger: () => request<List<LedgerRecord>>('/admin/ledger'),
@@ -215,11 +218,14 @@ export type KycCaseRecord = {
   providerCaseId: string | null
   documentType: string | null
   decisionReason: string | null
-  user: { id: string; email: string; legalName: string | null; countryCode: string | null }
+  documentCount: number
+  user: { id: string; email: string; legalName: string | null; dateOfBirth: string | null; countryCode: string | null }
   submittedAt: string | null
   resolvedAt: string | null
   createdAt: string
 }
+export type KycChecklist = { nameMatches: boolean; dateOfBirthMatches: boolean; notExpired: boolean; selfieMatches: boolean; noSignsOfTampering: boolean; sanctionsChecked: boolean }
+export type KycDocumentMeta = { id: string; kind: string; mimeType: string; sizeBytes: number; uploadedAt: string }
 export type Reconciliation = { scanned: number; balanced: number; unbalanced: Array<{ id: string; currency: string; referenceType: string | null; referenceId: string | null; description: string | null; createdAt: string; balanced: boolean; debit: string; credit: string }> }
 export type LedgerRecord = { id: string; currency: string; referenceType: string | null; referenceId: string | null; description: string | null; createdAt: string; entries: Array<{ direction: string; amount: string; ledgerAccount: { code: string; name: string } }> }
 export type RealMoneyGateSettings = {

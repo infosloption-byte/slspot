@@ -79,11 +79,40 @@ export function registerAdminRoutes(app: FastifyInstance, options: { authService
       return ok(request, await kyc.listCases({ status, page: positive(request.query.page, 1), pageSize: positive(request.query.pageSize, 25) }))
     })
 
-    app.post<{ Params: { id: string } }>(PREFIX + '/kyc/cases/:id/approve', {
-      schema: { params: { type: 'object', required: ['id'], properties: { id: { type: 'string', pattern: UUID_PATTERN } } } },
+    const idParams = { type: 'object', required: ['id'], properties: { id: { type: 'string', pattern: UUID_PATTERN } } } as const
+    const checkItem = { type: 'boolean' } as const
+
+    // Manual review. Listing is metadata only; opening an image is a separate, audited request.
+    app.get<{ Params: { id: string } }>(PREFIX + '/kyc/cases/:id/documents', { schema: { params: idParams } }, async (request) => {
+      await requireAdmin(request, options.authService, options.adminService)
+      return ok(request, await kyc.listCaseDocuments(request.params.id))
+    })
+
+    app.get<{ Params: { id: string } }>(PREFIX + '/kyc/documents/:id', { schema: { params: idParams } }, async (request, reply) => {
+      const session = await requireAdmin(request, options.authService, options.adminService)
+      const doc = await kyc.readDocument(session.id, request.params.id)
+      void reply.header('cache-control', 'no-store')
+      return ok(request, { kind: doc.kind, mimeType: doc.mimeType, data: doc.data.toString('base64') })
+    })
+
+    app.post<{ Params: { id: string }; Body: { checklist?: Record<string, boolean> } | undefined }>(PREFIX + '/kyc/cases/:id/approve', {
+      schema: {
+        params: idParams,
+        body: {
+          type: 'object',
+          additionalProperties: false,
+          properties: {
+            checklist: {
+              type: 'object',
+              additionalProperties: false,
+              properties: { nameMatches: checkItem, dateOfBirthMatches: checkItem, notExpired: checkItem, selfieMatches: checkItem, noSignsOfTampering: checkItem, sanctionsChecked: checkItem },
+            },
+          },
+        },
+      },
     }, async (request) => {
       const session = await requireAdmin(request, options.authService, options.adminService)
-      await kyc.approveCase(session.id, request.params.id)
+      await kyc.approveCase(session.id, request.params.id, request.body?.checklist)
       return ok(request, { approved: true })
     })
 
