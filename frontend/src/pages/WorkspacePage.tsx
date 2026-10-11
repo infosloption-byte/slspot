@@ -4,6 +4,7 @@ import type { FormEvent } from 'react'
 import { Link } from 'react-router'
 import { Pagination } from '../components/ui/Pagination'
 import { PaymentFlowPanel } from '../components/wallet/PaymentFlowPanel'
+import { VerificationCenter } from '../components/account/VerificationCenter'
 import { Select } from '../components/ui/Select'
 import { ApiState } from '../components/ui/ApiState'
 import { Toast } from '../components/ui/Toast'
@@ -1249,6 +1250,7 @@ function AccountPage() {
   return (
     <div className="workspace-page">
       <PageHeader eyebrow="Account" title="Account settings" description="Manage your profile, password, workspace behavior and notification delivery." action="Back to trading" />
+      <VerificationCenter />
       <div className="account-layout account-layout--wide">
         <section className="dashboard-card panel">
           <div className="dashboard-card__header"><div><span className="eyebrow">Profile</span><h2>Personal details</h2></div><span className="status-pill status-pill--positive">{user?.emailVerifiedAt ? 'VERIFIED' : 'UNVERIFIED'}</span></div>

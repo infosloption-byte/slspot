@@ -729,6 +729,21 @@ export class AuthService {
     const dateOfBirth = input.dateOfBirth === undefined ? undefined : validateDateOfBirth(input.dateOfBirth)
 
     const user = await this.prisma.$transaction(async (tx) => {
+      // Once an identity is verified, the details it was verified against cannot be edited here.
+      if (legalName !== undefined || dateOfBirth !== undefined || countryCode !== undefined) {
+        const [current, verified] = await Promise.all([
+          tx.user.findUnique({ where: { id: userId }, select: { legalName: true, dateOfBirth: true, countryCode: true } }),
+          tx.kycCase.findFirst({ where: { userId, status: 'APPROVED' }, select: { id: true } }),
+        ])
+        if (verified && current) {
+          const sameDate = (a: Date | null | undefined, b: Date | null | undefined) => (a?.getTime() ?? null) === (b?.getTime() ?? null)
+          const changed =
+            (legalName !== undefined && legalName !== current.legalName) ||
+            (dateOfBirth !== undefined && !sameDate(dateOfBirth, current.dateOfBirth)) ||
+            (countryCode !== undefined && countryCode !== current.countryCode)
+          if (changed) throw new AuthError(409, 'PROFILE_LOCKED', 'Your legal name, date of birth and country are locked after identity verification. Contact support to change them.')
+        }
+      }
       const updated = await tx.user.update({
         where: { id: userId },
         data: { displayName, countryCode, timezone, locale, legalName, dateOfBirth },
