@@ -61,7 +61,7 @@ The WebSocket layer should authenticate connections, authorize subscriptions, ap
 
 ### SSRF, webhooks and XSS
 
-- The market-data base URL is environment-controlled, disallows credentials/query fragments, requires HTTPS in production and pins production Twelve Data configuration to `api.twelvedata.com`.
+- The market-data base URL is environment-controlled, disallows credentials/query fragments, requires HTTPS in production and is limited to Binance public endpoints (Twelve Data, Kraken and OKX are no longer supported).
 - No user-controlled outbound URL fetch or file-upload endpoint exists in the current application surface.
 - Webhook verification uses HMAC-SHA256, constant-time comparison and a five-minute timestamp tolerance. Provider-specific webhook consumers must still add durable event-ID idempotency when payment webhooks are implemented.
 - The current React frontend contains no reviewed use of `dangerouslySetInnerHTML` or direct HTML injection APIs in the application code scanned during this hardening pass; React's default escaping remains the rendering boundary.

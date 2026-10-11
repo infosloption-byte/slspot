@@ -1184,7 +1184,7 @@ function AccountPage() {
     }
   }
 
-    const changePassword = async (event: FormEvent) => {
+  const changePassword = async (event: FormEvent) => {
     event.preventDefault()
     setPasswordBusy(true)
     setPasswordError(null)
@@ -1223,7 +1223,7 @@ function AccountPage() {
       <PageHeader eyebrow="Account" title="Account settings" description="Manage identity verification, password, workspace behavior and notification delivery." action="Back to trading" />
       <VerificationCenter />
       <div className="account-layout account-layout--wide">
-                <section className="dashboard-card panel">
+        <section className="dashboard-card panel">
           <div className="dashboard-card__header"><div><span className="eyebrow">Security</span><h2>Change password</h2></div></div>
           <form className="account-form" onSubmit={(event) => void changePassword(event)}>
             <label><span>Current password</span><input type="password" autoComplete="current-password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} required /></label>

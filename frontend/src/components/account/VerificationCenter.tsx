@@ -8,7 +8,7 @@ import { COUNTRY_TIME_ZONES, defaultTimeZoneForCountry, timeZonesForCountry } fr
 import { Select, type SelectOption } from '../ui/Select'
 import { KycPanel } from '../wallet/KycPanel'
 
-type Draft = { legalName: string; dateOfBirth: string; countryCode: string; timezone: string }
+type Draft = { displayName: string; legalName: string; dateOfBirth: string; countryCode: string; timezone: string }
 
 const COUNTRY_OPTIONS: SelectOption[] = [
   { value: '', label: 'Choose your country' },
@@ -24,7 +24,7 @@ export function VerificationCenter() {
   const [eligibility, setEligibility] = useState<PaymentEligibility | null>(null)
   const [loadError, setLoadError] = useState('')
   const [reloadKey, setReloadKey] = useState(0)
-  const [draft, setDraft] = useState<Draft>({ legalName: '', dateOfBirth: '', countryCode: '', timezone: '' })
+  const [draft, setDraft] = useState<Draft>({ displayName: '', legalName: '', dateOfBirth: '', countryCode: '', timezone: '' })
   const [saving, setSaving] = useState(false)
   const [sending, setSending] = useState(false)
   const [error, setError] = useState('')
@@ -39,6 +39,7 @@ export function VerificationCenter() {
         setLoadError('')
         const countryCode = next.profile.countryCode ?? ''
         setDraft({
+          displayName: user?.displayName ?? '',
           legalName: next.profile.legalName ?? '',
           dateOfBirth: next.profile.dateOfBirth ?? '',
           countryCode,
@@ -49,7 +50,7 @@ export function VerificationCenter() {
         if (active) setLoadError(cause instanceof Error ? cause.message : 'Could not load your verification status.')
       })
     return () => { active = false }
-  }, [reloadKey, user?.timezone])
+  }, [reloadKey, user?.timezone, user?.displayName])
 
   // Arriving from the wallet's "Open verification" link should land on this section.
   const loaded = eligibility !== null
@@ -87,6 +88,7 @@ export function VerificationCenter() {
     setSaving(true)
     try {
       await authApi.updateProfile({
+        displayName: draft.displayName.trim() || null,
         legalName: draft.legalName.trim(),
         dateOfBirth: draft.dateOfBirth,
         countryCode: draft.countryCode.trim().toUpperCase(),
@@ -138,6 +140,7 @@ export function VerificationCenter() {
               <div className="verification-step__head"><UserRound size={14} /><strong>2. Identity details</strong></div>
               <small>{locked ? 'Your legal name, date of birth and country are locked after approval. Contact support if any verified detail is incorrect. Time zone can still be adjusted within your country.' : 'Enter your full legal name, date of birth and country accurately. These identity details are checked during KYC, and you must be 18 or older.'}</small>
               <form className="verification-details" onSubmit={(event) => void saveDetails(event)}>
+                <label><span>Display name (optional)</span><input autoComplete="nickname" maxLength={120} placeholder="Shown in support chats" value={draft.displayName} onChange={(event) => setDraft((current) => ({ ...current, displayName: event.target.value }))} disabled={saving} /></label>
                 <label><span>Full legal name</span><input autoComplete="name" maxLength={160} value={draft.legalName} onChange={(event) => setDraft((current) => ({ ...current, legalName: event.target.value }))} disabled={locked || saving} required /></label>
                 <label><span>Date of birth</span><input type="date" value={draft.dateOfBirth} onChange={(event) => setDraft((current) => ({ ...current, dateOfBirth: event.target.value }))} disabled={locked || saving} required /></label>
                 <div className="verification-details__field">
