@@ -731,11 +731,14 @@ export class AuthService {
     const dateOfBirth = input.dateOfBirth === undefined ? undefined : validateDateOfBirth(input.dateOfBirth)
 
     const user = await this.prisma.$transaction(async (tx) => {
-      if (timezone !== undefined) {
-        const currentCountry = countryCode !== undefined
-          ? countryCode
-          : (await tx.user.findUnique({ where: { id: userId }, select: { countryCode: true } }))?.countryCode
-        if (!isTimeZoneForCountry(currentCountry, timezone)) {
+      if (timezone !== undefined || countryCode !== undefined) {
+        const current = await tx.user.findUnique({
+          where: { id: userId },
+          select: { countryCode: true, timezone: true },
+        })
+        const nextCountry = countryCode !== undefined ? countryCode : current?.countryCode
+        const nextTimeZone = timezone !== undefined ? timezone : current?.timezone
+        if (!isTimeZoneForCountry(nextCountry, nextTimeZone)) {
           throw new AuthError(400, 'TIMEZONE_COUNTRY_MISMATCH', 'Choose a time zone associated with your selected country')
         }
       }
