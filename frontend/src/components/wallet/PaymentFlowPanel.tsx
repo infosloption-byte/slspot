@@ -1,13 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
-import { AlertCircle, ArrowDownCircle, ArrowUpCircle, CheckCircle2, CreditCard, ExternalLink, MailCheck, ShieldCheck } from 'lucide-react'
-import { authApi } from '../../api/auth'
+import { Link } from 'react-router'
+import { AlertCircle, ArrowDownCircle, ArrowUpCircle, CheckCircle2, CreditCard, ExternalLink, ShieldCheck } from 'lucide-react'
 import { paymentApi, type PaymentDirection, type PaymentEligibility, type PaymentMethod, type PaymentDeposit, type PaymentWithdrawal } from '../../api/payments'
-import { useAuth } from '../../auth/useAuth'
-import { KycPanel } from './KycPanel'
 
 type Props = { onUpdated: () => void }
 
-type ProfileDraft = { legalName: string; dateOfBirth: string; countryCode: string }
+// Requirement codes the customer resolves on the Account page (Verification section).
+const ACCOUNT_BLOCKERS = ['EMAIL_NOT_VERIFIED', 'PROFILE_INCOMPLETE', 'AGE_NOT_VERIFIED', 'AGE_RESTRICTED', 'KYC_REQUIRED', 'KYC_REQUIRED_FOR_LIMIT']
 
 function formatAmount(value: string, currency = 'USD'): string {
   const amount = Number(value)
@@ -35,7 +34,6 @@ function isWebUrl(value: string): boolean {
 }
 
 export function PaymentFlowPanel({ onUpdated }: Props) {
-  const { user } = useAuth()
   const [direction, setDirection] = useState<PaymentDirection>('deposit')
   const [eligibility, setEligibility] = useState<PaymentEligibility | null>(null)
   const [methods, setMethods] = useState<PaymentMethod[]>([])
@@ -44,9 +42,6 @@ export function PaymentFlowPanel({ onUpdated }: Props) {
   const [loadError, setLoadError] = useState('')
   const [formError, setFormError] = useState('')
   const [notice, setNotice] = useState('')
-  const [profileDraft, setProfileDraft] = useState<ProfileDraft>({ legalName: '', dateOfBirth: '', countryCode: '' })
-  const [profileSaving, setProfileSaving] = useState(false)
-  const [verificationSending, setVerificationSending] = useState(false)
   const [amount, setAmount] = useState('')
   const [details, setDetails] = useState<Record<string, string>>({})
   const [submitting, setSubmitting] = useState(false)
@@ -68,11 +63,6 @@ export function PaymentFlowPanel({ onUpdated }: Props) {
         if (!active) return
         setEligibility(nextEligibility)
         setMethods(nextMethods)
-        setProfileDraft({
-          legalName: nextEligibility.profile.legalName ?? '',
-          dateOfBirth: nextEligibility.profile.dateOfBirth ?? '',
-          countryCode: nextEligibility.profile.countryCode ?? '',
-        })
         setSelectedProvider((current) => nextMethods.some((method) => method.id === current && (direction === 'deposit' || method.eligible)) ? current : (nextMethods.find((method) => direction === 'deposit' || method.eligible)?.id ?? nextMethods[0]?.id ?? ''))
       })
       .catch((error: unknown) => {
@@ -113,55 +103,6 @@ export function PaymentFlowPanel({ onUpdated }: Props) {
     setWithdrawal(null)
     setFormError('')
     setNotice('')
-  }
-
-  async function saveProfile() {
-    setFormError('')
-    setNotice('')
-    if (profileDraft.legalName.trim().length < 2) {
-      setFormError('Enter your full legal name.')
-      return
-    }
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(profileDraft.dateOfBirth)) {
-      setFormError('Enter your date of birth.')
-      return
-    }
-    if (!/^[A-Za-z]{2}$/.test(profileDraft.countryCode.trim())) {
-      setFormError('Enter a two-letter country code, such as LK.')
-      return
-    }
-    setProfileSaving(true)
-    try {
-      await authApi.updateProfile({
-        legalName: profileDraft.legalName.trim(),
-        dateOfBirth: profileDraft.dateOfBirth,
-        countryCode: profileDraft.countryCode.trim().toUpperCase(),
-      })
-      setNotice('Profile saved. Payment eligibility has been refreshed.')
-      refreshPaymentData()
-    } catch (error) {
-      setFormError(error instanceof Error ? error.message : 'Could not save your profile.')
-    } finally {
-      setProfileSaving(false)
-    }
-  }
-
-  async function resendVerification() {
-    if (!user?.email) {
-      setFormError('Your account email could not be read. Open Account settings to review it.')
-      return
-    }
-    setFormError('')
-    setNotice('')
-    setVerificationSending(true)
-    try {
-      await authApi.requestEmailVerification(user.email)
-      setNotice('If your account needs verification, a verification email has been requested.')
-    } catch (error) {
-      setFormError(error instanceof Error ? error.message : 'Could not request a verification email.')
-    } finally {
-      setVerificationSending(false)
-    }
   }
 
   async function submitDeposit() {
@@ -273,7 +214,8 @@ export function PaymentFlowPanel({ onUpdated }: Props) {
     }
   }
 
-  const missingProfile = (eligibility?.missingProfile.length ?? 0) > 0
+  // These blockers are resolved on the Account page; others (limits, cooling-off, 2FA) are explained inline.
+  const needsAccountSteps = blockers.some((blocker) => ACCOUNT_BLOCKERS.includes(blocker.code))
   const canCancelDeposit = deposit?.status === 'PENDING'
 
   return (
@@ -292,42 +234,16 @@ export function PaymentFlowPanel({ onUpdated }: Props) {
 
       {loadError ? <div className="form-message form-message--error" role="alert"><AlertCircle size={15} /> {loadError} <button type="button" className="setting-button" onClick={refreshPaymentData}>Retry</button></div> : null}
 
-      {eligibility ? (
-        <div className="payment-checklist">
-          <div className={eligibility.emailVerified ? 'payment-checklist__row payment-checklist__row--done' : 'payment-checklist__row'}>
-            {eligibility.emailVerified ? <CheckCircle2 size={15} /> : <MailCheck size={15} />}
-            <span><strong>Email verification</strong><small>{eligibility.emailVerified ? 'Verified' : 'Verify your email before depositing.'}</small></span>
-            {!eligibility.emailVerified ? <button type="button" className="setting-button" disabled={verificationSending} onClick={() => void resendVerification()}>{verificationSending ? 'Sending…' : 'Resend email'}</button> : null}
+      {eligibility && blockers.length > 0 ? (
+        <div className="payment-verify-notice" role="status">
+          <ShieldCheck size={16} />
+          <div>
+            <strong>{needsAccountSteps ? 'Verification needed' : 'Requirements not met'}</strong>
+            <small>{needsAccountSteps
+              ? 'Email, personal details and identity verification are managed in your account settings. They are checked before every ' + (direction === 'deposit' ? 'deposit.' : 'withdrawal.')
+              : 'Review the requirements below before continuing.'}</small>
           </div>
-          <div className={missingProfile ? 'payment-checklist__row' : 'payment-checklist__row payment-checklist__row--done'}>
-            {missingProfile ? <AlertCircle size={15} /> : <CheckCircle2 size={15} />}
-            <span><strong>Basic profile</strong><small>{missingProfile ? 'Legal name, date of birth and country are required.' : 'Complete'}</small></span>
-          </div>
-          <div className={eligibility.tier === 2 ? 'payment-checklist__row payment-checklist__row--done' : 'payment-checklist__row'}>
-            {eligibility.tier === 2 ? <CheckCircle2 size={15} /> : <ShieldCheck size={15} />}
-            <span><strong>Identity verification</strong><small>{eligibility.tier === 2 ? 'Approved' : 'Required before withdrawals. Start the verification below.'}</small></span>
-          </div>
-          {direction === 'withdrawal' ? (
-            <div className={eligibility.twoFactorEnabled ? 'payment-checklist__row payment-checklist__row--done' : 'payment-checklist__row'}>
-              {eligibility.twoFactorEnabled ? <CheckCircle2 size={15} /> : <ShieldCheck size={15} />}
-              <span><strong>Two-factor authentication</strong><small>{eligibility.twoFactorEnabled ? 'Enabled' : 'Enable 2FA before withdrawals.'}</small></span>
-              {!eligibility.twoFactorEnabled ? <a className="setting-button" href="/app/security">Open security</a> : null}
-            </div>
-          ) : null}
-        </div>
-      ) : null}
-
-      {eligibility && !missingProfile && eligibility.emailVerified ? <KycPanel onChanged={refreshPaymentData} /> : null}
-
-      {missingProfile ? (
-        <div className="payment-profile-step">
-          <div className="payment-step-heading"><span className="eyebrow">Step 1</span><h3>Complete your profile</h3><p>These details are required by the payment eligibility rules.</p></div>
-          <form className="payment-profile-form" onSubmit={(event) => { event.preventDefault(); void saveProfile() }}>
-            <label><span>Full legal name</span><input autoComplete="name" maxLength={160} value={profileDraft.legalName} onChange={(event) => setProfileDraft((current) => ({ ...current, legalName: event.target.value }))} required /></label>
-            <label><span>Date of birth</span><input type="date" value={profileDraft.dateOfBirth} onChange={(event) => setProfileDraft((current) => ({ ...current, dateOfBirth: event.target.value }))} required /></label>
-            <label><span>Country code</span><input autoCapitalize="characters" maxLength={2} placeholder="LK" value={profileDraft.countryCode} onChange={(event) => setProfileDraft((current) => ({ ...current, countryCode: event.target.value.toUpperCase() }))} required /><small>Use the two-letter ISO country code.</small></label>
-            <button type="submit" className="btn btn--primary" disabled={profileSaving}>{profileSaving ? 'Saving…' : 'Save profile details'}</button>
-          </form>
+          {needsAccountSteps ? <Link className="btn btn--primary" to="/app/account#verification">Open verification</Link> : null}
         </div>
       ) : null}
 
@@ -336,7 +252,7 @@ export function PaymentFlowPanel({ onUpdated }: Props) {
         <button type="button" className={direction === 'withdrawal' ? 'wallet-funding-tab wallet-funding-tab--active' : 'wallet-funding-tab'} onClick={() => changeDirection('withdrawal')}><ArrowUpCircle size={14} /> Withdraw</button>
       </div>
 
-      <div className="payment-step-heading"><span className="eyebrow">Step {missingProfile ? '2' : '1'}</span><h3>{direction === 'deposit' ? 'Choose a deposit method' : 'Choose a withdrawal method'}</h3><p>{direction === 'deposit' ? 'Select an enabled provider and enter the amount.' : 'Withdrawals are restricted to a method previously used for a completed deposit.'}</p></div>
+      <div className="payment-step-heading"><span className="eyebrow">Step 1</span><h3>{direction === 'deposit' ? 'Choose a deposit method' : 'Choose a withdrawal method'}</h3><p>{direction === 'deposit' ? 'Select an enabled provider and enter the amount.' : 'Withdrawals are restricted to a method previously used for a completed deposit.'}</p></div>
 
       {loading ? <div className="dashboard-note">Loading provider methods and eligibility…</div> : null}
       {!loading && !methods.length ? <div className="dashboard-note">No payment methods are enabled for this operation in your current environment. Live payments require a configured provider plus both environment and administrator approval.</div> : null}
@@ -429,9 +345,6 @@ export function PaymentFlowPanel({ onUpdated }: Props) {
         </div>
       ) : null}
 
-      {eligibility && eligibility.kycStatus !== 'APPROVED' && direction === 'withdrawal' ? (
-        <p className="payment-footnote">Withdrawals stay locked until your identity is verified. The interface never marks an identity as verified itself; only the verification result recorded on the server counts.</p>
-      ) : null}
     </section>
   )
 }
