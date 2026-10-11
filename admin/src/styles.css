@@ -78,3 +78,17 @@ h1,h2,p{margin:0}.splash{height:100%;display:grid;place-items:center;gap:10px;co
 .kyc-table .admin-table { min-width:900px; }
 .kyc-decision { display:grid; grid-template-columns:auto minmax(150px,1fr) auto; align-items:center; gap:6px; min-width:420px; }
 @media(max-width:700px){ .kyc-decision { grid-template-columns:1fr 1fr; min-width:0; } .kyc-decision .withdrawal-reason-input { grid-column:1/-1; grid-row:1; } }
+
+.kyc-review { display:grid; gap:14px; }
+.kyc-review__facts { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; margin:0; }
+.kyc-review__facts div { display:grid; gap:2px; }
+.kyc-review__facts dt { color:var(--muted); font-size:12px; }
+.kyc-review__facts dd { margin:0; font-weight:600; }
+.kyc-review__photos { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:12px; }
+.kyc-review__photo { display:grid; align-content:start; gap:8px; margin:0; padding:10px; border:1px solid var(--line-strong); border-radius:10px; }
+.kyc-review__photo figcaption { display:grid; gap:2px; }
+.kyc-review__photo img { width:100%; max-height:420px; object-fit:contain; border-radius:8px; background:#000; }
+.kyc-review__checks { display:grid; gap:8px; margin:0; padding:12px; border:1px solid var(--line-strong); border-radius:10px; }
+.kyc-review__checks legend { padding:0 6px; font-weight:600; }
+.kyc-review__check { display:flex; align-items:center; gap:10px; cursor:pointer; }
+.kyc-review__actions { min-width:0; }

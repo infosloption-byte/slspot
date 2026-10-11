@@ -8,7 +8,7 @@ import {
 import {
   AdminApiError, adminApi, type AssetRecord, type AuditRecord, type Dashboard, type FundingRecord,
   type AnnouncementRecord, type LedgerRecord, type List, type PositionRecord, type Reconciliation, type RiskSummary,
-  type RealMoneyGateStatus, type RealMoneyGateSettings, type SettlementRecord, type SupportTicketDetail, type SupportTicketRecord, type TradeRecord, type UserDetail, type UserRecord, type WalletRecord, type PaymentWithdrawalReviewRecord, type KycCaseRecord,
+  type RealMoneyGateStatus, type RealMoneyGateSettings, type SettlementRecord, type SupportTicketDetail, type SupportTicketRecord, type TradeRecord, type UserDetail, type UserRecord, type WalletRecord, type PaymentWithdrawalReviewRecord, type KycCaseRecord, type KycChecklist, type KycDocumentMeta,
 } from './api'
 
 type Page = 'dashboard' | 'users' | 'kyc' | 'trading' | 'finance' | 'support' | 'announcements' | 'risk' | 'audit' | 'launch-gate'
@@ -429,6 +429,46 @@ function KycPage({ refreshKey }: { refreshKey: number }) {
   const [message, setMessage] = useState('')
   const [busyId, setBusyId] = useState<string | null>(null)
   const [reasons, setReasons] = useState<Record<string, string>>({})
+  // Manual review: the case being examined, its photo list, the photos currently opened, and the checklist.
+  const [reviewing, setReviewing] = useState<KycCaseRecord | null>(null)
+  const [documents, setDocuments] = useState<KycDocumentMeta[]>([])
+  const [shown, setShown] = useState<Record<string, string>>({})
+  const [checks, setChecks] = useState<Partial<KycChecklist>>({})
+
+  async function openReview(row: KycCaseRecord) {
+    setError('')
+    setMessage('')
+    setShown({})
+    setChecks({})
+    setDocuments([])
+    setReviewing(row)
+    try {
+      setDocuments(await adminApi.kycDocuments(row.id))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not load the documents.')
+    }
+  }
+
+  function closeReview() {
+    setReviewing(null)
+    setDocuments([])
+    setShown({})
+    setChecks({})
+  }
+
+  async function showDocument(id: string) {
+    setError('')
+    try {
+      const doc = await adminApi.kycDocument(id)
+      setShown((current) => ({ ...current, [id]: 'data:' + doc.mimeType + ';base64,' + doc.data }))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not open this document.')
+    }
+  }
+
+  function hideDocument(id: string) {
+    setShown((current) => Object.fromEntries(Object.entries(current).filter(([key]) => key !== id)))
+  }
 
   async function load() {
     setError('')
@@ -455,8 +495,9 @@ function KycPage({ refreshKey }: { refreshKey: number }) {
     setError('')
     setMessage('')
     try {
-      if (approve) await adminApi.approveKycCase(row.id)
+      if (approve) await adminApi.approveKycCase(row.id, row.provider === 'manual' ? (checks as KycChecklist) : undefined)
       else await adminApi.rejectKycCase(row.id, reason)
+      if (reviewing?.id === row.id) closeReview()
       setMessage('Case ' + row.id.slice(0, 8) + (approve ? ' approved.' : ' rejected. The customer has been told why and may retry.'))
       await load()
     } catch (err) {
@@ -476,7 +517,7 @@ function KycPage({ refreshKey }: { refreshKey: number }) {
     {error ? <ErrorNotice message={error} onRetry={() => void load()} /> : null}
     {message ? <div className="notice"><CheckCircle2 size={17} className="text-positive" /><span>{message}</span></div> : null}
     <section className="panel kyc-table">
-      <div className="panel-heading"><div><span className="eyebrow">Identity verification</span><h2>{data?.pagination.total.toLocaleString() ?? '—'} cases</h2></div><span className="muted-label">Documents are captured and held by the verification provider</span></div>
+      <div className="panel-heading"><div><span className="eyebrow">Identity verification</span><h2>{data?.pagination.total.toLocaleString() ?? '—'} cases</h2></div><span className="muted-label">Automatic cases are held by the verification provider. Manual cases keep encrypted photos here until they are deleted on schedule.</span></div>
       {data ? <Table><thead><tr><th>Customer</th><th>Document</th><th>Provider</th><th>Status</th><th>Submitted</th><th>Decision</th></tr></thead><tbody>
         {data.items.map((row) => <tr key={row.id}>
           <td><strong>{row.user.legalName ?? row.user.email}</strong><small>{row.user.email} · {row.user.countryCode ?? '—'}</small></td>
@@ -484,13 +525,52 @@ function KycPage({ refreshKey }: { refreshKey: number }) {
           <td>{row.provider ?? '—'}<small>{row.providerCaseId ?? ''}</small></td>
           <td><span className={tagClass(row.status)}>{row.status.replace('_', ' ')}</span>{row.decisionReason ? <small>{row.decisionReason}</small> : null}</td>
           <td>{date(row.submittedAt)}</td>
-          <td>{row.status === 'PENDING' || row.status === 'IN_REVIEW'
+          <td>{row.provider === 'manual' && (row.status === 'PENDING' || row.status === 'IN_REVIEW')
+            ? (row.status === 'IN_REVIEW'
+              ? <button type="button" className="button button--primary button--small" onClick={() => void openReview(row)}>Review documents</button>
+              : <small>Waiting for the customer to upload ({row.documentCount} photos so far)</small>)
+            : row.status === 'PENDING' || row.status === 'IN_REVIEW'
             ? <div className="kyc-decision"><button type="button" className="button button--primary button--small" disabled={busyId !== null} onClick={() => void decide(row, true)}>Approve</button><input className="withdrawal-reason-input" aria-label="Rejection reason" placeholder="Reason to reject" maxLength={255} value={reasons[row.id] ?? ''} onChange={(event) => setReasons((current) => ({ ...current, [row.id]: event.target.value }))} /><button type="button" className="button button--danger button--small" disabled={busyId !== null} onClick={() => void decide(row, false)}>Reject</button></div>
             : <small>{date(row.resolvedAt)}</small>}</td>
         </tr>)}
       </tbody></Table> : <div className="loading-card"><Activity className="spin" size={20} /> Loading verification cases…</div>}
       {data?.items.length === 0 ? <div className="empty-state">No verification cases match this filter.</div> : null}
     </section>
+    {reviewing ? <section className="panel kyc-review">
+      <div className="panel-heading"><div><span className="eyebrow">Manual review</span><h2>{reviewing.user.legalName ?? reviewing.user.email}</h2></div><button type="button" className="button button--small" onClick={closeReview}>Close</button></div>
+      <dl className="kyc-review__facts">
+        <div><dt>Legal name</dt><dd>{reviewing.user.legalName ?? '—'}</dd></div>
+        <div><dt>Date of birth</dt><dd>{reviewing.user.dateOfBirth ?? '—'}</dd></div>
+        <div><dt>Country</dt><dd>{reviewing.user.countryCode ?? '—'}</dd></div>
+        <div><dt>Document type</dt><dd>{reviewing.documentType ? reviewing.documentType.replace('_', ' ') : '—'}</dd></div>
+      </dl>
+      <p className="muted-label">Opening a photo is recorded in the audit log under your name. Close photos when you are done.</p>
+      <div className="kyc-review__photos">
+        {documents.map((doc) => <figure key={doc.id} className="kyc-review__photo">
+          <figcaption><strong>{doc.kind === 'ID_FRONT' ? 'ID front / passport page' : doc.kind === 'ID_BACK' ? 'ID back' : 'Selfie with ID'}</strong><small>{Math.round(doc.sizeBytes / 1024)} KB · {date(doc.uploadedAt)}</small></figcaption>
+          {shown[doc.id]
+            ? <><img src={shown[doc.id]} alt={doc.kind} /><button type="button" className="button button--small" onClick={() => hideDocument(doc.id)}>Hide</button></>
+            : <button type="button" className="button button--small" onClick={() => void showDocument(doc.id)}>Open photo</button>}
+        </figure>)}
+        {documents.length === 0 ? <div className="empty-state">No documents are stored for this case.</div> : null}
+      </div>
+      <fieldset className="kyc-review__checks">
+        <legend>Confirm before approving</legend>
+        {([
+          ['nameMatches', 'The name on the document matches the legal name above'],
+          ['dateOfBirthMatches', 'The date of birth matches'],
+          ['notExpired', 'The document is valid and not expired'],
+          ['selfieMatches', 'The selfie matches the photo on the document'],
+          ['noSignsOfTampering', 'No signs of editing or tampering'],
+          ['sanctionsChecked', 'The name was checked against sanctions lists'],
+        ] as Array<[keyof KycChecklist, string]>).map(([key, label]) => <label key={key} className="kyc-review__check"><input type="checkbox" checked={checks[key] === true} onChange={(event) => setChecks((current) => ({ ...current, [key]: event.target.checked }))} /><span>{label}</span></label>)}
+      </fieldset>
+      <div className="kyc-decision kyc-review__actions">
+        <button type="button" className="button button--primary" disabled={busyId !== null || !(['nameMatches', 'dateOfBirthMatches', 'notExpired', 'selfieMatches', 'noSignsOfTampering', 'sanctionsChecked'] as Array<keyof KycChecklist>).every((key) => checks[key] === true)} onClick={() => void decide(reviewing, true)}>Approve identity</button>
+        <input className="withdrawal-reason-input" aria-label="Rejection reason" placeholder="Reason to reject (shown to the customer)" maxLength={255} value={reasons[reviewing.id] ?? ''} onChange={(event) => setReasons((current) => ({ ...current, [reviewing.id]: event.target.value }))} />
+        <button type="button" className="button button--danger" disabled={busyId !== null} onClick={() => void decide(reviewing, false)}>Reject</button>
+      </div>
+    </section> : null}
   </div>
 }
 

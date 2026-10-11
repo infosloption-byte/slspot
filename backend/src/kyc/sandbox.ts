@@ -16,6 +16,7 @@ export class KycSandboxProvider implements KycProviderAdapter {
   readonly id = 'sandbox'
   readonly displayName = 'Sandbox verification'
   readonly sandbox = true
+  readonly kind = 'hosted' as const
 
   constructor(private readonly secret: string) {
     if (!secret) throw new Error('A KYC sandbox webhook secret is required')

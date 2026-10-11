@@ -688,15 +688,39 @@ model KycCase {
   documentType   String?    @db.VarChar(32)
   decisionReason String?    @db.VarChar(255)
   reviewedByUserId String?  @db.Char(36)
+  /// Hosted verification link of a redirect-style provider (short-lived and secret). Cleared when the case is decided.
+  flowUrl        String?    @db.VarChar(512)
+  /// When uploaded documents of this case are deleted. Set at creation (unfinished upload), cleared while under review, set again at the decision.
+  documentsPurgeAt DateTime? @db.DateTime(3)
   submittedAt    DateTime?  @db.DateTime(3)
   resolvedAt     DateTime?  @db.DateTime(3)
   createdAt      DateTime   @default(now()) @db.DateTime(3)
   updatedAt      DateTime   @updatedAt @db.DateTime(3)
 
   user           User       @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  documents      KycDocument[]
 
   @@index([userId, status])
   @@index([provider, status])
+  @@index([documentsPurgeAt])
+}
+
+/// Metadata of a document uploaded for manual review. The bytes live encrypted on the server's disk under storageKey.
+model KycDocument {
+  id         String   @id @default(uuid()) @db.Char(36)
+  caseId     String   @db.Char(36)
+  userId     String   @db.Char(36)
+  kind       String   @db.VarChar(16)
+  storageKey String   @unique @db.Char(32)
+  mimeType   String   @db.VarChar(32)
+  sizeBytes  Int
+  sha256     String   @db.Char(64)
+  createdAt  DateTime @default(now()) @db.DateTime(3)
+
+  kycCase    KycCase  @relation(fields: [caseId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@unique([caseId, kind])
+  @@index([userId])
 }
 
 model KycEvent {

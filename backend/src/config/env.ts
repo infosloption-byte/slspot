@@ -1,5 +1,7 @@
 import 'dotenv/config'
-import { randomBytes } from 'node:crypto'
+import { createHash, randomBytes } from 'node:crypto'
+import path from 'node:path'
+import { parseEncryptionKey } from '../kyc/documents.js'
 
 const NODE_ENVS = ['development', 'test', 'production'] as const
 const LOG_LEVELS = ['fatal', 'error', 'warn', 'info', 'debug', 'trace'] as const
@@ -303,6 +305,21 @@ const kycSandbox = parseBoolean('KYC_SANDBOX', process.env.KYC_SANDBOX, nodeEnv 
 if (kycSandbox && nodeEnv === 'production') {
   throw new Error('KYC_SANDBOX must not be enabled in production: the sandbox can approve identities without any real check')
 }
+// Manual KYC keeps identity documents on this server, encrypted. Production must say where and with which key:
+// a missing key must never silently fall back to something guessable.
+const kycManualEnabled = parseBoolean('KYC_MANUAL_ENABLED', process.env.KYC_MANUAL_ENABLED, true)
+const kycDocumentKeyRaw = process.env.KYC_DOCUMENT_ENCRYPTION_KEY?.trim()
+const kycDocumentDirRaw = process.env.KYC_DOCUMENT_DIR?.trim()
+if (kycManualEnabled && nodeEnv === 'production' && (!kycDocumentKeyRaw || !kycDocumentDirRaw)) {
+  throw new Error('KYC_DOCUMENT_ENCRYPTION_KEY and KYC_DOCUMENT_DIR are required in production while manual KYC is enabled (set KYC_MANUAL_ENABLED=false to turn it off)')
+}
+const kycDiditApiKey = process.env.KYC_DIDIT_API_KEY?.trim()
+const kycDiditWorkflowId = process.env.KYC_DIDIT_WORKFLOW_ID?.trim()
+const kycDiditWebhookSecret = process.env.KYC_DIDIT_WEBHOOK_SECRET?.trim()
+const kycDiditPartial = [kycDiditApiKey, kycDiditWorkflowId, kycDiditWebhookSecret].filter(Boolean).length
+if (kycDiditPartial > 0 && kycDiditPartial < 3) {
+  throw new Error('Didit needs KYC_DIDIT_API_KEY, KYC_DIDIT_WORKFLOW_ID and KYC_DIDIT_WEBHOOK_SECRET together')
+}
 const paymentsRelaxChecks = parseBoolean('PAYMENTS_RELAX_WITHDRAWAL_CHECKS', process.env.PAYMENTS_RELAX_WITHDRAWAL_CHECKS, false)
 if (paymentsRelaxChecks && nodeEnv === 'production') {
   throw new Error('PAYMENTS_RELAX_WITHDRAWAL_CHECKS must not be enabled in production')
@@ -443,6 +460,28 @@ export const env = {
     maxAttempts: parsePositiveInteger('KYC_MAX_ATTEMPTS', process.env.KYC_MAX_ATTEMPTS, 3, 1, 20),
     // Local testing only: lets an administrator decide their own verification case.
     relaxReviewChecks: parseBoolean('KYC_RELAX_REVIEW_CHECKS', process.env.KYC_RELAX_REVIEW_CHECKS, false) && nodeEnv !== 'production',
+    manual: {
+      enabled: kycManualEnabled,
+      directory: path.resolve(kycDocumentDirRaw || path.join(process.cwd(), 'storage', 'kyc')),
+      // Outside production a fixed development key is used so local files survive restarts. Never used in production.
+      encryptionKey: kycDocumentKeyRaw ? parseEncryptionKey(kycDocumentKeyRaw) : createHash('sha256').update('slspot-development-kyc-key').digest(),
+      maxFileBytes: parsePositiveInteger('KYC_MAX_FILE_BYTES', process.env.KYC_MAX_FILE_BYTES, 8 * 1024 * 1024, 100_000, 8 * 1024 * 1024),
+      // How long documents are kept once a case is decided, and how long an unfinished upload is kept.
+      // Check your AML record-keeping obligations before shortening these: many regimes expect years, not days.
+      retentionApprovedDays: parsePositiveInteger('KYC_RETENTION_APPROVED_DAYS', process.env.KYC_RETENTION_APPROVED_DAYS, 30, 1, 3650),
+      retentionRejectedDays: parsePositiveInteger('KYC_RETENTION_REJECTED_DAYS', process.env.KYC_RETENTION_REJECTED_DAYS, 14, 1, 3650),
+      draftRetentionDays: parsePositiveInteger('KYC_DRAFT_RETENTION_DAYS', process.env.KYC_DRAFT_RETENTION_DAYS, 7, 1, 90),
+    },
+    didit: kycDiditApiKey && kycDiditWorkflowId && kycDiditWebhookSecret
+      ? {
+          apiKey: kycDiditApiKey,
+          workflowId: kycDiditWorkflowId,
+          webhookSecret: kycDiditWebhookSecret,
+          // Optional: where Didit sends the customer afterwards. Falls back to the workflow's own default.
+          callbackUrl: process.env.KYC_DIDIT_CALLBACK_URL?.trim() || undefined,
+          baseUrl: process.env.KYC_DIDIT_BASE_URL?.trim() || undefined,
+        }
+      : null,
   },
   security: {
     csrfSecret,

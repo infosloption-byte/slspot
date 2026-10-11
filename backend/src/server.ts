@@ -11,6 +11,9 @@ import { env } from './config/env.js'
 import { PaymentService } from './payments/service.js'
 import { KycService } from './kyc/service.js'
 import { KycSandboxProvider } from './kyc/sandbox.js'
+import { ManualKycProvider } from './kyc/manual.js'
+import { DiditProvider } from './kyc/didit.js'
+import { EncryptedFileStore } from './kyc/documents.js'
 import { PaymentProviderRegistry } from './payments/registry.js'
 import { createSandboxProviders } from './payments/sandbox.js'
 import { prisma } from './db/prisma.js'
@@ -58,13 +61,29 @@ const paymentService = new PaymentService(
     realWithdrawalsEnabled: env.realMoney.withdrawalsEnabled,
   },
 )
-// A real vendor adapter replaces the sandbox here once credentials exist. Without either, KYC reports itself unavailable.
-const kycProvider = env.kyc.sandbox ? new KycSandboxProvider(env.kyc.sandboxWebhookSecret) : null
+// Verification methods the customer can choose from, in the order they are offered: Didit (automatic), manual
+// document review, and the sandbox (never in production). With none configured, KYC reports itself unavailable.
+const kycProviders = [
+  ...(env.kyc.didit ? [new DiditProvider(env.kyc.didit)] : []),
+  ...(env.kyc.manual.enabled ? [new ManualKycProvider()] : []),
+  ...(env.kyc.sandbox ? [new KycSandboxProvider(env.kyc.sandboxWebhookSecret)] : []),
+]
+const kycDocumentStore = env.kyc.manual.enabled ? new EncryptedFileStore(env.kyc.manual.directory, env.kyc.manual.encryptionKey) : null
 const kycService = new KycService(
   prisma,
-  kycProvider,
+  kycProviders,
   (userId, type, title, body) => apiService.createNotification(userId, type, title, body),
-  { maxAttempts: env.kyc.maxAttempts, relaxReviewChecks: env.kyc.relaxReviewChecks },
+  {
+    maxAttempts: env.kyc.maxAttempts,
+    relaxReviewChecks: env.kyc.relaxReviewChecks,
+    retentionApprovedDays: env.kyc.manual.retentionApprovedDays,
+    retentionRejectedDays: env.kyc.manual.retentionRejectedDays,
+    draftRetentionDays: env.kyc.manual.draftRetentionDays,
+    maxFileBytes: env.kyc.manual.maxFileBytes,
+  },
+  undefined,
+  undefined,
+  kycDocumentStore,
 )
 const app = buildApp({
   checkDatabase,
@@ -88,6 +107,7 @@ const reconciliationWorker = new LedgerReconciliationWorker(
 )
 let shuttingDown = false
 let paymentExpiryTimer: NodeJS.Timeout | undefined
+let kycPurgeTimer: NodeJS.Timeout | undefined
 
 async function shutdown(signal: string) {
   if (shuttingDown) return
@@ -109,6 +129,7 @@ async function shutdown(signal: string) {
     await disconnectRedis()
     reconciliationWorker.stop()
     if (paymentExpiryTimer) clearInterval(paymentExpiryTimer)
+    if (kycPurgeTimer) clearInterval(kycPurgeTimer)
     await tradingService.stop()
     await marketDataService.stop()
     await disconnectDatabase()
@@ -177,6 +198,16 @@ try {
       .catch((error) => app.log.error({ err: error }, 'Retrying unmatched payment webhooks failed'))
   }, 60_000)
   paymentExpiryTimer.unref()
+  if (env.kyc.manual.enabled) {
+    const purge = () => kycService.purgeExpiredDocuments()
+      .then((removed) => {
+        if (removed > 0) app.log.info({ removed }, 'Deleted expired KYC documents')
+      })
+      .catch((error) => app.log.error({ err: error }, 'Deleting expired KYC documents failed'))
+    void purge()
+    kycPurgeTimer = setInterval(() => void purge(), 60 * 60 * 1000)
+    kycPurgeTimer.unref()
+  }
   app.log.info({ providers: paymentRegistry.size, sandbox: env.payments.sandbox }, 'Payments initialised')
 
   reconciliationWorker.start()

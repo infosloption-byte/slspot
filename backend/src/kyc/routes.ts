@@ -37,11 +37,42 @@ export function registerKycRoutes(app: FastifyInstance, options: { authService: 
     return ok(request, await kycService.getStatus(session.id))
   })
 
-  app.post<{ Body: { documentType: string } }>(PREFIX + '/start', {
-    schema: { body: { type: 'object', required: ['documentType'], additionalProperties: false, properties: { documentType: { type: 'string', maxLength: 32 } } } },
+  app.post<{ Body: { documentType: string; provider?: string } }>(PREFIX + '/start', {
+    schema: {
+      body: {
+        type: 'object',
+        required: ['documentType'],
+        additionalProperties: false,
+        properties: { documentType: { type: 'string', maxLength: 32 }, provider: { type: 'string', pattern: '^[a-z0-9_]{1,40}$' } },
+      },
+    },
   }, async (request) => {
     const session = await requireSession(request, authService)
-    return ok(request, await kycService.start(session.id, { documentType: request.body.documentType }))
+    return ok(request, await kycService.start(session.id, { documentType: request.body.documentType, provider: request.body.provider }))
+  })
+
+  // Manual review: photos arrive as base64 inside a JSON body so the usual origin, CSRF and content-type checks apply.
+  // 12 MB leaves room for an 8 MB image after base64 expansion.
+  app.post<{ Body: { kind: string; data: string } }>(PREFIX + '/documents', {
+    bodyLimit: 12 * 1024 * 1024,
+    schema: {
+      body: {
+        type: 'object',
+        required: ['kind', 'data'],
+        additionalProperties: false,
+        properties: { kind: { type: 'string', maxLength: 16 }, data: { type: 'string', minLength: 1, maxLength: 11_500_000 } },
+      },
+    },
+  }, async (request) => {
+    const session = await requireSession(request, authService)
+    const raw = request.body.data.replace(/^data:[^;,]+;base64,/, '')
+    if (!/^[A-Za-z0-9+/]+={0,2}$/.test(raw)) throw new AuthError(400, 'INVALID_FILE', 'The file could not be read')
+    return ok(request, await kycService.uploadDocument(session.id, { kind: request.body.kind, data: Buffer.from(raw, 'base64') }))
+  })
+
+  app.post(PREFIX + '/submit', async (request) => {
+    const session = await requireSession(request, authService)
+    return ok(request, await kycService.submitForReview(session.id))
   })
 
   // Sandbox verdicts: the tester picks an outcome and the server delivers the signed webhook to itself.
@@ -50,11 +81,11 @@ export function registerKycRoutes(app: FastifyInstance, options: { authService: 
       schema: { body: { type: 'object', required: ['outcome'], additionalProperties: false, properties: { outcome: { type: 'string', enum: ['approved', 'rejected', 'review'] } } } },
     }, async (request) => {
       const session = await requireSession(request, authService)
-      const adapter = kycService.provider
+      const adapter = kycService.providers.find((item) => item instanceof KycSandboxProvider)
       if (!(adapter instanceof KycSandboxProvider)) throw new AuthError(400, 'NOT_SANDBOX', 'Sandbox verification is not active')
       const status = await kycService.getStatus(session.id)
       const current = status.case
-      if (!current || (current.status !== 'PENDING' && current.status !== 'IN_REVIEW')) {
+      if (!current || current.provider !== adapter.id || (current.status !== 'PENDING' && current.status !== 'IN_REVIEW')) {
         throw new AuthError(409, 'NO_OPEN_CASE', 'Start a verification first')
       }
       const event = adapter.simulate('sbx_kyc_' + current.id, request.body.outcome)

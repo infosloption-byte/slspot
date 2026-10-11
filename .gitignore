@@ -10,3 +10,6 @@ coverage
 .vscode/*
 !.vscode/extensions.json
 !.vscode/settings.json
+
+# Encrypted KYC documents (local development)
+storage/
