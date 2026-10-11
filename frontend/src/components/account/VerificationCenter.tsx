@@ -80,7 +80,7 @@ export function VerificationCenter() {
         countryCode: draft.countryCode.trim().toUpperCase(),
       })
       await refresh()
-      setNotice('Personal details saved.')
+      setNotice('Identity details saved.')
       reload()
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Could not save your details.')
@@ -121,8 +121,8 @@ export function VerificationCenter() {
           <li className={detailsDone ? 'verification-step verification-step--done' : 'verification-step'}>
             <span className="verification-step__marker">{detailsDone ? <CheckCircle2 size={18} /> : <Circle size={18} />}</span>
             <div className="verification-step__body">
-              <div className="verification-step__head"><UserRound size={14} /><strong>2. Personal details</strong></div>
-              <small>{locked ? 'Locked after identity verification. Contact support if something is wrong.' : 'Enter these exactly as they appear on your ID. You must be 18 or older.'}</small>
+              <div className="verification-step__head"><UserRound size={14} /><strong>2. Identity details</strong></div>
+              <small>{locked ? 'Locked after identity verification. Contact support if something is wrong.' : 'Your legal name, date of birth and country. Enter them exactly as they appear on your ID. You must be 18 or older.'}</small>
               <form className="verification-details" onSubmit={(event) => void saveDetails(event)}>
                 <label><span>Full legal name</span><input autoComplete="name" maxLength={160} value={draft.legalName} onChange={(event) => setDraft((current) => ({ ...current, legalName: event.target.value }))} disabled={locked || saving} required /></label>
                 <label><span>Date of birth</span><input type="date" value={draft.dateOfBirth} onChange={(event) => setDraft((current) => ({ ...current, dateOfBirth: event.target.value }))} disabled={locked || saving} required /></label>
