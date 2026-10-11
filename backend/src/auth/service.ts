@@ -7,6 +7,7 @@ import { publishSessionsRevoked, publishUserSessionsRevoked } from '../realtime/
 import { createOpaqueToken, hashOpaqueToken, hashPassword, verifyPassword } from './crypto.js'
 import { createOtpAuthUri, createRecoveryCodes, decryptTotpSecret, encryptTotpSecret, generateTotpSecret, normalizeRecoveryCode, verifyTotpCode } from './totp.js'
 import { LedgerService } from '../ledger/service.js'
+import { isTimeZoneForCountry } from './countryTimeZones.js'
 import { EmailService } from '../email/service.js'
 import { buildRegistrationPolicyAcceptanceRows, CURRENT_POLICY_VERSIONS } from '../policies/registry.js'
 
@@ -730,6 +731,15 @@ export class AuthService {
     const dateOfBirth = input.dateOfBirth === undefined ? undefined : validateDateOfBirth(input.dateOfBirth)
 
     const user = await this.prisma.$transaction(async (tx) => {
+      if (timezone !== undefined) {
+        const currentCountry = countryCode !== undefined
+          ? countryCode
+          : (await tx.user.findUnique({ where: { id: userId }, select: { countryCode: true } }))?.countryCode
+        if (!isTimeZoneForCountry(currentCountry, timezone)) {
+          throw new AuthError(400, 'TIMEZONE_COUNTRY_MISMATCH', 'Choose a time zone associated with your selected country')
+        }
+      }
+
       // Once an identity is verified, the details it was verified against cannot be edited here.
       if (legalName !== undefined || dateOfBirth !== undefined || countryCode !== undefined) {
         const [current, verified] = await Promise.all([
