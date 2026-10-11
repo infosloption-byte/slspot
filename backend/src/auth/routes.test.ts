@@ -11,7 +11,7 @@ const user = {
   countryCode: 'LK',
   displayName: null,
   timezone: 'Asia/Colombo',
-  locale: 'en-LK',
+  locale: 'en-US',
   emailVerifiedAt: new Date('2026-10-01T00:00:00.000Z'),
   legalName: null,
   dateOfBirth: null,
@@ -198,7 +198,7 @@ describe('authentication routes', () => {
       method: 'PATCH',
       url: '/api/v1/auth/profile',
       headers: { cookie: 'slspot_session=test-session-token', 'x-csrf-token': csrfToken('slspot_session=test-session-token') },
-      payload: { displayName: 'Trader', timezone: 'Asia/Colombo', locale: 'en-LK', countryCode: 'LK' },
+      payload: { displayName: 'Trader', timezone: 'Asia/Colombo', locale: 'en-US', countryCode: 'LK' },
     })
     assert.equal(profile.statusCode, 200)
     assert.equal(profileUserId, 'user-1')

@@ -4,9 +4,16 @@ import { AlertCircle, BadgeCheck, CheckCircle2, Circle, Lock, Mail, UserRound } 
 import { authApi } from '../../api/auth'
 import { paymentApi, type PaymentEligibility } from '../../api/payments'
 import { useAuth } from '../../auth/useAuth'
+import { COUNTRY_TIME_ZONES, defaultTimeZoneForCountry, timeZonesForCountry } from '../../data/countryTimeZones'
+import { Select, type SelectOption } from '../ui/Select'
 import { KycPanel } from '../wallet/KycPanel'
 
-type Draft = { legalName: string; dateOfBirth: string; countryCode: string }
+type Draft = { legalName: string; dateOfBirth: string; countryCode: string; timezone: string }
+
+const COUNTRY_OPTIONS: SelectOption[] = [
+  { value: '', label: 'Choose your country' },
+  ...COUNTRY_TIME_ZONES.map((country) => ({ value: country.code, label: country.name + ' (' + country.code + ')' })),
+]
 
 /**
  * Everything a customer must complete before moving money, in one place: email, personal details, identity.
@@ -17,7 +24,7 @@ export function VerificationCenter() {
   const [eligibility, setEligibility] = useState<PaymentEligibility | null>(null)
   const [loadError, setLoadError] = useState('')
   const [reloadKey, setReloadKey] = useState(0)
-  const [draft, setDraft] = useState<Draft>({ legalName: '', dateOfBirth: '', countryCode: '' })
+  const [draft, setDraft] = useState<Draft>({ legalName: '', dateOfBirth: '', countryCode: '', timezone: '' })
   const [saving, setSaving] = useState(false)
   const [sending, setSending] = useState(false)
   const [error, setError] = useState('')
@@ -30,17 +37,19 @@ export function VerificationCenter() {
         if (!active) return
         setEligibility(next)
         setLoadError('')
+        const countryCode = next.profile.countryCode ?? ''
         setDraft({
           legalName: next.profile.legalName ?? '',
           dateOfBirth: next.profile.dateOfBirth ?? '',
-          countryCode: next.profile.countryCode ?? '',
+          countryCode,
+          timezone: countryCode ? defaultTimeZoneForCountry(countryCode, user?.timezone) : '',
         })
       })
       .catch((cause: unknown) => {
         if (active) setLoadError(cause instanceof Error ? cause.message : 'Could not load your verification status.')
       })
     return () => { active = false }
-  }, [reloadKey])
+  }, [reloadKey, user?.timezone])
 
   // Arriving from the wallet's "Open verification" link should land on this section.
   const loaded = eligibility !== null
@@ -71,16 +80,21 @@ export function VerificationCenter() {
     setNotice('')
     if (draft.legalName.trim().length < 2) return setError('Enter your full legal name as it appears on your ID.')
     if (!/^\d{4}-\d{2}-\d{2}$/.test(draft.dateOfBirth)) return setError('Enter your date of birth.')
-    if (!/^[A-Za-z]{2}$/.test(draft.countryCode.trim())) return setError('Enter a two-letter country code, such as LK.')
+    if (!/^[A-Za-z]{2}$/.test(draft.countryCode.trim())) return setError('Choose your country.')
+    if (!draft.timezone) return setError('Choose your country to set a time zone.')
+    const countryZones = timeZonesForCountry(draft.countryCode)
+    if (countryZones.length && !countryZones.includes(draft.timezone)) return setError('Choose a time zone available in your selected country.')
     setSaving(true)
     try {
       await authApi.updateProfile({
         legalName: draft.legalName.trim(),
         dateOfBirth: draft.dateOfBirth,
         countryCode: draft.countryCode.trim().toUpperCase(),
+        timezone: draft.timezone,
+        locale: 'en-US',
       })
       await refresh()
-      setNotice('Identity details saved.')
+      setNotice(locked ? 'Time zone and language settings saved.' : 'Identity details saved.')
       reload()
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Could not save your details.')
@@ -98,10 +112,10 @@ export function VerificationCenter() {
   return (
     <section className="dashboard-card panel verification-center" id="verification">
       <div className="dashboard-card__header">
-        <div><span className="eyebrow">Verification</span><h2>Verify your account</h2></div>
+        <div><span className="eyebrow">Profile &amp; verification</span><h2>Account identity</h2></div>
         <span className={completed === 3 ? 'status-pill status-pill--positive' : 'status-pill status-pill--pending'}>{eligibility ? completed + ' OF 3 DONE' : 'LOADING'}</span>
       </div>
-      <p className="verification-center__intro">Deposits need a verified email and your personal details. Withdrawals also need identity verification. We check these every time you deposit or withdraw.</p>
+      <p className="verification-center__intro">Manage your account identity in one place. Your legal name, date of birth and country must match your identity document. Time zone options follow your country, and language is fixed to English (United States).</p>
 
       {loadError ? <div className="form-message form-message--error" role="alert"><AlertCircle size={15} /> {loadError} <button type="button" className="setting-button" onClick={reload}>Retry</button></div> : null}
       {error ? <div className="form-message form-message--error" role="alert"><AlertCircle size={15} /> {error}</div> : null}
@@ -122,12 +136,49 @@ export function VerificationCenter() {
             <span className="verification-step__marker">{detailsDone ? <CheckCircle2 size={18} /> : <Circle size={18} />}</span>
             <div className="verification-step__body">
               <div className="verification-step__head"><UserRound size={14} /><strong>2. Identity details</strong></div>
-              <small>{locked ? 'Locked after identity verification. Contact support if something is wrong.' : 'Your legal name, date of birth and country. Enter them exactly as they appear on your ID. You must be 18 or older.'}</small>
+              <small>{locked ? 'Your legal name, date of birth and country are locked after approval. Contact support if any verified detail is incorrect. Time zone can still be adjusted within your country.' : 'Enter your full legal name, date of birth and country accurately. These identity details are checked during KYC, and you must be 18 or older.'}</small>
               <form className="verification-details" onSubmit={(event) => void saveDetails(event)}>
                 <label><span>Full legal name</span><input autoComplete="name" maxLength={160} value={draft.legalName} onChange={(event) => setDraft((current) => ({ ...current, legalName: event.target.value }))} disabled={locked || saving} required /></label>
                 <label><span>Date of birth</span><input type="date" value={draft.dateOfBirth} onChange={(event) => setDraft((current) => ({ ...current, dateOfBirth: event.target.value }))} disabled={locked || saving} required /></label>
-                <label><span>Country code</span><input autoCapitalize="characters" maxLength={2} placeholder="LK" value={draft.countryCode} onChange={(event) => setDraft((current) => ({ ...current, countryCode: event.target.value.toUpperCase() }))} disabled={locked || saving} required /></label>
-                {locked ? <span className="verification-details__lock"><Lock size={14} /> Locked</span> : <button type="submit" className="setting-button setting-button--primary" disabled={saving}>{saving ? 'Saving…' : detailsDone ? 'Update details' : 'Save details'}</button>}
+                <div className="verification-details__field">
+                  {locked || saving ? <>
+                    <span>Country</span>
+                    <input value={COUNTRY_TIME_ZONES.find((country) => country.code === draft.countryCode)?.name ?? draft.countryCode} readOnly />
+                  </> : <Select
+                    value={draft.countryCode}
+                    options={draft.countryCode && !COUNTRY_OPTIONS.some((option) => option.value === draft.countryCode)
+                      ? [{ value: draft.countryCode, label: draft.countryCode + ' (existing code)' }, ...COUNTRY_OPTIONS]
+                      : COUNTRY_OPTIONS}
+                    onChange={(countryCode) => setDraft((current) => ({
+                      ...current,
+                      countryCode,
+                      timezone: countryCode ? defaultTimeZoneForCountry(countryCode, current.timezone) : '',
+                    }))}
+                    className="verification-details__select"
+                    label="Country"
+                  />}
+                </div>
+                <div className="verification-details__field">
+                  {saving ? <>
+                    <span>Time zone</span>
+                    <input value={draft.timezone} readOnly />
+                  </> : timeZonesForCountry(draft.countryCode).length > 1
+                    ? <Select
+                        value={draft.timezone}
+                        options={timeZonesForCountry(draft.countryCode).map((timezone) => ({ value: timezone, label: timezone }))}
+                        onChange={(timezone) => setDraft((current) => ({ ...current, timezone }))}
+                        className="verification-details__select"
+                        label="Time zone"
+                      />
+                    : <>
+                        <span>Time zone</span>
+                        <input value={draft.timezone} readOnly placeholder="Choose a country first" />
+                      </>}
+                  <small>{draft.countryCode ? 'Time zone is restricted to a time zone used in your selected country.' : 'Choose a country to set the time zone.'}</small>
+                </div>
+                <label><span>Language / locale</span><input value="en-US" readOnly /><small>Fixed to English (United States).</small></label>
+                {locked ? <span className="verification-details__lock"><Lock size={14} /> Verified identity fields are locked. Time zone remains adjustable.</span> : null}
+                <button type="submit" className="setting-button setting-button--primary" disabled={saving || !draft.legalName.trim() || !draft.dateOfBirth || !draft.countryCode || !draft.timezone}>{saving ? 'Saving…' : locked ? 'Save regional settings' : detailsDone ? 'Update identity details' : 'Save identity details'}</button>
               </form>
             </div>
           </li>

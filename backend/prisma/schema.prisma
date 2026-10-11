@@ -201,7 +201,7 @@ model User {
   countryCode   String?      @db.Char(2)
   displayName   String?      @db.VarChar(120)
   timezone      String?      @db.VarChar(64)
-  locale        String?      @db.VarChar(35)
+  locale        String?      @default("en-US") @db.VarChar(35)
   legalName     String?      @db.VarChar(160)
   dateOfBirth   DateTime?    @db.Date
   createdAt     DateTime     @default(now()) @db.DateTime(3)

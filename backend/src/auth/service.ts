@@ -202,7 +202,7 @@ export class AuthService {
 
     const result = await this.prisma.$transaction(async (tx) => {
       const user = await tx.user.create({
-        data: { email, passwordHash, countryCode, status: 'PENDING_VERIFICATION', termsAcceptedAt: now, termsVersion },
+        data: { email, passwordHash, countryCode, locale: 'en-US', status: 'PENDING_VERIFICATION', termsAcceptedAt: now, termsVersion },
       })
 
       await this.ensureTradingAccounts(tx, user.id, 'USD')
@@ -724,7 +724,8 @@ export class AuthService {
     const displayName = input.displayName === undefined ? undefined : normalizeOptionalText(input.displayName, 120)
     const countryCode = input.countryCode === undefined ? undefined : validateCountryCode(input.countryCode ?? undefined)
     const timezone = input.timezone === undefined ? undefined : validateTimeZone(input.timezone)
-    const locale = input.locale === undefined ? undefined : validateLocale(input.locale)
+    const requestedLocale = input.locale === undefined ? undefined : validateLocale(input.locale)
+    const locale = requestedLocale === undefined ? undefined : 'en-US'
     const legalName = input.legalName === undefined ? undefined : validateLegalName(input.legalName)
     const dateOfBirth = input.dateOfBirth === undefined ? undefined : validateDateOfBirth(input.dateOfBirth)
 
@@ -1114,7 +1115,7 @@ export class AuthService {
       countryCode: user.countryCode,
       displayName: user.displayName,
       timezone: user.timezone,
-      locale: user.locale,
+      locale: 'en-US',
       emailVerifiedAt: user.emailVerifiedAt,
       legalName: user.legalName ?? null,
       dateOfBirth: user.dateOfBirth ? user.dateOfBirth.toISOString().slice(0, 10) : null,

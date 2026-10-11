@@ -1146,17 +1146,10 @@ type _PreferencesStateKeys = {
   emailSupportUpdates: boolean
 }
 function AccountPage() {
-  const { user, refresh } = useAuth()
   const { compactTradingLayout, priceMovementAlerts, soundEnabled, emailTradeResults, emailWalletUpdates, emailSecurityAlerts, emailAnnouncements, emailSupportUpdates } = usePreferences()
   const preferences = useAuthPreferences()
-  const [displayName, setDisplayName] = useState(user?.displayName ?? '')
-  const [timezone, setTimezone] = useState(user?.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone)
-  const [locale, setLocale] = useState(user?.locale ?? navigator.language)
-  const [profileBusy, setProfileBusy] = useState(false)
   const [passwordBusy, setPasswordBusy] = useState(false)
-  const [profileMessage, setProfileMessage] = useState<string | null>(null)
   const [passwordMessage, setPasswordMessage] = useState<string | null>(null)
-  const [profileError, setProfileError] = useState<string | null>(null)
   const [passwordError, setPasswordError] = useState<string | null>(null)
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
@@ -1191,27 +1184,7 @@ function AccountPage() {
     }
   }
 
-  const saveProfile = async (event: FormEvent) => {
-    event.preventDefault()
-    setProfileBusy(true)
-    setProfileError(null)
-    setProfileMessage(null)
-    try {
-      await authApi.updateProfile({
-        displayName: displayName.trim() || null,
-        timezone: timezone.trim() || null,
-        locale: locale.trim() || null,
-      })
-      await refresh()
-      setProfileMessage('Profile saved.')
-    } catch (error) {
-      setProfileError(error instanceof Error ? error.message : 'Unable to save profile.')
-    } finally {
-      setProfileBusy(false)
-    }
-  }
-
-  const changePassword = async (event: FormEvent) => {
+    const changePassword = async (event: FormEvent) => {
     event.preventDefault()
     setPasswordBusy(true)
     setPasswordError(null)
@@ -1247,27 +1220,10 @@ function AccountPage() {
 
   return (
     <div className="workspace-page">
-      <PageHeader eyebrow="Account" title="Account settings" description="Manage your profile, password, workspace behavior and notification delivery." action="Back to trading" />
+      <PageHeader eyebrow="Account" title="Account settings" description="Manage identity verification, password, workspace behavior and notification delivery." action="Back to trading" />
       <VerificationCenter />
       <div className="account-layout account-layout--wide">
-        <section className="dashboard-card panel">
-          <div className="dashboard-card__header"><div><span className="eyebrow">Profile</span><h2>Display &amp; regional settings</h2></div><span className={user?.emailVerifiedAt ? 'status-pill status-pill--positive' : 'status-pill status-pill--pending'}>{user?.emailVerifiedAt ? 'EMAIL VERIFIED' : 'EMAIL UNVERIFIED'}</span></div>
-          <div className="profile-card"><span className="profile-avatar">{avatarFor(user?.email)}</span><div><strong>{user?.displayName || user?.email || 'Account'}</strong><small>{user?.email}</small></div></div>
-          <form className="account-form" onSubmit={(event) => void saveProfile(event)}>
-            <div className="form-grid">
-              <label><span>Display name</span><input value={displayName} onChange={(event) => setDisplayName(event.target.value)} maxLength={120} placeholder="Your name" /></label>
-              <label><span>Email</span><input value={user?.email ?? ''} readOnly type="email" /></label>
-              <label><span>Timezone</span><input value={timezone} onChange={(event) => setTimezone(event.target.value)} maxLength={64} placeholder="Asia/Colombo" /></label>
-              <label><span>Language / locale</span><input value={locale} onChange={(event) => setLocale(event.target.value)} maxLength={35} placeholder="en-US" /></label>
-            </div>
-            <small className="account-form__hint">Your legal name, date of birth and country are managed under Verification above.</small>
-            {profileError ? <div className="form-message form-message--error" role="alert">{profileError}</div> : null}
-            {profileMessage ? <div className="form-message form-message--success" role="status">{profileMessage}</div> : null}
-            <button type="submit" className="setting-button setting-button--primary" disabled={profileBusy}>{profileBusy ? 'Saving…' : 'Save profile'}</button>
-          </form>
-        </section>
-
-        <section className="dashboard-card panel">
+                <section className="dashboard-card panel">
           <div className="dashboard-card__header"><div><span className="eyebrow">Security</span><h2>Change password</h2></div></div>
           <form className="account-form" onSubmit={(event) => void changePassword(event)}>
             <label><span>Current password</span><input type="password" autoComplete="current-password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} required /></label>
@@ -1468,9 +1424,3 @@ function signedMoney(value: string | null | undefined): string {
 }
 
 
-function avatarFor(email: string | undefined): string {
-  if (!email) return 'SL'
-  const first = email[0]?.toUpperCase() ?? 'S'
-  const second = email.includes('@') ? email[email.indexOf('@') + 1]?.toUpperCase() ?? 'L' : 'L'
-  return first + second
-}
