@@ -1150,7 +1150,6 @@ function AccountPage() {
   const { compactTradingLayout, priceMovementAlerts, soundEnabled, emailTradeResults, emailWalletUpdates, emailSecurityAlerts, emailAnnouncements, emailSupportUpdates } = usePreferences()
   const preferences = useAuthPreferences()
   const [displayName, setDisplayName] = useState(user?.displayName ?? '')
-  const [countryCode, setCountryCode] = useState(user?.countryCode ?? '')
   const [timezone, setTimezone] = useState(user?.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone)
   const [locale, setLocale] = useState(user?.locale ?? navigator.language)
   const [profileBusy, setProfileBusy] = useState(false)
@@ -1200,7 +1199,6 @@ function AccountPage() {
     try {
       await authApi.updateProfile({
         displayName: displayName.trim() || null,
-        countryCode: countryCode.trim().toUpperCase() || null,
         timezone: timezone.trim() || null,
         locale: locale.trim() || null,
       })
@@ -1253,16 +1251,16 @@ function AccountPage() {
       <VerificationCenter />
       <div className="account-layout account-layout--wide">
         <section className="dashboard-card panel">
-          <div className="dashboard-card__header"><div><span className="eyebrow">Profile</span><h2>Personal details</h2></div><span className="status-pill status-pill--positive">{user?.emailVerifiedAt ? 'VERIFIED' : 'UNVERIFIED'}</span></div>
+          <div className="dashboard-card__header"><div><span className="eyebrow">Profile</span><h2>Display &amp; regional settings</h2></div><span className={user?.emailVerifiedAt ? 'status-pill status-pill--positive' : 'status-pill status-pill--pending'}>{user?.emailVerifiedAt ? 'EMAIL VERIFIED' : 'EMAIL UNVERIFIED'}</span></div>
           <div className="profile-card"><span className="profile-avatar">{avatarFor(user?.email)}</span><div><strong>{user?.displayName || user?.email || 'Account'}</strong><small>{user?.email}</small></div></div>
           <form className="account-form" onSubmit={(event) => void saveProfile(event)}>
             <div className="form-grid">
               <label><span>Display name</span><input value={displayName} onChange={(event) => setDisplayName(event.target.value)} maxLength={120} placeholder="Your name" /></label>
               <label><span>Email</span><input value={user?.email ?? ''} readOnly type="email" /></label>
-              <label><span>Country</span><input value={countryCode} onChange={(event) => setCountryCode(event.target.value.toUpperCase())} maxLength={2} placeholder="LK" /></label>
               <label><span>Timezone</span><input value={timezone} onChange={(event) => setTimezone(event.target.value)} maxLength={64} placeholder="Asia/Colombo" /></label>
               <label><span>Language / locale</span><input value={locale} onChange={(event) => setLocale(event.target.value)} maxLength={35} placeholder="en-US" /></label>
             </div>
+            <small className="account-form__hint">Your legal name, date of birth and country are managed under Verification above.</small>
             {profileError ? <div className="form-message form-message--error" role="alert">{profileError}</div> : null}
             {profileMessage ? <div className="form-message form-message--success" role="status">{profileMessage}</div> : null}
             <button type="submit" className="setting-button setting-button--primary" disabled={profileBusy}>{profileBusy ? 'Saving…' : 'Save profile'}</button>

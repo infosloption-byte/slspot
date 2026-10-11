@@ -3962,3 +3962,5 @@ button.toggle { cursor: pointer; appearance: none; }
 .payment-verify-notice small { display:block; margin-top:2px; color:var(--muted); font-size:11px; line-height:1.5; }
 .payment-verify-notice .btn { min-height:36px; padding:0 12px; font-size:12px; white-space:nowrap; text-decoration:none; }
 @media (max-width:620px) { .payment-verify-notice { grid-template-columns:20px minmax(0,1fr); } .payment-verify-notice .btn { grid-column:1 / -1; } }
+
+.account-form__hint { color:var(--muted-2); font-size:11px; line-height:1.5; }
