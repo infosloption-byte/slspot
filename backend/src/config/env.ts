@@ -255,7 +255,14 @@ function parseCorsOrigins(value: string | undefined, nodeEnv: NodeEnv): string[]
     return parsed.origin
   })
 
-  return [...new Set(origins)]
+  // In non-production, both first-party local apps are trusted development clients.
+  // Keep this additive so a local CORS_ORIGIN override for the frontend does not
+  // accidentally break admin write requests, while production stays explicit.
+  const localDevelopmentOrigins = nodeEnv === 'production'
+    ? []
+    : ['http://localhost:5173', 'http://localhost:5174']
+
+  return [...new Set([...origins, ...localDevelopmentOrigins])]
 }
 
 const nodeEnv = parseNodeEnv(process.env.NODE_ENV)

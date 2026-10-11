@@ -11,6 +11,15 @@ test('trusted API origin is accepted for state-changing requests', () => {
   assert.doesNotThrow(() => assertTrustedOrigin(request))
 })
 
+test('admin development origin is accepted for state-changing requests', () => {
+  const request = {
+    method: 'POST',
+    url: '/api/v1/admin/kyc/cases/example/approve',
+    headers: { origin: 'http://localhost:5174' },
+  } as never
+  assert.doesNotThrow(() => assertTrustedOrigin(request))
+})
+
 test('untrusted API origin is rejected', () => {
   const request = {
     method: 'POST',

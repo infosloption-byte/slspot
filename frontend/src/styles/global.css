@@ -3986,3 +3986,41 @@ button.toggle { cursor: pointer; appearance: none; }
   .kyc-upload__item { grid-template-columns: 1fr auto; }
   .kyc-upload__item div { grid-column: 1 / -1; }
 }
+
+
+/* KYC responsive status and upload refinements. */
+.kyc-panel, .kyc-panel__body, .kyc-panel__header { min-width: 0; }
+.kyc-panel__header > div { min-width: 0; }
+.kyc-panel__header small { overflow-wrap: anywhere; }
+.kyc-panel__status--pending {
+  align-items: flex-start;
+  padding: 11px 12px;
+  border: 1px solid rgba(255,194,26,.24);
+  border-radius: var(--radius-md);
+  background: rgba(255,194,26,.07);
+  color: var(--text);
+}
+.kyc-panel__status--pending strong { color: var(--accent); }
+.kyc-panel__status--pending span { min-width: 0; }
+.kyc-panel__status--rejected {
+  align-items: flex-start;
+  padding: 11px 12px;
+  border: 1px solid rgba(255,80,80,.24);
+  border-radius: var(--radius-md);
+  background: rgba(255,80,80,.06);
+}
+.kyc-panel__status--rejected span { min-width: 0; overflow-wrap: anywhere; }
+.kyc-panel__status--rejected strong { display: inline; color: var(--red); }
+.kyc-upload__item { min-width: 0; }
+.kyc-upload__item strong, .kyc-upload__item small { overflow-wrap: anywhere; }
+.kyc-upload__button { max-width: 100%; white-space: nowrap; }
+.kyc-upload__note { font-size: 11px; line-height: 1.5; }
+
+@media (max-width: 520px) {
+  .kyc-panel { padding: 12px; gap: 10px; }
+  .kyc-panel__header { grid-template-columns: 30px minmax(0,1fr); gap: 9px; }
+  .kyc-panel__icon { width: 30px; height: 30px; }
+  .kyc-panel__header > .payment-method-tag { grid-column: 2; justify-self: start; }
+  .kyc-upload__item { gap: 8px; padding: 10px; }
+  .kyc-panel .btn { max-width: 100%; }
+}

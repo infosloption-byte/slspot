@@ -138,10 +138,10 @@ export function KycPanel({ onChanged }: Props) {
 
       {state.status === 'PENDING' || state.status === 'IN_REVIEW' ? (
         <div className="kyc-panel__body">
-          <p className="kyc-panel__status"><Clock3 size={14} /> {state.status === 'IN_REVIEW'
-            ? (manualFlow ? 'Your documents have been submitted. Our team will review them and notify you of the result.' : 'Your documents are being reviewed. This usually takes a short while.')
-            : (manualFlow ? 'Upload each photo below, then submit them for review.' : 'Waiting for you to finish the verification steps.')}</p>
-          {current?.flow?.kind === 'upload' ? (
+          <p className={state.status === 'IN_REVIEW' ? 'kyc-panel__status kyc-panel__status--pending' : 'kyc-panel__status'} role="status"><Clock3 size={14} /> <span>{state.status === 'IN_REVIEW'
+            ? (manualFlow ? <><strong>Approval pending.</strong> Your documents have been submitted. Our team will review them and notify you of the result.</> : 'Your verification is being reviewed. This usually takes a short while.')
+            : (manualFlow ? 'Upload each photo below, then submit them for review.' : 'Waiting for you to finish the verification steps.')}</span></p>
+          {current?.flow?.kind === 'upload' && state.status === 'PENDING' ? (
             <>
               <ul className="kyc-upload">
                 {requiredKinds.map((kind) => {
@@ -192,10 +192,13 @@ export function KycPanel({ onChanged }: Props) {
         </div>
       ) : null}
 
-      {approved ? <p className="kyc-panel__status kyc-panel__status--good"><CheckCircle2 size={14} /> Verified{current?.resolvedAt ? ' on ' + new Date(current.resolvedAt).toLocaleDateString() : ''}.</p> : null}
+      {approved ? <p className="kyc-panel__status kyc-panel__status--good" role="status"><CheckCircle2 size={14} /> <strong>KYC approved.</strong> Your identity is verified{current?.resolvedAt ? ' as of ' + new Date(current.resolvedAt).toLocaleDateString() : ''}.</p> : null}
 
-      {state.status === 'REJECTED' && current?.decisionReason ? (
-        <p className="kyc-panel__status kyc-panel__status--bad"><AlertCircle size={14} /> Last attempt unsuccessful: {current.decisionReason}</p>
+      {state.status === 'REJECTED' ? (
+        <div className="kyc-panel__status kyc-panel__status--bad kyc-panel__status--rejected" role="status">
+          <AlertCircle size={14} />
+          <span><strong>Attempt failed{state.attemptsUsed > 0 ? ' (' + state.attemptsUsed + (state.attemptsUsed === 1 ? ' attempt)' : ' attempts)') : ''}.</strong> {current?.decisionReason ?? 'Your documents could not be verified.'} Please correct the issue and upload new documents to try again.</span>
+        </div>
       ) : null}
 
       {!approved && state.status !== 'PENDING' && state.status !== 'IN_REVIEW' ? (
@@ -220,7 +223,7 @@ export function KycPanel({ onChanged }: Props) {
             </fieldset>
           ) : null}
           <button type="button" className="btn btn--primary" disabled={busy || !state.canStart} onClick={() => void run(() => kycApi.start(documentType, providerId || undefined))}>
-            {busy ? 'Starting…' : state.status === 'REJECTED' ? 'Try verification again' : 'Start verification'}
+            {busy ? 'Starting…' : state.status === 'REJECTED' ? 'Upload new documents' : 'Start verification'}
           </button>
         </div>
       ) : null}

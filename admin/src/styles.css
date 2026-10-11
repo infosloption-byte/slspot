@@ -92,3 +92,41 @@ h1,h2,p{margin:0}.splash{height:100%;display:grid;place-items:center;gap:10px;co
 .kyc-review__checks legend { padding:0 6px; font-weight:600; }
 .kyc-review__check { display:flex; align-items:center; gap:10px; cursor:pointer; }
 .kyc-review__actions { min-width:0; }
+
+
+/* KYC review layout: keep the case details and decision controls usable on narrow screens. */
+.kyc-table { min-width: 0; }
+.kyc-table .panel-heading { align-items: flex-start; flex-wrap: wrap; }
+.kyc-table .panel-heading > div { min-width: 0; }
+.kyc-table .panel-heading .muted-label { max-width: 560px; line-height: 1.5; overflow-wrap: anywhere; }
+.kyc-review { min-width: 0; padding: 0 16px 16px; }
+.kyc-review > .panel-heading { margin: 0 -16px; align-items: flex-start; }
+.kyc-review > .panel-heading > div { min-width: 0; }
+.kyc-review > .panel-heading h2 { overflow-wrap: anywhere; }
+.kyc-review__facts { grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr)); }
+.kyc-review__facts dd { overflow-wrap: anywhere; }
+.kyc-review__photos { grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); min-width: 0; }
+.kyc-review__photo { min-width: 0; }
+.kyc-review__photo figcaption strong, .kyc-review__photo figcaption small { overflow-wrap: anywhere; }
+.kyc-review__photo img { display: block; max-width: 100%; min-width: 0; max-height: min(420px, 60vh); }
+.kyc-review__checks { min-width: 0; }
+.kyc-review__check { align-items: flex-start; min-width: 0; }
+.kyc-review__check input { flex: none; margin-top: 3px; }
+.kyc-review__check span { min-width: 0; overflow-wrap: anywhere; }
+.kyc-review__actions { grid-template-columns: minmax(0, auto) minmax(0, 1fr) minmax(0, auto); }
+.kyc-review__actions > * { min-width: 0; }
+.kyc-review__actions .withdrawal-reason-input { width: 100%; }
+
+@media (max-width: 700px) {
+  .kyc-review { padding: 0 12px 12px; }
+  .kyc-review > .panel-heading { margin: 0 -12px; padding: 14px 12px; }
+  .kyc-review__facts { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .kyc-review__photos { grid-template-columns: minmax(0, 1fr); }
+  .kyc-review__actions { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .kyc-review__actions .withdrawal-reason-input { grid-column: 1; grid-row: auto; }
+  .kyc-review__actions .button { width: 100%; white-space: normal; }
+}
+@media (max-width: 420px) {
+  .kyc-review__facts { grid-template-columns: minmax(0, 1fr); }
+  .kyc-table .panel-heading { padding: 12px; }
+}
