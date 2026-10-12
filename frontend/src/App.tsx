@@ -5,6 +5,7 @@ import { RouteErrorBoundary } from './components/routing/RouteErrorBoundary'
 const AppShell = lazy(() => import('./components/layout/AppShell').then((module) => ({ default: module.AppShell })))
 const ProtectedRoute = lazy(() => import('./components/routing/ProtectedRoute').then((module) => ({ default: module.ProtectedRoute })))
 const AccessPage = lazy(() => import('./pages/AccessPage').then((module) => ({ default: module.AccessPage })))
+const LandingPage = lazy(() => import('./pages/LandingPage').then((module) => ({ default: module.LandingPage })))
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage').then((module) => ({ default: module.NotFoundPage })))
 const TradingPage = lazy(() => import('./pages/TradingPage').then((module) => ({ default: module.TradingPage })))
 const WorkspacePage = lazy(() => import('./pages/WorkspacePage').then((module) => ({ default: module.WorkspacePage })))
@@ -30,7 +31,7 @@ export default function App() {
     <RouteErrorBoundary>
     <Suspense fallback={<RouteLoading />}>
       <Routes>
-        <Route path="/" element={<Navigate to="/app/trading" replace />} />
+        <Route path="/" element={<LandingPage />} />
 
         <Route path="/login" element={<AccessPage />} />
         <Route path="/register" element={<AccessPage />} />

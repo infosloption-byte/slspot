@@ -128,6 +128,24 @@ export function registerAdminRoutes(app: FastifyInstance, options: { authService
     })
   }
 
+  app.get<{ Querystring: { from?: string; to?: string; offsetMinutes?: string } }>(PREFIX + '/finance/earnings', {
+    schema: {
+      querystring: {
+        type: 'object',
+        additionalProperties: false,
+        properties: {
+          from: { type: 'string', pattern: '^\\d{4}-\\d{2}-\\d{2}$' },
+          to: { type: 'string', pattern: '^\\d{4}-\\d{2}-\\d{2}$' },
+          offsetMinutes: { type: 'string', pattern: '^-?\\d{1,4}$' },
+        },
+      },
+    },
+  }, async (request) => {
+    await requireAdmin(request, options.authService, options.adminService)
+    const { from, to, offsetMinutes } = request.query
+    return ok(request, await options.adminService.earningsReport({ from, to, offsetMinutes: offsetMinutes === undefined ? undefined : Number(offsetMinutes) }))
+  })
+
   app.get(PREFIX + '/me', async (request) => {
     const session = await requireAdmin(request, options.authService, options.adminService)
     return ok(request, await options.adminService.getMe(session.id))
