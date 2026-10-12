@@ -738,7 +738,8 @@ export class AuthService {
         })
         const nextCountry = countryCode !== undefined ? countryCode : current?.countryCode
         const nextTimeZone = timezone !== undefined ? timezone : current?.timezone
-        if (!isTimeZoneForCountry(nextCountry, nextTimeZone)) {
+        // A time zone that was never set cannot conflict with the country. Only a real pair is checked.
+        if (nextTimeZone && !isTimeZoneForCountry(nextCountry, nextTimeZone)) {
           throw new AuthError(400, 'TIMEZONE_COUNTRY_MISMATCH', 'Choose a time zone associated with your selected country')
         }
       }
