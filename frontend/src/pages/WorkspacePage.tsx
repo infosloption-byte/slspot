@@ -5,6 +5,7 @@ import { Link } from 'react-router'
 import { Pagination } from '../components/ui/Pagination'
 import { PaymentFlowPanel } from '../components/wallet/PaymentFlowPanel'
 import { VerificationCenter } from '../components/account/VerificationCenter'
+import { TwoFactorSetupModal } from '../components/account/TwoFactorSetupModal'
 import { Select } from '../components/ui/Select'
 import { ApiState } from '../components/ui/ApiState'
 import { Toast } from '../components/ui/Toast'
@@ -979,9 +980,10 @@ function SecurityPage() {
   const { user, logoutAll } = useAuth()
   const [actionError, setActionError] = useState<string | null>(null)
   const [setup, setSetup] = useState<{ secret: string; otpauthUri: string } | null>(null)
-  const [twoFactorCode, setTwoFactorCode] = useState('')
   const [showRecoveryCodes, setShowRecoveryCodes] = useState<string[] | null>(null)
   const [showTwoFactorForm, setShowTwoFactorForm] = useState(false)
+  const [setupBusy, setSetupBusy] = useState(false)
+  const [setupError, setSetupError] = useState<string | null>(null)
 
   const reloadSecurity = async () => {
     await Promise.all([
@@ -1009,25 +1011,32 @@ function SecurityPage() {
     try {
       const result = await authApi.setupTwoFactor()
       setSetup(result)
-      setTwoFactorCode('')
+      setSetupError(null)
       setShowTwoFactorForm(true)
     } catch (error) {
       setActionError(error instanceof Error ? error.message : 'Unable to start two-factor setup')
     }
   }
 
-  const enableTwoFactor = async () => {
-    setActionError(null)
+  const enableTwoFactor = async (code: string) => {
+    setSetupError(null)
+    setSetupBusy(true)
     try {
-      const result = await authApi.enableTwoFactor(twoFactorCode)
+      const result = await authApi.enableTwoFactor(code)
       setShowRecoveryCodes(result.recoveryCodes)
-      setShowTwoFactorForm(false)
-      setSetup(null)
-      setTwoFactorCode('')
       await reloadSecurity()
     } catch (error) {
-      setActionError(error instanceof Error ? error.message : 'Unable to enable two-factor authentication')
+      setSetupError(error instanceof Error ? error.message : 'Unable to enable two-factor authentication')
+    } finally {
+      setSetupBusy(false)
     }
+  }
+
+  const closeTwoFactorSetup = () => {
+    setShowTwoFactorForm(false)
+    setSetup(null)
+    setSetupError(null)
+    setShowRecoveryCodes(null)
   }
 
   const disableTwoFactor = async () => {
@@ -1052,6 +1061,21 @@ function SecurityPage() {
         <span className="status-pill status-pill--positive">{user?.emailVerifiedAt ? 'VERIFIED' : 'UNVERIFIED'}</span>
       </div>
 
+      {setup ? (
+        <TwoFactorSetupModal
+          key={setup.secret}
+          open={showTwoFactorForm}
+          secret={setup.secret}
+          otpauthUri={setup.otpauthUri}
+          recoveryCodes={showRecoveryCodes}
+          busy={setupBusy}
+          error={setupError}
+          onVerify={(code) => void enableTwoFactor(code)}
+          onCancel={closeTwoFactorSetup}
+          onDone={closeTwoFactorSetup}
+        />
+      ) : null}
+
       <div className="settings-grid">
         <section className="dashboard-card panel">
           <div className="dashboard-card__header"><div><span className="eyebrow">Sign-in</span><h2>Authentication</h2></div></div>
@@ -1059,29 +1083,11 @@ function SecurityPage() {
             <div><strong>Two-factor authentication</strong><small>{twoFactor.data?.enabled ? 'Authenticator verification is required after your password.' : 'Protect sign-in with a TOTP authenticator app.'}</small></div>
             {twoFactor.data?.enabled
               ? <button type="button" className="setting-button setting-button--danger" onClick={() => void disableTwoFactor()}>Disable</button>
-              : <button type="button" className="setting-button" onClick={() => void startTwoFactorSetup()}>{showTwoFactorForm ? 'Setup open' : 'Enable'}</button>}
+              : <button type="button" className="setting-button" onClick={() => void startTwoFactorSetup()}>Enable</button>}
           </div>
           <div className="setting-row"><div><strong>Recovery codes</strong><small>{twoFactor.data?.enabled ? (twoFactor.data.recoveryCodesRemaining + ' unused recovery codes remain.') : 'Recovery codes are generated when 2FA is enabled.'}</small></div><span className="status-pill status-pill--pending">{twoFactor.data?.recoveryCodesRemaining ?? 0}</span></div>
           <div className="setting-row"><div><strong>Session cookie</strong><small>Authenticated session is stored in an HttpOnly cookie.</small></div><span className="status-pill status-pill--positive">ACTIVE</span></div>
           <div className="setting-row"><div><strong>Sign out all sessions</strong><small>Invalidates every active browser session and tracked device.</small></div><button type="button" className="setting-button setting-button--danger" onClick={() => void logoutAll()}>Sign out all</button></div>
-
-          {showTwoFactorForm && setup ? (
-            <div className="two-factor-setup">
-              <div className="two-factor-setup__secret"><span>Authenticator secret</span><code>{setup.secret}</code></div>
-              <div className="dashboard-note">Add this secret to your authenticator app, then enter the six-digit code below. Provisioning URI: <code>{setup.otpauthUri}</code></div>
-              <label><span>Verification code</span><input inputMode="numeric" maxLength={6} value={twoFactorCode} onChange={(event) => setTwoFactorCode(event.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="123456" /></label>
-              <div className="security-actions"><button type="button" className="setting-button" disabled={twoFactorCode.length !== 6} onClick={() => void enableTwoFactor()}>Enable 2FA</button><button type="button" className="quiet-button" onClick={() => { setShowTwoFactorForm(false); setSetup(null) }}>Cancel</button></div>
-            </div>
-          ) : null}
-
-          {showRecoveryCodes ? (
-            <div className="two-factor-recovery" role="status">
-              <div className="dashboard-card__header"><div><span className="eyebrow">Save these now</span><h3>Recovery codes</h3></div></div>
-              <p>Each code can be used once when the authenticator is unavailable.</p>
-              <div className="recovery-code-grid">{showRecoveryCodes.map((code) => <code key={code}>{code}</code>)}</div>
-              <button type="button" className="quiet-button" onClick={() => setShowRecoveryCodes(null)}>I saved them</button>
-            </div>
-          ) : null}
 
           {actionError ? <div className="dashboard-note dashboard-note--error" role="alert">{actionError}</div> : null}
         </section>
