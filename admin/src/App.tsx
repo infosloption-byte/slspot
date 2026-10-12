@@ -3,15 +3,16 @@ import type { FormEvent, ReactNode } from 'react'
 import {
   Activity, AlertTriangle, BarChart3, CheckCircle2, ChevronRight, Database, Download,
   KeyRound, LayoutDashboard, LifeBuoy, LogOut, Megaphone, Radio, RefreshCw, Search, ShieldAlert, ShieldCheck, UserRound,
-  Users, WalletCards, XCircle, BadgeCheck,
+  Users, WalletCards, XCircle, BadgeCheck, TrendingUp,
 } from 'lucide-react'
 import {
   AdminApiError, adminApi, type AssetRecord, type AuditRecord, type Dashboard, type FundingRecord,
   type AnnouncementRecord, type LedgerRecord, type List, type PositionRecord, type Reconciliation, type RiskSummary,
   type RealMoneyGateStatus, type RealMoneyGateSettings, type SettlementRecord, type SupportTicketDetail, type SupportTicketRecord, type TradeRecord, type UserDetail, type UserRecord, type WalletRecord, type PaymentWithdrawalReviewRecord, type KycCaseRecord, type KycChecklist, type KycDocumentMeta,
 } from './api'
+import { EarningsPage } from './EarningsPage'
 
-type Page = 'dashboard' | 'users' | 'kyc' | 'trading' | 'finance' | 'support' | 'announcements' | 'risk' | 'audit' | 'launch-gate'
+type Page = 'dashboard' | 'users' | 'kyc' | 'trading' | 'finance' | 'earnings' | 'support' | 'announcements' | 'risk' | 'audit' | 'launch-gate'
 type TradingView = 'trades' | 'positions' | 'settlements' | 'assets'
 type FinanceView = 'wallets' | 'deposits' | 'withdrawals' | 'withdrawal-review' | 'payout-reconciliation' | 'reconciliation' | 'ledger'
 
@@ -21,6 +22,7 @@ const pages: Array<{ id: Page; label: string; icon: typeof LayoutDashboard }> = 
   { id: 'kyc', label: 'KYC', icon: BadgeCheck },
   { id: 'trading', label: 'Trading', icon: BarChart3 },
   { id: 'finance', label: 'Finance', icon: WalletCards },
+  { id: 'earnings', label: 'Earnings', icon: TrendingUp },
   { id: 'launch-gate', label: 'Launch Gate', icon: ShieldCheck },
   { id: 'support', label: 'Support', icon: LifeBuoy },
   { id: 'announcements', label: 'Announcements', icon: Megaphone },
@@ -130,6 +132,7 @@ function AdminShell({ admin, onLogout }: { admin: { id: string; email: string; r
         {page === 'kyc' ? <KycPage refreshKey={refreshKey} /> : null}
         {page === 'trading' ? <TradingPage refreshKey={refreshKey} /> : null}
         {page === 'finance' ? <FinancePage refreshKey={refreshKey} /> : null}
+        {page === 'earnings' ? <EarningsPage refreshKey={refreshKey} /> : null}
         {page === 'launch-gate' ? <LaunchGatePage refreshKey={refreshKey} role={admin.role} /> : null}
         {page === 'support' ? <SupportPage refreshKey={refreshKey} /> : null}
         {page === 'announcements' ? <AnnouncementsPage refreshKey={refreshKey} /> : null}

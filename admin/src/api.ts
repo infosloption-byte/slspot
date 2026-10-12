@@ -127,6 +127,7 @@ export const adminApi = {
   // Opening an image is recorded in the audit log with the administrator's id.
   kycDocument: (id: string) => request<{ kind: string; mimeType: string; data: string }>('/admin/kyc/documents/' + encodeURIComponent(id)),
   rejectKycCase: (id: string, reason: string) => request<{ rejected: boolean }>('/admin/kyc/cases/' + encodeURIComponent(id) + '/reject', { method: 'POST', body: JSON.stringify({ reason }) }),
+  earnings: (params = '') => request<EarningsReport>('/admin/finance/earnings' + params),
   reconciliation: () => request<Reconciliation>('/admin/finance/reconciliation'),
   ledger: () => request<List<LedgerRecord>>('/admin/ledger'),
   realMoneyGate: () => request<RealMoneyGateStatus>('/admin/real-money-gate'),
@@ -246,3 +247,26 @@ export type RealMoneyGateStatus = {
 }
 export type RiskSummary = { limits: { maxOpenPositions: number; maxOpenExposure: string; marketMaxAgeMs: number; feeRate: string }; exposure: { openPositions: number; total: string; byAsset: Array<{ symbol: string; amount: string }> }; monitoring: { pendingOrders: number; rejectedOrders24h: number } }
 export type AuditRecord = { id: string; action: string; entityType: string; entityId: string | null; metadata: unknown; ipAddress: string | null; userAgent: string | null; createdAt: string; actorUser: { id: string; email: string } | null }
+
+type EarningsMoney = { count: number; amount: string }
+export type EarningsDay = {
+  date: string; tradesSettled: number; volume: string; wins: number; losses: number; draws: number; voided: number
+  houseResult: string; feeRevenue: string; earnings: string
+  deposits: EarningsMoney; withdrawals: EarningsMoney; withdrawalsRequested: EarningsMoney; netCashFlow: string
+}
+export type EarningsSnapshot = {
+  pendingWithdrawals: { count: number; amount: string; awaitingReview: number; oldestRequestedAt: string | null }
+  pendingDeposits: EarningsMoney
+  openTrades: { count: number; stake: string; maxPayout: string }
+  customerBalances: { available: string; held: string }
+}
+export type EarningsReport = {
+  currency: 'USD'
+  range: { from: string; to: string; offsetMinutes: number }
+  truncated: boolean
+  totals: Omit<EarningsDay, 'date'> & { houseMargin: string | null; withdrawalsRejected: EarningsMoney }
+  days: EarningsDay[]
+  providers: Array<{ provider: string; deposits: EarningsMoney; withdrawals: EarningsMoney }>
+  snapshot: EarningsSnapshot
+  allTime: { houseResult: string; feeRevenue: string; earnings: string; deposits: string; withdrawals: string; netCashFlow: string }
+}

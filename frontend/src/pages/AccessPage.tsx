@@ -7,6 +7,7 @@ import { authApi } from '../api/auth'
 import { getCurrentPolicies, type CurrentPolicyCatalogue } from '../api/policies'
 import { formatTime } from '../lib/dateTime'
 import { useAuth } from '../auth/useAuth'
+import { AccessAside } from '../components/auth/AccessAside'
 
 const configByPath = {
   '/login': {
@@ -354,7 +355,9 @@ export function AccessPage() {
   const verificationToken = values.token || initialToken
 
   return (
-    <main className="access-page">
+    <main className="access-page access-split">
+      <AccessAside variant={location.pathname === '/register' ? 'register' : location.pathname === '/login' ? 'login' : 'other'} />
+      <div className="access-split__form">
       <section className="access-card panel">
         <div className="access-card__mark"><Icon size={21} /></div>
         <div className="eyebrow">{config.eyebrow}</div>
@@ -511,6 +514,7 @@ export function AccessPage() {
         </div>
         <small>Authentication is managed by the SL Spot backend. The normal authenticated session is stored in an HttpOnly cookie.</small>
       </section>
+      </div>
     </main>
   )
 }

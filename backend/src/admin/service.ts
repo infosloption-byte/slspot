@@ -3,6 +3,7 @@ import { env } from '../config/env.js'
 import { getTradingRules } from '../trading/config.js'
 import { isRealMoneyOperationEnabled, realMoneyOperationBlockReason, type RealMoneyOperation } from '../trading/real-money-gate.js'
 import { EmailService } from '../email/service.js'
+import { loadEarnings } from './earnings.js'
 import { createRealtimeEvent, serializeRealtimeEvent } from '../realtime/events.js'
 import { publishRealtime } from '../realtime/bus.js'
 import { publishUserSessionsRevoked } from '../realtime/session-revocation.js'
@@ -467,6 +468,11 @@ export class AdminService {
       this.prisma.withdrawal.findMany({ where, orderBy: { requestedAt: 'desc' }, skip: p.skip, take: p.pageSize, select: { id: true, provider: true, providerReference: true, destination: true, amount: true, currency: true, status: true, failureReason: true, requestedAt: true, completedAt: true, wallet: { select: { id: true, account: { select: { mode: true, user: { select: { email: true } } } } } } } }),
     ])
     return pageResult(rows.map((row) => ({ ...row, amount: row.amount.toString() })), total, p.page, p.pageSize)
+  }
+
+  /** Platform earnings, deposits and withdrawals for real-money activity. See earnings.ts for the definitions. */
+  async earningsReport(input: { from?: string; to?: string; offsetMinutes?: number }) {
+    return loadEarnings(this.prisma, input)
   }
 
   async reconciliation() {

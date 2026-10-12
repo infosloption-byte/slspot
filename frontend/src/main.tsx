@@ -8,6 +8,7 @@ import { RealtimeProvider } from './realtime/RealtimeProvider'
 import './styles/theme.css'
 import './styles/global.css'
 import './styles/mobile-sidebar.css'
+import './styles/landing.css'
 
 const rootElement = document.getElementById('root')
 

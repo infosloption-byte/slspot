@@ -130,3 +130,17 @@ h1,h2,p{margin:0}.splash{height:100%;display:grid;place-items:center;gap:10px;co
   .kyc-review__facts { grid-template-columns: minmax(0, 1fr); }
   .kyc-table .panel-heading { padding: 12px; }
 }
+
+/* Earnings page */
+.segmented{display:inline-flex;border:1px solid var(--line-strong);border-radius:10px;overflow:hidden;background:var(--panel-2)}
+.seg{border:0;background:transparent;padding:0 13px;height:38px;color:var(--muted);font-size:12px;font-weight:700;white-space:nowrap}
+.seg+.seg{border-left:1px solid var(--line)}
+.seg--active{background:var(--gold);color:#111}
+.earnings-chart{padding:14px;overflow-x:auto}
+.earnings-chart svg{display:block;height:200px}
+.earnings-table{min-width:980px}
+.earnings-table td,.earnings-table th{white-space:nowrap}
+.earnings-table tfoot td{font-weight:800;border-top:1px solid var(--line-strong);background:var(--panel-2)}
+.earnings-table small{color:var(--muted)}
+.earnings-hint{color:var(--muted);font-size:11px;line-height:1.6;padding:2px 4px}
+@media(max-width:560px){.segmented{width:100%;overflow-x:auto}.seg{flex:1}}
