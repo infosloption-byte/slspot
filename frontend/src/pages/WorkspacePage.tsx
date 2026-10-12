@@ -15,7 +15,7 @@ import { tradesApi } from '../api/trades'
 import { walletApi, type WalletTransactionFilters } from '../api/wallet'
 import { supportApi, type SupportCategory } from '../api/support'
 import { useAuth } from '../auth/useAuth'
-import { formatDateTime as formatLocalDateTime } from '../lib/dateTime'
+import { formatDateTime as formatLocalDateTime, formatDateTimeSeconds } from '../lib/dateTime'
 import { useWalletMode } from '../hooks/useWalletMode'
 import { recordNotificationEvent, useNotificationStore, setUnreadCount, decrementUnreadCount } from '../state/notificationStore'
 import { usePortfolioStore } from '../state/portfolioStore'
@@ -243,7 +243,7 @@ function DashboardPage() {
                   </div>
                   <span className={Number(trade.netPnl ?? 0) >= 0 ? 'text-positive' : 'text-negative'}>
                     {signedMoney(trade.netPnl)}
-                    <small>{formatDateTime(trade.closedAt ?? trade.openedAt)}</small>
+                    <small>{formatDateTimeSeconds(trade.closedAt ?? trade.openedAt)}</small>
                   </span>
                 </div>
               ))}
@@ -402,9 +402,9 @@ function PortfolioPage() {
               {(positions.data?.items ?? []).map((position) => (
                 <div className="holding" key={position.id}>
                   <span className="holding__icon">{position.asset.symbol.slice(0, 1)}</span>
-                  <div className="holding__identity"><strong>{position.asset.symbol}</strong><small>{position.direction} · {position.status}</small></div>
+                  <div className="holding__identity"><strong>{position.asset.symbol}</strong><small>{position.direction} · {position.status}</small><small className="trade-time">Opened {formatDateTimeSeconds(position.openedAt)}</small></div>
                   <div className="holding__allocation"><span><b>{formatMoney(position.amount, summaryData?.currency)}</b><small>Entry {formatPrice(Number(position.entryPrice))}</small></span></div>
-                  <span>{position.closedAt ? formatDateTime(position.closedAt) : 'Open'}</span>
+                  <span>{position.closedAt ? 'Closed ' + formatDateTimeSeconds(position.closedAt) : 'Open'}</span>
                 </div>
               ))}
               {positions.data?.items.length === 0 ? <div className="dashboard-note">No positions have been recorded yet.</div> : null}
@@ -852,7 +852,9 @@ function HistoryPage() {
               <div className="data-table__row trade-history-table__row" key={trade.id}>
                 <div>
                   <strong>{trade.position.asset.symbol}</strong>
-                  <small>{trade.id} · {formatDateTime(trade.openedAt)}</small>
+                  <small>{trade.id}</small>
+                  <small className="trade-time">Opened {formatDateTimeSeconds(trade.openedAt)}</small>
+                  <small className="trade-time">{trade.closedAt ? 'Closed ' + formatDateTimeSeconds(trade.closedAt) : 'Not closed yet'}</small>
                 </div>
                 <span className={trade.position.side === 'BUY' ? 'side-label side-label--up' : 'side-label side-label--down'}>
                   {trade.position.side === 'BUY' ? 'UP' : 'DOWN'}

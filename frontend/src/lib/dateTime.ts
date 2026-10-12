@@ -67,6 +67,22 @@ export function formatDateTime(
   }).format(date)
 }
 
+/** Date and time down to the second, for trades (a 5-second trade needs seconds to be told apart). */
+export function formatDateTimeSeconds(
+  value: string | number | Date | null | undefined,
+  options: { timeZone?: string; fallback?: string } = {},
+): string {
+  const fallback = options.fallback ?? '—'
+  if (value === null || value === undefined || value === '') return fallback
+  const date = toDate(value)
+  if (!date) return typeof value === 'string' ? value : fallback
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: 'short',
+    timeStyle: 'medium',
+    timeZone: options.timeZone ?? displayTimeZone,
+  }).format(date)
+}
+
 export function formatTime(value: string | number | Date, options: { timeZone?: string } = {}): string {
   const date = toDate(value)
   if (!date) return ''

@@ -20,7 +20,7 @@ import { EmptyState } from '../ui/EmptyState'
 import { Modal } from '../ui/Modal'
 import { Pagination } from '../ui/Pagination'
 import { ConfirmDialog } from '../ui/ConfirmDialog'
-import { formatDateTime } from '../../lib/dateTime'
+import { formatDateTime, formatDateTimeSeconds } from '../../lib/dateTime'
 
 export type ActivityTab = 'open' | 'history' | 'wallet'
 
@@ -310,6 +310,8 @@ export function BottomPanel({
                     <span>
                       <strong>{trade.symbol}</strong>
                       <small>#{trade.id}</small>
+                      <small className="trade-time">Opened {formatDateTimeSeconds(trade.openedAt)}</small>
+                      <small className="trade-time">Expires {formatDateTimeSeconds(trade.expiresAt)}</small>
                     </span>
                     <span className={trade.direction === 'UP' ? 'side-pill side-pill--up' : 'side-pill side-pill--down'}>
                       {trade.direction}
@@ -493,6 +495,8 @@ export function BottomPanel({
                   <div>
                     <strong>{trade.symbol}</strong>
                     <small>#{trade.id}</small>
+                    <small className="trade-time">Opened {formatDateTimeSeconds(trade.openedAt)}</small>
+                    <small className="trade-time">Closed {formatDateTimeSeconds(trade.closedAt)}</small>
                   </div>
                   <span className={trade.direction === 'UP' ? 'side-label side-label--up' : 'side-label side-label--down'}>
                     {trade.direction}
