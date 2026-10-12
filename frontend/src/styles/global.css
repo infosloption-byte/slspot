@@ -4054,3 +4054,6 @@ button.toggle { cursor: pointer; appearance: none; }
 @media (max-width: 760px) {
   .account-layout--wide { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* Trade timestamps shown under the trade id. */
+.trade-time { display:block; margin-top:2px; color:var(--muted); font-size:11px; font-variant-numeric:tabular-nums; white-space:normal; }
