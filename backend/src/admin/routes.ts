@@ -36,7 +36,12 @@ async function requireAdmin(request: FastifyRequest, authService: AuthServiceLik
 
 function ok<T>(request: FastifyRequest, data: T) { return { success: true as const, data, requestId: request.id } }
 
-export function registerAdminRoutes(app: FastifyInstance, options: { authService: AuthServiceLike; adminService: AdminService; paymentService?: import('../payments/service.js').PaymentService; kycService?: import('../kyc/service.js').KycService; checkDatabase?: () => Promise<boolean>; checkRedis?: () => Promise<boolean> }) {
+function requireRisk(options: { riskService?: import('./risk-service.js').RiskControlService }) {
+  if (!options.riskService) throw Object.assign(new Error('Risk controls are not available'), { statusCode: 503, code: 'RISK_UNAVAILABLE' })
+  return options.riskService
+}
+
+export function registerAdminRoutes(app: FastifyInstance, options: { authService: AuthServiceLike; adminService: AdminService; paymentService?: import('../payments/service.js').PaymentService; kycService?: import('../kyc/service.js').KycService; riskService?: import('./risk-service.js').RiskControlService; checkDatabase?: () => Promise<boolean>; checkRedis?: () => Promise<boolean> }) {
   if (options.paymentService) {
     const payments = options.paymentService
     app.get<{ Querystring: Query }>(PREFIX + '/payments/withdrawals', async (request) => {
@@ -380,6 +385,23 @@ export function registerAdminRoutes(app: FastifyInstance, options: { authService
   app.get(PREFIX + '/risk', async (request) => {
     await requireAdmin(request, options.authService, options.adminService)
     return ok(request, await options.adminService.risk())
+  })
+
+  app.get(PREFIX + '/risk-settings', async (request) => {
+    await requireAdmin(request, options.authService, options.adminService)
+    return ok(request, await requireRisk(options).getSettings())
+  })
+
+  app.put<{ Body: Record<string, unknown> }>(PREFIX + '/risk-settings', {
+    schema: { body: { type: 'object', additionalProperties: true } },
+  }, async (request) => {
+    const session = await requireAdmin(request, options.authService, options.adminService)
+    return ok(request, await requireRisk(options).updateSettings(session.id, request.body))
+  })
+
+  app.get(PREFIX + '/alerts', async (request) => {
+    await requireAdmin(request, options.authService, options.adminService)
+    return ok(request, { alerts: await requireRisk(options).collectAlerts(), checkedAt: new Date().toISOString() })
   })
 
   app.get<{ Querystring: Query }>(PREFIX + '/audit', async (request) => {

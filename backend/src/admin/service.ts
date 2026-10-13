@@ -84,6 +84,13 @@ export class AdminService {
 
   constructor(private readonly prisma: PrismaClient) {}
 
+  private statusHook: ((userId: string, status: AdminStatus) => Promise<void>) | null = null
+
+  /** Called after an administrator changes an account's status (used to schedule or cancel KYC document deletion). */
+  onUserStatusChanged(hook: (userId: string, status: AdminStatus) => Promise<void>): void {
+    this.statusHook = hook
+  }
+
   async getRealMoneyGate() {
     const record = await this.prisma.realMoneyGate.findUnique({ where: { id: 'GLOBAL' } })
     return realMoneyGateStatus(record)
@@ -324,6 +331,7 @@ export class AdminService {
       return updated
     })
     if (status !== 'ACTIVE') await publishUserSessionsRevoked(userId)
+    if (this.statusHook) await this.statusHook(userId, status).catch(() => undefined)
     return user
   }
 

@@ -843,6 +843,22 @@ model RealMoneyGate {
   updatedAt         DateTime @updatedAt @db.DateTime(3)
 }
 
+/// Platform-wide trading limits, payout rates and restricted countries. One row (id GLOBAL). Edited in Admin > Risk limits.
+model RiskSettings {
+  id                      String   @id @default("GLOBAL") @db.VarChar(16)
+  minTradeAmount          Decimal  @default(1) @db.Decimal(30, 8)
+  maxTradeAmount          Decimal  @default(100) @db.Decimal(30, 8)
+  maxUserOpenExposure     Decimal  @default(500) @db.Decimal(30, 8)
+  maxUserOpenPositions    Int      @default(10)
+  maxPlatformOpenProfit   Decimal  @default(2000) @db.Decimal(30, 8)
+  maxAssetOpenProfit      Decimal  @default(1000) @db.Decimal(30, 8)
+  maxDirectionOpenProfit  Decimal  @default(600) @db.Decimal(30, 8)
+  payoutRates             Json?
+  restrictedCountries     Json?
+  alertKycReviewHours     Int      @default(24)
+  updatedAt               DateTime @updatedAt @db.DateTime(3)
+}
+
 model PolicyAcceptance {
   id         String     @id @default(uuid()) @db.Char(36)
   userId     String     @db.Char(36)

@@ -1,3 +1,4 @@
+import { riskLimitsStore } from '../trading/risk.js'
 import { Prisma, type PrismaClient } from '../generated/prisma/client.js'
 import type { LedgerService } from '../ledger/service.js'
 import { PaymentProviderRegistry } from './registry.js'
@@ -189,6 +190,11 @@ export class PaymentService {
 
   // ---------------------------------------------------------------- reads
 
+  /** Countries that cannot make real deposits: the payment configuration plus the admin-managed restricted list. Withdrawals never use the admin list. */
+  private depositBlockedCountries(): string[] {
+    return [...new Set([...this.config.blockedCountries, ...riskLimitsStore.get().restrictedCountries])]
+  }
+
   async getEligibility(userId: string): Promise<Eligibility> {
     const facts = await this.loadFacts(userId)
     const completedDeposits = await this.sumDeposits(userId)
@@ -198,7 +204,7 @@ export class PaymentService {
       emailVerified: facts.emailVerified,
       missingProfile: facts.missingProfile,
       countryCode: facts.user.countryCode,
-      blockedCountries: this.config.blockedCountries,
+      blockedCountries: this.depositBlockedCountries(),
       amount: '0',
       completedDeposits,
       tier1DepositLimit: this.config.tier1DepositLimit,
@@ -298,7 +304,7 @@ export class PaymentService {
       emailVerified: facts.emailVerified,
       missingProfile: facts.missingProfile,
       countryCode: facts.user.countryCode,
-      blockedCountries: this.config.blockedCountries,
+      blockedCountries: this.depositBlockedCountries(),
       amount,
       completedDeposits: await this.sumDeposits(userId),
       tier1DepositLimit: this.config.tier1DepositLimit,

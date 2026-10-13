@@ -1,4 +1,5 @@
 import { env } from '../config/env.js'
+import { payoutRateFor, riskLimitsStore } from './risk.js'
 
 export type TradingRules = {
   enabled: boolean
@@ -9,34 +10,21 @@ export type TradingRules = {
   feeRate: string
 }
 
-const PAYOUT_RATES: Record<string, string> = {
-  'BTC/USD': '0.88',
-  'ETH/USD': '0.86',
-  'SOL/USD': '0.84',
-  'XRP/USD': '0.82',
-  'EUR/USD': '0.80',
-  'GBP/USD': '0.81',
-  'AAPL/USD': '0.78',
-  'TSLA/USD': '0.79',
-  'XAU/USD': '0.83',
-  'NAS100/USD': '0.80',
-}
-
 export const TRADING_RULES = {
-  minAmount: '1.00000000',
-  maxAmount: '100000.00000000',
   durationsSeconds: [
     5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55,
     60, 120, 180, 240, 300,
   ],
 }
 
+/** Per-trade limits and payout rates come from the admin-managed risk settings (see risk.ts), for demo and real trades alike. */
 export function getTradingRules(symbol: string, marketOpen = true): TradingRules {
+  const limits = riskLimitsStore.get()
   return {
     enabled: marketOpen,
-    payoutRate: PAYOUT_RATES[symbol] ?? '0.80',
-    minAmount: TRADING_RULES.minAmount,
-    maxAmount: TRADING_RULES.maxAmount,
+    payoutRate: payoutRateFor(symbol, limits),
+    minAmount: limits.minTradeAmount,
+    maxAmount: limits.maxTradeAmount,
     durationsSeconds: [...TRADING_RULES.durationsSeconds],
     feeRate: env.trading.feeRate,
   }

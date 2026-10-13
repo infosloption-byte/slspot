@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import { KycError, KycService } from './service.js'
 import { KycSandboxProvider } from './sandbox.js'
+import { riskLimitsFromRecord, riskLimitsStore } from '../trading/risk.js'
 import { InvalidKycSignatureError } from './types.js'
 import type { PrismaClient } from '../generated/prisma/client.js'
 
@@ -64,6 +65,20 @@ describe('KycSandboxProvider', () => {
 })
 
 describe('KycService', () => {
+  it('does not start verification for customers in a restricted country', async () => {
+    const { service } = setup({ countryCode: 'US' })
+    const status = await service.getStatus('u1')
+    assert.equal(status.canStart, false)
+    assert.match(status.blockedReason ?? '', /your country/i)
+    await assert.rejects(service.start('u1', { documentType: 'passport' }), (error) => error instanceof KycError && error.code === 'COUNTRY_RESTRICTED')
+    riskLimitsStore.set(riskLimitsFromRecord({ restrictedCountries: [] }))
+    try {
+      assert.equal((await service.getStatus('u1')).canStart, true)
+    } finally {
+      riskLimitsStore.set(riskLimitsFromRecord(null))
+    }
+  })
+
   it('reports why a customer cannot start yet', async () => {
     const { service } = setup({ emailVerifiedAt: null })
     const status = await service.getStatus('u1')

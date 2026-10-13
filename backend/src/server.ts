@@ -5,6 +5,7 @@ import { MarketDataService } from './market/service.js'
 import { TradingService } from './trading/service.js'
 import { AuthService } from './auth/service.js'
 import { AdminService } from './admin/service.js'
+import { RiskControlService } from './admin/risk-service.js'
 import { LedgerService } from './ledger/service.js'
 import { LedgerReconciliationWorker } from './ledger/reconciliation-worker.js'
 import { env } from './config/env.js'
@@ -77,6 +78,7 @@ const kycService = new KycService(
     maxAttempts: env.kyc.maxAttempts,
     relaxReviewChecks: env.kyc.relaxReviewChecks,
     retentionApprovedDays: env.kyc.manual.retentionApprovedDays,
+    retentionAfterDeactivationDays: env.kyc.manual.retentionAfterDeactivationDays,
     retentionRejectedDays: env.kyc.manual.retentionRejectedDays,
     draftRetentionDays: env.kyc.manual.draftRetentionDays,
     maxFileBytes: env.kyc.manual.maxFileBytes,
@@ -85,6 +87,11 @@ const kycService = new KycService(
   undefined,
   kycDocumentStore,
 )
+const riskService = new RiskControlService(prisma, adminService)
+adminService.onUserStatusChanged(async (userId, status) => {
+  if (status === 'DISABLED') await kycService.scheduleDeactivationPurge(userId)
+  else if (status === 'ACTIVE') await kycService.cancelDeactivationPurge(userId)
+})
 const app = buildApp({
   checkDatabase,
   checkRedis,
@@ -98,6 +105,7 @@ const app = buildApp({
   paymentService,
   paymentRegistry,
   kycService,
+  riskService,
 })
 const reconciliationWorker = new LedgerReconciliationWorker(
   prisma,
@@ -108,6 +116,8 @@ const reconciliationWorker = new LedgerReconciliationWorker(
 let shuttingDown = false
 let paymentExpiryTimer: NodeJS.Timeout | undefined
 let kycPurgeTimer: NodeJS.Timeout | undefined
+let riskRefreshTimer: NodeJS.Timeout | undefined
+let alertTimer: NodeJS.Timeout | undefined
 
 async function shutdown(signal: string) {
   if (shuttingDown) return
@@ -130,6 +140,8 @@ async function shutdown(signal: string) {
     reconciliationWorker.stop()
     if (paymentExpiryTimer) clearInterval(paymentExpiryTimer)
     if (kycPurgeTimer) clearInterval(kycPurgeTimer)
+    if (riskRefreshTimer) clearInterval(riskRefreshTimer)
+    if (alertTimer) clearInterval(alertTimer)
     await tradingService.stop()
     await marketDataService.stop()
     await disconnectDatabase()
@@ -158,6 +170,13 @@ try {
   app.log.info('Bootstrapping configured administrators')
   const bootstrappedAdmins = await adminService.bootstrapConfiguredAdmins()
   if (bootstrappedAdmins > 0) app.log.info({ count: bootstrappedAdmins }, 'Configured administrator access bootstrapped')
+
+  // Trading limits, payouts and restricted countries come from the database; keep this process's copy fresh.
+  await riskService.load()
+  riskRefreshTimer = setInterval(() => {
+    riskService.load().catch((error) => app.log.error({ err: error }, 'Refreshing risk settings failed'))
+  }, 30_000)
+  riskRefreshTimer.unref()
 
   try {
     app.log.info({ host: new URL(env.redisUrl).hostname, port: new URL(env.redisUrl).port || 6379 }, 'Connecting to Redis')
@@ -207,6 +226,16 @@ try {
     void purge()
     kycPurgeTimer = setInterval(() => void purge(), 60 * 60 * 1000)
     kycPurgeTimer.unref()
+  }
+  if (env.alerts.intervalMs > 0) {
+    const monitor = () => riskService.runAlertMonitor()
+      .then((sent) => {
+        if (sent > 0) app.log.warn({ sent }, 'New administrator alerts were raised')
+      })
+      .catch((error) => app.log.error({ err: error }, 'Alert monitor failed'))
+    void monitor()
+    alertTimer = setInterval(() => void monitor(), env.alerts.intervalMs)
+    alertTimer.unref()
   }
   app.log.info({ providers: paymentRegistry.size, sandbox: env.payments.sandbox }, 'Payments initialised')
 
