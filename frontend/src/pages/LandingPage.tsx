@@ -18,6 +18,30 @@ const steps = [
   { n: '03', title: 'Verify and go live', text: 'Complete identity verification when you want to use real funds, where available.' },
 ]
 
+const faqs = [
+  { q: 'How does a trade work?', a: 'You pick an asset, a stake and a time, and say whether you expect the price to be higher or lower when the time is up. If you are right you receive your stake plus the payout shown before you trade. If you are wrong you lose the stake. If the price is unchanged, your stake is returned.' },
+  { q: 'Do I need to deposit money?', a: 'No. Every account has a demo balance for practice. Real-money trading needs a verified identity and is not available in every country.' },
+  { q: 'Can I lose more than I stake?', a: 'No. The most you can lose on a trade is the stake you chose. You can, however, lose all of it, so only trade money you can afford to lose.' },
+  { q: 'Is there a fee on trades?', a: 'The payout percentage is shown before you confirm each trade. The difference between that payout and a fair bet is how the platform earns, so the odds are always slightly in the platform’s favour.' },
+  { q: 'How do I withdraw?', a: 'Once your identity is verified you can request a withdrawal. Requests are checked before they are paid, and large ones are reviewed by a person.' },
+]
+
+function WorkedExample() {
+  return (
+    <div className="landing-example" role="group" aria-label="Worked example of one trade">
+      <span className="landing-example__tag">Example · illustrative numbers</span>
+      <dl>
+        <div><dt>Stake</dt><dd>$10.00</dd></div>
+        <div><dt>Payout shown upfront</dt><dd>80%</dd></div>
+        <div className="landing-example__win"><dt>If you are right</dt><dd>+$8.00 profit · $18.00 back</dd></div>
+        <div className="landing-example__lose"><dt>If you are wrong</dt><dd>−$10.00 · stake lost</dd></div>
+        <div><dt>If the price is unchanged</dt><dd>$10.00 returned</dd></div>
+      </dl>
+      <p>With an 80% payout you need to be right on about 56% of trades just to break even. Payouts differ by asset and are shown before you confirm.</p>
+    </div>
+  )
+}
+
 function HeroVisual() {
   return (
     <div className="landing-visual" aria-hidden="true">
@@ -45,6 +69,7 @@ export function LandingPage() {
         <nav aria-label="Sections">
           <a href="#features">Features</a>
           <a href="#how">How it works</a>
+          <a href="#faq">FAQ</a>
           <a href="#safety">Safety</a>
         </nav>
         <div className="landing-nav__cta">
@@ -86,6 +111,24 @@ export function LandingPage() {
           <ol className="landing-steps">
             {steps.map((s) => <li key={s.n}><b>{s.n}</b><h3>{s.title}</h3><p>{s.text}</p></li>)}
           </ol>
+        </section>
+
+        <section id="example" className="landing-section landing-split">
+          <div>
+            <span className="eyebrow">No surprises</span>
+            <h2>See exactly what a trade can win or lose</h2>
+            <p>Before you confirm a trade you see your stake, the payout and the time it settles. The example on this page shows how the numbers work, including the part that is not in your favour.</p>
+          </div>
+          <WorkedExample />
+        </section>
+
+        <section id="faq" className="landing-section">
+          <div className="landing-section__head"><span className="eyebrow">Questions</span><h2>Frequently asked</h2></div>
+          <div className="landing-faq">
+            {faqs.map((item) => (
+              <details key={item.q}><summary>{item.q}</summary><p>{item.a}</p></details>
+            ))}
+          </div>
         </section>
 
         <section id="safety" className="landing-section landing-safety">

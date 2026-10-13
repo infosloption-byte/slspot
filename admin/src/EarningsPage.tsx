@@ -144,6 +144,7 @@ export function EarningsPage({ refreshKey }: { refreshKey: number }) {
             <div><span>Pending deposits</span><strong>{money(report.snapshot.pendingDeposits.amount)} <small>({report.snapshot.pendingDeposits.count})</small></strong></div>
             <div><span>Open trades</span><strong>{report.snapshot.openTrades.count} · stake {money(report.snapshot.openTrades.stake)}</strong></div>
             <div><span>Max payout if all win</span><strong>{money(report.snapshot.openTrades.maxPayout)}</strong></div>
+            <div><span>Required reserve</span><strong>{money(report.reserve.requiredReserve)} <small>= customer funds {money(report.reserve.customerFunds)} + open profit at risk {money(report.reserve.openProfitAtRisk)}</small></strong></div>
             <div><span>Customer balances</span><strong>{money(report.snapshot.customerBalances.available)} <small>+ {money(report.snapshot.customerBalances.held)} held</small></strong></div>
           </div>
         </article>

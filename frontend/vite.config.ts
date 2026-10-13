@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 
 const contentSecurityPolicy =
@@ -24,8 +24,37 @@ const devSecurityHeaders = {
   ),
 } as const
 
-export default defineConfig({
-  plugins: [react()],
+/**
+ * Search-engine tags that need the public address of the site. Set VITE_SITE_URL (for example https://www.example.com)
+ * when building for production. Without it the tags that need an address are left out instead of pointing at a wrong
+ * one, and no sitemap is written. Also writes robots.txt (and sitemap.xml when the address is known).
+ */
+function siteMeta(siteUrl: string): Plugin {
+  const base = siteUrl.replace(/\/+$/, '')
+  return {
+    name: 'slspot-site-meta',
+    transformIndexHtml(html) {
+      return html
+        .split('\n')
+        .filter((line) => base || !line.includes('data-site-url'))
+        .join('\n')
+        .replaceAll('__SITE_URL__', base)
+        .replace(/ data-site-url/g, '')
+    },
+    generateBundle() {
+      const robots = ['User-agent: *', 'Allow: /', 'Disallow: /app/', ...(base ? ['', 'Sitemap: ' + base + '/sitemap.xml'] : [])].join('\n') + '\n'
+      this.emitFile({ type: 'asset', fileName: 'robots.txt', source: robots })
+      if (!base) return
+      const pages = ['/', '/policies/terms', '/policies/privacy', '/policies/trading-rules', '/policies/aml-kyc', '/policies/cookies']
+      const xml = '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n' +
+        pages.map((page) => '  <url><loc>' + base + page + '</loc></url>').join('\n') + '\n</urlset>\n'
+      this.emitFile({ type: 'asset', fileName: 'sitemap.xml', source: xml })
+    },
+  }
+}
+
+export default defineConfig(({ mode }) => ({
+  plugins: [react(), siteMeta(loadEnv(mode, process.cwd(), 'VITE_').VITE_SITE_URL ?? '')],
   server: {
     strictPort: true,
     port: 5173,
@@ -45,4 +74,4 @@ export default defineConfig({
   preview: {
     headers: securityHeaders,
   },
-})
+}))

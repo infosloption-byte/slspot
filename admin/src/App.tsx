@@ -3,7 +3,7 @@ import type { FormEvent, ReactNode } from 'react'
 import {
   Activity, AlertTriangle, BarChart3, CheckCircle2, ChevronRight, Database, Download,
   KeyRound, LayoutDashboard, LifeBuoy, LogOut, Megaphone, Radio, RefreshCw, Search, ShieldAlert, ShieldCheck, UserRound,
-  Users, WalletCards, XCircle, BadgeCheck, TrendingUp,
+  Users, WalletCards, XCircle, BadgeCheck, TrendingUp, SlidersHorizontal,
 } from 'lucide-react'
 import {
   AdminApiError, adminApi, type AssetRecord, type AuditRecord, type Dashboard, type FundingRecord,
@@ -11,8 +11,9 @@ import {
   type RealMoneyGateStatus, type RealMoneyGateSettings, type SettlementRecord, type SupportTicketDetail, type SupportTicketRecord, type TradeRecord, type UserDetail, type UserRecord, type WalletRecord, type PaymentWithdrawalReviewRecord, type KycCaseRecord, type KycChecklist, type KycDocumentMeta,
 } from './api'
 import { EarningsPage } from './EarningsPage'
+import { AlertsBanner, RiskLimitsPage } from './RiskLimitsPage'
 
-type Page = 'dashboard' | 'users' | 'kyc' | 'trading' | 'finance' | 'earnings' | 'support' | 'announcements' | 'risk' | 'audit' | 'launch-gate'
+type Page = 'dashboard' | 'users' | 'kyc' | 'trading' | 'finance' | 'earnings' | 'support' | 'announcements' | 'risk' | 'risk-limits' | 'audit' | 'launch-gate'
 type TradingView = 'trades' | 'positions' | 'settlements' | 'assets'
 type FinanceView = 'wallets' | 'deposits' | 'withdrawals' | 'withdrawal-review' | 'payout-reconciliation' | 'reconciliation' | 'ledger'
 
@@ -27,6 +28,7 @@ const pages: Array<{ id: Page; label: string; icon: typeof LayoutDashboard }> = 
   { id: 'support', label: 'Support', icon: LifeBuoy },
   { id: 'announcements', label: 'Announcements', icon: Megaphone },
   { id: 'risk', label: 'Risk', icon: ShieldAlert },
+  { id: 'risk-limits', label: 'Risk limits', icon: SlidersHorizontal },
   { id: 'audit', label: 'Audit', icon: Activity },
 ]
 
@@ -137,6 +139,7 @@ function AdminShell({ admin, onLogout }: { admin: { id: string; email: string; r
         {page === 'support' ? <SupportPage refreshKey={refreshKey} /> : null}
         {page === 'announcements' ? <AnnouncementsPage refreshKey={refreshKey} /> : null}
         {page === 'risk' ? <RiskPage refreshKey={refreshKey} /> : null}
+        {page === 'risk-limits' ? <RiskLimitsPage refreshKey={refreshKey} role={admin.role} /> : null}
         {page === 'audit' ? <AuditPage refreshKey={refreshKey} /> : null}
       </main>
     </section>
@@ -149,6 +152,7 @@ function DashboardPage({ refreshKey }: { refreshKey: number }) {
   async function load() { setError(''); try { setData(await adminApi.dashboard()) } catch (err) { setError(err instanceof Error ? err.message : 'Could not load dashboard') } }
   useEffect(() => { void load() }, [refreshKey])
   return <div className="page">
+    <AlertsBanner refreshKey={refreshKey} />
     {error ? <ErrorNotice message={error} onRetry={() => void load()} /> : null}
     {data ? <><section className="metrics-grid">
       <Metric label="Users" value={data.metrics.users.toLocaleString()} detail={data.metrics.activeUsers.toLocaleString() + ' active'} />
