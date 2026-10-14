@@ -144,3 +144,14 @@ h1,h2,p{margin:0}.splash{height:100%;display:grid;place-items:center;gap:10px;co
 .earnings-table small{color:var(--muted)}
 .earnings-hint{color:var(--muted);font-size:11px;line-height:1.6;padding:2px 4px}
 @media(max-width:560px){.segmented{width:100%;overflow-x:auto}.seg{flex:1}}
+
+/* Risk limits page and alerts */
+.form-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:4px 16px; padding:6px 16px 14px; }
+.form-grid--one { grid-template-columns:1fr; }
+.form-grid .field small { color:var(--muted); font-size:10px; }
+.inline-input { width:96px; height:36px; border-radius:9px; border:1px solid var(--line-strong); background:var(--panel-2); padding:0 10px; color:#fff; }
+.risk-track--warn span { background:#ff9f1a; }
+.risk-track--full span { background:var(--red); }
+.notice--warn { color:#ffb84d; border-color:rgba(255,159,26,.3); }
+.alert-list { display:grid; gap:8px; }
+@media(max-width:700px){ .form-grid { grid-template-columns:1fr; } }

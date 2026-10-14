@@ -475,7 +475,10 @@ export const env = {
       maxFileBytes: parsePositiveInteger('KYC_MAX_FILE_BYTES', process.env.KYC_MAX_FILE_BYTES, 8 * 1024 * 1024, 100_000, 8 * 1024 * 1024),
       // How long documents are kept once a case is decided, and how long an unfinished upload is kept.
       // Check your AML record-keeping obligations before shortening these: many regimes expect years, not days.
-      retentionApprovedDays: parsePositiveInteger('KYC_RETENTION_APPROVED_DAYS', process.env.KYC_RETENTION_APPROVED_DAYS, 30, 1, 3650),
+      // Approved documents are kept for as long as the account is active (0 = keep). Set a number of days to delete them sooner.
+      retentionApprovedDays: parsePositiveInteger('KYC_RETENTION_APPROVED_DAYS', process.env.KYC_RETENTION_APPROVED_DAYS, 0, 0, 3650),
+      // Once an administrator deactivates (disables) an account, its documents are deleted after this many days. Reactivating cancels it.
+      retentionAfterDeactivationDays: parsePositiveInteger('KYC_RETENTION_AFTER_DEACTIVATION_DAYS', process.env.KYC_RETENTION_AFTER_DEACTIVATION_DAYS, 30, 1, 3650),
       retentionRejectedDays: parsePositiveInteger('KYC_RETENTION_REJECTED_DAYS', process.env.KYC_RETENTION_REJECTED_DAYS, 14, 1, 3650),
       draftRetentionDays: parsePositiveInteger('KYC_DRAFT_RETENTION_DAYS', process.env.KYC_DRAFT_RETENTION_DAYS, 7, 1, 90),
     },
@@ -489,6 +492,14 @@ export const env = {
           baseUrl: process.env.KYC_DIDIT_BASE_URL?.trim() || undefined,
         }
       : null,
+  },
+  alerts: {
+    // Optional: a URL that receives a JSON POST for every new alert (works with Slack/Discord/Teams incoming webhooks via a small relay, or Zapier/Make).
+    webhookUrl: process.env.ALERT_WEBHOOK_URL?.trim() || undefined,
+    // How often the monitor checks for problems. 0 disables the monitor (the Dashboard banner still works).
+    intervalMs: parsePositiveInteger('ALERT_INTERVAL_MS', process.env.ALERT_INTERVAL_MS, 300_000, 0, 86_400_000),
+    // The platform trade-settlement result alerts when it falls below this amount (0 = alert as soon as customers are ahead overall).
+    settlementFloor: parseDecimalString('ALERT_SETTLEMENT_FLOOR', process.env.ALERT_SETTLEMENT_FLOOR, '0'),
   },
   security: {
     csrfSecret,

@@ -1,3 +1,41 @@
+# STATUS — 2026-10-13 (read this first)
+
+This section is the current picture. The phase checklists further down are the original plan; where they disagree with this section, this section wins.
+
+## Built and merged to `main`
+
+- [x] Trading engine with demo and real accounts, ledger, settlement, void/recovery handling, trade timestamps down to the second.
+- [x] Authentication: sessions, devices, email verification, password reset, two-factor authentication (QR set-up popup, recovery codes, matching disable dialog).
+- [x] Account page: profile, locked profile after identity verification, country and time zone rule, preferences.
+- [x] Payments with a sandbox provider; withdrawal rules; admin withdrawal review.
+- [x] KYC: manual document review (encrypted storage), Didit adapter (not tested live), admin review checklist.
+- [x] Admin console: users, KYC, trading, finance, Earnings page, Launch Gate, support, announcements, audit.
+- [x] Landing page, split sign-in/sign-up, policy pages (drafts).
+- [x] Platform risk controls (branch `claude/risk-controls`): admin-editable per-trade limits, payout percentages, open-profit caps per user/platform/asset/direction, required-reserve figure, restricted countries. See `docs/RISK_CONTROLS.md`.
+- [x] Alerts (same branch): negative platform trading result, caps nearly full, identity checks stuck in review; Dashboard banner, in-app notifications for administrators, optional webhook.
+- [x] KYC retention until deactivation (same branch).
+
+## Before any real money
+
+- [ ] Lawyer review of the policy pages, landing page risk warning and the restricted-country list (`docs/RISK_CONTROLS.md` explains where the starting list came from).
+- [ ] Choose a real payment provider and write its adapter; turn on real deposits/withdrawals only after that.
+- [ ] Automated sanctions/PEP screening (the manual checkbox is accepted for now).
+- [ ] Backups and monitoring in place (`docs/OPERATIONS.md`): database backups, KYC key backup, error and stale-price alerts.
+- [ ] Browser check of every new screen (landing, sign-in/sign-up, Earnings, Risk limits, 2FA popups, trade timestamps).
+- [ ] Run the Earnings queries against a real MySQL (`docs/OPERATIONS.md` has the checks).
+- [ ] Test the 2FA QR with a real authenticator app.
+- [ ] Set real launch limits in Admin > Risk limits and set the first super administrator.
+
+## Deferred on purpose
+
+- [ ] CI repair and billing, and lint for the backend and admin projects.
+- [ ] Live test of the Didit integration.
+- [ ] IP-based country blocking (only the country on the profile is checked).
+- [ ] Customer-initiated account deactivation (today only an administrator can disable an account).
+- [ ] Separate KYC reviewer role and encryption-key rotation (`docs/OPERATIONS.md` has the plan).
+
+---
+
 ## Current Architecture Milestone — 2026-10-03
 
 ## P2 user-facing completion update — 2026-10-08
@@ -179,7 +217,7 @@ Implemented on `main`:
 
 **Repository:** `infosloption-byte/slspot`  
 **Branch:** `main`  
-**Current status:** Frontend + backend foundation + persistence + realtime + authentication + server-authoritative trading engine + server-backed DEMO wallet  
+**Current status:** see the STATUS section at the top of this file  
 **Target:** Production-ready original trading platform, subject to product/legal decisions
 
 ---
@@ -964,33 +1002,37 @@ COMMIT
 
 # PHASE 18 — Payments
 
-- [ ] Select payment provider.
-- [ ] Provider adapter.
-- [ ] Deposit initiation.
-- [ ] Deposit webhook.
-- [ ] Webhook signature verification.
-- [ ] Deposit idempotency.
-- [ ] Withdrawal initiation.
-- [ ] Withdrawal authorization.
-- [ ] Withdrawal status.
-- [ ] Reconciliation.
-- [ ] Failed payment handling.
+Everything below works end to end with the **sandbox** provider. No real provider is chosen yet, so real deposits and withdrawals stay switched off (see `docs/PAYMENTS.md`).
+
+- [!] Select payment provider (business decision).
+- [~] Provider adapter (adapter registry and sandbox adapters done; no real adapter yet).
+- [x] Deposit initiation.
+- [x] Deposit webhook.
+- [x] Webhook signature verification.
+- [x] Deposit idempotency.
+- [x] Withdrawal initiation.
+- [x] Withdrawal authorization (KYC, 2FA, turnover, cooling-off, manual review above a threshold).
+- [x] Withdrawal status.
+- [x] Reconciliation (wallet/ledger worker, admin payout reconciliation).
+- [x] Failed payment handling.
 - [x] Audit logging.
 
 ---
 
 # PHASE 19 — KYC / AML
 
-- [ ] Select provider.
-- [ ] Identity verification flow.
-- [ ] Document upload if required.
-- [ ] Verification status.
-- [ ] Manual review state.
+See `docs/KYC.md`. Manual document review works; the Didit adapter was written from its documentation and has **not** been run against the live service.
+
+- [~] Select provider (manual review + Didit adapter; Didit untested live).
+- [x] Identity verification flow.
+- [x] Document upload if required (encrypted at rest).
+- [x] Verification status.
+- [x] Manual review state (with an administrator checklist).
 - [ ] Restricted account state.
-- [ ] AML checks.
+- [~] AML checks (manual sanctions/PEP checkbox in the review; no automated screening).
 - [ ] Transaction monitoring.
-- [ ] Audit trail.
-- [ ] Data retention policy.
+- [x] Audit trail (every document view is logged).
+- [x] Data retention policy (approved documents kept while the account is active, deleted 30 days after an administrator deactivates it; rejected 14 days; drafts 7 days; all configurable).
 
 ---
 

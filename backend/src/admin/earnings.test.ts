@@ -196,6 +196,7 @@ describe('loadEarnings', () => {
     assert.deepEqual(report.snapshot.pendingWithdrawals, { count: 2, amount: '75.00000000', awaitingReview: 1, oldestRequestedAt: '2026-10-10T00:00:00.000Z' })
     assert.deepEqual(report.snapshot.pendingDeposits, { count: 2, amount: '30.00000000' })
     assert.deepEqual(report.snapshot.customerBalances, { available: '900.00000000', held: '100.00000000' })
+    assert.deepEqual(report.reserve, { customerFunds: '1000.00000000', openProfitAtRisk: '26.00000000', requiredReserve: '1026.00000000' })
     assert.equal(report.allTime.houseResult, '50.00000000')
     assert.equal(report.allTime.earnings, '51.00000000')
     assert.equal(report.allTime.netCashFlow, '300.00000000')

@@ -133,6 +133,9 @@ export const adminApi = {
   realMoneyGate: () => request<RealMoneyGateStatus>('/admin/real-money-gate'),
   updateRealMoneyGate: (settings: RealMoneyGateSettings) => request<RealMoneyGateStatus>('/admin/real-money-gate', { method: 'PUT', body: JSON.stringify(settings) }),
   risk: () => request<RiskSummary>('/admin/risk'),
+  riskSettings: () => request<RiskSettingsView>('/admin/risk-settings'),
+  updateRiskSettings: (limits: RiskLimits) => request<RiskSettingsView>('/admin/risk-settings', { method: 'PUT', body: JSON.stringify(limits) }),
+  alerts: () => request<{ alerts: AdminAlert[]; checkedAt: string }>('/admin/alerts'),
   audit: () => request<List<AuditRecord>>('/admin/audit'),
   supportTickets: (params = '') => request<List<SupportTicketRecord>>('/admin/support/tickets' + params),
   supportTicket: (id: string) => request<SupportTicketDetail>('/admin/support/tickets/' + encodeURIComponent(id)),
@@ -268,5 +271,32 @@ export type EarningsReport = {
   days: EarningsDay[]
   providers: Array<{ provider: string; deposits: EarningsMoney; withdrawals: EarningsMoney }>
   snapshot: EarningsSnapshot
+  reserve: { customerFunds: string; openProfitAtRisk: string; requiredReserve: string }
   allTime: { houseResult: string; feeRevenue: string; earnings: string; deposits: string; withdrawals: string; netCashFlow: string }
 }
+
+export type RiskLimits = {
+  minTradeAmount: string
+  maxTradeAmount: string
+  maxUserOpenExposure: string
+  maxUserOpenPositions: number
+  maxPlatformOpenProfit: string
+  maxAssetOpenProfit: string
+  maxDirectionOpenProfit: string
+  payoutRates: Record<string, string>
+  restrictedCountries: string[]
+  alertKycReviewHours: number
+}
+type Utilization = { used: string; limit: string; percent: number }
+export type RiskSettingsView = {
+  limits: RiskLimits
+  updatedAt: string | null
+  payouts: Array<{ symbol: string; rate: string; defaultRate: string; breakEvenWinRate: string }>
+  exposure: {
+    openPositions: number
+    platform: Utilization
+    byAsset: Array<{ symbol: string } & Utilization>
+    byDirection: Array<{ symbol: string } & Utilization>
+  }
+}
+export type AdminAlert = { code: string; severity: 'WARNING' | 'CRITICAL'; key: string; title: string; message: string }

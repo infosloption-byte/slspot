@@ -22,6 +22,7 @@ function setup(options: { withStore?: boolean; failAudit?: boolean; userId?: str
   const user = { email: 'a@example.com', emailVerifiedAt: new Date('2026-01-01'), legalName: 'Ada Lovelace', dateOfBirth: new Date('1990-05-05'), countryCode: 'LK' }
   const matches = (row: Row, where: Record<string, unknown> = {}) => Object.entries(where).every(([key, value]) => {
     if (value && typeof value === 'object' && 'in' in value) return (value as { in: unknown[] }).in.includes(row[key])
+    if (value && typeof value === 'object' && 'not' in value) return row[key] !== (value as { not: unknown }).not
     if (value && typeof value === 'object' && 'lte' in value) return row[key] instanceof Date && (row[key] as Date).getTime() <= (value as { lte: Date }).lte.getTime()
     return row[key] === value
   })
@@ -189,16 +190,49 @@ describe('manual KYC: admin side', () => {
     await assert.rejects(ctx.service.approveCase('admin', 'case-1', CHECKLIST), code('DOCUMENTS_MISSING'))
   })
 
-  it('approves, records the checklist, notifies and starts the retention clock', async () => {
+  it('approves, records the checklist and notifies; approved documents are kept while the account is active', async () => {
     const ctx = setup()
     await submitted(ctx)
     await ctx.service.approveCase('admin', 'case-1', CHECKLIST)
     assert.equal(ctx.cases[0]?.status, 'APPROVED')
-    assert.equal((ctx.cases[0]?.documentsPurgeAt as Date).getTime(), ctx.clock.now.getTime() + 30 * DAY)
+    assert.equal(ctx.cases[0]?.documentsPurgeAt, null)
     assert.deepEqual(ctx.notices, ['Identity verified'])
     const audit = ctx.audits.find((a) => a.action === 'KYC_APPROVED')
     assert.deepEqual((audit?.metadata as { checklist: unknown }).checklist, CHECKLIST)
     await assert.rejects(ctx.service.approveCase('admin', 'case-1', CHECKLIST), code('CASE_NOT_OPEN'))
+  })
+
+  it('can still be told to delete approved documents after a fixed number of days', async () => {
+    const ctx = setup({ config: { retentionApprovedDays: 30 } })
+    await submitted(ctx)
+    await ctx.service.approveCase('admin', 'case-1', CHECKLIST)
+    assert.equal((ctx.cases[0]?.documentsPurgeAt as Date).getTime(), ctx.clock.now.getTime() + 30 * DAY)
+  })
+
+  it('schedules deletion when the account is deactivated and cancels it when the account is reactivated', async () => {
+    const ctx = setup()
+    await submitted(ctx)
+    await ctx.service.approveCase('admin', 'case-1', CHECKLIST)
+    assert.equal(await ctx.service.scheduleDeactivationPurge('u1'), 1)
+    assert.equal((ctx.cases[0]?.documentsPurgeAt as Date).getTime(), ctx.clock.now.getTime() + 30 * DAY)
+    assert.ok(ctx.audits.some((a) => a.action === 'KYC_PURGE_SCHEDULED_ON_DEACTIVATION'))
+    // Scheduling twice does not push the date back.
+    assert.equal(await ctx.service.scheduleDeactivationPurge('u1'), 0)
+    assert.equal(await ctx.service.cancelDeactivationPurge('u1'), 1)
+    assert.equal(ctx.cases[0]?.documentsPurgeAt, null)
+  })
+
+  it('deletes the stored files once the deactivation period has passed', async () => {
+    const ctx = setup({ config: { retentionAfterDeactivationDays: 10 } })
+    await submitted(ctx)
+    await ctx.service.approveCase('admin', 'case-1', CHECKLIST)
+    assert.ok(ctx.files.size > 0)
+    await ctx.service.scheduleDeactivationPurge('u1')
+    assert.equal(await ctx.service.purgeExpiredDocuments(), 0)
+    ctx.clock.now = new Date(ctx.clock.now.getTime() + 11 * DAY)
+    assert.ok(await ctx.service.purgeExpiredDocuments() > 0)
+    assert.equal(ctx.files.size, 0)
+    assert.equal(ctx.docs.length, 0)
   })
 
   it('rejects with a reason and a shorter retention', async () => {
@@ -237,8 +271,17 @@ describe('manual KYC: admin side', () => {
 })
 
 describe('manual KYC: retention', () => {
-  it('deletes files after the retention period and keeps the decision', async () => {
+  it('keeps approved documents indefinitely by default', async () => {
     const ctx = setup()
+    await submitted(ctx)
+    await ctx.service.approveCase('admin', 'case-1', CHECKLIST)
+    ctx.clock.now = new Date(ctx.clock.now.getTime() + 5 * 365 * DAY)
+    assert.equal(await ctx.service.purgeExpiredDocuments(), 0)
+    assert.equal(ctx.files.size, 2)
+  })
+
+  it('deletes files after the retention period and keeps the decision', async () => {
+    const ctx = setup({ config: { retentionApprovedDays: 30 } })
     await submitted(ctx)
     await ctx.service.approveCase('admin', 'case-1', CHECKLIST)
     assert.equal(await ctx.service.purgeExpiredDocuments(), 0)

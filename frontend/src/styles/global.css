@@ -153,6 +153,8 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
 .btn--primary:hover { background: var(--accent-hover); }
 .btn--ghost { background: transparent; border-color: var(--line-strong); color: var(--text); }
 .btn--ghost:hover { border-color: var(--accent-line); color: var(--accent); }
+.btn--danger { background: var(--red); color: #fff; }
+.btn--danger:hover { filter: brightness(1.08); }
 
 .icon-button {
   width: 40px; height: 40px; display: grid; place-items: center; border: 1px solid transparent; border-radius: var(--radius-md);
@@ -4087,4 +4089,6 @@ button.toggle { cursor: pointer; appearance: none; }
 .tf-check { display: flex; align-items: center; gap: 9px; margin-top: 14px; font-size: 13px; cursor: pointer; }
 .tf-check input { width: 16px; height: 16px; accent-color: var(--accent); }
 .tf-wide { width: 100%; }
+.tf-warning { display: flex; gap: 10px; align-items: flex-start; padding: 11px 12px; margin-bottom: 4px; border: 1px solid rgba(255,159,26,.3); border-radius: var(--radius-md); background: rgba(255,159,26,.08); color: #ffb84d; font-size: 12.5px; line-height: 1.45; }
+.tf-warning svg { flex: none; margin-top: 1px; }
 @media (max-width: 420px) { .tf-otp { gap: 6px; } .tf-otp__box { height: 46px; font-size: 20px; } .tf-recovery { grid-template-columns: 1fr; } }

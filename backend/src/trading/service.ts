@@ -9,6 +9,7 @@ import { publishRealtime } from '../realtime/bus.js'
 import { getTradingRules, TRADING_RULES } from './config.js'
 import { LedgerService } from '../ledger/service.js'
 import { EmailService } from '../email/service.js'
+import { evaluateRiskCaps, isCountryRestricted, riskLimitsStore, summarizeOpenRisk, type OpenPosition } from './risk.js'
 import { realMoneyOperationBlockReason, type RealMoneyGateConfig } from './real-money-gate.js'
 
 export type TradeDirection = 'UP' | 'DOWN'
@@ -320,9 +321,12 @@ export class TradingService {
           }
         }
 
-        const user = await tx.user.findUnique({ where: { id: userId }, select: { status: true } })
+        const user = await tx.user.findUnique({ where: { id: userId }, select: { status: true, countryCode: true } })
         if (!user || user.status !== 'ACTIVE') {
           throw new TradingError(403, 'USER_NOT_ELIGIBLE', 'The account is not eligible for trading')
+        }
+        if (mode === 'REAL' && isCountryRestricted(user.countryCode)) {
+          throw new TradingError(403, 'COUNTRY_RESTRICTED', 'Real-money trading is not available in your country')
         }
 
         const asset = await tx.asset.findUnique({
@@ -362,7 +366,7 @@ export class TradingService {
           _sum: { amount: true },
         })
 
-        const rejection = this.validateTrade({
+        const validationRejection = this.validateTrade({
           amount,
           durationSeconds: input.durationSeconds,
           market: marketForTrade,
@@ -372,6 +376,34 @@ export class TradingService {
           openPositionCount: openPositionTotals._count._all,
           openExposure: openPositionTotals._sum.amount ?? new Prisma.Decimal(0),
         })
+
+        // Platform risk caps apply to REAL trades only. The settings row is locked for the rest of this transaction, so two
+        // simultaneous trades cannot both squeeze under a cap.
+        let capRejection: { cap: string; message: string } | null = null
+        if (mode === 'REAL' && !validationRejection) {
+          await tx.$queryRaw`SELECT id FROM RiskSettings WHERE id = 'GLOBAL' FOR UPDATE`
+          const openReal = await tx.position.findMany({
+            where: { status: 'OPEN', account: { mode: 'REAL' } },
+            select: { assetId: true, side: true, amount: true, userId: true, order: { select: { payoutRate: true } } },
+          })
+          const positions: OpenPosition[] = openReal.map((row) => ({
+            assetId: row.assetId,
+            side: row.side,
+            amount: row.amount.toFixed(8),
+            payoutRate: row.order.payoutRate.toFixed(6),
+          }))
+          capRejection = evaluateRiskCaps({
+            limits: riskLimitsStore.get(),
+            amount: amount.toFixed(8),
+            payoutRate: payoutRate.toFixed(6),
+            side: input.direction === 'UP' ? 'BUY' : 'SELL',
+            assetId: asset.id,
+            open: summarizeOpenRisk(positions),
+            userOpenExposure: (openPositionTotals._sum.amount ?? new Prisma.Decimal(0)).toFixed(8),
+            userOpenCount: openPositionTotals._count._all,
+          })
+        }
+        const rejection = validationRejection ?? capRejection?.message ?? null
 
         const order = await tx.order.create({
           data: {
@@ -399,7 +431,7 @@ export class TradingService {
               action: 'TRADE_REJECTED',
               entityType: 'Order',
               entityId: order.id,
-              metadata: { reason: rejection, mode, clientRequestId: requestId },
+              metadata: { reason: rejection, mode, clientRequestId: requestId, ...(capRejection ? { riskCap: capRejection.cap } : {}) },
             },
           })
           return { kind: 'rejected' as const, order, asset }

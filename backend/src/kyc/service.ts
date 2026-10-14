@@ -1,3 +1,4 @@
+import { isCountryRestricted } from '../trading/risk.js'
 import type { Prisma, PrismaClient } from '../generated/prisma/client.js'
 import { ageOn, MINIMUM_AGE_YEARS, missingProfileFields } from '../payments/rules.js'
 import { KYC_UPLOAD_KINDS, sha256Hex, sniffImageMime, type KycDocumentStore, type KycUploadKind } from './documents.js'
@@ -26,8 +27,10 @@ export class KycError extends Error {
 export type KycConfig = {
   maxAttempts: number
   relaxReviewChecks: boolean
-  /** Days uploaded documents are kept after an approval (default 30). */
+  /** Days uploaded documents are kept after an approval. 0 or unset = keep them while the account is active (default). */
   retentionApprovedDays?: number
+  /** Days approved documents are kept after an administrator deactivates the account (default 30). */
+  retentionAfterDeactivationDays?: number
   /** Days uploaded documents are kept after a rejection (default 14). */
   retentionRejectedDays?: number
   /** Days an unfinished upload is kept before it is discarded (default 7). */
@@ -161,7 +164,8 @@ export class KycService {
     const latest = cases[0] ?? null
     const attemptsUsed = cases.filter((item) => item.status === 'REJECTED').length
     const requirements = this.requirements(user)
-    const blockedReason = this.startBlocker(requirements, latest?.status as CaseStatus | undefined, attemptsUsed)
+    let blockedReason = this.startBlocker(requirements, latest?.status as CaseStatus | undefined, attemptsUsed)
+    if (blockedReason === null && isCountryRestricted(user.countryCode)) blockedReason = 'Identity verification is not available in your country.'
     return {
       status: (latest?.status as CaseStatus | undefined) ?? 'NOT_STARTED',
       case: latest ? this.toView(latest) : null,
@@ -185,6 +189,7 @@ export class KycService {
     }
     const documentType = input.documentType as KycDocumentType
     const user = await this.loadUser(userId)
+    if (isCountryRestricted(user.countryCode)) throw new KycError(403, 'COUNTRY_RESTRICTED', 'Identity verification is not available in your country')
     const existing = await this.prisma.kycCase.findMany({ where: { userId }, orderBy: { createdAt: 'desc' }, take: 20 })
     const latest = existing[0]
 
@@ -510,6 +515,33 @@ export class KycService {
     return purged
   }
 
+  /**
+   * An administrator deactivated the account: approved documents that were being kept now get a deletion date
+   * (KYC_RETENTION_AFTER_DEACTIVATION_DAYS, default 30). Keep your AML record-keeping duties in mind before shortening it.
+   */
+  async scheduleDeactivationPurge(userId: string): Promise<number> {
+    const days = this.config.retentionAfterDeactivationDays ?? 30
+    const result = await this.prisma.kycCase.updateMany({
+      where: { userId, status: 'APPROVED', documentsPurgeAt: null },
+      data: { documentsPurgeAt: new Date(this.now().getTime() + days * DAY_MS) },
+    })
+    if (result.count > 0) await this.audit(userId, 'KYC_PURGE_SCHEDULED_ON_DEACTIVATION', userId, { cases: result.count, days })
+    return result.count
+  }
+
+  /** The account is active again: documents go back to the normal retention rule (kept, or the configured period after approval). */
+  async cancelDeactivationPurge(userId: string): Promise<number> {
+    const cases = await this.prisma.kycCase.findMany({ where: { userId, status: 'APPROVED', documentsPurgeAt: { not: null } }, select: { id: true, resolvedAt: true } })
+    for (const item of cases) {
+      await this.prisma.kycCase.updateMany({
+        where: { id: item.id },
+        data: { documentsPurgeAt: item.resolvedAt ? this.purgeAtAfterDecision('APPROVED', item.resolvedAt) : null },
+      })
+    }
+    if (cases.length > 0) await this.audit(userId, 'KYC_PURGE_CANCELLED_ON_REACTIVATION', userId, { cases: cases.length })
+    return cases.length
+  }
+
   // ------------------------------------------------------------ internals
 
   /** The only place a case reaches APPROVED or REJECTED. Conditional on the case still being open. */
@@ -523,7 +555,7 @@ export class KycService {
         reviewedByUserId: adminUserId,
         // The hosted link is single-use and secret; uploaded documents (manual review) are deleted on a schedule.
         flowUrl: null,
-        documentsPurgeAt: new Date(this.now().getTime() + this.days(status === 'APPROVED' ? 'approved' : 'rejected') * DAY_MS),
+        documentsPurgeAt: this.purgeAtAfterDecision(status),
       },
     })
     if (result.count !== 1) return false
@@ -580,8 +612,14 @@ export class KycService {
     return null
   }
 
+  /** When documents of a freshly decided case are deleted. Approved documents are kept (null) unless a retention period is configured. */
+  private purgeAtAfterDecision(status: 'APPROVED' | 'REJECTED', decidedAt: Date = this.now()): Date | null {
+    const days = this.days(status === 'APPROVED' ? 'approved' : 'rejected')
+    return days > 0 ? new Date(decidedAt.getTime() + days * DAY_MS) : null
+  }
+
   private days(kind: 'approved' | 'rejected' | 'draft'): number {
-    if (kind === 'approved') return this.config.retentionApprovedDays ?? 30
+    if (kind === 'approved') return this.config.retentionApprovedDays ?? 0
     if (kind === 'rejected') return this.config.retentionRejectedDays ?? 14
     return this.config.draftRetentionDays ?? 7
   }

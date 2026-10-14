@@ -95,3 +95,22 @@
   .access-aside__body, .access-aside small { display:none; }
 }
 @media (prefers-reduced-motion:reduce) { .landing-card { transition:none; } }
+
+/* Worked example and FAQ */
+.landing-split { display: grid; grid-template-columns: 1.1fr .9fr; gap: 32px; align-items: center; }
+.landing-split p { color: var(--muted); line-height: 1.6; max-width: 52ch; }
+.landing-example { border: 1px solid var(--line-strong); border-radius: 16px; background: var(--panel); padding: 20px; }
+.landing-example__tag { display: inline-block; margin-bottom: 12px; padding: 4px 9px; border-radius: 999px; background: var(--accent-soft, rgba(255,194,26,.12)); color: var(--accent); font-size: 11px; font-weight: 700; letter-spacing: .04em; }
+.landing-example dl { margin: 0; }
+.landing-example dl > div { display: flex; justify-content: space-between; gap: 16px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.landing-example dt { color: var(--muted); }
+.landing-example dd { margin: 0; font-weight: 700; font-variant-numeric: tabular-nums; text-align: right; }
+.landing-example__win dd { color: var(--green); }
+.landing-example__lose dd { color: var(--red); }
+.landing-example p { margin: 14px 0 0; font-size: 13px; }
+.landing-faq { display: grid; gap: 10px; max-width: 820px; margin: 0 auto; }
+.landing-faq details { border: 1px solid var(--line); border-radius: 12px; background: var(--panel); padding: 0 16px; }
+.landing-faq summary { cursor: pointer; padding: 14px 0; font-weight: 650; }
+.landing-faq details[open] summary { color: var(--accent); }
+.landing-faq p { margin: 0 0 14px; color: var(--muted); line-height: 1.6; }
+@media (max-width: 800px) { .landing-split { grid-template-columns: 1fr; } }

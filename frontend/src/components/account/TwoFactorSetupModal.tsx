@@ -65,7 +65,7 @@ function QrImage({ value }: { value: string }) {
   )
 }
 
-function OtpInput({ value, onChange, disabled }: { value: string; onChange: (next: string) => void; disabled?: boolean }) {
+export function OtpInput({ value, onChange, disabled }: { value: string; onChange: (next: string) => void; disabled?: boolean }) {
   const refs = useRef<Array<HTMLInputElement | null>>([])
   const focus = (index: number) => refs.current[Math.max(0, Math.min(CODE_LENGTH - 1, index))]?.focus()
 

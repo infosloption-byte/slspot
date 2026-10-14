@@ -6,6 +6,7 @@ import { Pagination } from '../components/ui/Pagination'
 import { PaymentFlowPanel } from '../components/wallet/PaymentFlowPanel'
 import { VerificationCenter } from '../components/account/VerificationCenter'
 import { TwoFactorSetupModal } from '../components/account/TwoFactorSetupModal'
+import { TwoFactorDisableModal } from '../components/account/TwoFactorDisableModal'
 import { Select } from '../components/ui/Select'
 import { ApiState } from '../components/ui/ApiState'
 import { Toast } from '../components/ui/Toast'
@@ -984,6 +985,9 @@ function SecurityPage() {
   const [showTwoFactorForm, setShowTwoFactorForm] = useState(false)
   const [setupBusy, setSetupBusy] = useState(false)
   const [setupError, setSetupError] = useState<string | null>(null)
+  const [showDisableTwoFactor, setShowDisableTwoFactor] = useState(false)
+  const [disableBusy, setDisableBusy] = useState(false)
+  const [disableError, setDisableError] = useState<string | null>(null)
 
   const reloadSecurity = async () => {
     await Promise.all([
@@ -1039,15 +1043,28 @@ function SecurityPage() {
     setShowRecoveryCodes(null)
   }
 
-  const disableTwoFactor = async () => {
+  const openDisableTwoFactor = () => {
     setActionError(null)
-    const code = window.prompt('Enter your current authenticator code to disable two-factor authentication.')
-    if (!code) return
+    setDisableError(null)
+    setShowDisableTwoFactor(true)
+  }
+
+  const closeDisableTwoFactor = () => {
+    setShowDisableTwoFactor(false)
+    setDisableError(null)
+  }
+
+  const disableTwoFactor = async (code: string) => {
+    setDisableBusy(true)
+    setDisableError(null)
     try {
       await authApi.disableTwoFactor(code)
+      setShowDisableTwoFactor(false)
       await reloadSecurity()
     } catch (error) {
-      setActionError(error instanceof Error ? error.message : 'Unable to disable two-factor authentication')
+      setDisableError(error instanceof Error ? error.message : 'Unable to disable two-factor authentication')
+    } finally {
+      setDisableBusy(false)
     }
   }
 
@@ -1076,13 +1093,23 @@ function SecurityPage() {
         />
       ) : null}
 
+      {showDisableTwoFactor ? (
+        <TwoFactorDisableModal
+          open
+          busy={disableBusy}
+          error={disableError}
+          onConfirm={(code) => void disableTwoFactor(code)}
+          onCancel={closeDisableTwoFactor}
+        />
+      ) : null}
+
       <div className="settings-grid">
         <section className="dashboard-card panel">
           <div className="dashboard-card__header"><div><span className="eyebrow">Sign-in</span><h2>Authentication</h2></div></div>
           <div className="setting-row">
             <div><strong>Two-factor authentication</strong><small>{twoFactor.data?.enabled ? 'Authenticator verification is required after your password.' : 'Protect sign-in with a TOTP authenticator app.'}</small></div>
             {twoFactor.data?.enabled
-              ? <button type="button" className="setting-button setting-button--danger" onClick={() => void disableTwoFactor()}>Disable</button>
+              ? <button type="button" className="setting-button setting-button--danger" onClick={openDisableTwoFactor}>Disable</button>
               : <button type="button" className="setting-button" onClick={() => void startTwoFactorSetup()}>Enable</button>}
           </div>
           <div className="setting-row"><div><strong>Recovery codes</strong><small>{twoFactor.data?.enabled ? (twoFactor.data.recoveryCodesRemaining + ' unused recovery codes remain.') : 'Recovery codes are generated when 2FA is enabled.'}</small></div><span className="status-pill status-pill--pending">{twoFactor.data?.recoveryCodesRemaining ?? 0}</span></div>

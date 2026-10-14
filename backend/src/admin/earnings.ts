@@ -1,4 +1,6 @@
 import type { Prisma, PrismaClient } from '../generated/prisma/client.js'
+import { SCALE, UNIT, toUnits, fromUnits } from '../lib/units.js'
+import { computeReserve, type Reserve } from '../trading/risk.js'
 
 /**
  * Platform earnings report for administrators. REAL-money activity only: demo wallets never count.
@@ -15,8 +17,6 @@ import type { Prisma, PrismaClient } from '../generated/prisma/client.js'
  * own time zone, given as a fixed offset from UTC.
  */
 
-const SCALE = 8
-const UNIT = 10n ** BigInt(SCALE)
 const DAY_MS = 24 * 60 * 60 * 1000
 export const MAX_RANGE_DAYS = 92
 export const ROW_LIMIT = 100_000
@@ -34,24 +34,7 @@ export class EarningsInputError extends Error {
 
 // ---------------------------------------------------------------- number helpers
 
-/** Parse a plain decimal string such as "-12.5" into 1e-8 units. Extra digits beyond 8 places are truncated. */
-export function toUnits(value: string | null | undefined): bigint {
-  if (value === null || value === undefined || value === '') return 0n
-  const match = /^(-?)(\d+)(?:\.(\d+))?$/.exec(value.trim())
-  if (!match) throw new Error('Not a plain decimal: ' + value)
-  const whole = BigInt(match[2] ?? '0')
-  const fraction = BigInt((match[3] ?? '').padEnd(SCALE, '0').slice(0, SCALE) || '0')
-  const units = whole * UNIT + fraction
-  return match[1] === '-' ? -units : units
-}
-
-export function fromUnits(units: bigint): string {
-  const negative = units < 0n
-  const absolute = negative ? -units : units
-  const whole = absolute / UNIT
-  const fraction = (absolute % UNIT).toString().padStart(SCALE, '0')
-  return (negative ? '-' : '') + whole.toString() + '.' + fraction
-}
+export { toUnits, fromUnits }
 
 // ---------------------------------------------------------------- dates
 
@@ -154,6 +137,8 @@ export type EarningsReport = {
   days: EarningsDay[]
   providers: Array<{ provider: string; deposits: Money; withdrawals: Money }>
   snapshot: EarningsSnapshot
+  /** Cash the platform should hold right now: customer funds plus the profit owed if every open trade won. */
+  reserve: Reserve
   allTime: EarningsAllTime
 }
 
@@ -301,6 +286,12 @@ export function buildEarningsReport(input: EarningsInput): EarningsReport {
       .map(([name, value]) => ({ provider: name, deposits: money(value.deposits), withdrawals: money(value.withdrawals) }))
       .sort((a, b) => a.provider.localeCompare(b.provider)),
     snapshot: input.snapshot,
+    reserve: computeReserve({
+      availableBalances: input.snapshot.customerBalances.available,
+      heldBalances: input.snapshot.customerBalances.held,
+      openStake: input.snapshot.openTrades.stake,
+      openMaxPayout: input.snapshot.openTrades.maxPayout,
+    }),
     allTime: input.allTime,
   }
 }

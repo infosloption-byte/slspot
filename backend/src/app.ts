@@ -49,6 +49,7 @@ type AppOptions = {
   paymentService?: import('./payments/service.js').PaymentService
   paymentRegistry?: import('./payments/registry.js').PaymentProviderRegistry
   kycService?: import('./kyc/service.js').KycService
+  riskService?: import('./admin/risk-service.js').RiskControlService
 }
 
 function resolveRequestId(value: string | string[] | undefined): string {
@@ -174,7 +175,7 @@ export function buildApp(options: AppOptions = {}) {
   }
 
   if (options.authService && options.adminService) {
-    registerAdminRoutes(app, { authService: options.authService, adminService: options.adminService, paymentService: options.paymentService, kycService: options.kycService, checkDatabase: options.checkDatabase, checkRedis: options.checkRedis })
+    registerAdminRoutes(app, { authService: options.authService, adminService: options.adminService, paymentService: options.paymentService, kycService: options.kycService, riskService: options.riskService, checkDatabase: options.checkDatabase, checkRedis: options.checkRedis })
   }
 
   if (options.authService && options.apiService) {
