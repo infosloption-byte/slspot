@@ -54,7 +54,7 @@ function siteMeta(siteUrl: string): Plugin {
 }
 
 export default defineConfig(({ mode }) => ({
-  plugins: [react(), siteMeta(loadEnv(mode, process.cwd(), 'VITE_').VITE_SITE_URL ?? '')],
+  plugins: [react(), siteMeta(loadEnv(mode, '.', 'VITE_').VITE_SITE_URL ?? '')],
   server: {
     strictPort: true,
     port: 5173,
