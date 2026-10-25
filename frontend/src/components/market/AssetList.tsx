@@ -89,7 +89,8 @@ export function AssetList({ open, selected, assets, onSelect, onClose, loading =
     return () => {
       document.body.style.overflow = previousOverflow
       window.removeEventListener('keydown', handleKeyDown)
-      previouslyFocused?.focus()
+      if (previouslyFocused?.isConnected) previouslyFocused.focus()
+      else document.querySelector<HTMLElement>('.market-trigger')?.focus()
     }
   }, [open])
 

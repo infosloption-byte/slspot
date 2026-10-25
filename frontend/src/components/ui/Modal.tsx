@@ -42,6 +42,8 @@ export function Modal({ open, onClose, title, description, children, footer, siz
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (activeModalStack.at(-1) !== panelRef.current) return
+      // The themed Select menu is portaled outside this panel and owns its Escape/Tab keys.
+      if (event.target instanceof Element && event.target.closest('.select-field__menu')) return
       if (event.key === 'Escape') {
         onCloseRef.current()
         return
