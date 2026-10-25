@@ -3,6 +3,9 @@ import type { ReactNode } from 'react'
 import { useEffect, useId, useRef } from 'react'
 import { createPortal } from 'react-dom'
 
+// Keep only the topmost dialog keyboard-active when confirmation dialogs are nested.
+const activeModalStack: HTMLElement[] = []
+
 type ModalProps = {
   open: boolean
   onClose: () => void
@@ -24,6 +27,8 @@ export function Modal({ open, onClose, title, description, children, footer, siz
   useEffect(() => {
     if (!open) return undefined
     previousFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    const panel = panelRef.current
+    if (panel) activeModalStack.push(panel)
     const previousOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
 
@@ -34,6 +39,7 @@ export function Modal({ open, onClose, title, description, children, footer, siz
     requestAnimationFrame(() => focusable()[0]?.focus())
 
     const onKeyDown = (event: KeyboardEvent) => {
+      if (activeModalStack.at(-1) !== panelRef.current) return
       if (event.key === 'Escape') {
         onClose()
         return
@@ -55,6 +61,8 @@ export function Modal({ open, onClose, title, description, children, footer, siz
     document.addEventListener('keydown', onKeyDown)
     return () => {
       document.body.style.overflow = previousOverflow
+      const index = panel ? activeModalStack.lastIndexOf(panel) : -1
+      if (index >= 0) activeModalStack.splice(index, 1)
       document.removeEventListener('keydown', onKeyDown)
       previousFocusRef.current?.focus()
     }

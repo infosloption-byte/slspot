@@ -1,8 +1,6 @@
 import {
   ArrowDownToLine,
   CalendarDays,
-  Check,
-  ChevronDown,
   Clock3,
   History,
   RotateCcw,
@@ -18,6 +16,7 @@ import { tradeProgress, tradeRemainingSeconds } from '../../types/trading'
 import { formatPrice } from '../../lib/format'
 import { EmptyState } from '../ui/EmptyState'
 import { Modal } from '../ui/Modal'
+import { Select } from '../ui/Select'
 import { Pagination } from '../ui/Pagination'
 import { ConfirmDialog } from '../ui/ConfirmDialog'
 import { formatDateTime, formatDateTimeSeconds } from '../../lib/dateTime'
@@ -72,63 +71,9 @@ type BottomThemedSelectProps = {
 }
 
 function BottomThemedSelect({ label, value, options, onChange }: BottomThemedSelectProps) {
-  const [open, setOpen] = useState(false)
-  const rootRef = useRef<HTMLDivElement>(null)
-  const selected = options.find((option) => option.value === value) ?? options[0]
-
-  useEffect(() => {
-    if (!open) return undefined
-
-    const handlePointerDown = (event: PointerEvent) => {
-      if (rootRef.current && !rootRef.current.contains(event.target as Node)) setOpen(false)
-    }
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setOpen(false)
-    }
-
-    document.addEventListener('pointerdown', handlePointerDown)
-    document.addEventListener('keydown', handleKeyDown)
-    return () => {
-      document.removeEventListener('pointerdown', handlePointerDown)
-      document.removeEventListener('keydown', handleKeyDown)
-    }
-  }, [open])
-
   return (
-    <div className="trade-history-control" ref={rootRef}>
-      <span>{label}</span>
-      <div className="trade-history-select">
-        <button
-          type="button"
-          className={open ? 'trade-history-select__trigger trade-history-select__trigger--open' : 'trade-history-select__trigger'}
-          aria-haspopup="listbox"
-          aria-expanded={open}
-          onClick={() => setOpen((current) => !current)}
-        >
-          <span>{selected?.label ?? 'Select'}</span>
-          <ChevronDown size={14} aria-hidden="true" />
-        </button>
-        {open ? (
-          <div className="trade-history-select__menu" role="listbox" aria-label={label}>
-            {options.map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                role="option"
-                aria-selected={option.value === value}
-                className={option.value === value ? 'trade-history-select__option trade-history-select__option--active' : 'trade-history-select__option'}
-                onClick={() => {
-                  onChange(option.value)
-                  setOpen(false)
-                }}
-              >
-                <span>{option.label}</span>
-                {option.value === value ? <Check size={13} aria-hidden="true" /> : null}
-              </button>
-            ))}
-          </div>
-        ) : null}
-      </div>
+    <div className="trade-history-control trade-history-control--select">
+      <Select label={label} value={value} options={options} onChange={onChange} className="trade-history-select" />
     </div>
   )
 }

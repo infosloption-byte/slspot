@@ -59,12 +59,13 @@ export function Select({ value, options, onChange, label, className = '', leadin
     const top = shouldFlip
       ? Math.max(8, rect.top - gap - menuHeight)
       : Math.min(rect.bottom + gap, Math.max(8, window.innerHeight - menuHeight - 8))
-    const maxLeft = Math.max(8, window.innerWidth - rect.width - 8)
+    const menuWidth = Math.min(rect.width, window.innerWidth - 16)
+    const maxLeft = Math.max(8, window.innerWidth - menuWidth - 8)
 
     setMenuPosition({
       left: Math.min(Math.max(8, rect.left), maxLeft),
       top,
-      width: rect.width,
+      width: menuWidth,
     })
   }, [mobilePlacement])
 
@@ -95,7 +96,16 @@ export function Select({ value, options, onChange, label, className = '', leadin
     }
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setOpen(false)
+      if (event.key === 'Escape') {
+        event.stopPropagation()
+        setOpen(false)
+        triggerRef.current?.focus()
+      } else if (event.key === 'Tab') {
+        event.preventDefault()
+        event.stopPropagation()
+        setOpen(false)
+        triggerRef.current?.focus()
+      }
     }
 
     document.addEventListener('pointerdown', handlePointerDown)
@@ -176,6 +186,7 @@ export function Select({ value, options, onChange, label, className = '', leadin
           type="button"
           className={open ? 'select-field__trigger select-field__trigger--open' : 'select-field__trigger'}
           aria-haspopup="listbox"
+          aria-label={label ?? selected?.label ?? 'Select option'}
           aria-expanded={open}
           aria-controls={open ? menuId : undefined}
           onClick={() => {

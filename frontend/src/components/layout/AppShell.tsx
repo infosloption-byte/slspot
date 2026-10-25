@@ -23,12 +23,6 @@ export function AppShell() {
   }, [])
   const [menuOpen, setMenuOpen] = useState(false)
   const closeMenu = useCallback(() => setMenuOpen(false), [])
-  useEffect(() => {
-    if (!menuOpen) return undefined
-    const onKeyDown = (event: KeyboardEvent) => { if (event.key === 'Escape') setMenuOpen(false) }
-    document.addEventListener('keydown', onKeyDown)
-    return () => document.removeEventListener('keydown', onKeyDown)
-  }, [menuOpen])
   const busy = realtimeState === 'connecting' || realtimeState === 'reconnecting' || networkBusyCount > 0
 
   return (

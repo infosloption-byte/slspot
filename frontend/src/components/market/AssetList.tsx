@@ -25,6 +25,7 @@ export function AssetList({ open, selected, assets, onSelect, onClose, loading =
   const [category, setCategory] = useState<(typeof categories)[number]>('All')
   const [sortBy, setSortBy] = useState<AssetSort>('recent')
   const searchInputRef = useRef<HTMLInputElement>(null)
+  const panelRef = useRef<HTMLElement>(null)
   const previousOpenRef = useRef(false)
   const [recentSymbols, setRecentSymbols] = useState<string[]>(() => {
     try {
@@ -63,8 +64,22 @@ export function AssetList({ open, selected, assets, onSelect, onClose, loading =
     }
     previousOpenRef.current = true
 
+    const previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    const focusables = () => Array.from(panelRef.current?.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), input:not([disabled]), [href], [tabindex]:not([tabindex="-1"])',
+    ) ?? [])
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose()
+      if (event.key === 'Escape') { event.preventDefault(); onClose(); return }
+      if (event.key !== 'Tab' || (event.target instanceof Element && event.target.closest('.select-field__menu'))) return
+      const nodes = focusables()
+      if (!nodes.length) return
+      const first = nodes[0]
+      const last = nodes[nodes.length - 1]
+      if (event.shiftKey && (document.activeElement === first || !panelRef.current?.contains(document.activeElement))) {
+        event.preventDefault(); last?.focus()
+      } else if (!event.shiftKey && (document.activeElement === last || !panelRef.current?.contains(document.activeElement))) {
+        event.preventDefault(); first?.focus()
+      }
     }
     const previousOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
@@ -72,6 +87,7 @@ export function AssetList({ open, selected, assets, onSelect, onClose, loading =
     return () => {
       document.body.style.overflow = previousOverflow
       window.removeEventListener('keydown', handleKeyDown)
+      previouslyFocused?.focus()
     }
   }, [open, onClose])
 
@@ -118,7 +134,7 @@ export function AssetList({ open, selected, assets, onSelect, onClose, loading =
     <div className="market-picker" role="dialog" aria-modal="true" aria-label="Choose a market" onMouseDown={(event) => {
       if (event.target === event.currentTarget) onClose()
     }}>
-      <section className="asset-panel panel market-picker__panel">
+      <section ref={panelRef} className="asset-panel panel market-picker__panel">
       <div className="panel__header panel__header--stacked asset-panel__header">
         <div>
           <div className="eyebrow">Markets</div>

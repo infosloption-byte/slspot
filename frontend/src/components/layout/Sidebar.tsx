@@ -1,5 +1,6 @@
 import { BarChart3, Bell, X, Gauge, History, LayoutDashboard, LifeBuoy, Settings2, ShieldCheck, WalletCards } from 'lucide-react'
 import { NavLink } from 'react-router'
+import { useEffect, useRef } from 'react'
 import { BrandMark } from '../ui/BrandMark'
 
 const mainNav = [
@@ -36,8 +37,39 @@ function RailLink({ to, label, icon: Icon, onNavigate }: { to: string; label: st
  * Desktop: icon rail. Phone / tablet: a slide-out menu opened from the top bar's menu button.
  */
 export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const panelRef = useRef<HTMLElement>(null)
+
+  useEffect(() => {
+    if (!open || !window.matchMedia('(max-width: 820px)').matches) return undefined
+    const previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    const panel = panelRef.current
+    const focusables = () => Array.from(panel?.querySelectorAll<HTMLElement>(
+      'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    ) ?? [])
+    const frame = window.requestAnimationFrame(() => panel?.querySelector<HTMLElement>('.sidebar__close')?.focus())
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') { event.preventDefault(); onClose(); return }
+      if (event.key !== 'Tab') return
+      const nodes = focusables()
+      if (!nodes.length) return
+      const first = nodes[0]
+      const last = nodes[nodes.length - 1]
+      if (event.shiftKey && (document.activeElement === first || !panel?.contains(document.activeElement))) {
+        event.preventDefault(); last?.focus()
+      } else if (!event.shiftKey && (document.activeElement === last || !panel?.contains(document.activeElement))) {
+        event.preventDefault(); first?.focus()
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      window.cancelAnimationFrame(frame)
+      document.removeEventListener('keydown', handleKeyDown)
+      previouslyFocused?.focus()
+    }
+  }, [open, onClose])
+
   return (
-    <aside className={'sidebar' + (open ? ' sidebar--open' : '')} id="app-menu" aria-label="Menu">
+    <aside ref={panelRef} className={'sidebar' + (open ? ' sidebar--open' : '')} id="app-menu" aria-label="Menu" aria-hidden={!open && undefined}>
       <div className="sidebar__head">
         <NavLink to="/app/trading" className="sidebar__brand" aria-label="SL Spot home" onClick={onClose}>
           <BrandMark />
