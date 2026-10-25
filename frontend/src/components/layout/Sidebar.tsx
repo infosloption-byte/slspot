@@ -69,7 +69,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
   }, [open, onClose])
 
   return (
-    <aside ref={panelRef} className={'sidebar' + (open ? ' sidebar--open' : '')} id="app-menu" aria-label="Menu" aria-hidden={!open && undefined}>
+    <aside ref={panelRef} className={'sidebar' + (open ? ' sidebar--open' : '')} id="app-menu" aria-label="Menu">
       <div className="sidebar__head">
         <NavLink to="/app/trading" className="sidebar__brand" aria-label="SL Spot home" onClick={onClose}>
           <BrandMark />

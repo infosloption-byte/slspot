@@ -8,7 +8,7 @@ import {
   TimerReset,
   WalletCards,
 } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useState } from 'react'
 import type { TradeHistoryFilters } from '../../api/trades'
 import type { WalletTransaction } from '../../api/wallet'
 import type { OpenTrade } from '../../types/trading'

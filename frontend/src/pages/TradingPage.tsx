@@ -479,7 +479,7 @@ export function TradingPage() {
   const walletReady = wallet.data !== null
   const capabilitiesReady = capabilities.data !== null
   const tradeAllowedByServer = capabilities.data?.trading[mode].enabled === true
-  const feedIssue = getTradeFeedIssue(realtimeState, selectedAsset.lastUpdatedAt, selectedAsset.marketStatus, now)
+  const feedIssue = getTradeFeedIssue(realtimeState, selectedAsset?.lastUpdatedAt ?? null, selectedAsset?.marketStatus ?? null, now)
   const canTrade = capabilitiesReady && walletReady && tradeAllowedByServer && !feedIssue
   const tradeDisabledReason = capabilities.error
     ? 'Could not check trading permissions. Use Retry above.'
