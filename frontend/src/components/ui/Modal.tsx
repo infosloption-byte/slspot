@@ -21,6 +21,8 @@ type ModalProps = {
 
 export function Modal({ open, onClose, title, description, children, footer, size = 'md', flush = false, closeLabel = 'Close dialog' }: ModalProps) {
   const panelRef = useRef<HTMLDivElement>(null)
+  const onCloseRef = useRef(onClose)
+  useEffect(() => { onCloseRef.current = onClose }, [onClose])
   const titleId = useId()
   const previousFocusRef = useRef<HTMLElement | null>(null)
 
@@ -36,12 +38,12 @@ export function Modal({ open, onClose, title, description, children, footer, siz
       'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
     ) ?? []
 
-    requestAnimationFrame(() => focusable()[0]?.focus())
+    const focusFrame = requestAnimationFrame(() => focusable()[0]?.focus())
 
     const onKeyDown = (event: KeyboardEvent) => {
       if (activeModalStack.at(-1) !== panelRef.current) return
       if (event.key === 'Escape') {
-        onClose()
+        onCloseRef.current()
         return
       }
       if (event.key !== 'Tab') return
@@ -60,13 +62,14 @@ export function Modal({ open, onClose, title, description, children, footer, siz
 
     document.addEventListener('keydown', onKeyDown)
     return () => {
+      window.cancelAnimationFrame(focusFrame)
       document.body.style.overflow = previousOverflow
       const index = panel ? activeModalStack.lastIndexOf(panel) : -1
       if (index >= 0) activeModalStack.splice(index, 1)
       document.removeEventListener('keydown', onKeyDown)
       previousFocusRef.current?.focus()
     }
-  }, [onClose, open])
+  }, [open])
 
   if (!open) return null
 

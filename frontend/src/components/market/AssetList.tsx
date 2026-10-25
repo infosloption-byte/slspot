@@ -26,6 +26,8 @@ export function AssetList({ open, selected, assets, onSelect, onClose, loading =
   const [sortBy, setSortBy] = useState<AssetSort>('recent')
   const searchInputRef = useRef<HTMLInputElement>(null)
   const panelRef = useRef<HTMLElement>(null)
+  const onCloseRef = useRef(onClose)
+  useEffect(() => { onCloseRef.current = onClose }, [onClose])
   const previousOpenRef = useRef(false)
   const [recentSymbols, setRecentSymbols] = useState<string[]>(() => {
     try {
@@ -69,7 +71,7 @@ export function AssetList({ open, selected, assets, onSelect, onClose, loading =
       'button:not([disabled]), input:not([disabled]), [href], [tabindex]:not([tabindex="-1"])',
     ) ?? [])
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') { event.preventDefault(); onClose(); return }
+      if (event.key === 'Escape') { event.preventDefault(); onCloseRef.current(); return }
       if (event.key !== 'Tab' || (event.target instanceof Element && event.target.closest('.select-field__menu'))) return
       const nodes = focusables()
       if (!nodes.length) return
@@ -89,7 +91,7 @@ export function AssetList({ open, selected, assets, onSelect, onClose, loading =
       window.removeEventListener('keydown', handleKeyDown)
       previouslyFocused?.focus()
     }
-  }, [open, onClose])
+  }, [open])
 
   useEffect(() => {
     if (!open) previousOpenRef.current = false
