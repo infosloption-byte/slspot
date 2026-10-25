@@ -9,6 +9,7 @@ import './styles/theme.css'
 import './styles/global.css'
 import './styles/mobile-sidebar.css'
 import './styles/landing.css'
+import './styles/trading-ux.css'
 
 const rootElement = document.getElementById('root')
 

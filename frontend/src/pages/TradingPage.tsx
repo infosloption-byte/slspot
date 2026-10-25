@@ -1,3 +1,4 @@
+import { getTradeFeedIssue } from '../lib/tradeSafety'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AssetList } from '../components/market/AssetList'
 import { BottomPanel, type ActivityTab } from '../components/layout/BottomPanel'
@@ -451,7 +452,7 @@ export function TradingPage() {
 
     addToast(
       'success',
-      'Trade opened',
+      result.status === 'OPEN' ? 'Trade opened' : 'Order received',
       result.direction + ' · ' + selectedAsset.symbol + ' · ' + result.tradeId,
     )
 
@@ -478,14 +479,15 @@ export function TradingPage() {
   const walletReady = wallet.data !== null
   const capabilitiesReady = capabilities.data !== null
   const tradeAllowedByServer = capabilities.data?.trading[mode].enabled === true
-  const canTrade = capabilitiesReady && walletReady && tradeAllowedByServer
+  const feedIssue = getTradeFeedIssue(realtimeState, selectedAsset?.lastUpdatedAt ?? null, selectedAsset?.marketStatus ?? null, now)
+  const canTrade = capabilitiesReady && walletReady && tradeAllowedByServer && !feedIssue
   const tradeDisabledReason = capabilities.error
     ? 'Could not check trading permissions. Use Retry above.'
     : wallet.error
       ? 'Could not load your wallet. Use Retry above.'
       : !capabilitiesReady || !walletReady
         ? 'Loading your account…'
-        : capabilities.data?.trading[mode].reason
+        : capabilities.data?.trading[mode].reason || feedIssue
 
   // Account data that failed while the markets loaded fine. Without this the page looks normal with
   // empty positions or dead trade buttons.
@@ -593,7 +595,7 @@ export function TradingPage() {
       </div>
 
       <TradePanel
-        key={selectedAsset.assetId}
+        key={selectedAsset.assetId + ':' + mode}
         asset={selectedAsset}
         balance={Number(wallet.data?.availableBalance ?? '0')}
         walletMode={mode}

@@ -90,7 +90,7 @@ export function TopBar({ onMenuClick, menuOpen }: { onMenuClick: () => void; men
 
   return (
     <header className="topbar">
-      <button type="button" className="icon-button topbar__menu" onClick={onMenuClick} aria-label="Open menu" aria-expanded={menuOpen} aria-controls="app-menu"><Menu size={20} /></button>
+      <button type="button" className="icon-button topbar__menu" onClick={onMenuClick} aria-label={menuOpen ? 'Close menu' : 'Open menu'} aria-expanded={menuOpen} aria-controls="app-menu"><Menu size={20} /></button>
       <Link to="/app/trading" className="topbar__brand" aria-label="SL Spot home">
         <span className="topbar__brand-name">SL<b>SPOT</b></span>
         <span className="topbar__live"><i className="live-dot" /> Live</span>
@@ -196,10 +196,10 @@ export function TopBar({ onMenuClick, menuOpen }: { onMenuClick: () => void; men
                   </span>
                   <span className="wallet-selector__copy">
                     <strong>{demo ? 'Demo Wallet' : 'Real Wallet'}</strong>
-                    <small>{demo ? 'Practice trading · auto-refills' : 'Live funds · deposits coming soon'}</small>
+                    <small>{demo ? 'Practice trading · auto-refills' : 'Subject to account and market eligibility'}</small>
                     <em>{formatBalance(wallet?.availableBalance, wallet?.currency)}</em>
                   </span>
-                  <span className={demo ? 'wallet-selector__status wallet-selector__status--ready' : 'wallet-selector__status'}>{demo ? 'READY' : 'SOON'}</span>
+                  <span className={demo ? 'wallet-selector__status wallet-selector__status--ready' : 'wallet-selector__status'}>{demo ? 'DEMO' : 'REAL'}</span>
                   {active ? <Check size={16} className="wallet-selector__check" /> : null}
                 </button>
               )
