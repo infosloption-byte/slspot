@@ -1,5 +1,5 @@
 import { ChevronDown, Minus, Plus, RefreshCcw, ShieldAlert, Timer, TrendingDown, TrendingUp } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { MarketAsset } from '../../data/mockMarket'
 import type { TradeDirection } from '../../types/trading'
 import type { WalletMode } from '../../hooks/useWalletMode'
@@ -7,6 +7,7 @@ import { ApiError } from '../../api/client'
 import type { TradeCreateResult } from '../../api/trades'
 import { Modal } from '../ui/Modal'
 import { Select } from '../ui/Select'
+import { calculateTradeEstimate, getStakePresets, validateTradeInput } from '../../lib/tradeSafety'
 
 type TradePanelProps = {
   asset: MarketAsset
@@ -18,7 +19,8 @@ type TradePanelProps = {
 }
 
 type OrderStage = 'draft' | 'submitting' | 'pending' | 'accepted' | 'open' | 'rejected' | 'failed'
-type FailedTradeRequest = { direction: TradeDirection; clientRequestId: string }
+type OrderDraft = { direction: TradeDirection; clientRequestId: string; amount: number; durationSeconds: number }
+type FailedTradeRequest = OrderDraft
 
 const DURATION_STEP_SECONDS = 5
 
@@ -29,7 +31,7 @@ function formatDuration(value: number) {
 export function TradePanel({ asset, balance, walletMode, canTrade, tradeDisabledReason, onOpenTrade }: TradePanelProps) {
   // The stake is kept as text so an emptied field stays empty; a numeric state turned "" into 0,
   // and typing after that produced "05".
-  const [amountText, setAmountText] = useState(String(Math.min(50, asset.maxAmount)))
+  const [amountText, setAmountText] = useState(String(Math.max(asset.minAmount, Math.min(50, asset.maxAmount))))
   const amount = amountText === '' ? 0 : Number(amountText)
   const setAmount = (value: number) => setAmountText(String(value))
   const handleAmountInput = (raw: string) => {
@@ -39,78 +41,84 @@ export function TradePanel({ asset, balance, walletMode, canTrade, tradeDisabled
   const [duration, setDuration] = useState(asset.durationsSeconds[0] ?? 60)
   const [stage, setStage] = useState<OrderStage>('draft')
   const [error, setError] = useState('')
-  const [mobileConfigOpen, setMobileConfigOpen] = useState(true)
+  const [mobileConfigOpen, setMobileConfigOpen] = useState(false)
+  const [preview, setPreview] = useState<OrderDraft | null>(null)
   const [failedRequest, setFailedRequest] = useState<FailedTradeRequest | null>(null)
+  const submittingRef = useRef(false)
+  const statusTimerRef = useRef<number | null>(null)
+  useEffect(() => () => { if (statusTimerRef.current !== null) window.clearTimeout(statusTimerRef.current) }, [])
   const payoutRate = Number(asset.payoutRate)
-  const estimatedPayout = amount * payoutRate
-  const feeRate = Number(asset.feeRate)
-  const estimatedFee = Number.isFinite(feeRate) && feeRate > 0 ? amount * feeRate : 0
-  const totalReturn = amount + estimatedPayout - estimatedFee
+  const { netProfit, totalReturn, fee } = calculateTradeEstimate(amount, payoutRate, Number(asset.feeRate))
+  const presets = getStakePresets(asset.minAmount, asset.maxAmount, balance)
 
   const validate = () => {
-    if (!Number.isFinite(amount) || amount < asset.minAmount || amount > asset.maxAmount) {
-      return 'Stake must be between ' + formatCurrency(asset.minAmount, asset.quoteCurrency) + ' and ' + formatCurrency(asset.maxAmount, asset.quoteCurrency) + '.'
-    }
-    if (!asset.durationsSeconds.includes(duration)) {
-      return 'That duration is not currently allowed for this market.'
-    }
-    if (!Number.isFinite(balance) || amount > balance) {
-      return 'Stake exceeds the available server balance.'
-    }
-    if (!canTrade) {
-      return tradeDisabledReason ?? 'Trading is not currently enabled for this wallet.'
-    }
-    if (walletMode === 'REAL' && !asset.tradingEnabled) {
-      return 'This market is currently unavailable for real-money trading.'
-    }
+    const problem = validateTradeInput({
+      amount, duration, minAmount: asset.minAmount, maxAmount: asset.maxAmount,
+      durations: asset.durationsSeconds, balance, canTrade,
+    })
+    if (problem === 'stake') return 'Stake must be between ' + formatCurrency(asset.minAmount, asset.quoteCurrency) + ' and ' + formatCurrency(asset.maxAmount, asset.quoteCurrency) + '.'
+    if (problem === 'duration') return 'That duration is not currently allowed for this market.'
+    if (problem === 'balance') return 'Stake exceeds the available server balance.'
+    if (problem === 'unavailable') return tradeDisabledReason ?? 'Trading is not currently enabled for this wallet.'
     return ''
   }
+
   const resetOrder = () => {
+    if (submittingRef.current) return
+    setPreview(null)
+    setFailedRequest(null)
     setStage('draft')
     setError('')
+    if (statusTimerRef.current !== null) window.clearTimeout(statusTimerRef.current)
   }
 
-  const requestPreview = async (nextDirection: TradeDirection, clientRequestId?: string) => {
-    const requestId = clientRequestId ?? crypto.randomUUID()
-    const validationError = validate()
-    if (validationError) {
-      setError(validationError)
-      setStage('draft')
+  // UP/DOWN only prepares the order; confirming it is the only path that sends a request.
+  const requestPreview = (direction: TradeDirection) => {
+    if (submittingRef.current) return
+    const problem = validate()
+    if (problem) { setError(problem); return }
+    if (statusTimerRef.current !== null) window.clearTimeout(statusTimerRef.current)
+    setFailedRequest(null)
+    setPreview({ direction, amount, durationSeconds: duration, clientRequestId: crypto.randomUUID() })
+  }
+
+  const submitOrder = async (order: OrderDraft) => {
+    if (submittingRef.current) return
+    const problem = validate()
+    if (problem || order.amount !== amount || order.durationSeconds !== duration) {
+      setPreview(null)
+      setError(problem || 'Order settings changed. Review the new order before submitting.')
       return
     }
-
+    submittingRef.current = true
+    if (statusTimerRef.current !== null) window.clearTimeout(statusTimerRef.current)
+    setPreview(null)
     setError('')
     setStage('submitting')
-
     try {
-      const result = await onOpenTrade({ direction: nextDirection,
-        amount,
-        durationSeconds: duration,
-        entryPrice: asset.price,
-        payoutRate,
-        clientRequestId: requestId,
-      })
+      const result = await onOpenTrade({ ...order, entryPrice: asset.price, payoutRate })
       setFailedRequest(null)
       setStage(result.orderStatus === 'PENDING' ? 'pending' : result.orderStatus === 'ACCEPTED' ? 'accepted' : 'open')
-      window.setTimeout(() => setStage('draft'), 1600)
+      statusTimerRef.current = window.setTimeout(() => setStage('draft'), 3200)
     } catch (error) {
       const rejected = error instanceof ApiError && error.code === 'ORDER_REJECTED'
-      const message = rejected
-        ? 'Trade rejected: ' + error.message
-        : error instanceof Error ? error.message : 'Trade submission failed'
-      setError(message)
-      setFailedRequest(rejected ? null : { direction: nextDirection, clientRequestId: requestId })
+      setError(rejected ? 'Trade rejected: ' + error.message : error instanceof Error ? error.message : 'Trade submission failed')
+      // Network retries reuse the same idempotency key to avoid duplicate orders.
+      setFailedRequest(rejected ? null : order)
       setStage(rejected ? 'rejected' : 'failed')
-      window.setTimeout(() => setStage('draft'), 2200)
+    } finally {
+      submittingRef.current = false
     }
   }
 
   const adjustAmount = (delta: number) => {
-    setAmount(Math.max(asset.minAmount, Math.min(asset.maxAmount, amount + delta)))
+    if (submittingRef.current) return
+    setAmount(Math.max(asset.minAmount, Math.min(asset.maxAmount, (Number.isFinite(amount) ? amount : asset.minAmount) + delta)))
     if (stage !== 'draft') resetOrder()
   }
 
   const chooseDuration = (value: number) => {
+    if (submittingRef.current) return
     setDuration(value)
     if (stage !== 'draft') resetOrder()
   }
@@ -129,12 +137,12 @@ export function TradePanel({ asset, balance, walletMode, canTrade, tradeDisabled
 
   const renderActions = (mobile = false) => (
     <div className={mobile ? 'trade-actions trade-actions--mobile' : 'trade-actions'} aria-label="Trade direction">
-      <button className="trade-btn trade-btn--up" type="button" onClick={() => void requestPreview('UP')} disabled={stage === 'submitting' || !canTrade || balance <= 0}>
+      <button className="trade-btn trade-btn--up" type="button" onClick={() => requestPreview('UP')} disabled={stage === 'submitting' || !canTrade || balance <= 0}>
         <TrendingUp size={18} />
         <span>UP</span>
         {!mobile ? <small>Higher</small> : null}
       </button>
-      <button className="trade-btn trade-btn--down" type="button" onClick={() => void requestPreview('DOWN')} disabled={stage === 'submitting' || !canTrade || balance <= 0}>
+      <button className="trade-btn trade-btn--down" type="button" onClick={() => requestPreview('DOWN')} disabled={stage === 'submitting' || !canTrade || balance <= 0}>
         <TrendingDown size={18} />
         <span>DOWN</span>
         {!mobile ? <small>Lower</small> : null}
@@ -161,11 +169,11 @@ export function TradePanel({ asset, balance, walletMode, canTrade, tradeDisabled
             <span className="trade-field__label">Stake · {asset.quoteCurrency}</span>
             <div className="stepper">
               <button type="button" onClick={() => adjustAmount(-10)} aria-label="Decrease stake"><Minus size={17} /></button>
-              <div className="stepper__value"><span>{asset.quoteCurrency}</span><input value={amountText} onChange={(event) => handleAmountInput(event.target.value)} type="number" inputMode="decimal" min={asset.minAmount} max={asset.maxAmount} aria-label="Stake amount" /></div>
+              <div className="stepper__value"><span>{asset.quoteCurrency}</span><input value={amountText} onChange={(event) => handleAmountInput(event.target.value)} type="number" inputMode="decimal" min={asset.minAmount} max={asset.maxAmount} aria-label="Stake amount" disabled={stage === 'submitting'} /></div>
               <button type="button" onClick={() => adjustAmount(10)} aria-label="Increase stake"><Plus size={17} /></button>
             </div>
             <div className="chips">
-              {[25, 50, 100, 250].map((value) => <button key={value} type="button" className={amount === value ? 'chip chip--active' : 'chip'} onClick={() => { setAmount(value); resetOrder() }}>{formatCurrency(value, asset.quoteCurrency)}</button>)}
+              {presets.map((value) => <button key={value} type="button" className={amount === value ? 'chip chip--active' : 'chip'} disabled={stage === 'submitting'} onClick={() => { setAmount(value); resetOrder() }}>{formatCurrency(value, asset.quoteCurrency)}</button>)}
             </div>
           </div>
 
@@ -186,13 +194,15 @@ export function TradePanel({ asset, balance, walletMode, canTrade, tradeDisabled
           </div>
 
           <div className="payout-card">
-            <div><span>Potential return</span><strong>{formatCurrency(estimatedPayout, asset.quoteCurrency)}</strong></div>
-            <div><span>Total at expiry</span><strong>{formatCurrency(totalReturn, asset.quoteCurrency)}</strong></div>
-            <small>{asset.payout}% server payout · {((Number(asset.feeRate) || 0) * 100).toFixed(2)}% fee · {asset.quoteCurrency}</small>
+            <div><span>Potential net profit</span><strong>{formatCurrency(netProfit, asset.quoteCurrency)}</strong></div>
+            <div><span>Potential settlement</span><strong>{formatCurrency(totalReturn, asset.quoteCurrency)}</strong></div>
+            <small>{asset.payout}% payout · {formatCurrency(fee, asset.quoteCurrency)} estimated fee · Loss can equal your stake</small>
           </div>
 
           {renderActions()}
-
+          <div className="trade-order-status" role="status" aria-live="polite">
+            {stage === 'submitting' ? 'Submitting order…' : stage === 'pending' ? 'Order processing — check positions before submitting again.' : stage === 'accepted' ? 'Order accepted.' : stage === 'open' ? 'Position opened.' : null}
+          </div>
           <div className="trade-panel__footer-row">
             <span className="trade-panel__note"><i className="live-dot" /> {canTrade ? (walletMode === 'DEMO' ? 'Demo market · Practice balance' : 'Real wallet · Trading enabled') : (tradeDisabledReason ?? 'Trading unavailable')} · Balance {formatCurrency(balance, asset.quoteCurrency)}</span>
           </div>
@@ -208,7 +218,7 @@ export function TradePanel({ asset, balance, walletMode, canTrade, tradeDisabled
             </button>
             <div className="trade-mobile-payout-summary" aria-label="Trade payout summary">
               <span aria-hidden="true">|</span>
-              <span>Return <strong>{formatCurrency(estimatedPayout, asset.quoteCurrency)}</strong></span>
+              <span>Net profit <strong>{formatCurrency(netProfit, asset.quoteCurrency)}</strong></span>
               <span aria-hidden="true">|</span>
               <span>Total <strong>{formatCurrency(totalReturn, asset.quoteCurrency)}</strong></span>
             </div>
@@ -220,7 +230,7 @@ export function TradePanel({ asset, balance, walletMode, canTrade, tradeDisabled
           {mobileConfigOpen ? (
             <div className="trade-mobile-config__panel">
               <div className="trade-mobile-config__grid">
-                <label><span>Stake</span><div className="stepper"><button type="button" onClick={() => adjustAmount(-10)} aria-label="Decrease stake"><Minus size={15} /></button><div className="stepper__value"><span>{asset.quoteCurrency}</span><input value={amountText} onChange={(event) => handleAmountInput(event.target.value)} type="number" inputMode="decimal" /></div><button type="button" onClick={() => adjustAmount(10)} aria-label="Increase stake"><Plus size={15} /></button></div></label>
+                <label><span>Stake</span><div className="stepper"><button type="button" onClick={() => adjustAmount(-10)} aria-label="Decrease stake"><Minus size={15} /></button><div className="stepper__value"><span>{asset.quoteCurrency}</span><input value={amountText} onChange={(event) => handleAmountInput(event.target.value)} type="number" inputMode="decimal" min={asset.minAmount} max={asset.maxAmount} aria-label="Stake amount" disabled={stage === 'submitting'} /></div><button type="button" onClick={() => adjustAmount(10)} aria-label="Increase stake"><Plus size={15} /></button></div></label>
                 <label>
                   <span>Duration</span>
                   <div className="duration-stepper duration-stepper--mobile">
@@ -240,8 +250,36 @@ export function TradePanel({ asset, balance, walletMode, canTrade, tradeDisabled
             </div>
           ) : null}
           {renderActions(true)}
+          <div className="trade-order-status" role="status" aria-live="polite">
+            {stage === 'submitting' ? 'Submitting order…' : stage === 'pending' ? 'Order processing — check positions before retrying.' : stage === 'accepted' ? 'Order accepted.' : stage === 'open' ? 'Position opened.' : null}
+          </div>
         </div>
       </aside>
+
+      <Modal
+        open={preview !== null}
+        onClose={() => setPreview(null)}
+        title={walletMode === 'REAL' ? 'Confirm real-money order' : 'Review demo order'}
+        size="sm"
+        footer={(
+          <>
+            <button className="btn btn--ghost" type="button" disabled={stage === 'submitting'} onClick={() => setPreview(null)}>Back</button>
+            <button className="btn btn--primary" type="button" disabled={stage === 'submitting' || !canTrade} onClick={() => { if (preview) void submitOrder(preview) }}>Confirm {preview?.direction} order</button>
+          </>
+        )}
+      >
+        <div className="trade-review">
+          <p className="trade-review__warning">{walletMode === 'REAL' ? 'Real funds are at risk. Confirm the amount, direction and duration carefully.' : 'Practice order — no real funds are used.'}</p>
+          <dl>
+            <div><dt>Market</dt><dd>{asset.symbol}</dd></div>
+            <div><dt>Direction</dt><dd>{preview?.direction}</dd></div>
+            <div><dt>Stake at risk</dt><dd>{formatCurrency(preview?.amount ?? 0, asset.quoteCurrency)}</dd></div>
+            <div><dt>Duration</dt><dd>{formatDuration(preview?.durationSeconds ?? duration)}</dd></div>
+            <div><dt>Estimated net profit if successful</dt><dd>{formatCurrency(calculateTradeEstimate(preview?.amount ?? 0, payoutRate, Number(asset.feeRate)).netProfit, asset.quoteCurrency)}</dd></div>
+          </dl>
+          <p className="trade-review__note">The server determines the execution price and final settlement. Quotes and payout terms can change.</p>
+        </div>
+      </Modal>
 
       <Modal
         open={Boolean(error)}
@@ -252,7 +290,7 @@ export function TradePanel({ asset, balance, walletMode, canTrade, tradeDisabled
           <>
             <button className="btn btn--ghost" type="button" onClick={() => { setError(''); setStage('draft') }}>Close</button>
             {failedRequest ? (
-              <button className="btn btn--primary" type="button" onClick={() => { setError(''); void requestPreview(failedRequest.direction, failedRequest.clientRequestId) }}>
+              <button className="btn btn--primary" type="button" onClick={() => { setError(''); void submitOrder(failedRequest) }}>
                 <RefreshCcw size={14} /> Retry
               </button>
             ) : null}
